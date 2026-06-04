@@ -31,13 +31,13 @@ export function AboutSection() {
         <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
           {/* Text content */}
           <div>
-            <Badge variant="orange" className="mb-4">About Sicarii</Badge>
+            <Badge variant="orange" className="mb-4">About Scalar</Badge>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               A digital agency that puts{" "}
               <span className="text-gradient-orange">you in control</span>
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Sicarii was built on a simple belief: clients deserve to
+              Scalar was built on a simple belief: clients deserve to
               see what&apos;s happening with their project at every step. No more
               waiting in the dark for updates. No more surprises.
             </p>

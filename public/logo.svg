@@ -1,14 +1,10 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sicarii">
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scalar">
   <rect width="64" height="64" rx="14" fill="#1E4D2B"/>
-  <!-- Dagger: blade pointing down, a nod to the sicarii -->
+  <!-- Scalar mark: an upward vector — quiet leverage, magnitude -->
   <g fill="#FFFFFF">
-    <!-- blade -->
-    <path d="M32 50 L27.5 22 H36.5 L32 50 Z"/>
-    <!-- crossguard -->
-    <rect x="22" y="18.5" width="20" height="3.6" rx="1.8"/>
-    <!-- hilt -->
-    <rect x="30.4" y="11" width="3.2" height="7.5" rx="1.2"/>
-    <!-- pommel -->
-    <circle cx="32" cy="11" r="2.4"/>
+    <!-- shaft -->
+    <rect x="30.4" y="18" width="3.2" height="32" rx="1.6"/>
+    <!-- arrowhead -->
+    <path d="M32 12 L41 25 H23 L32 12 Z"/>
   </g>
 </svg>

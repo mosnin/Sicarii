@@ -35,7 +35,7 @@ export function HeroSection() {
           {/* Logo */}
           <Image
             src="/logo.svg"
-            alt="Sicarii"
+            alt="Scalar"
             width={80}
             height={80}
             className="rounded-xl"

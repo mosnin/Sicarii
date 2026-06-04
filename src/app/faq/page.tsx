@@ -113,7 +113,7 @@ export default function FAQPage() {
               <span className="text-gradient-orange">questions</span>
             </h1>
             <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to know about working with Sicarii.
+              Everything you need to know about working with Scalar.
               Can&apos;t find what you&apos;re looking for? Reach out to us directly.
             </p>
           </div>

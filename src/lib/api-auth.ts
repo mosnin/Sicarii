@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 
-const PREFIX = "sic_";
+const PREFIX = "scl_";
 
 export function hashApiKey(plaintext: string): string {
   return createHash("sha256").update(plaintext).digest("hex");

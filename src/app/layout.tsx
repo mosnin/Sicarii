@@ -4,16 +4,16 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sicarii | The CRM Your Agents Run",
+  title: "Scalar | The CRM Your Agents Run",
   description:
     "A CRM operated by AI agents — they discover leads, enrich your database, run the conversations, and own the data. You direct; the agents operate.",
-  metadataBase: new URL("https://sicarii.app"),
+  metadataBase: new URL("https://scalar.app"),
   openGraph: {
-    title: "Sicarii | The CRM Your Agents Run",
+    title: "Scalar | The CRM Your Agents Run",
     description:
       "A CRM operated by AI agents — discover, enrich, and own every relationship, all on data that stays inside.",
-    url: "https://sicarii.app",
-    siteName: "Sicarii",
+    url: "https://scalar.app",
+    siteName: "Scalar",
     type: "website",
   },
 };

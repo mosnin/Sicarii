@@ -4,12 +4,12 @@
 > session. Keep it to a glance; update it on every RECORD. (Volatile — the *aim*.)
 
 **Binding constraint right now:** _The CRM + secure MCP are built and
-build-verified, but the **Sicarii agent** — the headline flow ("find nail salons
+build-verified, but the **Scalar agent** — the headline flow ("find nail salons
 in Miami" → Tavily → push to CRM) — isn't built, and it needs an **LLM provider
 key** + an **embedding provider** for the token-efficient vector memory. The
 product can't be *felt* until the agent runs._
 
-**Next task — the Sicarii agent (token-efficient, with vector memory):**
+**Next task — the Scalar agent (token-efficient, with vector memory):**
 
 | # | Task | Leverage | InfoValue | Cost | why it's next |
 |---|------|----------|-----------|------|---------------|

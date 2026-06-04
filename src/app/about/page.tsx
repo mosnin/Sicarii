@@ -64,7 +64,7 @@ export default function AboutPage() {
               <span className="text-gradient-orange">with purpose</span>
             </h1>
             <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Sicarii exists to bridge the gap between ambitious businesses
+              Scalar exists to bridge the gap between ambitious businesses
               and the digital tools they need to grow. We believe every client
               deserves transparency, quality, and speed.
             </p>
@@ -78,7 +78,7 @@ export default function AboutPage() {
               <div>
                 <h2 className="text-3xl font-bold sm:text-4xl">Our Mission</h2>
                 <p className="mt-4 text-lg text-muted-foreground">
-                  We created Sicarii because we saw too many businesses getting burned by
+                  We created Scalar because we saw too many businesses getting burned by
                   opaque agencies — missed deadlines, unclear pricing, and zero visibility
                   into what was actually happening with their project.
                 </p>
@@ -98,12 +98,12 @@ export default function AboutPage() {
                   <div className="rounded-2xl border border-border bg-card p-8 max-w-sm">
                     <Image
                       src="/logo.svg"
-                      alt="Sicarii"
+                      alt="Scalar"
                       width={120}
                       height={120}
                       className="rounded-xl mx-auto"
                     />
-                    <h3 className="text-xl font-bold text-center mt-6">Sicarii</h3>
+                    <h3 className="text-xl font-bold text-center mt-6">Scalar</h3>
                     <p className="text-sm text-muted-foreground text-center mt-2">
                       Strength through clarity. Excellence through transparency.
                     </p>

@@ -1,4 +1,4 @@
-# North Star — Sicarii
+# North Star — Scalar
 
 > Owned by **vision**. The calibration for taste. "Insanely great" is meaningless
 > until it means something *specific to this product* — this file makes it
@@ -10,20 +10,20 @@ _Set from founder intake, 2026-06-04. Founder corrects; this is the living draft
 
 ## The soul — one sentence
 
-**Sicarii is a context engine for leads and conversations that AI agents plug into
+**Scalar is a context engine for leads and conversations that AI agents plug into
 (over MCP/API) to run outbound cold email** — a CRM whose operators are agents:
 they discover businesses, enrich them and their people, hold the conversations,
 and own the data; the human directs instead of doing data entry.
 
 Why it deserves to exist: every CRM today is a filing cabinet built for humans to
 load and maintain by hand — and the data rots the moment the human stops typing.
-Sicarii inverts it. The database is *alive*, kept current by agents that also
+Scalar inverts it. The database is *alive*, kept current by agents that also
 understand the product well enough to actually sell it.
 
 ## The five-second promise
 
 **Quiet leverage** — the instant feeling that *it's already working for me.* You
-open Sicarii and the database is live: contacts enriched, conversations already in
+open Scalar and the database is live: contacts enriched, conversations already in
 motion, the agent mid-task on your behalf. Calm command, not the dread of a blank
 CRM waiting to be filled. *The work that used to eat your day, already handled.*
 
@@ -53,10 +53,10 @@ feature of the CRM; **the CRM is the agent's body.**
 
 ## The anti-vision
 
-What would betray Sicarii — even if it shipped, tested, and sold:
+What would betray Scalar — even if it shipped, tested, and sold:
 
 - **Data leaving the house.** Becoming a thin wrapper where the user's real data
-  lives in someone else's tool. Data stays inside Sicarii. Always.
+  lives in someone else's tool. Data stays inside Scalar. Always.
 - **The human demoted back to data-entry clerk.**
 - **A read-only assistant** that can summarize but not act.
 - **Understanding-free spam** — agents blasting templates because they don't know
@@ -65,7 +65,7 @@ What would betray Sicarii — even if it shipped, tested, and sold:
 ## The one thing we will not trade
 
 **The agent as a true operator on owned data.** When forced to choose, we protect:
-agents that *act* (read **and** write) on data that lives **inside** Sicarii, with
+agents that *act* (read **and** write) on data that lives **inside** Scalar, with
 real product understanding. We never degrade to a read-only helper or an
 external-data wrapper to ship faster.
 

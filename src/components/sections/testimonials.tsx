@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 
 const testimonials = [
   {
-    quote: "Sicarii delivered our ecommerce platform in 3 weeks and our conversion rate tripled. The real-time tracker was a game-changer — I always knew exactly where my project stood.",
+    quote: "Scalar delivered our ecommerce platform in 3 weeks and our conversion rate tripled. The real-time tracker was a game-changer — I always knew exactly where my project stood.",
     name: "Sarah Mitchell",
     role: "Founder, Maison Noir",
     rating: 5,
@@ -24,7 +24,7 @@ const testimonials = [
     rating: 5,
   },
   {
-    quote: "We needed a sales funnel fast and Sicarii delivered. The 450% ROI on our ad spend speaks for itself. Already planning our next project with them.",
+    quote: "We needed a sales funnel fast and Scalar delivered. The 450% ROI on our ad spend speaks for itself. Already planning our next project with them.",
     name: "James Okafor",
     role: "CEO, GrowthForge",
     rating: 5,

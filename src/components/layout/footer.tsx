@@ -34,12 +34,12 @@ export function Footer() {
               <Link href="/" className="flex items-center gap-2">
                 <Image
                   src="/logo.svg"
-                  alt="Sicarii"
+                  alt="Scalar"
                   width={32}
                   height={32}
                   className="rounded-md"
                 />
-                <span className="text-lg font-bold">Sicarii</span>
+                <span className="text-lg font-bold">Scalar</span>
               </Link>
               <p className="text-sm text-muted-foreground max-w-xs">
                 Digital solutions built for growth. Transparent process,
@@ -103,10 +103,10 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-border/50 px-6 py-4 sm:px-8 lg:px-12 flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Sicarii. All rights reserved.
+            &copy; {new Date().getFullYear()} Scalar. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
-            sicarii.agency
+            scalar.agency
           </p>
         </div>
       </div>

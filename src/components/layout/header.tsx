@@ -146,13 +146,13 @@ export function Header() {
             <Link href="/" className="flex items-center gap-2">
               <Image
                 src="/logo.svg"
-                alt="Sicarii"
+                alt="Scalar"
                 width={32}
                 height={32}
                 className="rounded-md"
               />
               <span className="text-base font-bold text-foreground hidden sm:inline">
-                Sicarii
+                Scalar
               </span>
             </Link>
 
@@ -248,12 +248,12 @@ export function Header() {
               >
                 <Image
                   src="/logo.svg"
-                  alt="Sicarii"
+                  alt="Scalar"
                   width={28}
                   height={28}
                   className="rounded-md"
                 />
-                <span className="font-bold">Sicarii</span>
+                <span className="font-bold">Scalar</span>
               </Link>
               <button
                 className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors cursor-pointer"

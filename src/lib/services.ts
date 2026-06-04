@@ -18,7 +18,7 @@ export interface Service {
   startingPrice: string;
 }
 
-// Sicarii's capabilities — the things the agents do. Doubles as marketing copy.
+// Scalar's capabilities — the things the agents do. Doubles as marketing copy.
 export const services: Service[] = [
   {
     id: "discover",
@@ -44,7 +44,7 @@ export const services: Service[] = [
       "Automatic field completion",
       "Provider-shaped enrichment data",
       "Re-enrich on demand",
-      "Owned data — it never leaves Sicarii",
+      "Owned data — it never leaves Scalar",
     ],
     startingPrice: "Always on",
   },

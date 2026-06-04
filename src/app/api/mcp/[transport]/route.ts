@@ -232,12 +232,12 @@ const handler = createMcpHandler(
     );
   },
   {
-    serverInfo: { name: "sicarii", version: "0.1.0" },
+    serverInfo: { name: "scalar", version: "0.1.0" },
   },
   { basePath: "/api/mcp" },
 );
 
-// Per-user API key auth: resolve the bearer token to a Sicarii user and inject
+// Per-user API key auth: resolve the bearer token to a Scalar user and inject
 // the userId into authInfo.extra for the tools to scope on.
 const authHandler = withMcpAuth(
   handler,

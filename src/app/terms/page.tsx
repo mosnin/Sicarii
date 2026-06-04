@@ -22,7 +22,7 @@ export default function TermsPage() {
             <div className="space-y-8 text-muted-foreground text-sm leading-relaxed">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">1. Services</h2>
-                <p>Sicarii provides digital development services including web applications, ecommerce stores, sales funnels, AI automation, and Open Claw deployment. Services are defined during the onboarding process and confirmed upon payment.</p>
+                <p>Scalar provides digital development services including web applications, ecommerce stores, sales funnels, AI automation, and Open Claw deployment. Services are defined during the onboarding process and confirmed upon payment.</p>
               </div>
 
               <div>
@@ -57,7 +57,7 @@ export default function TermsPage() {
 
               <div>
                 <h2 className="text-lg font-semibold text-foreground">8. Limitation of Liability</h2>
-                <p>Sicarii&apos;s liability is limited to the amount paid for the specific service. We are not liable for indirect, incidental, or consequential damages arising from the use of our services or deliverables.</p>
+                <p>Scalar&apos;s liability is limited to the amount paid for the specific service. We are not liable for indirect, incidental, or consequential damages arising from the use of our services or deliverables.</p>
               </div>
 
               <div>
@@ -67,7 +67,7 @@ export default function TermsPage() {
 
               <div>
                 <h2 className="text-lg font-semibold text-foreground">10. Contact</h2>
-                <p>For questions about these terms, contact us at hello@sicarii.agency.</p>
+                <p>For questions about these terms, contact us at hello@scalar.agency.</p>
               </div>
             </div>
           </div>

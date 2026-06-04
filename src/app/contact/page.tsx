@@ -177,7 +177,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold">Email</h3>
-                      <p className="text-sm text-muted-foreground mt-1">hello@sicarii.agency</p>
+                      <p className="text-sm text-muted-foreground mt-1">hello@scalar.agency</p>
                     </div>
                   </CardContent>
                 </Card>

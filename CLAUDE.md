@@ -1,4 +1,4 @@
-# Sicarii — Project Memory
+# Scalar — Project Memory
 
 @.ritual/methods/README.md
 @docs/README.md
@@ -24,7 +24,7 @@ routing and the four-gate synthesis order live in the imported engine above.
 
 ## What we're building
 
-**Sicarii — the CRM your agents run.** A CRM whose operators are AI agents: they
+**Scalar — the CRM your agents run.** A CRM whose operators are AI agents: they
 discover leads, enrich the database, run email relationships, and read/write every
 record — on data that never leaves the system, with deep product context so they
 sell with understanding. For agencies, founders, and lean teams running outbound.

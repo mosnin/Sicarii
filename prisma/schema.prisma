@@ -1,4 +1,4 @@
-// Sicarii — Prisma schema (Postgres on Supabase)
+// Scalar — Prisma schema (Postgres on Supabase)
 // Auth is Clerk; users are mirrored here via the Clerk webhook.
 
 generator client {
@@ -52,7 +52,7 @@ model ApiKey {
 // domain), and operated on by agents. Has many contacts.
 model Entity {
   id        String  @id @default(uuid())
-  userId    String // owner (the Sicarii account)
+  userId    String // owner (the Scalar account)
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name        String
@@ -90,7 +90,7 @@ enum EntityStatus {
 // A person/company in the CRM. Agents discover, enrich, and operate on these.
 model Contact {
   id        String  @id @default(uuid())
-  userId    String // owner (the Sicarii account this contact belongs to)
+  userId    String // owner (the Scalar account this contact belongs to)
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Optional parent business. A contact is assigned to an entity or stands solo.

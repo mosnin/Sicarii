@@ -1,4 +1,4 @@
-# PRD — Sicarii (build brief)
+# PRD — Scalar (build brief)
 
 > Product requirements. Owned by vision + the human (what/feel), the engineer +
 > producer (how). Living doc. Refined from founder intake 2026-06-04 (two rounds).
@@ -6,7 +6,7 @@
 ## 1. What we're building
 
 **A context engine for leads + conversations that AI agents plug into (over MCP or
-API) to run outbound cold email.** Sicarii is a CRM whose operators are agents:
+API) to run outbound cold email.** Scalar is a CRM whose operators are agents:
 they discover businesses, enrich them and their people, hold the conversations,
 and own all the context — on data that never leaves the system.
 
@@ -17,7 +17,7 @@ and own all the context — on data that never leaves the system.
 - **Contact** = a person. Assigned to an entity **or** solo.
 - **ContactEmail** = an email exchanged with a contact (via AgentMail), savable as
   reusable agent context.
-- **User** = the Sicarii account (Clerk), owns entities + contacts.
+- **User** = the Scalar account (Clerk), owns entities + contacts.
 
 All records carry an `enrichment` JSON payload and `notes`/`tags` so agents can
 read and extend context freely.
@@ -38,7 +38,7 @@ the CRM (the contact/"user" page is intentionally not in the dock). _(IA shipped
   ownership enforced on every API route. CRUD APIs: `/api/entities(+/[id])`,
   `/api/contacts(+/[id])`.
 
-### 4.2 Sicarii agent (chat) — next
+### 4.2 Scalar agent (chat) — next
 - Natural language → **Tavily** web search to find entities ("nail salons in
   Miami") → review → push to CRM.
 - Tools: **enrich entity** (Synthoz, by domain → contacts), **enrich contact**
@@ -78,7 +78,7 @@ Supabase creds.
 
 ## 6. North-Star guardrails
 
-Data never leaves Sicarii. Agents **act** (read+write), not just summarize. No
+Data never leaves Scalar. Agents **act** (read+write), not just summarize. No
 understanding-free spam. The human directs; agents operate. Secure by default.
 
 ## 7. Founder Calls owed

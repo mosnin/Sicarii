@@ -22,7 +22,7 @@ exponential growth into a plateau.
 > Moves that have cleared the gates more than once. These become the house style.
 
 - **Reuse the working skeleton for the undifferentiated 80%; spend invention on
-  the wedge.** Built Sicarii on the fortitudo scaffolding instead of greenfield. _(Card 0001)_
+  the wedge.** Built Scalar on the fortitudo scaffolding instead of greenfield. _(Card 0001)_
 - **Brand color lives in one place.** All theme color flows from tokens in
   `src/app/globals.css`; rebrand = edit tokens, not hunt components. _(Card 0001)_
 - **One ORM, one data path, ownership in every route.** Prisma only; every
@@ -69,7 +69,7 @@ exponential growth into a plateau.
 |------|---------|----------------|------|
 | Drizzle + Neon DB layer | REPLACED | founder call: Prisma ORM on Supabase Postgres instead | 0001/0002 |
 | Orange brand palette | REPLACED | rebrand to charcoal/white + `#1E4D2B` green | 0001 |
-| "Fortitudo" agency identity | REPLACED | rebranded to Sicarii (agent-operated CRM) | 0001 |
+| "Fortitudo" agency identity | REPLACED | rebranded to Scalar (agent-operated CRM) | 0001 |
 | Agency app (projects/phases/onboarding/invoices/admin) | REMOVED | founder call "remove & replace"; wrong shape for an agent CRM | 0002 |
 
 ---

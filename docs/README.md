@@ -1,4 +1,4 @@
-# Sicarii — Knowledge Index
+# Scalar — Knowledge Index
 
 > The map of all deep context. `CLAUDE.md` (Tier 1) is always loaded; this index
 > (Tier 2) is the single entry point to everything below, loaded on demand. For
@@ -20,7 +20,7 @@
 |-----|--------------|-----------|
 | `decisions/heading.md` | The current aim — what to work on next. Ratchet reads this **first**. | Every session |
 | `decisions/README.md` | The ledger: patterns that pass, debts owed, kills. Ratchet reads this. | Every session |
-| `decisions/0001-foundation-and-rebrand.md` | Build Sicarii on the fortitudo scaffolding; rebrand; Prisma/Clerk/Supabase stack | Revisiting the foundation |
+| `decisions/0001-foundation-and-rebrand.md` | Build Scalar on the fortitudo scaffolding; rebrand; Prisma/Clerk/Supabase stack | Revisiting the foundation |
 | `decisions/0002-crm-on-prisma.md` | Remove agency app; Prisma migration; CRM contacts CRUD + email store | Revisiting the data layer / IA |
 | `decisions/0003-entity-model-context-engine.md` | Entity model + Entity↔Contact; Synthoz client; build verified | Revisiting entities/enrichment |
 | `decisions/0004-secure-mcp-and-api-keys.md` | Secure MCP server (12 tools) + per-user API keys + shared ops layer | Revisiting agent access / MCP |

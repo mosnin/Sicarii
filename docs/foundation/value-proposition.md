@@ -1,4 +1,4 @@
-# Value Proposition — Sicarii
+# Value Proposition — Scalar
 
 > Owned by **the banker + vision**, clarity guarded by **the human**. Who it's
 > for, the value delivered, how it's positioned. _Draft from intake 2026-06-04._
@@ -17,7 +17,7 @@ The buyer feels two pains:
 
 ## The promise
 
-**Hire your pipeline, don't operate it.** Sicarii is a CRM whose operators are AI
+**Hire your pipeline, don't operate it.** Scalar is a CRM whose operators are AI
 agents: they discover contacts with built-in tools, enrich the database, hold
 conversations over email, and keep every record alive — all on data that never
 leaves the system, with deep context on what you're selling.
@@ -29,7 +29,7 @@ leaves the system, with deep context on what you're selling.
 - **Bring your own agent.** MCP tools + skills let OpenClaw, Hermes, or Claude
   Cowork operate the same data as the built-in agent.
 - **Owned data + owned context.** Everything — contacts, email history, product
-  knowledge — lives inside Sicarii and compounds.
+  knowledge — lives inside Scalar and compounds.
 
 ## Positioning one-liner
 

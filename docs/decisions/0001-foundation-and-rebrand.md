@@ -1,8 +1,8 @@
-# Gate Card 0001 — Build Sicarii on the fortitudo scaffolding; rebrand + Prisma/Clerk/Supabase stack
+# Gate Card 0001 — Build Scalar on the fortitudo scaffolding; rebrand + Prisma/Clerk/Supabase stack
 
 Date: 2026-06-04 · Verdict: **SHIP** (groundwork) · Led by: vision
 
-> Founding card. Covers three coupled decisions: (a) build Sicarii — an
+> Founding card. Covers three coupled decisions: (a) build Scalar — an
 > agent-operated CRM; (b) reuse the `mosnin/fortitudov4` Next.js scaffolding as
 > the base; (c) stack = Prisma ORM on Supabase Postgres, Clerk auth.
 > Rungs: ASSERTED(0) · REASONED(1) · TESTED(2) · OBSERVED(3).
