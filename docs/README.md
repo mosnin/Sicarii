@@ -23,6 +23,7 @@
 | `decisions/0001-foundation-and-rebrand.md` | Build Sicarii on the fortitudo scaffolding; rebrand; Prisma/Clerk/Supabase stack | Revisiting the foundation |
 | `decisions/0002-crm-on-prisma.md` | Remove agency app; Prisma migration; CRM contacts CRUD + email store | Revisiting the data layer / IA |
 | `decisions/0003-entity-model-context-engine.md` | Entity model + Entity↔Contact; Synthoz client; build verified | Revisiting entities/enrichment |
+| `decisions/0004-secure-mcp-and-api-keys.md` | Secure MCP server (12 tools) + per-user API keys + shared ops layer | Revisiting agent access / MCP |
 
 ## Working knowledge (grows with the product)
 

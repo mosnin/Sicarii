@@ -38,6 +38,12 @@ exponential growth into a plateau.
 - **Honest partial over guessed parser.** For an unknown external response
   (Synthoz), build the request path, store the raw payload, gate behind the key
   (501), and parse once a real sample exists. _(Card 0003)_
+- **One shared ops layer.** REST, MCP, and the agent all call `crm-operations.ts`
+  (userId-scoped) — no logic drift across surfaces. _(Card 0004)_
+- **Secrets hashed at rest, shown once.** API keys stored as SHA-256; plaintext
+  surfaced a single time at creation. _(Card 0004)_
+- **Verify third-party APIs against their real types.** Read `mcp-handler`'s
+  `.d.ts` before wiring; tsc then catches misuse. _(Card 0004)_
 
 ## Open debts (owed to reality)
 
@@ -52,6 +58,8 @@ exponential growth into a plateau.
 | Economics | 0001 · Viable | pricing/packaging set | founder + banker |
 | External keys on Vercel | 0003 | Supabase, Synthoz, Tavily, AgentMail, Clerk | founder |
 | Synthoz response → Contacts | 0003 | sample payload to parse | founder + eng |
+| MCP runtime handshake | 0004 · Feasible | tool call from a real MCP client + key | founder + eng |
+| Agent + vector memory | (next) | LLM + embedding provider keys | founder |
 
 ## Kills & falsifieds (do not re-open)
 

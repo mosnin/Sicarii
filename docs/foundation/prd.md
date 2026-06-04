@@ -57,10 +57,13 @@ the CRM (the contact/"user" page is intentionally not in the dock). _(IA shipped
 - Connect API key in Settings; send/sync into `ContactEmail`; render real threads.
   Ref: https://docs.agentmail.to/api-reference
 
-### 4.5 Secure MCP + tools — next (high priority)
-- An authenticated MCP server exposing a rich toolset over the CRM so connected
-  agents (OpenClaw, Hermes, Claude Cowork) read/use the context and write back.
-- The same operations are available to the built-in agent and over a REST API.
+### 4.5 Secure MCP + tools — shipped (build-verified)
+- Authenticated MCP server at `/api/mcp/mcp` exposing 12 tools over the CRM
+  (entities, contacts, enrich, save email context, search CRM, search web) so
+  connected agents (OpenClaw, Hermes, Claude Cowork) read/use context and write back.
+- **Per-user API keys** (SHA-256 hashed, shown once) managed in Settings; Bearer auth.
+- All tools + REST + the agent share `src/lib/crm-operations.ts` (one source of truth).
+- Debt: runtime handshake verification from a real MCP client.
 
 ### 4.6 Product Context store — next
 - Agent-consumable, structured knowledge of what's being sold; read by internal +
