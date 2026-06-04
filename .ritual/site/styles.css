@@ -138,6 +138,7 @@ main, .nav, .foot{ position:relative; z-index:2; }
 }
 .copy-btn:hover{ border-color:var(--red); color:#fff; box-shadow:0 0 14px rgba(225,6,0,.32); }
 .copy-btn.copied{ color:#7fd07f; border-color:#3a7; box-shadow:none; }
+.cmd-note{ margin:10px 0 0; color:var(--ink-dim); font-size:12px; opacity:.85; }
 
 .scrollcue{ margin-top:58px; color:var(--ink-dim); font-size:10px; letter-spacing:.42em; text-transform:uppercase; }
 .scrollcue::before{ content:""; display:block; width:1px; height:38px; margin:0 auto 14px; background:linear-gradient(var(--red), transparent); animation:cueGlow 3.2s ease-in-out infinite; }

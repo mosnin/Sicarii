@@ -61,6 +61,14 @@ else
   echo "Wired the Ritual into your existing CLAUDE.md ($IMPORT)."
 fi
 
+# Mark the project as awaiting setup, so the first Claude session detects it and
+# performs the Ritual's bootstrap (steps 1-4). The founder's North Star is a
+# Founder Call — it cannot be auto-filled here, which is why activation needs one
+# short session, not just this script.
+if ! grep -q 'ritual:installed' "$CLAUDE" && ! grep -q 'ritual:not-installed' "$CLAUDE"; then
+  printf '\n<!-- ritual:not-installed -->\n' >> "$CLAUDE"
+fi
+
 # ---------------------------------------------------------------------------
 # The Ratchet: register the SessionStart hook that re-injects retained memory
 # (docs/decisions ledger + North Star) every session, so gains don't leak as
@@ -99,6 +107,13 @@ fi
 
 cat <<'DONE'
 
-Done. Open Claude in this repo. It reads CLAUDE.md, sees the Ritual, and
-performs it — lighting the methods and asking for your founding documents.
+✓ STAGED — the Ritual is wired into CLAUDE.md, but it is not active yet.
+
+  NEXT · step 2 of 2 — open Claude in this repo.
+  It will perform the setup Ritual: write your project's memory, stand up docs/,
+  and ask you (in a sentence or two) what you're building and who it's for — your
+  North Star. That part is yours to give; it can't be faked. Answer it, and the
+  four gates go live and start compounding.
+
+  Until then, Claude can read the methods but has nothing to calibrate against.
 DONE
