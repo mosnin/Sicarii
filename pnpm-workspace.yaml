@@ -1,0 +1,10 @@
+# Allow these dependencies to run install/build scripts (pnpm gates them by default).
+# Prisma must generate its client + engines; sharp builds native image bindings.
+onlyBuiltDependencies:
+  - '@clerk/shared'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - prisma
+  - sharp
+  - msgpackr-extract
+  - unrs-resolver

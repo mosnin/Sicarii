@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -29,6 +30,7 @@ const createContactSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
   notes: z.string().trim().max(10000).optional(),
   enrichment: z.record(z.string(), z.unknown()).optional(),
+  entityId: z.string().uuid().nullable().optional(),
 });
 
 // GET /api/contacts — list the authenticated user's contacts.
@@ -88,12 +90,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { enrichment, tags, ...rest } = parsed.data;
+    const { enrichment, tags, entityId, ...rest } = parsed.data;
+
+    // If assigning to an entity, it must belong to this user.
+    if (entityId) {
+      const entity = await prisma.entity.findUnique({ where: { id: entityId } });
+      if (!entity || entity.userId !== user.id) {
+        return NextResponse.json({ error: "Invalid entity" }, { status: 400 });
+      }
+    }
+
     const contact = await prisma.contact.create({
       data: {
         ...rest,
         tags: tags ?? [],
-        enrichment: enrichment ?? undefined,
+        ...(enrichment
+          ? { enrichment: enrichment as Prisma.InputJsonValue }
+          : {}),
+        entityId: entityId ?? undefined,
         userId: user.id,
       },
     });

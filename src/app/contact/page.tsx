@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -215,7 +216,7 @@ export default function ContactPage() {
                     Skip the form and start your project directly through our platform.
                   </p>
                   <Button variant="outline" className="w-full" asChild>
-                    <a href="/sign-up">Create Account & Start</a>
+                    <Link href="/sign-up">Create Account & Start</Link>
                   </Button>
                 </div>
               </div>

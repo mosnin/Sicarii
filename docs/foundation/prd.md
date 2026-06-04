@@ -1,87 +1,84 @@
 # PRD — Sicarii (build brief)
 
-> The product requirements, captured from founder intake 2026-06-04. Owned by
-> vision + the human (what/feel) and the engineer + producer (how). Living doc —
-> refine each cycle. Large detail lives here; `CLAUDE.md` only links.
+> Product requirements. Owned by vision + the human (what/feel), the engineer +
+> producer (how). Living doc. Refined from founder intake 2026-06-04 (two rounds).
 
 ## 1. What we're building
 
-A **CRM operated by AI agents**. The built-in agent (and connected external agents
-like OpenClaw, Hermes, Claude Cowork) discover leads, enrich the database, run
-email relationships, and read/write all records. All data stays inside Sicarii.
+**A context engine for leads + conversations that AI agents plug into (over MCP or
+API) to run outbound cold email.** Sicarii is a CRM whose operators are agents:
+they discover businesses, enrich them and their people, hold the conversations,
+and own all the context — on data that never leaves the system.
 
-## 2. Foundation: rebrand from scaffolding
+## 2. Core data model
 
-Base is the founder's `fortitudov4` scaffolding (a marketing site + logged-in
-dashboard, originally for a real-estate agency). **Keep the UI and aesthetic;
-rebrand only.**
+- **Entity** = a business. Discovered (web search), enriched (by domain), operated
+  on by agents. Has many contacts.
+- **Contact** = a person. Assigned to an entity **or** solo.
+- **ContactEmail** = an email exchanged with a contact (via AgentMail), savable as
+  reusable agent context.
+- **User** = the Sicarii account (Clerk), owns entities + contacts.
 
-- **Name:** Fortitudo → **Sicarii** everywhere (marketing + app).
-- **Color scheme:** background **white** (light) / **charcoal** (dark) depending
-  on mode; **primary `#1E4D2B`** (deep green).
-- **Dashboard:** keep the logged-in aesthetic; retune all copy/messaging to
-  Sicarii's positioning ("The CRM your agents run").
-- ⚠️ _Blocked: need access to `mosnin/fortitudov4` (private). See Heading._
+All records carry an `enrichment` JSON payload and `notes`/`tags` so agents can
+read and extend context freely.
 
-## 3. Navigation / IA changes
+## 3. Information architecture (dashboard)
 
-| Old | New | What it does |
-|-----|-----|--------------|
-| **Builds** (nav entry) | **Discover** | Find contacts using built-in tools (enrich, lead-gen from domain, extract from URLs, find-emails) and **save** them into the CRM. |
-| **Builds** (page) | **CRM** | Display all saved contacts; entry to each contact record. |
+Dashboard · **Discover** · **CRM** (Contacts + Entities tabs) · **Agent** ·
+**Product Context** · Settings. Contact and Entity detail pages are reached from
+the CRM (the contact/"user" page is intentionally not in the dock). _(IA shipped.)_
 
-## 4. Core features
+## 4. Features
 
-### 4.1 Discover
-Find-and-save flow, modeled on the Synthoz enrichment patterns the founder shared:
-- Enrich company data by **domain**.
-- Convert **company names** → enriched records.
-- Extract **email / phone / social** from a list of **website URLs**.
-- Find emails from **first name + last name + company/domain**.
-- Daily registered domains w/ lead info; B2B list building (later tiers).
-- Results are reviewable and **saved into the CRM** as contacts.
-- _(Underlying data providers TBD — engineer to spec. Synthoz screenshots are the
-  UX reference, not necessarily the backend.)_
+### 4.1 CRM — shipped
+- Entities tab (businesses, with contact counts) + Contacts tab (people).
+- Entity detail: profile + its contacts + **Enrich** button.
+- Contact detail: profile + linked entity + **email-thread store** (Conversation).
+- Manual create for both; assign a contact to an entity; status + delete; per-user
+  ownership enforced on every API route. CRUD APIs: `/api/entities(+/[id])`,
+  `/api/contacts(+/[id])`.
 
-### 4.2 CRM (contacts list)
-- List/table of all saved contacts with enrichment fields.
-- Each contact opens a **contact page**.
+### 4.2 Sicarii agent (chat) — next
+- Natural language → **Tavily** web search to find entities ("nail salons in
+  Miami") → review → push to CRM.
+- Tools: **enrich entity** (Synthoz, by domain → contacts), **enrich contact**
+  (Synthoz, by entity domain → contact info), create entities/contacts, search CRM.
+- Acts with read+write CRM access and Product Context.
 
-### 4.3 Contact page
-- Full enriched profile.
-- **Email thread store:** the conversation between the agent and that contact,
-  which the agent can **save as context** and reuse.
-- Emails render **from the connected AgentMail account** (see 4.5).
+### 4.3 Enrichment (Synthoz) — client ready, wiring next
+- `src/lib/synthoz.ts` implements the documented request shapes (enrich-company,
+  convert-company-names, extract-emails-from-urls, find-emails-first-last).
+- `POST /api/entities/[id]/enrich` calls Synthoz by domain, stores the raw payload
+  on `entity.enrichment`, marks ENRICHED. **Response→Contact parsing is TODO**
+  (need a real response shape). Returns 501 until `SYNTHOZ_API_KEY` is set (Vercel).
+- Manual "Enrich" button in the CRM + an agent tool both hit this path.
 
-### 4.4 Built-in agent (chat)
-- User chats with an in-app agent to **pull lead lists** and **enrich** the DB.
-- Agent has **read + write** access to CRM data (it edits, updates, uses records).
-- Agent draws on the Product Context store (4.6) to act with understanding.
+### 4.4 AgentMail (email) — schema ready, wiring next
+- Connect API key in Settings; send/sync into `ContactEmail`; render real threads.
+  Ref: https://docs.agentmail.to/api-reference
 
-### 4.5 Agent connectivity + email
-- **MCP tools / skills** exposing the CRM so external agents (OpenClaw, Hermes,
-  Claude Cowork) can operate the same data.
-- **AgentMail integration:** user connects their AgentMail **API key in Settings**;
-  email send/receive + thread display flows through it. Follow the API reference:
-  https://docs.agentmail.to/api-reference  _(integration spec owed — engineer to
-  read docs and define endpoints/auth/storage in `docs/engineering/`)._
+### 4.5 Secure MCP + tools — next (high priority)
+- An authenticated MCP server exposing a rich toolset over the CRM so connected
+  agents (OpenClaw, Hermes, Claude Cowork) read/use the context and write back.
+- The same operations are available to the built-in agent and over a REST API.
 
-### 4.6 Product Context store
-- A **comprehensive, structured** section describing the product being sold.
-- Readable by the internal agent **and** connected agents, so outreach is informed.
-- This is a North-Star differentiator (understanding over spray) — design it as a
-  first-class, agent-consumable knowledge base, not a notes field.
+### 4.6 Product Context store — next
+- Agent-consumable, structured knowledge of what's being sold; read by internal +
+  connected agents before outreach.
 
-## 5. Settings
-- AgentMail API key connection.
-- (Likely) agent connection / MCP credentials, product-context management.
+## 5. Stack
 
-## 6. Out of scope / open questions (Founder Calls owed)
-- Backend data providers for Discover (who supplies enrichment?).
-- Auth/multi-tenancy model (inherited from scaffolding? confirm).
-- Pricing & packaging.
-- Which agent framework powers the built-in chat agent.
+Next.js 16 · React 19 · TS · Tailwind v4 · Clerk (auth) · **Prisma on Supabase
+Postgres** · AgentMail (email) · Tavily (search) · Synthoz (enrichment). Build
+verified (tsc + eslint + `next build` all green); `prisma db push` needs real
+Supabase creds.
 
-## 7. North-Star guardrails (every feature checks against these)
-- Data never leaves Sicarii. Agents **act**, not just summarize. No
-  understanding-free spam. The human directs; the agent operates.
+## 6. North-Star guardrails
+
+Data never leaves Sicarii. Agents **act** (read+write), not just summarize. No
+understanding-free spam. The human directs; agents operate. Secure by default.
+
+## 7. Founder Calls owed
+
+Supabase creds · Synthoz key + a sample response · Tavily key · AgentMail key ·
+MCP auth model · pricing · domain · real logo/brand kit · marketing-copy retune.

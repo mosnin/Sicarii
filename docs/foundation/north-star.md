@@ -10,9 +10,10 @@ _Set from founder intake, 2026-06-04. Founder corrects; this is the living draft
 
 ## The soul — one sentence
 
-**Sicarii is a CRM where the operators are AI agents** — they discover leads,
-enrich the database, run the relationships, and own the data; the human directs
-instead of doing data entry.
+**Sicarii is a context engine for leads and conversations that AI agents plug into
+(over MCP/API) to run outbound cold email** — a CRM whose operators are agents:
+they discover businesses, enrich them and their people, hold the conversations,
+and own the data; the human directs instead of doing data entry.
 
 Why it deserves to exist: every CRM today is a filing cabinet built for humans to
 load and maintain by hand — and the data rots the moment the human stops typing.

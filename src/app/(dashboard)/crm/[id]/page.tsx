@@ -6,7 +6,7 @@ import {
   Mail,
   Phone,
   Globe,
-  Linkedin,
+  Link2,
   MapPin,
   Briefcase,
   Inbox,
@@ -28,7 +28,10 @@ export default async function ContactDetailPage({
   const user = await getDbUser();
   if (!user) notFound();
 
-  const contact = await prisma.contact.findUnique({ where: { id } });
+  const contact = await prisma.contact.findUnique({
+    where: { id },
+    include: { entity: { select: { id: true, name: true } } },
+  });
   if (!contact || contact.userId !== user.id) notFound();
 
   const emails = await prisma.contactEmail.findMany({
@@ -42,7 +45,7 @@ export default async function ContactDetailPage({
     { icon: Mail, label: "Email", value: contact.email },
     { icon: Phone, label: "Phone", value: contact.phone },
     { icon: Globe, label: "Website", value: contact.website },
-    { icon: Linkedin, label: "LinkedIn", value: contact.linkedin },
+    { icon: Link2, label: "LinkedIn", value: contact.linkedin },
     { icon: MapPin, label: "Location", value: contact.location },
   ];
 
@@ -66,11 +69,18 @@ export default async function ContactDetailPage({
               {statusLabel(contact.status)}
             </Badge>
           </div>
-          {contact.source && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              Source: {contact.source}
-            </p>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+            {contact.entity && (
+              <Link
+                href={`/crm/entity/${contact.entity.id}`}
+                className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                {contact.entity.name}
+              </Link>
+            )}
+            {contact.source && <span>Source: {contact.source}</span>}
+          </div>
         </div>
         <ContactActions contactId={contact.id} currentStatus={contact.status} />
       </div>

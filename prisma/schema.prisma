@@ -23,9 +23,49 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  entities Entity[]
   contacts Contact[]
 
   @@map("users")
+}
+
+// A business in the CRM. Discovered (e.g. via Tavily), enriched (via Synthoz by
+// domain), and operated on by agents. Has many contacts.
+model Entity {
+  id        String  @id @default(uuid())
+  userId    String // owner (the Sicarii account)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  domain      String?
+  website     String?
+  industry    String?
+  location    String?
+  description String? @db.Text
+  size        String?
+
+  status    EntityStatus @default(NEW)
+  source    String? // "agent:tavily", "manual", "agent", etc.
+  tags      String[]     @default([])
+  notes     String?      @db.Text
+
+  // Enrichment payload (Synthoz-shaped JSON the agent can read/extend).
+  enrichment Json?
+
+  contacts  Contact[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("entities")
+}
+
+enum EntityStatus {
+  NEW
+  ENRICHED
+  ARCHIVED
 }
 
 // A person/company in the CRM. Agents discover, enrich, and operate on these.
@@ -33,6 +73,10 @@ model Contact {
   id        String  @id @default(uuid())
   userId    String // owner (the Sicarii account this contact belongs to)
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Optional parent business. A contact is assigned to an entity or stands solo.
+  entityId  String?
+  entity    Entity? @relation(fields: [entityId], references: [id], onDelete: SetNull)
 
   // Core
   name      String?
@@ -60,6 +104,7 @@ model Contact {
 
   @@index([userId])
   @@index([userId, status])
+  @@index([entityId])
   @@map("contacts")
 }
 

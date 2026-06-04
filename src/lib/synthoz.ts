@@ -1,0 +1,77 @@
+// Synthoz enrichment API client.
+//
+// Request shapes are taken from the Synthoz dashboard ("USE THE API" panels):
+// every call POSTs JSON containing `api_key` plus action-specific fields to
+//   https://myapiconnect.com/api-product/incoming-webhook/<action>
+//
+// The response shapes are not yet documented to us, so callers store the raw
+// JSON (e.g. on `entity.enrichment`) and extraction is refined once we see real
+// responses. The API key is read from SYNTHOZ_API_KEY (set on the deployment).
+
+const BASE = "https://myapiconnect.com/api-product/incoming-webhook";
+
+export class SynthozNotConfiguredError extends Error {
+  constructor() {
+    super("SYNTHOZ_API_KEY is not set");
+    this.name = "SynthozNotConfiguredError";
+  }
+}
+
+export function isSynthozConfigured(): boolean {
+  return Boolean(process.env.SYNTHOZ_API_KEY);
+}
+
+async function call(action: string, payload: Record<string, unknown>) {
+  const apiKey = process.env.SYNTHOZ_API_KEY;
+  if (!apiKey) throw new SynthozNotConfiguredError();
+
+  const res = await fetch(`${BASE}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: apiKey, ...payload }),
+  });
+
+  const text = await res.text();
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = text;
+  }
+  if (!res.ok) {
+    throw new Error(
+      `Synthoz ${action} failed (${res.status}): ${
+        typeof data === "string" ? data : JSON.stringify(data)
+      }`
+    );
+  }
+  return data;
+}
+
+/** Enrich a company by domain → company data + contacts. */
+export function enrichCompany(domain: string) {
+  return call("enrich-company", { domain });
+}
+
+/** Turn a company name into enriched company records. */
+export function convertCompanyNames(companyName: string) {
+  return call("convert-company-names", { company_name: companyName });
+}
+
+/** Extract emails / phones / socials from a website URL. */
+export function extractEmailsFromUrls(url: string) {
+  return call("extract-emails-from-urls", { url });
+}
+
+/** Find an email from first + last name and a company domain. */
+export function findEmailsFirstLast(
+  firstName: string,
+  lastName: string,
+  domain: string
+) {
+  return call("find-emails-first-last", {
+    first_name: firstName,
+    last_name: lastName,
+    domain,
+  });
+}

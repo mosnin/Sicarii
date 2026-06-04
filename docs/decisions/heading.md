@@ -3,30 +3,32 @@
 > The one thing to push right now. Surfaced first by the Ratchet hook each
 > session. Keep it to a glance; update it on every RECORD. (Volatile — the *aim*.)
 
-**Binding constraint right now:** _Nothing is build-verified. The CRM cycle is
-written and internally consistent, but `pnpm build` has not run in this
-environment — and it needs a Supabase database + Clerk keys to come alive. Until
-someone runs install/migrate/build with real env, every gate sits at REASONED._
+**Binding constraint right now:** _The data layer is built and **build-verified**
+(tsc + eslint + `next build` all green), but nothing is **live**: no Supabase
+tables yet, and the three external brains (Tavily search, Synthoz enrichment,
+AgentMail email) plus the **MCP server** are unwired. The product can't *act*
+until the agent + MCP land on real data._
 
 **Next tasks** _(ranked by Priority = Alignment × Leverage × InfoValue ÷ Cost)_
 
 | # | Task | Leverage | InfoValue | Cost | why it's next |
 |---|------|----------|-----------|------|---------------|
-| ① | **Build verification** — `pnpm install && pnpm db:push && pnpm build`; fix TS fallout (likely Prisma enum/Json typing). Needs Supabase + Clerk env. | H | H | L | discharges the 0002 debt; proves the slice real |
-| ② | **Discover wiring** — pick an enrichment provider; wire enrich-by-domain + find-emails → save to CRM. | H | H | M | the acquisition motion; first real data in |
-| ③ | **Built-in agent** — chat with read+write CRM tools; then expose the same over MCP for OpenClaw/Hermes. | H | H | H | the soul of the product |
-| ④ | **AgentMail** — Settings key connection + send/sync into `ContactEmail`; render real threads. | M | M | M | lights up the living-memory store |
-| ⑤ | **Product Context store** — agent-consumable knowledge base + UI. | M | M | M | the "sell with understanding" wedge |
-| ⑥ | **Marketing + settings retune** — replace remaining agency copy (hero, pricing, testimonials, about, settings/Creem) with Sicarii messaging. | M | L | M | polish; not blocking |
+| ① | **Deploy + `prisma db push`** on real Supabase; smoke-test CRUD; observe the 5-second spark. | H | H | L | turns a green build into a living app |
+| ② | **Secure MCP server** + rich toolset over the CRM (list/create/enrich entities & contacts, search, save email context) — auth'd for OpenClaw/Hermes/Claude Cowork. | H | H | H | the soul: agents plugging into the context |
+| ③ | **Sicarii agent (chat)** — Tavily search → entities → push to CRM; Synthoz enrich tools; create records. | H | H | H | the founder's headline flow |
+| ④ | **Synthoz response → Contacts** — wire real responses into Contact records (needs a sample payload + key). | M | H | M | makes enrich actually populate the CRM |
+| ⑤ | **AgentMail** — Settings key + send/sync into `ContactEmail`; render threads. | M | M | M | conversation context for outbound |
+| ⑥ | **Product Context store** + **marketing/settings retune**. | M | L | M | wedge + polish |
 
-**Riskiest assumption under test now:** _That the written code compiles and the
-Prisma schema migrates cleanly on Supabase. Cheapest falsifier: run task ①._
+**Riskiest assumption under test now:** _That Synthoz/Tavily/AgentMail behave as
+the screenshots/docs imply. Cheapest falsifier: one real call each once keys land._
 
-**WIP on the critical path:** _1 — get a green build before adding features._
+**WIP on the critical path:** _1._
 
 **DONE this session:** Ritual installed · scaffolding imported · full rebrand ·
-**IA restructured** (agency app removed; Discover/CRM/Agent/Context/Settings) ·
-**Prisma-on-Supabase** foundation (Drizzle/Neon removed) · **CRM contacts** CRUD +
-detail + email-thread store + honest placeholders · Gate Cards 0001, 0002.
+IA restructured · **Prisma-on-Supabase** · **CRM = Entities + Contacts** (CRUD,
+detail, assignment, email-thread store, status/delete) · **Synthoz client +
+enrich endpoint** · honest Discover/Agent/Context placeholders ·
+**build verified (tsc + eslint + next build green)** · Gate Cards 0001–0003.
 
 <!-- Founder Call: the Alignment ranking encodes taste. Founder confirms true north. -->

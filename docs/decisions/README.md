@@ -32,6 +32,12 @@ exponential growth into a plateau.
   imports + dead route links before declaring done. _(Card 0002)_
 - **Honest placeholders, not 404s.** Unbuilt nav destinations ship as branded
   "coming next" pages so the IA is whole. _(Card 0002)_
+- **Verify before claiming SHIP.** Run `tsc --noEmit` + `eslint` + `next build`
+  before stamping Feasible as TESTED. Caught real bugs (missing lucide brand icon,
+  Prisma Json/enum typing). _(Card 0003)_
+- **Honest partial over guessed parser.** For an unknown external response
+  (Synthoz), build the request path, store the raw payload, gate behind the key
+  (501), and parse once a real sample exists. _(Card 0003)_
 
 ## Open debts (owed to reality)
 
@@ -39,12 +45,13 @@ exponential growth into a plateau.
 
 | Debt | Gate / Card | Evidence owed | Owner |
 |------|-------------|---------------|-------|
-| **Build passes** | 0002 · Feasible | `pnpm install && db:push && build` green; fix TS fallout | eng |
-| 5-second "quiet leverage" | 0001 · Desirable | observe the reaction on a real built screen | founder |
+| ~~Build passes~~ ✅ | 0003 · Feasible | DONE — tsc + eslint + `next build` all green | eng |
+| `prisma db push` live | 0003 · Deliverable | tables created on real Supabase | founder + eng |
+| 5-second "quiet leverage" | 0001 · Desirable | observe on the deployed app | founder |
 | Desirability with real users | 0001 · Desirable | first real users react | founder |
 | Economics | 0001 · Viable | pricing/packaging set | founder + banker |
-| Supabase + Clerk env | 0002 | connection strings + keys provided | founder |
-| Real enrichment provider | 0002 | provider chosen for Discover | founder + eng |
+| External keys on Vercel | 0003 | Supabase, Synthoz, Tavily, AgentMail, Clerk | founder |
+| Synthoz response → Contacts | 0003 | sample payload to parse | founder + eng |
 
 ## Kills & falsifieds (do not re-open)
 

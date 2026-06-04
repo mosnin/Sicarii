@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 
@@ -28,6 +29,7 @@ const updateContactSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
   notes: z.string().trim().max(10000).nullable().optional(),
   enrichment: z.record(z.string(), z.unknown()).nullable().optional(),
+  entityId: z.string().uuid().nullable().optional(),
 });
 
 // Load a contact and assert the authenticated user owns it.
@@ -81,16 +83,24 @@ export async function PATCH(
       );
     }
 
-    const { enrichment, ...rest } = parsed.data;
-    const contact = await prisma.contact.update({
-      where: { id },
-      data: {
-        ...rest,
-        ...(enrichment !== undefined
-          ? { enrichment: enrichment ?? undefined }
-          : {}),
-      },
-    });
+    const { enrichment, entityId, ...rest } = parsed.data;
+
+    // If (re)assigning an entity, it must belong to this user.
+    if (entityId) {
+      const entity = await prisma.entity.findUnique({ where: { id: entityId } });
+      if (!entity || entity.userId !== user.id) {
+        return NextResponse.json({ error: "Invalid entity" }, { status: 400 });
+      }
+    }
+
+    const data: Prisma.ContactUncheckedUpdateInput = { ...rest };
+    if (entityId !== undefined) data.entityId = entityId;
+    if (enrichment !== undefined) {
+      data.enrichment =
+        enrichment === null ? Prisma.DbNull : (enrichment as Prisma.InputJsonValue);
+    }
+
+    const contact = await prisma.contact.update({ where: { id }, data });
 
     return NextResponse.json({ contact });
   } catch (e) {
