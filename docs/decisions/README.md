@@ -21,7 +21,10 @@ exponential growth into a plateau.
 
 > Moves that have cleared the gates more than once. These become the house style.
 
-_None yet — the first cycle hasn't run._
+- **Reuse the working skeleton for the undifferentiated 80%; spend invention on
+  the wedge.** Built Sicarii on the fortitudo scaffolding instead of greenfield. _(Card 0001)_
+- **Brand color lives in one place.** All theme color flows from tokens in
+  `src/app/globals.css`; rebrand = edit tokens, not hunt components. _(Card 0001)_
 
 ## Open debts (owed to reality)
 
@@ -29,7 +32,11 @@ _None yet — the first cycle hasn't run._
 
 | Debt | Gate / Card | Evidence owed | Owner |
 |------|-------------|---------------|-------|
-| _none yet_ | | | |
+| Build passes | 0001 · Deliverable | `pnpm install && pnpm build` green (needs deps/env) | eng |
+| 5-second "quiet leverage" | 0001 · Desirable | observe the reaction on a real built screen | founder |
+| Desirability with real users | 0001 · Desirable | first real users react | founder |
+| Economics | 0001 · Viable | pricing/packaging set | founder + banker |
+| Drizzle→Prisma migration works | (next cycle) | schema + routes migrated, queries run | eng |
 
 ## Kills & falsifieds (do not re-open)
 
@@ -37,7 +44,9 @@ _None yet — the first cycle hasn't run._
 
 | What | Verdict | Why (one line) | Card |
 |------|---------|----------------|------|
-| _none yet_ | | | |
+| Drizzle + Neon DB layer | REPLACED | founder call: Prisma ORM on Supabase Postgres instead | 0001 |
+| Orange brand palette | REPLACED | rebrand to charcoal/white + `#1E4D2B` green | 0001 |
+| "Fortitudo" agency identity | REPLACED | rebranded to Sicarii (agent-operated CRM) | 0001 |
 
 ---
 

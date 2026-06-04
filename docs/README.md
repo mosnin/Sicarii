@@ -8,10 +8,10 @@
 
 | Doc | What's there | Read when |
 |-----|--------------|-----------|
-| `foundation/north-star.md` | The taste calibration — soul, five-second promise, the bar. The Ratchet reads this. | _Awaiting founder intake_ |
-| `foundation/brand-kit.md` | Voice, look, feel | _not yet provided_ |
-| `foundation/value-proposition.md` | Who it's for, the value delivered | _not yet provided_ |
-| `foundation/prd.md` | Product requirements | _not yet provided_ |
+| `foundation/north-star.md` | The taste calibration — soul, five-second promise, the bar. The Ratchet reads this. | ✅ set — read for any desirability/taste call |
+| `foundation/value-proposition.md` | Who it's for, the value delivered, positioning | ✅ set |
+| `foundation/prd.md` | The build brief — features, rebrand, IA, integrations | ✅ set — read before feature work |
+| `foundation/brand-kit.md` | Voice, look, feel | _not yet provided (colors set in `src/app/globals.css`; logo `public/logo.svg`)_ |
 | `foundation/user-experience.md` | Flows, the felt experience | _not yet provided_ |
 
 ## Decisions — the memory of *why* (Gate Cards)
@@ -20,7 +20,7 @@
 |-----|--------------|-----------|
 | `decisions/heading.md` | The current aim — what to work on next. Ratchet reads this **first**. | Every session |
 | `decisions/README.md` | The ledger: patterns that pass, debts owed, kills. Ratchet reads this. | Every session |
-| `decisions/NNNN-*.md` | One stamped Gate Card per significant decision (append-only history) | Revisiting a past call |
+| `decisions/0001-foundation-and-rebrand.md` | Build Sicarii on the fortitudo scaffolding; rebrand; Prisma/Clerk/Supabase stack | Revisiting the foundation |
 
 ## Working knowledge (grows with the product)
 

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /projects
+Disallow: /messages
+Disallow: /notifications
+Disallow: /analytics
+Disallow: /settings
+Disallow: /admin
+Disallow: /api/
+Sitemap: https://foritudo.agency/sitemap.xml
