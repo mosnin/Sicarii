@@ -2,8 +2,6 @@ import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import Image from "next/image";
 import { DashboardNav } from "@/components/dashboard/nav";
-import { NotificationBell } from "@/components/dashboard/notification-bell";
-import { GlobalSearch } from "@/components/dashboard/global-search";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function DashboardLayout({
@@ -30,17 +28,13 @@ export default function DashboardLayout({
             <DashboardNav />
           </div>
           <div className="flex items-center gap-2">
-            <GlobalSearch />
-            <NotificationBell />
             <ThemeToggle />
             <UserButton />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-        {children}
-      </main>
+      <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">{children}</main>
     </div>
   );
 }

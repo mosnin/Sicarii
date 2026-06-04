@@ -1,0 +1,107 @@
+// Sicarii — Prisma schema (Postgres on Supabase)
+// Auth is Clerk; users are mirrored here via the Clerk webhook.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase: pooled connection in DATABASE_URL, direct connection for migrations.
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique
+  email     String
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts Contact[]
+
+  @@map("users")
+}
+
+// A person/company in the CRM. Agents discover, enrich, and operate on these.
+model Contact {
+  id        String  @id @default(uuid())
+  userId    String // owner (the Sicarii account this contact belongs to)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Core
+  name      String?
+  email     String?
+  phone     String?
+  company   String?
+  title     String?
+  website   String?
+  linkedin  String?
+  location  String?
+
+  // Pipeline
+  status    ContactStatus @default(NEW)
+  source    String? // how it was found: "discover:domain", "manual", "import", etc.
+  tags      String[]      @default([])
+  notes     String?
+
+  // Enrichment payload (provider-shaped JSON the agent can read/extend)
+  enrichment Json?
+
+  emails    ContactEmail[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("contacts")
+}
+
+enum ContactStatus {
+  NEW
+  ENRICHED
+  CONTACTED
+  REPLIED
+  QUALIFIED
+  WON
+  LOST
+  ARCHIVED
+}
+
+// Email exchanged with a contact. Rendered from the connected AgentMail account;
+// the agent can save messages here as reusable context.
+model ContactEmail {
+  id        String  @id @default(uuid())
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // AgentMail linkage (nullable until a key is connected)
+  agentMailMessageId String?
+  agentMailThreadId  String?
+
+  direction Emaildirection
+  fromAddr  String?
+  toAddr    String?
+  subject   String?
+  body      String?        @db.Text
+  // Whether the agent flagged this message as durable context.
+  savedAsContext Boolean   @default(false)
+
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([contactId])
+  @@index([agentMailThreadId])
+  @@map("contact_emails")
+}
+
+enum Emaildirection {
+  INBOUND
+  OUTBOUND
+}

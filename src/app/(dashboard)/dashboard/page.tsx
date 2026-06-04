@@ -1,225 +1,112 @@
-import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
+import { Radar, Users, Bot, BookOpen, ArrowRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { PhaseTrackerHorizontal, type Phase } from "@/components/dashboard/phase-tracker";
-import { FolderKanban, MessageSquare, Upload, Plus } from "lucide-react";
-import { EmptyState } from "@/components/ui/empty-state";
-import { db } from "@/db";
-import { projects, projectPhases, messages, files, users } from "@/db/schema";
-import { eq, count, and, inArray } from "drizzle-orm";
+import { getDbUser } from "@/lib/server-user";
+import { prisma } from "@/lib/prisma";
 
-const statusLabels: Record<string, string> = {
-  onboarding: "Onboarding",
-  payment_pending: "Payment Pending",
-  in_progress: "In Progress",
-  revision: "Revision",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
-
-const serviceLabels: Record<string, string> = {
-  web_application: "Web Application",
-  ecommerce_store: "E-Commerce Store",
-  funnels: "Funnels",
-  ai_automation: "AI Automation",
-  open_claw_deployment: "Open Claw Deployment",
-};
+const quickLinks = [
+  {
+    href: "/discover",
+    icon: Radar,
+    title: "Discover",
+    body: "Find and save contacts with built-in tools.",
+  },
+  {
+    href: "/crm",
+    icon: Users,
+    title: "CRM",
+    body: "Every contact your agents own and operate.",
+  },
+  {
+    href: "/agent",
+    icon: Bot,
+    title: "Agent",
+    body: "Chat to pull lists and enrich the database.",
+  },
+  {
+    href: "/product-context",
+    icon: BookOpen,
+    title: "Context",
+    body: "What you're selling — so agents sell with understanding.",
+  },
+];
 
 export default async function DashboardPage() {
-  const user = await currentUser();
-  if (!user) return null;
+  const user = await getDbUser();
 
-  // Get the DB user
-  const [dbUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.clerkId, user.id));
-
-  if (!dbUser) {
-    return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">
-            Welcome, {user.firstName || "there"}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Your account is being set up. Please refresh in a moment.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Fetch user's projects
-  const userProjects =
-    dbUser.role === "admin"
-      ? await db.select().from(projects)
-      : await db.select().from(projects).where(eq(projects.userId, dbUser.id));
-
-  const activeProjects = userProjects.filter(
-    (p) => p.status !== "completed" && p.status !== "cancelled"
-  );
-
-  // Fetch phases for active projects
-  const projectIds = activeProjects.map((p) => p.id);
-  const allPhases =
-    projectIds.length > 0
-      ? await db
-          .select()
-          .from(projectPhases)
-          .where(inArray(projectPhases.projectId, projectIds))
-      : [];
-
-  // Count messages across all user projects
-  const allProjectIds = userProjects.map((p) => p.id);
-  const messageCount =
-    allProjectIds.length > 0
-      ? (
-          await db
-            .select({ value: count() })
-            .from(messages)
-            .where(inArray(messages.projectId, allProjectIds))
-        )[0]?.value ?? 0
-      : 0;
-
-  // Count files across all user projects
-  const fileCount =
-    allProjectIds.length > 0
-      ? (
-          await db
-            .select({ value: count() })
-            .from(files)
-            .where(inArray(files.projectId, allProjectIds))
-        )[0]?.value ?? 0
-      : 0;
+  const [total, active, won] = user
+    ? await Promise.all([
+        prisma.contact.count({ where: { userId: user.id } }),
+        prisma.contact.count({
+          where: {
+            userId: user.id,
+            status: { in: ["CONTACTED", "REPLIED", "QUALIFIED"] },
+          },
+        }),
+        prisma.contact.count({ where: { userId: user.id, status: "WON" } }),
+      ])
+    : [0, 0, 0];
 
   return (
     <div className="space-y-8">
-      {/* Welcome */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">
-            Welcome back, {user.firstName || "there"}
+            Welcome back{user?.firstName ? `, ${user.firstName}` : ""}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Here&apos;s an overview of your projects.
+            Your agents are on it. Here&apos;s the state of your pipeline.
           </p>
         </div>
         <Button variant="glow" asChild>
-          <Link href="/onboarding">
-            <Plus className="mr-1 h-4 w-4" />
-            New Project
+          <Link href="/discover">
+            <Radar className="mr-1 h-4 w-4" />
+            Discover contacts
           </Link>
         </Button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange/10">
-              <FolderKanban className="h-6 w-6 text-orange" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{activeProjects.length}</p>
-              <p className="text-sm text-muted-foreground">Active Projects</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange/10">
-              <MessageSquare className="h-6 w-6 text-orange" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{messageCount}</p>
-              <p className="text-sm text-muted-foreground">Messages</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange/10">
-              <Upload className="h-6 w-6 text-orange" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{fileCount}</p>
-              <p className="text-sm text-muted-foreground">Files Uploaded</p>
-            </div>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Contacts", value: total },
+          { label: "In conversation", value: active },
+          { label: "Won", value: won },
+        ].map((s) => (
+          <Card key={s.label}>
+            <CardContent className="p-6">
+              <p className="text-3xl font-bold">{s.value}</p>
+              <p className="text-sm text-muted-foreground mt-1">{s.label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Active Projects */}
-      {activeProjects.length === 0 ? (
-        <Card>
-          <EmptyState
-            icon={FolderKanban}
-            title="No active projects yet"
-            description="Start a new project and we'll track your progress right here."
-            action={
-              <Button variant="glow" asChild>
-                <Link href="/onboarding">
-                  <Plus className="mr-1 h-4 w-4" />
-                  New Project
-                </Link>
-              </Button>
-            }
-          />
-        </Card>
-      ) : (
-        activeProjects.map((project) => {
-          const phases = allPhases
-            .filter((p) => p.projectId === project.id)
-            .sort((a, b) => a.order - b.order)
-            .map((p) => ({
-              id: p.id,
-              name: p.name,
-              status: p.status,
-              order: p.order,
-            })) satisfies Phase[];
-
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {quickLinks.map((q) => {
+          const Icon = q.icon;
           return (
-            <Card key={project.id}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl">{project.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {serviceLabels[project.serviceType] || project.serviceType}
-                  </p>
-                </div>
-                <Badge variant="orange">
-                  {statusLabels[project.status] || project.status}
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {phases.length > 0 && (
-                  <PhaseTrackerHorizontal phases={phases} />
-                )}
-                <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/projects/${project.id}`}>View Details</Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/messages">
-                      <MessageSquare className="mr-1 h-4 w-4" />
-                      Messages
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/projects/${project.id}`}>
-                      <Upload className="mr-1 h-4 w-4" />
-                      Upload Files
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <Link key={q.href} href={q.href} className="group">
+              <Card className="h-full transition-all hover:border-primary/50">
+                <CardContent className="flex items-start gap-4 p-6">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1 font-semibold">
+                      {q.title}
+                      <ArrowRight className="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100" />
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {q.body}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           );
-        })
-      )}
+        })}
+      </div>
     </div>
   );
 }

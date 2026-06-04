@@ -21,6 +21,7 @@
 | `decisions/heading.md` | The current aim — what to work on next. Ratchet reads this **first**. | Every session |
 | `decisions/README.md` | The ledger: patterns that pass, debts owed, kills. Ratchet reads this. | Every session |
 | `decisions/0001-foundation-and-rebrand.md` | Build Sicarii on the fortitudo scaffolding; rebrand; Prisma/Clerk/Supabase stack | Revisiting the foundation |
+| `decisions/0002-crm-on-prisma.md` | Remove agency app; Prisma migration; CRM contacts CRUD + email store | Revisiting the data layer / IA |
 
 ## Working knowledge (grows with the product)
 

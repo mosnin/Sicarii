@@ -1,10 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { users, projects } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { prisma } from "@/lib/prisma";
+import type { User } from "@prisma/client";
 
-export type DbUser = typeof users.$inferSelect;
+export type DbUser = User;
 
 /**
  * Get the authenticated DB user, or throw a NextResponse error.
@@ -16,35 +15,11 @@ export async function getAuthenticatedUser(): Promise<DbUser> {
     throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [dbUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.clerkId, clerkId));
+  const dbUser = await prisma.user.findUnique({ where: { clerkId } });
 
   if (!dbUser) {
     throw NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
   return dbUser;
-}
-
-/**
- * Verify the authenticated user owns a project (or is admin).
- * Throws NextResponse on failure.
- */
-export async function verifyProjectAccess(projectId: string, userId: string, role: string) {
-  const [project] = await db
-    .select()
-    .from(projects)
-    .where(eq(projects.id, projectId));
-
-  if (!project) {
-    throw NextResponse.json({ error: "Project not found" }, { status: 404 });
-  }
-
-  if (role !== "admin" && project.userId !== userId) {
-    throw NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  return project;
 }

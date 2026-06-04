@@ -3,31 +3,30 @@
 > The one thing to push right now. Surfaced first by the Ratchet hook each
 > session. Keep it to a glance; update it on every RECORD. (Volatile — the *aim*.)
 
-**Binding constraint right now:** _The scaffolding is an **agency project-management**
-app (projects, phases, onboarding, invoices, admin). Sicarii needs a **contacts
-CRM + Discover + agent + product context**. The IA restructure is the gate
-everything else waits on — and its shape is a Founder Call (what happens to the
-existing Projects/admin/billing features?)._
+**Binding constraint right now:** _Nothing is build-verified. The CRM cycle is
+written and internally consistent, but `pnpm build` has not run in this
+environment — and it needs a Supabase database + Clerk keys to come alive. Until
+someone runs install/migrate/build with real env, every gate sits at REASONED._
 
 **Next tasks** _(ranked by Priority = Alignment × Leverage × InfoValue ÷ Cost)_
 
 | # | Task | Leverage | InfoValue | Cost | why it's next |
 |---|------|----------|-----------|------|---------------|
-| ① | **Founder Call: IA restructure** — keep/repurpose/remove the agency Projects/phases/onboarding/invoices/admin? Confirm Discover + CRM(contacts) + Agent chat + Product Context as the new dashboard. | H | H | L | unblocks every feature build; ambiguous → ask |
-| ② | **Prisma migration** — Drizzle/Neon → Prisma on Supabase: `schema.prisma`, client, migrate ~11 API routes. | H | M | M | foundation for all new data (contacts, emails, context) |
-| ③ | **CRM contacts** — `contacts` model + `/crm` list page + contact detail page. | H | H | M | the core entity; the "builds→crm" ask |
-| ④ | **Discover** — find-&-save flow (enrich by domain, extract from URLs, find-emails) → save to CRM. | M | H | M | the acquisition motion |
-| ⑤ | **AgentMail** — connect API key in Settings; render contact email threads. (docs.agentmail.to) | M | M | M | living-memory differentiator |
-| ⑥ | **Built-in agent + MCP/skills** — chat to pull/enrich; expose CRM over MCP for OpenClaw/Hermes. | H | H | H | the soul; biggest build |
-| ⑦ | **Product Context store** — agent-consumable knowledge base of what's being sold. | M | M | M | the "sell with understanding" wedge |
+| ① | **Build verification** — `pnpm install && pnpm db:push && pnpm build`; fix TS fallout (likely Prisma enum/Json typing). Needs Supabase + Clerk env. | H | H | L | discharges the 0002 debt; proves the slice real |
+| ② | **Discover wiring** — pick an enrichment provider; wire enrich-by-domain + find-emails → save to CRM. | H | H | M | the acquisition motion; first real data in |
+| ③ | **Built-in agent** — chat with read+write CRM tools; then expose the same over MCP for OpenClaw/Hermes. | H | H | H | the soul of the product |
+| ④ | **AgentMail** — Settings key connection + send/sync into `ContactEmail`; render real threads. | M | M | M | lights up the living-memory store |
+| ⑤ | **Product Context store** — agent-consumable knowledge base + UI. | M | M | M | the "sell with understanding" wedge |
+| ⑥ | **Marketing + settings retune** — replace remaining agency copy (hero, pricing, testimonials, about, settings/Creem) with Sicarii messaging. | M | L | M | polish; not blocking |
 
-**Riskiest assumption under test now:** _That the agency-shaped scaffolding can be
-bent into an agent-operated CRM faster than rebuilding the dashboard. Cheapest
-falsifier: the IA decision (①) — once we know what stays, we know if reuse pays off._
+**Riskiest assumption under test now:** _That the written code compiles and the
+Prisma schema migrates cleanly on Supabase. Cheapest falsifier: run task ①._
 
-**WIP on the critical path:** _1 — settle the IA (①) before writing feature code._
+**WIP on the critical path:** _1 — get a green build before adding features._
 
-**DONE this session:** Ritual installed · scaffolding imported · full rebrand
-(name, charcoal/white + `#1E4D2B`, dagger logo) · Gate Card 0001 stamped.
+**DONE this session:** Ritual installed · scaffolding imported · full rebrand ·
+**IA restructured** (agency app removed; Discover/CRM/Agent/Context/Settings) ·
+**Prisma-on-Supabase** foundation (Drizzle/Neon removed) · **CRM contacts** CRUD +
+detail + email-thread store + honest placeholders · Gate Cards 0001, 0002.
 
 <!-- Founder Call: the Alignment ranking encodes taste. Founder confirms true north. -->

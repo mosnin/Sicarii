@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { Webhook } from "svix";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -62,37 +60,36 @@ export async function POST(req: Request) {
 
     const { type, data } = payload;
 
-    if (type === "user.created") {
-      await db.insert(users).values({
-        clerkId: data.id as string,
-        email:
-          (
-            data.email_addresses as Array<{ email_address: string }>
-          )?.[0]?.email_address ?? "",
-        firstName: data.first_name as string | undefined,
-        lastName: data.last_name as string | undefined,
-        imageUrl: data.image_url as string | undefined,
-        role: "client",
-      });
-    }
+    const primaryEmail =
+      (data.email_addresses as Array<{ email_address: string }>)?.[0]
+        ?.email_address ?? "";
 
-    if (type === "user.updated") {
-      await db
-        .update(users)
-        .set({
-          email: (
-            data.email_addresses as Array<{ email_address: string }>
-          )?.[0]?.email_address,
+    if (type === "user.created" || type === "user.updated") {
+      const clerkId = data.id as string;
+      await prisma.user.upsert({
+        where: { clerkId },
+        create: {
+          clerkId,
+          email: primaryEmail,
           firstName: data.first_name as string | undefined,
           lastName: data.last_name as string | undefined,
           imageUrl: data.image_url as string | undefined,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.clerkId, data.id as string));
+        },
+        update: {
+          email: primaryEmail,
+          firstName: data.first_name as string | undefined,
+          lastName: data.last_name as string | undefined,
+          imageUrl: data.image_url as string | undefined,
+        },
+      });
     }
 
     if (type === "user.deleted") {
-      await db.delete(users).where(eq(users.clerkId, data.id as string));
+      await prisma.user
+        .delete({ where: { clerkId: data.id as string } })
+        .catch(() => {
+          /* already gone — ignore */
+        });
     }
 
     return NextResponse.json({ received: true });

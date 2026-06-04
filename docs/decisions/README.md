@@ -25,6 +25,13 @@ exponential growth into a plateau.
   the wedge.** Built Sicarii on the fortitudo scaffolding instead of greenfield. _(Card 0001)_
 - **Brand color lives in one place.** All theme color flows from tokens in
   `src/app/globals.css`; rebrand = edit tokens, not hunt components. _(Card 0001)_
+- **One ORM, one data path, ownership in every route.** Prisma only; every
+  contact query is scoped by `userId`; API routes catch the `NextResponse` thrown
+  by `getAuthenticatedUser`. _(Card 0002)_
+- **Grep-sweep after a teardown.** After deleting modules, grep for dangling
+  imports + dead route links before declaring done. _(Card 0002)_
+- **Honest placeholders, not 404s.** Unbuilt nav destinations ship as branded
+  "coming next" pages so the IA is whole. _(Card 0002)_
 
 ## Open debts (owed to reality)
 
@@ -32,11 +39,12 @@ exponential growth into a plateau.
 
 | Debt | Gate / Card | Evidence owed | Owner |
 |------|-------------|---------------|-------|
-| Build passes | 0001 · Deliverable | `pnpm install && pnpm build` green (needs deps/env) | eng |
+| **Build passes** | 0002 · Feasible | `pnpm install && db:push && build` green; fix TS fallout | eng |
 | 5-second "quiet leverage" | 0001 · Desirable | observe the reaction on a real built screen | founder |
 | Desirability with real users | 0001 · Desirable | first real users react | founder |
 | Economics | 0001 · Viable | pricing/packaging set | founder + banker |
-| Drizzle→Prisma migration works | (next cycle) | schema + routes migrated, queries run | eng |
+| Supabase + Clerk env | 0002 | connection strings + keys provided | founder |
+| Real enrichment provider | 0002 | provider chosen for Discover | founder + eng |
 
 ## Kills & falsifieds (do not re-open)
 
@@ -44,9 +52,10 @@ exponential growth into a plateau.
 
 | What | Verdict | Why (one line) | Card |
 |------|---------|----------------|------|
-| Drizzle + Neon DB layer | REPLACED | founder call: Prisma ORM on Supabase Postgres instead | 0001 |
+| Drizzle + Neon DB layer | REPLACED | founder call: Prisma ORM on Supabase Postgres instead | 0001/0002 |
 | Orange brand palette | REPLACED | rebrand to charcoal/white + `#1E4D2B` green | 0001 |
 | "Fortitudo" agency identity | REPLACED | rebranded to Sicarii (agent-operated CRM) | 0001 |
+| Agency app (projects/phases/onboarding/invoices/admin) | REMOVED | founder call "remove & replace"; wrong shape for an agent CRM | 0002 |
 
 ---
 

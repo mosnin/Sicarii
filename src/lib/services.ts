@@ -1,111 +1,107 @@
 import {
-  Globe,
-  ShoppingCart,
-  TrendingUp,
+  Radar,
+  Sparkles,
   Bot,
-  Server,
+  Plug,
+  BookOpen,
+  Mails,
   type LucideIcon,
 } from "lucide-react";
 
-export type ServiceType =
-  | "web_application"
-  | "ecommerce_store"
-  | "funnels"
-  | "ai_automation"
-  | "open_claw_deployment";
-
 export interface Service {
-  id: ServiceType;
+  id: string;
   name: string;
   description: string;
   icon: LucideIcon;
   features: string[];
+  /** Short capability tag (rendered as a badge on marketing pages). */
   startingPrice: string;
 }
 
+// Sicarii's capabilities — the things the agents do. Doubles as marketing copy.
 export const services: Service[] = [
   {
-    id: "web_application",
-    name: "Web Application",
+    id: "discover",
+    name: "Discover",
     description:
-      "Custom web applications built to scale. From SaaS platforms to internal tools, we bring your vision to life.",
-    icon: Globe,
+      "Find the right contacts with built-in tools — enrich by domain, pull leads from a company name, extract emails from a list of sites — and save them straight into your CRM.",
+    icon: Radar,
     features: [
-      "Custom UI/UX design",
-      "Responsive & mobile-first",
-      "Database & API integration",
-      "User authentication",
-      "Deployment & hosting",
+      "Enrich companies from a domain",
+      "Find emails from a name + company",
+      "Extract email, phone & socials from URLs",
+      "One click to save into the CRM",
     ],
-    startingPrice: "Starting at $2,500",
+    startingPrice: "Built in",
   },
   {
-    id: "ecommerce_store",
-    name: "Ecommerce Store",
+    id: "enrich",
+    name: "Enrich",
     description:
-      "High-converting online stores with seamless checkout, inventory management, and analytics.",
-    icon: ShoppingCart,
+      "Every contact stays current. Agents fill the gaps — title, company, socials, context — so your database is alive instead of rotting the moment you stop typing.",
+    icon: Sparkles,
     features: [
-      "Product catalog setup",
-      "Payment processing",
-      "Inventory management",
-      "Order tracking",
-      "SEO optimization",
+      "Automatic field completion",
+      "Provider-shaped enrichment data",
+      "Re-enrich on demand",
+      "Owned data — it never leaves Sicarii",
     ],
-    startingPrice: "Starting at $1,800",
+    startingPrice: "Always on",
   },
   {
-    id: "funnels",
-    name: "Funnels",
+    id: "agent",
+    name: "The built-in agent",
     description:
-      "High-performance sales funnels designed to convert visitors into customers at every stage.",
-    icon: TrendingUp,
-    features: [
-      "Landing page design",
-      "A/B testing ready",
-      "Email capture & sequences",
-      "Analytics & tracking",
-      "CRM integration",
-    ],
-    startingPrice: "Starting at $1,200",
-  },
-  {
-    id: "ai_automation",
-    name: "AI Automation",
-    description:
-      "Leverage AI to automate workflows, generate content, and streamline your business operations.",
+      "Chat with an agent that actually has hands. It pulls lists, enriches records, and reads and writes the same CRM you do — it operates, it doesn't just summarize.",
     icon: Bot,
     features: [
-      "Custom AI workflows",
-      "Chatbot integration",
-      "Content generation",
-      "Data processing pipelines",
-      "API integrations",
+      "Pull and enrich lists by chat",
+      "Read + write access to your data",
+      "Acts with full product context",
+      "Visible, trustworthy actions",
     ],
-    startingPrice: "Starting at $3,000",
+    startingPrice: "Core",
   },
   {
-    id: "open_claw_deployment",
-    name: "Open Claw Deployment",
+    id: "connect",
+    name: "Bring your own agent",
     description:
-      "Deploy and manage Open Claw instances with full configuration, monitoring, and support.",
-    icon: Server,
+      "Open by connection. Plug OpenClaw, Hermes, or Claude Cowork into the same data over MCP tools and skills. The CRM is the substrate; agents are interchangeable.",
+    icon: Plug,
     features: [
-      "Instance setup & config",
-      "Custom deployment pipeline",
-      "Monitoring & alerts",
-      "Scaling infrastructure",
-      "Ongoing support",
+      "MCP tools over your CRM",
+      "Skills for connected agents",
+      "OpenClaw / Hermes / Claude Cowork",
+      "One source of truth",
     ],
-    startingPrice: "Starting at $2,000",
+    startingPrice: "MCP",
   },
-];
-
-export const projectPhaseNames = [
-  "Discovery",
-  "Design",
-  "Development",
-  "Testing",
-  "Review",
-  "Launch",
+  {
+    id: "product-context",
+    name: "Product context",
+    description:
+      "A comprehensive, structured store of what you're selling — readable by every agent, so outreach is informed instead of generic spray.",
+    icon: BookOpen,
+    features: [
+      "Agent-consumable knowledge base",
+      "Shared by internal & connected agents",
+      "Sell with real understanding",
+      "Versioned and owned",
+    ],
+    startingPrice: "Included",
+  },
+  {
+    id: "email",
+    name: "Living memory",
+    description:
+      "Connect your AgentMail account and every exchange lands on the contact's record — saved as context the agent reuses, so each relationship compounds.",
+    icon: Mails,
+    features: [
+      "AgentMail-powered threads",
+      "Saved as reusable context",
+      "Per-contact conversation history",
+      "Relationships that compound",
+    ],
+    startingPrice: "Connect a key",
+  },
 ];

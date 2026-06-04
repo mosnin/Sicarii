@@ -3,13 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, FolderKanban, MessageSquare, Settings, BarChart3 } from "lucide-react";
+import {
+  LayoutDashboard,
+  Radar,
+  Users,
+  Bot,
+  BookOpen,
+  Settings,
+} from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Projects", href: "/projects", icon: FolderKanban },
-  { label: "Messages", href: "/messages", icon: MessageSquare },
-  { label: "Analytics", href: "/analytics", icon: BarChart3 },
+  { label: "Discover", href: "/discover", icon: Radar },
+  { label: "CRM", href: "/crm", icon: Users },
+  { label: "Agent", href: "/agent", icon: Bot },
+  { label: "Context", href: "/product-context", icon: BookOpen },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -20,7 +28,8 @@ export function DashboardNav() {
     <nav className="flex items-center gap-1">
       {navItems.map((item) => {
         const Icon = item.icon;
-        const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+        const isActive =
+          pathname === item.href || pathname.startsWith(item.href + "/");
         return (
           <Link
             key={item.href}
@@ -28,12 +37,12 @@ export function DashboardNav() {
             className={cn(
               "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
               isActive
-                ? "bg-orange/10 text-orange font-medium"
+                ? "bg-primary/10 text-primary font-medium"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
           >
             <Icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{item.label}</span>
+            <span className="hidden md:inline">{item.label}</span>
           </Link>
         );
       })}
