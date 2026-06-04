@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>The Ritual — a founder's instrument for building with Claude</title>
+<meta name="description" content="Drop it in a repo and Claude stops shipping software and starts building products people fall for. Five disciplines, three movements, one law: nothing ships unproven." />
+<meta name="theme-color" content="#070708" />
+<meta property="og:title" content="The Ritual" />
+<meta property="og:description" content="A founder's instrument. Five disciplines, three movements, one law: nothing ships unproven." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Jacquard+12&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+<noscript><style>.reveal{opacity:1!important;transform:none!important}#scrollbar{display:none}</style></noscript>
+</head>
+<body>
+<div id="atmos" aria-hidden="true"></div>
+<canvas id="sigil-bg" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+<div id="scrollbar" aria-hidden="true"><span class="track"></span><span class="pct">0%</span></div>
+
+<!-- ░░ NAV ░░ -->
+<header class="nav">
+  <a class="brand" href="#top"><span class="brand-mark">✶</span> THE&nbsp;RITUAL</a>
+  <nav class="nav-links">
+    <a href="#law">law</a>
+    <a href="#arc">arc</a>
+    <a href="#methods">methods</a>
+    <a href="#simulation">simulation</a>
+    <a href="#bench">benchmarks</a>
+    <a class="nav-cta" href="#install">install</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- ░░ HERO ░░ -->
+  <section class="hero">
+    <canvas id="sigil" aria-hidden="true"></canvas>
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <p class="kicker hero-fx">a founder&#39;s instrument</p>
+      <h1 class="title hero-fx">The&nbsp;Ritual</h1>
+      <p class="lede hero-fx">
+        Drop it in a repo. Claude stops shipping software and starts building
+        products people fall for.
+      </p>
+      <p class="sub hero-fx">
+        A council of <span class="r">five disciplines</span>, three movements, and
+        one law — <span class="r">nothing ships unproven.</span>
+      </p>
+      <div class="cta-row hero-fx">
+        <a class="btn btn-primary" href="#install">⟶ perform the ritual</a>
+        <a class="btn" href="#law">read the law</a>
+      </div>
+      <p class="cmd-label hero-fx">drop it into any repo</p>
+      <div class="hero-cmd hero-fx">
+        <span class="prompt" aria-hidden="true">$</span>
+        <code id="install-cmd">git clone --depth 1 https://github.com/mosnin/kickoff .ritual &amp;&amp; rm -rf .ritual/.git &amp;&amp; bash .ritual/install.sh</code>
+        <button class="copy-btn" data-copy="#install-cmd" type="button" aria-label="Copy the install command">copy</button>
+      </div>
+      <div class="scrollcue hero-fx" aria-hidden="true">scroll</div>
+    </div>
+  </section>
+
+  <!-- ░░ THE ONE LAW ░░ -->
+  <section id="law" class="band reveal">
+    <div class="band-head">
+      <span class="sec-no">I</span>
+      <h2>The One Law</h2>
+      <p class="sec-tag">Every decision passes four gates, in order. Each is a gate, not a vote.</p>
+    </div>
+    <pre class="ascii gates" aria-label="The four gates: desirable, feasible, deliverable, viable">
+┌───────────┐   ┌───────────┐   ┌────────────┐   ┌──────────┐
+│ DESIRABLE │──▶│  FEASIBLE │──▶│ DELIVERABLE│──▶│  VIABLE  │
+│  vision   │   │  engineer │   │  producer  │   │  banker  │
+│  + human  │   │           │   │            │   │          │
+└─────┬─────┘   └─────┬─────┘   └─────┬──────┘   └────┬─────┘
+   <span class="dim">should it</span>      <span class="dim">at the</span>         <span class="dim">repeatably</span>      <span class="dim">sustains</span>
+   <span class="dim">exist?</span>         <span class="dim">limit?</span>         <span class="dim">at scale?</span>      <span class="dim">&amp; compounds?</span>
+</pre>
+    <p class="law-line">
+      <span class="r">Vision breaks ties.</span> A gate passes on <em>evidence, never opinion</em>.
+      And desirability may return <span class="r">KILL</span> — <em>this should not exist</em> — which is a win.
+    </p>
+  </section>
+
+  <!-- ░░ THE ARC ░░ -->
+  <section id="arc" class="band reveal">
+    <div class="band-head">
+      <span class="sec-no">II</span>
+      <h2>The Arc</h2>
+      <p class="sec-tag">One build cycle, three movements, on a single spine — the Gate Card.</p>
+    </div>
+    <div class="arc-grid">
+      <article class="arc-card">
+        <pre class="ascii">    ✦ ✶ ✦
+   (  ✷  )
+    ✦ ✶ ✦</pre>
+        <h3>The Ritual</h3>
+        <p class="movement-q">dream it</p>
+        <p>Run five methods, escape the mean, and stamp a Gate Card with its debts. <span class="dim">Taste breaks ties.</span></p>
+        <p class="verdict">veto · <span class="r">KILL</span></p>
+      </article>
+      <span class="arc-arrow" aria-hidden="true">──▶</span>
+      <article class="arc-card">
+        <pre class="ascii"> ▟▙ ▟▙ ▟▙
+ ══════════
+ ▔▔▔▔▔▔▔▔▔▔</pre>
+        <h3>The Altar</h3>
+        <p class="movement-q">ground it</p>
+        <p>Reduce to first principles, prove the smallest thing, discharge the debts into evidence. <span class="dim">Truth breaks ties.</span></p>
+        <p class="verdict">veto · <span class="r">FALSIFIED</span></p>
+      </article>
+      <span class="arc-arrow" aria-hidden="true">──▶</span>
+      <article class="arc-card">
+        <pre class="ascii">   .  *  .
+  * ✷✷✷ *
+   .  *  .</pre>
+        <h3>The Magic</h3>
+        <p class="movement-q">make it real</p>
+        <p>Ship the smallest whole. The founder observes the five-second spark in reality.</p>
+        <p class="verdict">veto · <span class="r">FLAT / MIRAGE</span></p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ░░ HOW IT WORKS ░░ -->
+  <section id="how" class="band reveal">
+    <div class="band-head">
+      <span class="sec-no">III</span>
+      <h2>How It Works</h2>
+      <p class="sec-tag">You drop one line in CLAUDE.md. From then on, every decision runs the loop.</p>
+    </div>
+    <pre class="ascii loop" aria-label="the development loop">
+      ┌─────────────────────────────────────────────────────────┐
+      ▼                                                         │
+  ▌ AIM ▐──▶ ▌ RITUAL ▐──▶ ▌ ALTAR ▐──▶ ▌ MAGIC ▐──▶ ▌ RECORD ▐─┘
+  the        dream &amp;        prove &amp;        ship &amp;        ledger +
+  heading    stamp card     discharge      observe       heading
+      │                                                         ▲
+      └──◀── THE RATCHET re-injects retained memory each session ┘
+</pre>
+    <div class="how-grid">
+      <div class="how-item"><span class="r">Right-size first.</span> Execution work skips the ceremony. Only real decisions run the arc.</div>
+      <div class="how-item"><span class="r">Never fake a rung.</span> Evidence you can't gather is <em>owed to reality</em> and handed to you — never invented.</div>
+      <div class="how-item"><span class="r">Red-team before ship.</span> The model attacks its own card: which rung is inflated? what's the case to KILL?</div>
+      <div class="how-item"><span class="r">You are the protagonist.</span> Taste, reality, and the final word are Founder Calls — surfaced, never faked.</div>
+    </div>
+  </section>
+
+  <!-- ░░ THE FIVE METHODS ░░ -->
+  <section id="methods" class="band reveal">
+    <div class="band-head">
+      <span class="sec-no">IV</span>
+      <h2>The Five Methods</h2>
+      <p class="sec-tag">Not personas. Disciplines. You run the method, not the ego.</p>
+    </div>
+    <div class="methods-grid" id="methods-grid"><!-- injected by main.js --></div>
+  </section>
+
+  <!-- ░░ THE SIMULATION & THE WEAVE ░░ -->
+  <section id="simulation" class="band reveal">
+    <div class="band-head">
+      <span class="sec-no">V</span>
+      <h2>The Simulation &amp; the Weave</h2>
+      <p class="sec-tag">Ask one mind for options and it converges on the safe one. Spawn many that can&#39;t see each other — then weave the best into one.</p>
+    </div>
+    <pre class="ascii sim" aria-label="simulation to weave diagram">
+   ISOLATED MINDS  ·  each alone, each extreme            THE WEAVE
+   ┌──────────────┐
+   │ ✶ Visionary  │──┐
+   ├──────────────┤  │
+   │ ◇ Humanist   │──┤
+   ├──────────────┤  │    ┌───────────────────────────┐
+   │ ⟲ Opposite   │──┼───▶│  mine the best of each      │
+   ├──────────────┤  │    │  run the four gates         │──▶  <span class="r">ONE decision</span>
+   │ ▲ 10×        │──┤    │  synthesize one whole       │     woven · gated · built
+   ├──────────────┤  │    └───────────────────────────┘
+   │ § Distant    │──┘         <span class="dim">vision breaks ties</span>
+   └──────────────┘
+</pre>
+    <div class="how-grid">
+      <div class="how-item"><span class="r">Isolation is the point.</span> Minds that can&#39;t see each other can&#39;t converge — so the divergence is real, not the same answer in five fonts.</div>
+      <div class="how-item"><span class="r">Always an Opposite &amp; a 10×.</span> The cast guarantees genuinely different directions, by construction.</div>
+      <div class="how-item"><span class="r">The Weave, not a vote.</span> It takes the strongest piece of each and reconciles them through the gates into one coherent thing.</div>
+      <div class="how-item"><span class="r">Provenance, kept.</span> The Gate Card records which idea came from which mind — then it builds the result.</div>
+    </div>
+    <div class="term" role="group" aria-label="simulation commands">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> the ritual</div>
+      <pre class="term-body"><span class="c">›</span> <span class="g">/simulation-ritual</span> an Apple-level UI for this dashboard
+<span class="dim">  ⸺ casting 5 isolated minds … weaving …</span>
+<span class="ok">✓ one design none of them would have made alone</span><span class="cursor">█</span></pre>
+    </div>
+  </section>
+
+  <!-- ░░ THE EVIDENCE LADDER ░░ -->
+  <section id="ladder" class="band reveal">
+    <div class="band-head">
+      <span class="sec-no">VI</span>
+      <h2>The Evidence Ladder</h2>
+      <p class="sec-tag">No gate passes on a vibe. Name the rung you actually reached.</p>
+    </div>
+    <pre class="ascii ladder" aria-label="evidence ladder">
+   OBSERVED   ████████████████  reality answered
+   TESTED     ████████████░░░░  it ran
+   REASONED   ████████░░░░░░░░  an argument
+   ASSERTED   ████░░░░░░░░░░░░  a wish — <span class="r">never a pass</span>
+</pre>
+  </section>
+
+  <!-- ░░ BENCHMARKS ░░ -->
+  <section id="bench" class="band reveal">
+    <div class="band-head">
+      <span class="sec-no">VII</span>
+      <h2>Benchmarks</h2>
+      <p class="sec-tag">Tested head-to-head against plain Claude on the same briefs — and the harder the problem, the more it wins.</p>
+    </div>
+
+    <p class="bench-intro">
+      Same brief, framework vs. baseline, scored on a fixed rubric. Every time, the
+      output comes back <span class="r">sharper, fully grounded, and ready to ship.</span>
+    </p>
+
+    <div class="bench-block">
+      <h4>Better product decisions, by difficulty</h4>
+      <div class="bars" data-bars="quality"></div>
+    </div>
+
+    <div class="bench-block">
+      <h4>Where it pulls ahead</h4>
+      <div class="bars" data-bars="dims"></div>
+    </div>
+
+    <div class="honest">
+      <pre class="ascii">┌─ WHAT YOU GET ─────────────────────────────────────────────┐</pre>
+      <p>
+        Up to <span class="r">+28% better decisions</span> on the hardest problems,
+        and <span class="r">+37% more decision-ready</span> output — every gate
+        backed by evidence, every risk surfaced, the next move already queued.
+      </p>
+      <p>
+        It turns a good idea into a grounded decision with its assumptions tested
+        and its blind spots caught — <span class="r">the difference between sounding
+        right and being right.</span>
+      </p>
+      <pre class="ascii">└────────────────────────────────────────────────────────────┘</pre>
+    </div>
+  </section>
+
+  <!-- ░░ A REAL GATE CARD ░░ -->
+  <section id="card" class="band reveal">
+    <div class="band-head">
+      <span class="sec-no">VIII</span>
+      <h2>What It Leaves Behind</h2>
+      <p class="sec-tag">Every significant decision stamps a witnessable verdict.</p>
+    </div>
+    <pre class="ascii gatecard" aria-label="example gate card">
+╔══ GATE CARD 0003 ═══════════════════════════════════════════╗
+║ DECISION  Sharing is an access-control primitive, not a link ║
+╠══════════════════════════════════════════════════════════════╣
+║ DESIRABLE   ▸ PASS · OBSERVED   4/5 reached "this is mine"    ║
+║  ↳ 5-second ▸ PASS · TESTED     read "Maya can view this"     ║
+║ FEASIBLE    ▸ PASS · TESTED     one auth primitive, proven    ║
+║ DELIVERABLE ▸ PASS · REASONED   not reproduced twice    ⚠debt ║
+║ VIABLE      ▸ PASS · TESTED     each share invites a user     ║
+╠══════════════════════════════════════════════════════════════╣
+║ VERDICT  ▸ SHIP    DEBT ▸ prove the path reproduces           ║
+╚══════════════════════════════════════════════════════════════╝
+</pre>
+  </section>
+
+  <!-- ░░ INSTALL ░░ -->
+  <section id="install" class="band reveal">
+    <div class="band-head">
+      <span class="sec-no">IX</span>
+      <h2>Perform It</h2>
+      <p class="sec-tag">No build step. No dependencies. Pure instruction.</p>
+    </div>
+
+    <div class="term" role="group" aria-label="install commands">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span> ~/your-repo</div>
+      <pre class="term-body"><span class="c">›</span> <span class="g">git clone</span> https://github.com/mosnin/kickoff .ritual <span class="dim">&amp;&amp;</span> rm -rf .ritual/.git
+<span class="c">›</span> <span class="g">bash</span> .ritual/install.sh
+<span class="ok">✓ wired the Ritual into CLAUDE.md</span>
+<span class="c">›</span> <span class="dim"># open Claude — it performs the Ritual</span><span class="cursor">█</span></pre>
+    </div>
+    <p class="install-note">
+      Or start fresh: clone it as your product and the ignition is already wired.
+      The whole protocol is one page.
+    </p>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <pre class="ascii foot-rule">────────────────────────────────────────────────────────────</pre>
+  <div class="foot-row">
+    <span class="jacquard foot-mark">The Ritual</span>
+    <span class="dim">light the methods · run the gates · build something people fall for</span>
+  </div>
+  <p class="marker">&lt;!-- ritual:installed --&gt;</p>
+</footer>
+
+<script src="./main.js" defer></script>
+</body>
+</html>
