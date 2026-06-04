@@ -24,6 +24,7 @@
 | `decisions/0002-crm-on-prisma.md` | Remove agency app; Prisma migration; CRM contacts CRUD + email store | Revisiting the data layer / IA |
 | `decisions/0003-entity-model-context-engine.md` | Entity model + Entity↔Contact; Synthoz client; build verified | Revisiting entities/enrichment |
 | `decisions/0004-secure-mcp-and-api-keys.md` | Secure MCP server (12 tools) + per-user API keys + shared ops layer | Revisiting agent access / MCP |
+| `decisions/0005-scalar-agent.md` | Scalar agent at `/agent` — OpenAI, 13 tools, fresh-context + pgvector vector memory | Revisiting the agent / memory |
 
 ## Working knowledge (grows with the product)
 

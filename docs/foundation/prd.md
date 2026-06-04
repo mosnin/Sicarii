@@ -38,12 +38,14 @@ the CRM (the contact/"user" page is intentionally not in the dock). _(IA shipped
   ownership enforced on every API route. CRUD APIs: `/api/entities(+/[id])`,
   `/api/contacts(+/[id])`.
 
-### 4.2 Scalar agent (chat) — next
-- Natural language → **Tavily** web search to find entities ("nail salons in
-  Miami") → review → push to CRM.
-- Tools: **enrich entity** (Synthoz, by domain → contacts), **enrich contact**
-  (Synthoz, by entity domain → contact info), create entities/contacts, search CRM.
-- Acts with read+write CRM access and Product Context.
+### 4.2 Scalar agent (chat) — shipped (build-verified)
+- Chat at `/agent` (OpenAI via Vercel AI SDK). Natural language → **Tavily** web
+  search to find entities ("nail salons in Miami") → review → push to CRM.
+- 13 tools over the shared ops: `recall`, `search_web`, `search_crm`, entity +
+  contact CRUD, `enrich_entity` (Synthoz). Read+write CRM access.
+- **Token-efficient memory:** fresh conversation per page load; a `recall` tool
+  does pgvector similarity search over past turns + CRM data (no history replay).
+- Gated by `OPENAI_API_KEY` (drives the LLM + embeddings). Runtime observation owed.
 
 ### 4.3 Enrichment (Synthoz) — client ready, wiring next
 - `src/lib/synthoz.ts` implements the documented request shapes (enrich-company,
