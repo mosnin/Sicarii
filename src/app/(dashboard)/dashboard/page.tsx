@@ -2,6 +2,7 @@ import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
+import { DashboardPreloader } from "@/components/dashboard/dashboard-preloader";
 
 export default async function DashboardPage() {
   const user = await getDbUser();
@@ -26,12 +27,15 @@ export default async function DashboardPage() {
     : [0, 0, 0, 0];
 
   return (
-    <DashboardOverview
-      firstName={user?.firstName}
-      totalContacts={totalContacts}
-      totalCompanies={totalCompanies}
-      enriched={enriched}
-      inConversation={inConversation}
-    />
+    <>
+      <DashboardPreloader name={user?.firstName ?? ""} />
+      <DashboardOverview
+        firstName={user?.firstName}
+        totalContacts={totalContacts}
+        totalCompanies={totalCompanies}
+        enriched={enriched}
+        inConversation={inConversation}
+      />
+    </>
   );
 }

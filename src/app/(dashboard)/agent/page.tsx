@@ -50,10 +50,10 @@ function ToolChip({ name, done }: { name: string; done: boolean }) {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
         done
-          ? "border-primary/30 bg-primary/10 text-primary"
-          : "border-border bg-muted/60 text-muted-foreground",
+          ? "bg-primary/10 text-primary"
+          : "bg-muted text-muted-foreground",
       )}
     >
       {done ? (
@@ -115,7 +115,7 @@ function MessageBubble({
     >
       {/* Avatar */}
       {isUser ? (
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-foreground">
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground shadow-sm">
           <User className="h-3.5 w-3.5" />
         </div>
       ) : (
@@ -139,7 +139,7 @@ function MessageBubble({
                   "rounded-2xl px-4 py-3 text-sm leading-relaxed",
                   isUser
                     ? "rounded-tr-sm bg-primary text-primary-foreground"
-                    : "rounded-tl-sm border border-border bg-card text-foreground",
+                    : "rounded-tl-sm bg-card text-foreground shadow-sm",
                 )}
               >
                 <p className="whitespace-pre-wrap break-words">
@@ -208,11 +208,15 @@ function EmptyState({
           }
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
         />
-        <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/20 bg-primary/10">
+        <motion.div
+          className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10"
+          animate={reduce ? {} : { y: [0, -4, 0] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        >
           <span className="font-brand text-4xl text-primary leading-none select-none">
             S
           </span>
-        </div>
+        </motion.div>
       </div>
 
       {/* Greeting */}
@@ -234,7 +238,7 @@ function EmptyState({
             onClick={() => onSuggestion(label)}
             whileHover={reduce ? {} : { scale: 1.03, y: -1 }}
             whileTap={reduce ? {} : { scale: 0.97 }}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-background/80 px-4 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex items-center gap-1.5 rounded-full bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-primary/8 hover:text-foreground hover:shadow-md hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span aria-hidden="true">{icon}</span>
             {label}
@@ -436,9 +440,9 @@ export default function AgentPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           className={cn(
-            "flex items-end gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-lg",
-            "ring-1 ring-transparent transition-all duration-200",
-            "focus-within:border-primary/40 focus-within:ring-primary/20",
+            "flex items-end gap-3 rounded-2xl bg-card px-4 py-3 shadow-lg",
+            "ring-2 ring-transparent transition-all duration-200",
+            "focus-within:ring-primary/25",
           )}
         >
           <GrowingTextarea
@@ -465,7 +469,7 @@ export default function AgentPage() {
                     size="icon"
                     variant="outline"
                     onClick={() => stop()}
-                    className="h-8 w-8 rounded-full border-border text-muted-foreground hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
+                    className="h-8 w-8 rounded-full bg-muted/60 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     aria-label="Stop generating"
                   >
                     <Square className="h-3.5 w-3.5 fill-current" />

@@ -59,8 +59,9 @@ function BentoCard({
       variants={cardVariants}
       whileHover={hoverLift ? { y: -4, transition: { duration: 0.25, ease: "easeOut" } } : undefined}
       className={cn(
-        "relative overflow-hidden rounded-3xl border border-border bg-card",
-        hoverLift && "transition-shadow duration-300 hover:shadow-[0_8px_32px_-4px_rgba(90,176,232,0.18)]",
+        "relative overflow-hidden rounded-3xl bg-card",
+        "shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07),0_1px_4px_-1px_rgba(0,0,0,0.05)]",
+        hoverLift && "transition-shadow duration-300 hover:shadow-[0_8px_32px_-4px_rgba(90,176,232,0.22),0_2px_8px_-2px_rgba(0,0,0,0.08)]",
         className,
       )}
     >
@@ -93,17 +94,32 @@ function StatCard({
   accent?: boolean;
   delay?: number;
 }) {
+  const reduce = useReducedMotion();
   return (
     <SpotlightCard
       className={cn(
-        "h-full border-border bg-card",
-        accent && "border-primary/30 bg-accent/40",
+        "h-full border-0 bg-card shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07),0_1px_4px_-1px_rgba(0,0,0,0.05)]",
+        accent && "bg-accent/40",
       )}
     >
       <motion.div
         variants={cardVariants}
+        whileHover={{ y: -3, transition: { duration: 0.22, ease: "easeOut" } }}
         className="flex h-full flex-col justify-between p-6"
       >
+        {/* Animated shimmer on accent card */}
+        {accent && !reduce && (
+          <motion.div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-3xl"
+            animate={{ opacity: [0, 0.6, 0] }}
+            transition={{ duration: 3.5, repeat: Infinity, repeatDelay: 2, ease: "easeInOut" }}
+            style={{
+              background:
+                "radial-gradient(ellipse 70% 60% at 50% 100%, rgba(90,176,232,0.18) 0%, transparent 70%)",
+            }}
+          />
+        )}
         <div
           className={cn(
             "flex h-10 w-10 items-center justify-center rounded-xl",
@@ -163,9 +179,9 @@ export function DashboardOverview({
     >
       {/* ── HERO card (tall, full width) ─────────────────────────────────── */}
       <BentoCard hoverLift={false} className="min-h-[340px] lg:min-h-[380px]">
-        {/* ASCII field — fills the whole card */}
+        {/* ASCII field — clearly visible behind the greeting */}
         <AsciiField
-          className="absolute inset-0 h-full w-full opacity-[0.055]"
+          className="absolute inset-0 h-full w-full opacity-[0.28]"
           cell={13}
         />
 
@@ -208,22 +224,36 @@ export function DashboardOverview({
 
           {/* Main content */}
           <div className="mt-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="font-brand text-3xl leading-tight text-foreground sm:text-4xl lg:text-5xl">
+            <motion.div
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } },
+              }}
+            >
+              <motion.h1
+                variants={cardVariants}
+                className="font-brand text-3xl leading-tight text-foreground sm:text-4xl lg:text-5xl"
+              >
                 {greeting}
-              </h1>
-              <p className="mt-3 max-w-md text-base text-muted-foreground">
+              </motion.h1>
+              <motion.p
+                variants={cardVariants}
+                className="mt-3 max-w-md text-base text-muted-foreground"
+              >
                 Your research platform — contacts discovered, enriched, and in conversation.
-              </p>
+              </motion.p>
 
               {/* Animated hero stat */}
-              <div className="mt-8 flex items-baseline gap-3">
+              <motion.div
+                variants={cardVariants}
+                className="mt-8 flex items-baseline gap-3"
+              >
                 <span className="font-brand text-7xl tabular-nums text-foreground sm:text-8xl">
                   <CountUp value={totalContacts} duration={1.6} />
                 </span>
                 <span className="text-lg text-muted-foreground">contacts</span>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
             {/* CTA */}
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
@@ -297,6 +327,22 @@ export function DashboardOverview({
                     "linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 50%)",
                 }}
               />
+              {/* Animated shimmer sweep */}
+              <motion.div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%)",
+                }}
+                animate={{ x: ["-110%", "110%"] }}
+                transition={{
+                  duration: 2.8,
+                  repeat: Infinity,
+                  repeatDelay: 4,
+                  ease: "easeInOut",
+                }}
+              />
 
               <div className="relative z-10 flex h-full flex-col justify-between p-6">
                 <div className="flex items-center justify-between">
@@ -360,22 +406,27 @@ export function DashboardOverview({
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
-                    <Link
+                    <motion.div
                       key={item.href}
-                      href={item.href}
-                      className="group flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_4px_16px_-2px_rgba(90,176,232,0.15)]"
+                      whileHover={reduce ? {} : { y: -3, transition: { duration: 0.2, ease: "easeOut" } }}
+                      whileTap={reduce ? {} : { scale: 0.97 }}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                          <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
+                      <Link
+                        href={item.href}
+                        className="group flex flex-col gap-2 rounded-2xl bg-card p-4 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.07)] transition-shadow duration-200 hover:shadow-[0_6px_20px_-4px_rgba(90,176,232,0.16)]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 transition-colors duration-200 group-hover:bg-primary/20">
+                            <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
+                          </div>
+                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100" />
                         </div>
-                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                        <p className="text-xs text-muted-foreground">{item.body}</p>
-                      </div>
-                    </Link>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                          <p className="text-xs text-muted-foreground">{item.body}</p>
+                        </div>
+                      </Link>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -387,7 +438,7 @@ export function DashboardOverview({
         <motion.div variants={cardVariants}>
           <motion.div
             whileHover={{ y: -3, transition: { duration: 0.25, ease: "easeOut" } }}
-            className="relative overflow-hidden rounded-3xl border border-border bg-card transition-shadow duration-300 hover:shadow-[0_8px_32px_-4px_rgba(90,176,232,0.12)]"
+            className="relative overflow-hidden rounded-3xl bg-card shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07),0_1px_4px_-1px_rgba(0,0,0,0.05)] transition-shadow duration-300 hover:shadow-[0_8px_32px_-4px_rgba(90,176,232,0.18),0_2px_8px_-2px_rgba(0,0,0,0.08)]"
           >
             <div className="p-6">
               <p className="font-brand text-xs uppercase tracking-[0.25em] text-muted-foreground">

@@ -80,8 +80,9 @@ function RowCard({
       <Link
         href={href}
         className={cn(
-          "group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-5 py-4 shadow-sm",
-          "transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+          "group flex items-center justify-between gap-4 rounded-2xl bg-card px-5 py-4",
+          "shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08),0_1px_3px_-1px_rgba(0,0,0,0.06)]",
+          "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_-4px_rgba(0,0,0,0.12),0_2px_6px_-2px_rgba(90,176,232,0.12)]"
         )}
       >
         {children}
