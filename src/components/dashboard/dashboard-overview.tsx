@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import {
-  Radar,
-  Bot,
   ArrowRight,
   ArrowUpRight,
 } from "lucide-react";
@@ -162,7 +160,7 @@ export function DashboardOverview({
       <BentoCard hoverLift={false} className="min-h-[340px] lg:min-h-[380px]">
         {/* ASCII field — reduced opacity on light mode to preserve text contrast */}
         <AsciiField
-          className="absolute inset-0 h-full w-full opacity-[0.10] dark:opacity-[0.28]"
+          className="absolute inset-0 h-full w-full opacity-[0.18] dark:opacity-[0.30]"
           cell={13}
         />
 
@@ -250,13 +248,11 @@ export function DashboardOverview({
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
               <Button variant="glow" size="lg" asChild>
                 <Link href="/discover">
-                  <Radar className="h-4 w-4" />
                   Discover contacts
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link href="/agent">
-                  <Bot className="h-4 w-4" />
                   Ask Scalar
                 </Link>
               </Button>
@@ -443,7 +439,6 @@ export function DashboardOverview({
                     className="absolute inset-2 rounded-full border border-primary/15"
                     style={{ animationDelay: "0.5s" }}
                   />
-                  <Radar className="h-7 w-7 text-primary/60" aria-hidden="true" />
                 </motion.div>
 
                 <p className="text-sm font-medium text-foreground">Nothing yet</p>

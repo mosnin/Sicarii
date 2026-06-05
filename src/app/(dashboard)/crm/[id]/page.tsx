@@ -2,13 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  Building2,
-  Mail,
-  Phone,
-  Globe,
-  Link2,
-  MapPin,
-  Briefcase,
   Inbox,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,14 +33,14 @@ export default async function ContactDetailPage({
     orderBy: { sentAt: "desc" },
   });
 
-  const fields: { icon: typeof Mail; label: string; value: string | null }[] = [
-    { icon: Briefcase, label: "Title", value: contact.title },
-    { icon: Building2, label: "Company", value: contact.company },
-    { icon: Mail, label: "Email", value: contact.email },
-    { icon: Phone, label: "Phone", value: contact.phone },
-    { icon: Globe, label: "Website", value: contact.website },
-    { icon: Link2, label: "LinkedIn", value: contact.linkedin },
-    { icon: MapPin, label: "Location", value: contact.location },
+  const fields: { label: string; value: string | null }[] = [
+    { label: "Title", value: contact.title },
+    { label: "Company", value: contact.company },
+    { label: "Email", value: contact.email },
+    { label: "Phone", value: contact.phone },
+    { label: "Website", value: contact.website },
+    { label: "LinkedIn", value: contact.linkedin },
+    { label: "Location", value: contact.location },
   ];
 
   return (
@@ -77,9 +70,8 @@ export default async function ContactDetailPage({
               {contact.entity && (
                 <Link
                   href={`/crm/entity/${contact.entity.id}`}
-                  className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
+                  className="text-primary underline-offset-4 hover:underline"
                 >
-                  <Building2 className="h-3.5 w-3.5" />
                   {contact.entity.name}
                 </Link>
               )}
@@ -100,18 +92,12 @@ export default async function ContactDetailPage({
             <CardContent className="space-y-3">
               {fields
                 .filter((f) => f.value)
-                .map((f) => {
-                  const Icon = f.icon;
-                  return (
-                    <div key={f.label} className="flex items-start gap-3 text-sm">
-                      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">{f.label}</p>
-                        <p className="break-words">{f.value}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+                .map((f) => (
+                  <div key={f.label} className="text-sm">
+                    <p className="text-xs text-muted-foreground">{f.label}</p>
+                    <p className="break-words">{f.value}</p>
+                  </div>
+                ))}
               {fields.every((f) => !f.value) && (
                 <p className="text-sm text-muted-foreground">
                   No details yet — enrich this contact to fill them in.

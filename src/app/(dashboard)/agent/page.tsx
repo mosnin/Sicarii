@@ -6,9 +6,6 @@ import { DefaultChatTransport } from "ai";
 import {
   Send,
   Square,
-  Wrench,
-  CheckCircle2,
-  User,
   AlertCircle,
 } from "lucide-react";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
@@ -57,11 +54,6 @@ function ToolChip({ name, done }: { name: string; done: boolean }) {
           : "bg-muted text-muted-foreground",
       )}
     >
-      {done ? (
-        <CheckCircle2 className="h-3 w-3 shrink-0" />
-      ) : (
-        <Wrench className="h-3 w-3 shrink-0 animate-pulse" />
-      )}
       <span className="font-brand tracking-wide">{name}</span>
       <span className="opacity-70">{done ? "done" : "working…"}</span>
     </motion.span>
@@ -116,9 +108,7 @@ function MessageBubble({
     >
       {/* Avatar */}
       {isUser ? (
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground shadow-sm">
-          <User className="h-3.5 w-3.5" />
-        </div>
+        <div className="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-secondary shadow-sm" />
       ) : (
         <ScalarAvatar />
       )}

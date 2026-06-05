@@ -3,7 +3,6 @@ import {
   Users,
   Building2,
   Plus,
-  Radar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,7 +55,6 @@ export default async function CrmPage({
         <div className="flex gap-2">
           <Button variant="outline" asChild>
             <Link href="/discover">
-              <Radar className="mr-1 h-4 w-4" />
               Discover
             </Link>
           </Button>
@@ -73,12 +71,10 @@ export default async function CrmPage({
       <FloatIn delay={0.06}>
         <div className="flex gap-1 border-b border-border">
           <TabLink href="/crm?tab=contacts" active={tab === "contacts"}>
-            <Users className="h-4 w-4" />
             Contacts
             <span className="text-muted-foreground">{contactCount}</span>
           </TabLink>
           <TabLink href="/crm?tab=entities" active={tab === "entities"}>
-            <Building2 className="h-4 w-4" />
             Entities
             <span className="text-muted-foreground">{entityCount}</span>
           </TabLink>

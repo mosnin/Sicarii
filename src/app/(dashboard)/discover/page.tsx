@@ -8,7 +8,6 @@ import {
   useReducedMotion,
 } from "motion/react";
 import {
-  Radar,
   Globe,
   Mails,
   Building2,
@@ -384,7 +383,6 @@ export default function DiscoverPage() {
 
               <div className="mt-4 flex items-center gap-3">
                 <Button onClick={run}>
-                  <Radar className="mr-1 h-4 w-4" />
                   Run tool
                 </Button>
               </div>

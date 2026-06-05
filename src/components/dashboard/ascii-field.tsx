@@ -9,7 +9,7 @@ import { useEffect, useRef } from "react";
  */
 export function AsciiField({
   className,
-  speed = 0.05,
+  speed = 0.14,
   cell = 12,
 }: {
   className?: string;
@@ -88,7 +88,7 @@ export function AsciiField({
     if (!reduce) {
       const loop = (ts: number) => {
         raf = requestAnimationFrame(loop);
-        if (ts - last < 55) return; // ~18 fps, deliberately calm
+        if (ts - last < 33) return; // ~30 fps — smooth but calm
         last = ts;
         t += speed;
         draw();

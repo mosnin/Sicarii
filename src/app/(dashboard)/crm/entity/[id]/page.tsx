@@ -2,12 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  Globe,
-  MapPin,
-  Briefcase,
-  Users as UsersIcon,
-  Building2,
   Plus,
+  Users as UsersIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,12 +33,12 @@ export default async function EntityDetailPage({
     orderBy: { updatedAt: "desc" },
   });
 
-  const fields = [
-    { icon: Briefcase, label: "Industry", value: entity.industry },
-    { icon: Globe, label: "Domain", value: entity.domain },
-    { icon: Globe, label: "Website", value: entity.website },
-    { icon: MapPin, label: "Location", value: entity.location },
-    { icon: Building2, label: "Size", value: entity.size },
+  const fields: { label: string; value: string | null | undefined }[] = [
+    { label: "Industry", value: entity.industry },
+    { label: "Domain", value: entity.domain },
+    { label: "Website", value: entity.website },
+    { label: "Location", value: entity.location },
+    { label: "Size", value: entity.size },
   ];
 
   return (
@@ -88,18 +84,12 @@ export default async function EntityDetailPage({
             <CardContent className="space-y-3">
               {fields
                 .filter((f) => f.value)
-                .map((f) => {
-                  const Icon = f.icon;
-                  return (
-                    <div key={f.label} className="flex items-start gap-3 text-sm">
-                      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">{f.label}</p>
-                        <p className="break-words">{f.value}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+                .map((f) => (
+                  <div key={f.label} className="text-sm">
+                    <p className="text-xs text-muted-foreground">{f.label}</p>
+                    <p className="break-words">{f.value}</p>
+                  </div>
+                ))}
               {entity.description && (
                 <div className="pt-2">
                   <p className="text-xs text-muted-foreground mb-1">Description</p>

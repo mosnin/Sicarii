@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Mail, Globe, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FloatIn } from "@/components/ui/float-in";
 import { cn } from "@/lib/utils";
@@ -109,16 +108,10 @@ export function ContactRows({ contacts }: { contacts: CrmContact[] }) {
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               {c.entity?.name && (
-                <span className="inline-flex items-center gap-1">
-                  <Building2 className="h-3.5 w-3.5" />
-                  {c.entity.name}
-                </span>
+                <span className="truncate">{c.entity.name}</span>
               )}
               {c.email && (
-                <span className="inline-flex items-center gap-1 truncate max-w-[200px]">
-                  <Mail className="h-3.5 w-3.5 shrink-0" />
-                  {c.email}
-                </span>
+                <span className="truncate max-w-[200px]">{c.email}</span>
               )}
               {c.title && <span className="truncate">{c.title}</span>}
             </div>
@@ -155,13 +148,9 @@ export function EntityRows({ entities }: { entities: CrmEntity[] }) {
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               {e.industry && <span className="truncate">{e.industry}</span>}
               {e.domain && (
-                <span className="inline-flex items-center gap-1 truncate">
-                  <Globe className="h-3.5 w-3.5 shrink-0" />
-                  {e.domain}
-                </span>
+                <span className="truncate">{e.domain}</span>
               )}
-              <span className="inline-flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" />
+              <span>
                 {e._count.contacts} contact
                 {e._count.contacts === 1 ? "" : "s"}
               </span>
