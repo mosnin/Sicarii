@@ -1,0 +1,780 @@
+"use client";
+
+/**
+ * DashboardShell — owns the nav-mode state ("dock" | "sidebar") and wires
+ * the morphing nav + header into a single, animated shell.
+ *
+ * Architecture:
+ * - Both nav modes are rendered from shared nav-item data with matching
+ *   `layoutId` strings so Framer Motion physically flies each icon/label
+ *   between the dock's horizontal positions and the sidebar's vertical list.
+ * - The outer wrapper container also shares a `layoutId` so the rounded-pill
+ *   dock fluidly morphs into the tall sidebar panel (position, border-radius,
+ *   size) via a spring.
+ * - The `<main>` receives an animated left padding that slides in sync with
+ *   the sidebar opening, so content is never covered.
+ * - Mobile (<lg): always dock; the sidebar toggle is hidden.
+ * - Respects `prefers-reduced-motion` (instant snap, no springs).
+ */
+
+import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import {
+  motion,
+  AnimatePresence,
+  useReducedMotion,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  type MotionValue,
+  LayoutGroup,
+} from "motion/react";
+import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { UserButton } from "@clerk/nextjs";
+import { AsciiField } from "@/components/dashboard/ascii-field";
+import {
+  Home,
+  Radar,
+  Users,
+  Bot,
+  BookOpen,
+  LayoutGrid,
+  X,
+  ArrowUpRight,
+  PanelLeft,
+  PanelLeftClose,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
+
+// ── Shared nav data ──────────────────────────────────────────────────────────
+
+type NavItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  accent?: boolean;
+};
+
+export const NAV_ITEMS: NavItem[] = [
+  { label: "Home", href: "/dashboard", icon: Home },
+  { label: "Discover", href: "/discover", icon: Radar },
+  { label: "CRM", href: "/crm", icon: Users },
+  { label: "Agent", href: "/agent", icon: Bot, accent: true },
+  { label: "Context", href: "/product-context", icon: BookOpen },
+  { label: "Settings", href: "/settings", icon: Settings },
+];
+
+// ── Launchpad data ───────────────────────────────────────────────────────────
+
+type Tile = {
+  label: string;
+  href: string;
+  description: string;
+  highlight?: boolean;
+};
+
+const LAUNCHPAD_TILES: Tile[] = [
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    description:
+      "Your CRM at a glance — pipeline health, recent activity, and agent status.",
+  },
+  {
+    label: "Discover",
+    href: "/discover",
+    description:
+      "AI-powered lead discovery — find the right people before they find you.",
+  },
+  {
+    label: "CRM",
+    href: "/crm",
+    description:
+      "Your contact and entity database — enriched, organised, and always current.",
+  },
+  {
+    label: "Agent",
+    href: "/agent",
+    description:
+      "Talk to your agent — search, enrich, and orchestrate your pipeline in plain language.",
+    highlight: true,
+  },
+  {
+    label: "Product Context",
+    href: "/product-context",
+    description:
+      "Ground your agents in your product — positioning, ICP, and message fit.",
+  },
+  {
+    label: "Settings",
+    href: "/settings",
+    description:
+      "Account, API keys, workspace, and integration preferences.",
+  },
+];
+
+const CAPABILITIES = ["Discover", "Enrich", "Converse", "Close"];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function isActivePath(pathname: string, href: string) {
+  if (href === "/dashboard") return pathname === "/dashboard";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+type NavMode = "dock" | "sidebar";
+
+const SIDEBAR_WIDTH = 224; // px — must match the sidebar motion div width
+const STORAGE_KEY = "scalar-nav-mode";
+
+// ── Dock magnification constants ─────────────────────────────────────────────
+const BASE = 46;
+const MAX = 78;
+const ICON_BASE = 20;
+const ICON_MAX = 34;
+const RADIUS = 130;
+
+// Spring used for the morph animations
+const MORPH_SPRING = { type: "spring" as const, stiffness: 260, damping: 30 };
+// Slightly snappier spring for content inset
+const INSET_SPRING = { type: "spring" as const, stiffness: 260, damping: 32 };
+
+// ── DockNavButton ────────────────────────────────────────────────────────────
+
+function DockNavButton({
+  item,
+  mouseX,
+  active,
+}: {
+  item: NavItem;
+  mouseX: MotionValue<number>;
+  active: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const Icon = item.icon;
+
+  const distance = useTransform(mouseX, (val) => {
+    const b = ref.current?.getBoundingClientRect() ?? { x: 0, width: BASE };
+    return val - b.x - b.width / 2;
+  });
+
+  const spring = { mass: 0.1, stiffness: 170, damping: 14 };
+  const size = useSpring(
+    useTransform(distance, [-RADIUS, 0, RADIUS], [BASE, MAX, BASE]),
+    spring
+  );
+  const iconSize = useSpring(
+    useTransform(distance, [-RADIUS, 0, RADIUS], [ICON_BASE, ICON_MAX, ICON_BASE]),
+    spring
+  );
+
+  return (
+    <Link
+      href={item.href}
+      aria-label={item.label}
+      aria-current={active ? "page" : undefined}
+    >
+      {/* layoutId ties this icon to its sidebar counterpart for the morph */}
+      <motion.div
+        layoutId={`nav-icon-container-${item.href}`}
+        ref={ref}
+        style={{ width: size, height: size }}
+        className="group relative flex items-center justify-center"
+        transition={MORPH_SPRING}
+      >
+        {/* Tooltip */}
+        <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/60 bg-background/90 px-2.5 py-1 text-xs font-medium opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 dark:border-white/10 dark:bg-charcoal/90">
+          {item.label}
+        </span>
+
+        <motion.span
+          layoutId={`nav-icon-bg-${item.href}`}
+          className={cn(
+            "flex h-full w-full items-center justify-center rounded-full transition-colors",
+            item.accent
+              ? "bg-orange text-white shadow-lg shadow-orange/30"
+              : active
+                ? "bg-orange/15 text-orange ring-1 ring-inset ring-orange/30"
+                : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+          )}
+          transition={MORPH_SPRING}
+        >
+          <motion.span
+            layoutId={`nav-icon-${item.href}`}
+            style={{ width: iconSize, height: iconSize }}
+            className="flex"
+            transition={MORPH_SPRING}
+          >
+            <Icon className="h-full w-full" strokeWidth={item.accent ? 2.4 : 2} />
+          </motion.span>
+        </motion.span>
+
+        {/* Running-app dot */}
+        {active && !item.accent && (
+          <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-orange" />
+        )}
+      </motion.div>
+    </Link>
+  );
+}
+
+// ── Dock ─────────────────────────────────────────────────────────────────────
+
+function Dock({
+  isStaff,
+  onOpenSidebar,
+  onOpenLaunchpad,
+  launchpadOpen,
+}: {
+  isStaff: boolean;
+  onOpenSidebar: () => void;
+  onOpenLaunchpad: () => void;
+  launchpadOpen: boolean;
+}) {
+  void isStaff;
+  const pathname = usePathname();
+  const mouseX = useMotionValue(Infinity);
+
+  // Apps launcher magnify
+  const appsRef = useRef<HTMLDivElement>(null);
+  const appsDistance = useTransform(mouseX, (val) => {
+    const b = appsRef.current?.getBoundingClientRect() ?? { x: 0, width: BASE };
+    return val - b.x - b.width / 2;
+  });
+  const appsSpring = { mass: 0.1, stiffness: 170, damping: 14 };
+  const appsSize = useSpring(
+    useTransform(appsDistance, [-RADIUS, 0, RADIUS], [BASE, MAX, BASE]),
+    appsSpring
+  );
+  const appsIcon = useSpring(
+    useTransform(appsDistance, [-RADIUS, 0, RADIUS], [ICON_BASE, ICON_MAX, ICON_BASE]),
+    appsSpring
+  );
+
+  // Sidebar toggle magnify
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const sidebarDistance = useTransform(mouseX, (val) => {
+    const b = sidebarRef.current?.getBoundingClientRect() ?? { x: 0, width: BASE };
+    return val - b.x - b.width / 2;
+  });
+  const sidebarSize = useSpring(
+    useTransform(sidebarDistance, [-RADIUS, 0, RADIUS], [BASE, MAX, BASE]),
+    appsSpring
+  );
+  const sidebarIcon = useSpring(
+    useTransform(sidebarDistance, [-RADIUS, 0, RADIUS], [ICON_BASE, ICON_MAX, ICON_BASE]),
+    appsSpring
+  );
+
+  return (
+    <motion.nav
+      layoutId="nav-container"
+      initial={{ y: 30, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+      className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 px-3"
+      aria-label="Primary"
+      style={{ borderRadius: 9999 }}
+    >
+      <div
+        onMouseMove={(e) => mouseX.set(e.clientX)}
+        onMouseLeave={() => mouseX.set(Infinity)}
+        className="flex items-end gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-2 shadow-xl shadow-black/10 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/80 dark:shadow-black/50 dark:ring-1 dark:ring-inset dark:ring-white/5"
+      >
+        {NAV_ITEMS.map((item) => (
+          <DockNavButton
+            key={item.href}
+            item={item}
+            mouseX={mouseX}
+            active={isActivePath(pathname, item.href)}
+          />
+        ))}
+
+        <span
+          className="mx-0.5 mb-3 h-7 w-px self-center bg-border/60 dark:bg-white/10"
+          aria-hidden="true"
+        />
+
+        {/* Apps launcher */}
+        <button
+          type="button"
+          onClick={onOpenLaunchpad}
+          aria-label="Open apps menu"
+          aria-haspopup="dialog"
+          aria-expanded={launchpadOpen}
+        >
+          <motion.div
+            ref={appsRef}
+            style={{ width: appsSize, height: appsSize }}
+            className="group relative flex items-center justify-center"
+          >
+            <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/60 bg-background/90 px-2.5 py-1 text-xs font-medium opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 dark:border-white/10 dark:bg-charcoal/90">
+              Apps
+            </span>
+            <span
+              className={cn(
+                "flex h-full w-full items-center justify-center rounded-full transition-colors",
+                launchpadOpen
+                  ? "bg-orange/15 text-orange ring-1 ring-inset ring-orange/30"
+                  : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+              )}
+            >
+              <motion.span
+                style={{ width: appsIcon, height: appsIcon }}
+                className="flex"
+              >
+                <LayoutGrid className="h-full w-full" />
+              </motion.span>
+            </span>
+          </motion.div>
+        </button>
+
+        {/* Sidebar toggle — desktop only (hidden on mobile via CSS) */}
+        <button
+          type="button"
+          onClick={onOpenSidebar}
+          aria-label="Switch to sidebar navigation"
+          className="hidden lg:flex"
+        >
+          <motion.div
+            ref={sidebarRef}
+            style={{ width: sidebarSize, height: sidebarSize }}
+            className="group relative flex items-center justify-center"
+          >
+            <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/60 bg-background/90 px-2.5 py-1 text-xs font-medium opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 dark:border-white/10 dark:bg-charcoal/90">
+              Sidebar
+            </span>
+            <span className="flex h-full w-full items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground">
+              <motion.span
+                style={{ width: sidebarIcon, height: sidebarIcon }}
+                className="flex"
+              >
+                <PanelLeft className="h-full w-full" />
+              </motion.span>
+            </span>
+          </motion.div>
+        </button>
+      </div>
+    </motion.nav>
+  );
+}
+
+// ── Sidebar ──────────────────────────────────────────────────────────────────
+
+function Sidebar({
+  isStaff,
+  onCloseSidebar,
+  onOpenLaunchpad,
+  launchpadOpen,
+}: {
+  isStaff: boolean;
+  onCloseSidebar: () => void;
+  onOpenLaunchpad: () => void;
+  launchpadOpen: boolean;
+}) {
+  void isStaff;
+  const pathname = usePathname();
+
+  return (
+    <motion.nav
+      layoutId="nav-container"
+      key="sidebar"
+      initial={{ x: -SIDEBAR_WIDTH, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -SIDEBAR_WIDTH, opacity: 0 }}
+      transition={MORPH_SPRING}
+      className="fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-border/60 bg-background/95 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/95"
+      style={{ width: SIDEBAR_WIDTH, borderRadius: 0 }}
+      aria-label="Primary sidebar"
+    >
+      {/* ── Logo / wordmark ── */}
+      <div className="flex h-16 items-center gap-2.5 px-4 border-b border-border/40 dark:border-white/[0.06]">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <motion.div layoutId="sidebar-logo" transition={MORPH_SPRING}>
+            <Image
+              src="/logo.svg"
+              alt="Scalar"
+              width={28}
+              height={28}
+              className="rounded-full"
+            />
+          </motion.div>
+          <motion.span
+            layoutId="sidebar-wordmark"
+            className="font-brand text-base font-bold text-foreground"
+            transition={MORPH_SPRING}
+          >
+            Scalar
+          </motion.span>
+        </Link>
+      </div>
+
+      {/* ── Nav items ── */}
+      <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto py-4 px-2">
+        {NAV_ITEMS.map((item, i) => {
+          const Icon = item.icon;
+          const active = isActivePath(pathname, item.href);
+          return (
+            <motion.div
+              key={item.href}
+              layoutId={`nav-icon-container-${item.href}`}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                ...MORPH_SPRING,
+                delay: i * 0.035,
+              }}
+            >
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  item.accent
+                    ? "bg-orange/10 text-orange hover:bg-orange/15"
+                    : active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+                )}
+              >
+                <motion.span
+                  layoutId={`nav-icon-${item.href}`}
+                  className="flex h-5 w-5 shrink-0"
+                  transition={MORPH_SPRING}
+                >
+                  <Icon
+                    className="h-full w-full"
+                    strokeWidth={item.accent ? 2.4 : active ? 2.2 : 2}
+                  />
+                </motion.span>
+                <span>{item.label}</span>
+                {active && !item.accent && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
+              </Link>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* ── Bottom actions ── */}
+      <div className="border-t border-border/40 dark:border-white/[0.06] px-2 py-3 flex flex-col gap-2">
+        {/* Apps launcher */}
+        <button
+          type="button"
+          onClick={onOpenLaunchpad}
+          aria-label="Open apps menu"
+          aria-haspopup="dialog"
+          aria-expanded={launchpadOpen}
+          className={cn(
+            "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors w-full",
+            launchpadOpen
+              ? "bg-orange/10 text-orange"
+              : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+          )}
+        >
+          <LayoutGrid className="h-5 w-5 shrink-0" />
+          <span>Apps</span>
+        </button>
+
+        {/* Collapse to dock */}
+        <button
+          type="button"
+          onClick={onCloseSidebar}
+          aria-label="Switch to dock navigation"
+          className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground w-full"
+        >
+          <PanelLeftClose className="h-5 w-5 shrink-0" />
+          <span>Collapse</span>
+        </button>
+
+        {/* User + theme */}
+        <div className="flex items-center gap-2 px-3 py-2">
+          <UserButton />
+          <ThemeToggle />
+        </div>
+      </div>
+    </motion.nav>
+  );
+}
+
+// ── Launchpad ────────────────────────────────────────────────────────────────
+
+function Launchpad({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Apps menu"
+          className="fixed inset-0 z-[100]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+          <button
+            type="button"
+            aria-label="Close apps menu"
+            onClick={onClose}
+            className="absolute inset-0 cursor-default bg-charcoal-dark/95 backdrop-blur-xl"
+          />
+          <AsciiField
+            className="pointer-events-none absolute inset-0 h-full w-full opacity-40"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_25%,rgba(90,176,232,0.16),transparent_60%)]" />
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="pointer-events-none relative flex h-full flex-col overflow-y-auto"
+          >
+            <div className="pointer-events-auto flex items-center justify-between px-5 pt-7 sm:px-10">
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-orange/80">
+                  Scalar // CRM
+                </p>
+                <h2 className="font-brand mt-1 text-3xl text-white sm:text-4xl">
+                  Everything
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white transition-colors hover:bg-white/10"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="pointer-events-auto mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:px-10">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {LAUNCHPAD_TILES.map((tile, i) => {
+                  const active = isActivePath(pathname, tile.href);
+                  return (
+                    <Link
+                      key={tile.href}
+                      href={tile.href}
+                      onClick={onClose}
+                      className={cn(
+                        "group relative flex flex-col justify-between gap-8 overflow-hidden rounded-3xl border p-6 transition-all duration-300 hover:-translate-y-1",
+                        tile.highlight
+                          ? "border-orange/40 bg-orange/[0.07] hover:bg-orange/[0.12]"
+                          : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]",
+                        active && "ring-1 ring-orange/40"
+                      )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <span
+                          className={cn(
+                            "font-brand text-sm tabular-nums",
+                            tile.highlight ? "text-orange" : "text-white/40"
+                          )}
+                        >
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <ArrowUpRight
+                          className={cn(
+                            "h-5 w-5 -translate-y-0.5 translate-x-0.5 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100",
+                            tile.highlight ? "text-orange" : "text-white"
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <h3 className="font-brand text-2xl text-white">
+                          {tile.label}
+                        </h3>
+                        <p className="mt-1.5 text-sm leading-relaxed text-white/55">
+                          {tile.description}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="mt-10">
+                <p className="text-xs uppercase tracking-[0.25em] text-white/40">
+                  What we do
+                </p>
+                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+                  {CAPABILITIES.map((c) => (
+                    <span key={c} className="font-brand text-xl text-white/70">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ── DashboardShell (main export) ─────────────────────────────────────────────
+
+export function DashboardShell({
+  isStaff,
+  children,
+}: {
+  isStaff: boolean;
+  children: React.ReactNode;
+}) {
+  const prefersReduced = useReducedMotion();
+
+  // ── Nav mode — persisted, forced to dock on mobile ──────────────────────
+  const [mode, setMode] = useState<NavMode>("dock");
+  const [hydrated, setHydrated] = useState(false);
+  const [launchpadOpen, setLaunchpadOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // Hydration + localStorage read. Canonical next-themes pattern — set state
+  // in effect on mount to read browser APIs after SSR.
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY) as NavMode | null;
+    const desktop = window.innerWidth >= 1024;
+    setIsDesktop(desktop); // eslint-disable-line react-hooks/set-state-in-effect
+    if (stored === "sidebar" && desktop) {
+      setMode("sidebar");
+    }
+    setHydrated(true);
+  }, []);
+
+  // Resize listener — force dock on <lg
+  useEffect(() => {
+    const onResize = () => {
+      const desktop = window.innerWidth >= 1024;
+      setIsDesktop(desktop);
+      if (!desktop) setMode("dock");
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const setNavMode = useCallback(
+    (next: NavMode) => {
+      setMode(next);
+      localStorage.setItem(STORAGE_KEY, next);
+    },
+    []
+  );
+
+  const openSidebar = useCallback(() => setNavMode("sidebar"), [setNavMode]);
+  const closeSidebar = useCallback(() => setNavMode("dock"), [setNavMode]);
+  const openLaunchpad = useCallback(() => setLaunchpadOpen(true), []);
+  const closeLaunchpad = useCallback(() => setLaunchpadOpen(false), []);
+
+  const isSidebar = mode === "sidebar" && isDesktop && hydrated;
+
+  // Content inset — slides right to make room for sidebar
+  const contentPaddingLeft = isSidebar ? SIDEBAR_WIDTH : 0;
+  const contentTransition = prefersReduced
+    ? { duration: 0 }
+    : INSET_SPRING;
+
+  return (
+    <LayoutGroup>
+      <div className="min-h-screen bg-background dark:bg-charcoal-dark">
+        {/* ── Floating top header ── */}
+        {/* Hidden in sidebar mode (sidebar has its own wordmark + user/theme) */}
+        <motion.div
+          className="sticky top-0 z-40 px-4 pt-4 sm:px-6 sm:pt-5"
+          animate={{
+            paddingLeft: isSidebar ? SIDEBAR_WIDTH + 24 : undefined,
+            opacity: isSidebar ? 0 : 1,
+            pointerEvents: isSidebar ? "none" : "auto",
+          }}
+          transition={contentTransition}
+          aria-hidden={isSidebar}
+        >
+          <header className="mx-auto max-w-7xl">
+            <div className="flex h-12 items-center justify-between gap-2">
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <Image
+                  src="/logo.svg"
+                  alt="Scalar"
+                  width={28}
+                  height={28}
+                  className="rounded-full"
+                />
+                <span className="font-brand text-base font-bold text-foreground hidden sm:inline">
+                  Scalar
+                </span>
+              </Link>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <ThemeToggle />
+                <UserButton />
+              </div>
+            </div>
+          </header>
+        </motion.div>
+
+        {/* ── Main content — animated inset ── */}
+        <motion.main
+          animate={{ paddingLeft: contentPaddingLeft }}
+          transition={contentTransition}
+          className="mx-auto max-w-7xl px-4 pb-32 pt-6 sm:px-6 sm:pb-32 lg:px-8 lg:pb-36"
+          style={{ maxWidth: isSidebar ? "none" : undefined }}
+        >
+          {children}
+        </motion.main>
+
+        {/* ── Nav — dock or sidebar ── */}
+        <AnimatePresence mode="wait">
+          {isSidebar ? (
+            <Sidebar
+              key="sidebar"
+              isStaff={isStaff}
+              onCloseSidebar={closeSidebar}
+              onOpenLaunchpad={openLaunchpad}
+              launchpadOpen={launchpadOpen}
+            />
+          ) : (
+            <Dock
+              key="dock"
+              isStaff={isStaff}
+              onOpenSidebar={openSidebar}
+              onOpenLaunchpad={openLaunchpad}
+              launchpadOpen={launchpadOpen}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ── Launchpad overlay ── */}
+        <Launchpad open={launchpadOpen} onClose={closeLaunchpad} />
+      </div>
+    </LayoutGroup>
+  );
+}
