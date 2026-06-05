@@ -41,24 +41,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing tool." }, { status: 400 });
     }
 
+    const ctx = { userId: user.id };
     let result: unknown;
     switch (body.tool) {
       case "enrich-domain": {
         const domain = body.domain?.trim();
         if (!domain) return NextResponse.json({ error: "Enter a company domain." }, { status: 400 });
-        result = await enrichCompany(domain);
+        result = await enrichCompany(domain, ctx);
         break;
       }
       case "company-leads": {
         const companyName = body.companyName?.trim();
         if (!companyName) return NextResponse.json({ error: "Enter a company name." }, { status: 400 });
-        result = await convertCompanyNames(companyName);
+        result = await convertCompanyNames(companyName, ctx);
         break;
       }
       case "extract-urls": {
         const url = body.url?.trim();
         if (!url) return NextResponse.json({ error: "Enter a website URL." }, { status: 400 });
-        result = await extractEmailsFromUrls(url);
+        result = await extractEmailsFromUrls(url, ctx);
         break;
       }
       case "find-email": {
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
             { status: 400 }
           );
         }
-        result = await findEmailsFirstLast(firstName, lastName, domain);
+        result = await findEmailsFirstLast(firstName, lastName, domain, ctx);
         break;
       }
       default:

@@ -126,7 +126,7 @@ export async function enrichEntity(userId: string, id: string) {
   if (!isSynthozConfigured())
     throw new OpError("Synthoz is not configured (SYNTHOZ_API_KEY missing)", 501);
 
-  const result = await enrichCompany(entity.domain);
+  const result = await enrichCompany(entity.domain, { userId });
   return prisma.entity.update({
     where: { id },
     data: { status: "ENRICHED", enrichment: result as Prisma.InputJsonValue },

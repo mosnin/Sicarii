@@ -37,8 +37,32 @@ model User {
   apiKeys       ApiKey[]
   conversations Conversation[]
   memoryChunks  MemoryChunk[]
+  synthozJobs   SynthozJob[]
 
   @@map("users")
+}
+
+// Correlation record for Synthoz's ASYNC results. Synthoz is one developer
+// account (one API key, one set of outgoing webhooks), but many Scalar users
+// trigger searches. When a user fires an async Synthoz call we stamp a pending
+// job keyed by what was searched (domain / company); when the result POSTs back
+// to /api/webhooks/synthoz — carrying no user identity — we match it to the most
+// recent pending job for that key and attribute the record to that user.
+model SynthozJob {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String // "enrich-company" | "convert-company-names" | "extract-emails-from-urls" | "find-emails-first-last"
+  domainKey  String? // normalized domain searched (host only, no scheme/www)
+  companyKey String? // normalized company name searched (lowercased)
+  status     String    @default("pending") // "pending" | "resolved"
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([userId])
+  @@index([status, domainKey])
+  @@index([status, companyKey])
+  @@map("synthoz_jobs")
 }
 
 // A chat with the Scalar agent. A fresh one is created on each page load; long-term

@@ -36,7 +36,7 @@ export async function POST(
       );
     }
 
-    const result = await enrichCompany(entity.domain);
+    const result = await enrichCompany(entity.domain, { userId: user.id });
 
     const updated = await prisma.entity.update({
       where: { id },
