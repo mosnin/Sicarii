@@ -176,6 +176,20 @@ enum EntityStatus {
   ARCHIVED
 }
 
+// Shared geocode cache. Keyed by a normalized address string so the same city
+// or address is only ever sent to Nominatim once (1 req/sec policy), making
+// repeated lookups instant. A row with null lat/lng is a remembered "no hit".
+model GeocodeCache {
+  id          String   @id @default(uuid())
+  query       String   @unique
+  lat         Float?
+  lng         Float?
+  displayName String?
+  createdAt   DateTime @default(now())
+
+  @@map("geocode_cache")
+}
+
 // A person/company in the CRM. Agents discover, enrich, and operate on these.
 model Contact {
   id     String @id @default(uuid())

@@ -1,33 +1,38 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
-import { geocode } from "@/lib/geocode";
+import { geocodeCached } from "@/lib/geocode";
 
 export const maxDuration = 30;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // POST /api/entities/geocode - backfill coordinates for entities that have a
-// location but no lat/lng. Throttled to respect Nominatim (1 req/sec); capped
-// per call so the client can loop until `remaining` is 0.
+// location but no lat/lng. Uses the shared geocode cache so repeated cities are
+// instant; only real Nominatim calls are throttled (1 req/sec). Capped per call
+// so the client can loop until `remaining` is 0.
 export async function POST() {
   try {
     const user = await getAuthenticatedUser();
     const batch = await prisma.entity.findMany({
       where: { userId: user.id, lat: null, geocodedAt: null, location: { not: null } },
       select: { id: true, location: true },
-      take: 12,
+      take: 20,
     });
 
     let geocoded = 0;
     for (const e of batch) {
-      const g = e.location ? await geocode(e.location) : null;
+      const { result: g, cached } = e.location
+        ? await geocodeCached(e.location)
+        : { result: null, cached: true };
       await prisma.entity.update({
         where: { id: e.id },
         data: g ? { lat: g.lat, lng: g.lng, geocodedAt: new Date() } : { geocodedAt: new Date() },
       });
       if (g) geocoded++;
-      await sleep(1100);
+      // Only the public Nominatim endpoint needs the 1 req/sec courtesy delay;
+      // cache hits resolve instantly.
+      if (!cached) await sleep(1100);
     }
 
     const remaining = await prisma.entity.count({

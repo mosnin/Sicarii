@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { geocodeCached } from "@/lib/geocode";
 
 const ENTITY_STATUSES = ["NEW", "ENRICHED", "ARCHIVED"] as const;
 
@@ -86,6 +87,23 @@ export async function POST(req: NextRequest) {
         userId: user.id,
       },
     });
+
+    // Geocode in the background so the entity is already on the map when opened.
+    if (entity.location) {
+      after(async () => {
+        try {
+          const { result } = await geocodeCached(entity.location!);
+          await prisma.entity.update({
+            where: { id: entity.id },
+            data: result
+              ? { lat: result.lat, lng: result.lng, geocodedAt: new Date() }
+              : { geocodedAt: new Date() },
+          });
+        } catch {
+          /* leave it for the map backfill loop */
+        }
+      });
+    }
 
     return NextResponse.json({ entity }, { status: 201 });
   } catch (e) {

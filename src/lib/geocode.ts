@@ -2,7 +2,42 @@
 // policy: identify with a User-Agent and keep request volume low (we throttle
 // callers and cache results onto the entity).
 
+import { prisma } from "@/lib/prisma";
+
 export interface GeoResult { lat: number; lng: number; displayName: string }
+
+function normalizeQuery(address: string): string {
+  return address.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Cached geocode backed by the shared GeocodeCache table. The same address (or
+// city) only ever hits Nominatim once, so repeats are instant. Returns whether
+// the answer came from cache so callers can skip the 1 req/sec throttle when no
+// network call was made. Only successful hits are cached, so a transient
+// failure is retried next time rather than remembered as a permanent miss.
+export async function geocodeCached(
+  address: string,
+): Promise<{ result: GeoResult | null; cached: boolean }> {
+  const key = normalizeQuery(address);
+  if (!key) return { result: null, cached: true };
+
+  const hit = await prisma.geocodeCache.findUnique({ where: { query: key } }).catch(() => null);
+  if (hit) {
+    const result =
+      hit.lat != null && hit.lng != null
+        ? { lat: hit.lat, lng: hit.lng, displayName: hit.displayName ?? "" }
+        : null;
+    return { result, cached: true };
+  }
+
+  const result = await geocode(address);
+  if (result) {
+    await prisma.geocodeCache
+      .create({ data: { query: key, lat: result.lat, lng: result.lng, displayName: result.displayName } })
+      .catch(() => {}); // ignore unique races
+  }
+  return { result, cached: false };
+}
 
 export async function geocode(address: string): Promise<GeoResult | null> {
   const q = address.trim();

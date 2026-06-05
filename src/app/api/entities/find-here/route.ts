@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaFindCompanies, isExaConfigured, isMeaningful } from "@/lib/exa";
-import { geocode, reverseGeocode } from "@/lib/geocode";
+import { geocodeCached, reverseGeocode } from "@/lib/geocode";
 
 export const maxDuration = 60;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -47,7 +47,11 @@ export async function POST(req: NextRequest) {
       }
       const address = c.address ?? place;
       let coords = null as { lat: number; lng: number } | null;
-      if (address) { const g = await geocode(address); if (g) coords = { lat: g.lat, lng: g.lng }; await sleep(1100); }
+      if (address) {
+        const { result: g, cached } = await geocodeCached(address);
+        if (g) coords = { lat: g.lat, lng: g.lng };
+        if (!cached) await sleep(1100); // only throttle real Nominatim calls
+      }
 
       const entity = await prisma.entity.create({
         data: {
