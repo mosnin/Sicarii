@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Check, Loader2, KeyRound, Pencil, Trash2 } from "lucide-react";
+import { Check, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -47,9 +47,6 @@ export function AgentMailKeyForm({ initialLast4 }: { initialLast4: string | null
             className="flex items-center justify-between gap-3 rounded-xl bg-muted/50 px-4 py-3"
           >
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                <KeyRound className="h-4 w-4 text-primary" />
-              </span>
               <div>
                 <p className="text-sm font-medium text-foreground">Connected</p>
                 <p className="font-mono text-xs text-muted-foreground">

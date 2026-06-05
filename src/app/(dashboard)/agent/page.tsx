@@ -6,9 +6,6 @@ import { DefaultChatTransport } from "ai";
 import {
   Send,
   Square,
-  Wrench,
-  CheckCircle2,
-  User,
   AlertCircle,
 } from "lucide-react";
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
@@ -16,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScalarAvatar } from "@/components/dashboard/scalar-avatar";
 import { ThinkingIndicator } from "@/components/dashboard/thinking-indicator";
+import { useMobileNav } from "@/components/dashboard/dashboard-shell";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,11 +54,6 @@ function ToolChip({ name, done }: { name: string; done: boolean }) {
           : "bg-muted text-muted-foreground",
       )}
     >
-      {done ? (
-        <CheckCircle2 className="h-3 w-3 shrink-0" />
-      ) : (
-        <Wrench className="h-3 w-3 shrink-0 animate-pulse" />
-      )}
       <span className="font-brand tracking-wide">{name}</span>
       <span className="opacity-70">{done ? "done" : "working…"}</span>
     </motion.span>
@@ -115,9 +108,7 @@ function MessageBubble({
     >
       {/* Avatar */}
       {isUser ? (
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-foreground shadow-sm">
-          <User className="h-3.5 w-3.5" />
-        </div>
+        <div className="mt-0.5 h-7 w-7 shrink-0 rounded-full bg-secondary shadow-sm" />
       ) : (
         <ScalarAvatar />
       )}
@@ -319,6 +310,10 @@ export default function AgentPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Minimise the composer while the mobile nav panel is open so they don't
+  // overlap on small screens.
+  const { navOpen } = useMobileNav();
+
   const { messages, sendMessage, status, stop, error } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/agent",
@@ -432,9 +427,13 @@ export default function AgentPage() {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Composer — pinned at bottom                                          */}
+      {/* Composer — pinned at bottom; collapses while mobile nav is open     */}
       {/* ------------------------------------------------------------------ */}
-      <div className="relative z-20 mx-auto w-full max-w-2xl px-4 pb-4 pt-2">
+      <motion.div
+        animate={navOpen ? { opacity: 0, y: 24, pointerEvents: "none" } : { opacity: 1, y: 0, pointerEvents: "auto" }}
+        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+        className="relative z-20 mx-auto w-full max-w-2xl px-4 pb-4 pt-2"
+      >
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -495,7 +494,7 @@ export default function AgentPage() {
         <p className="mt-1.5 text-center text-[11px] text-muted-foreground/60">
           Scalar can make mistakes. Verify important information.
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

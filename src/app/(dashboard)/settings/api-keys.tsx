@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Key, Trash2, Copy, Check, Plus } from "lucide-react";
+import { Trash2, Copy, Check, Plus } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -133,8 +133,7 @@ export function ApiKeysManager() {
         </div>
 
         {keys.length === 0 ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Key className="h-4 w-4" />
+          <div className="text-sm text-muted-foreground">
             No keys yet. Create one to connect an agent.
           </div>
         ) : (

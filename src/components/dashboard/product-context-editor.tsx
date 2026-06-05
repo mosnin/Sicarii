@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Check, Loader2, Save, Sparkles } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const PLACEHOLDER = `What you sell, who it's for, and why it wins. The more Scalar knows, the sharper its outreach.
@@ -56,8 +56,7 @@ export function ProductContextEditor({ initial }: { initial: string }) {
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
       />
       <div className="relative">
-        <div className="mb-3 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
+        <div className="mb-3">
           <p className="text-sm font-semibold text-foreground">Your product context</p>
         </div>
         <textarea
@@ -97,10 +96,8 @@ export function ProductContextEditor({ initial }: { initial: string }) {
               )}
             </AnimatePresence>
             <Button onClick={save} disabled={!dirty || status === "saving"} size="sm">
-              {status === "saving" ? (
+              {status === "saving" && (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-1 h-4 w-4" />
               )}
               {status === "saving" ? "Saving…" : "Save context"}
             </Button>

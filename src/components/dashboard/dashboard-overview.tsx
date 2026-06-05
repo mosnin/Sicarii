@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import {
-  Radar,
-  Bot,
   ArrowRight,
   ArrowUpRight,
 } from "lucide-react";
@@ -12,6 +10,7 @@ import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/count-up";
+import { GlobalSearch } from "@/components/dashboard/global-search";
 import { cn } from "@/lib/utils";
 
 // ─── Motion helpers ──────────────────────────────────────────────────────────
@@ -160,9 +159,9 @@ export function DashboardOverview({
     >
       {/* ── HERO card (tall, full width) ─────────────────────────────────── */}
       <BentoCard hoverLift={false} className="min-h-[340px] lg:min-h-[380px]">
-        {/* ASCII field — clearly visible behind the greeting */}
+        {/* ASCII field — reduced opacity on light mode to preserve text contrast */}
         <AsciiField
-          className="absolute inset-0 h-full w-full opacity-[0.28]"
+          className="absolute inset-0 h-full w-full opacity-[0.18] dark:opacity-[0.30]"
           cell={13}
         />
 
@@ -197,7 +196,17 @@ export function DashboardOverview({
           }}
         />
 
-        <div className="relative z-10 flex h-full flex-col justify-between p-8 sm:p-10">
+        {/* Subtle scrim behind the greeting text — boosts contrast on light mode */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 dark:hidden"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 70% at 20% 60%, rgba(255,255,255,0.55) 0%, transparent 70%)",
+          }}
+        />
+
+        <div className="relative z-10 flex h-full flex-col justify-between p-6 sm:p-8 lg:p-10">
           {/* Eyebrow */}
           <p className="font-brand text-xs uppercase tracking-[0.3em] text-primary">
             SCALAR // RESEARCH
@@ -224,6 +233,11 @@ export function DashboardOverview({
                 Your research platform — contacts discovered, enriched, and in conversation.
               </motion.p>
 
+              {/* Global search */}
+              <motion.div variants={cardVariants} className="mt-5 max-w-md">
+                <GlobalSearch />
+              </motion.div>
+
               {/* Animated hero stat */}
               <motion.div
                 variants={cardVariants}
@@ -240,13 +254,11 @@ export function DashboardOverview({
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
               <Button variant="glow" size="lg" asChild>
                 <Link href="/discover">
-                  <Radar className="h-4 w-4" />
                   Discover contacts
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link href="/agent">
-                  <Bot className="h-4 w-4" />
                   Ask Scalar
                 </Link>
               </Button>
@@ -433,7 +445,6 @@ export function DashboardOverview({
                     className="absolute inset-2 rounded-full border border-primary/15"
                     style={{ animationDelay: "0.5s" }}
                   />
-                  <Radar className="h-7 w-7 text-primary/60" aria-hidden="true" />
                 </motion.div>
 
                 <p className="text-sm font-medium text-foreground">Nothing yet</p>
