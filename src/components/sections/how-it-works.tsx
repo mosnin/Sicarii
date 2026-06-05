@@ -1,77 +1,64 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { ClipboardCheck, CreditCard, BarChart3, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const steps = [
   {
-    icon: ClipboardCheck,
-    title: "Choose & Onboard",
+    title: "Connect",
     description:
-      "Select your service, create your account, and fill out a quick onboarding form with your project details.",
+      "Sign up, connect your domain and AgentMail key, and point Scalar at your product context. The agents have everything they need in minutes.",
   },
   {
-    icon: CreditCard,
-    title: "Secure Payment",
+    title: "Discover",
     description:
-      "Complete payment securely through our payment portal. No hidden fees — transparent pricing from the start.",
+      "Tell the agent what you want — a company, a role, a list of sites. It finds contacts, pulls emails, and saves them straight into your CRM.",
   },
   {
-    icon: BarChart3,
-    title: "Track Your Build",
+    title: "Enrich",
     description:
-      "Watch your project progress through each phase in real-time with our DoorDash-style tracker. Always know where things stand.",
+      "Every record stays alive. Agents fill the gaps — title, company, socials — so your database compounds instead of rotting.",
   },
   {
-    icon: MessageSquare,
-    title: "Collaborate & Launch",
+    title: "Operate",
     description:
-      "Upload files, request revisions, and message our team directly. We work together until your project launches.",
+      "Run outreach through AgentMail, replay context on every reply, and watch every agent action in the audit log. Trust by design.",
   },
 ];
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="relative py-24 sm:py-32 bg-charcoal-dark/50">
+    <section id="how-it-works" className="relative scroll-mt-24 bg-charcoal-dark py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center mb-16">
-          <Badge variant="orange" className="mb-4">How It Works</Badge>
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-            From idea to{" "}
-            <span className="text-gradient-orange">launch</span>
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-xs uppercase tracking-[0.25em] text-orange/80">How it works</p>
+          <h2 className="font-brand mt-3 text-3xl text-white sm:text-4xl lg:text-5xl">
+            From first contact to <span className="text-gradient-orange">closed deal</span>
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            A simple, transparent process that keeps you in the loop every step of the way.
+          <p className="mt-4 text-lg text-white/60">
+            A calm, transparent process that keeps you in control the whole way through.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {steps.map((step, index) => {
-            const Icon = step.icon;
-            return (
-              <motion.div
-                key={step.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                className="relative text-center"
-              >
-                {/* Step number */}
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange/10 border border-orange/20">
-                  <Icon className="h-7 w-7 text-orange" />
-                </div>
-                <span className="absolute -top-2 left-1/2 -translate-x-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-orange text-xs font-bold text-white">
-                  {index + 1}
+        <div className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step, index) => (
+            <motion.div
+              key={step.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: index * 0.08 }}
+              className="h-full"
+            >
+              <SpotlightCard className="h-full p-6">
+                <span className="font-brand text-3xl text-orange tabular-nums">
+                  0{index + 1}
                 </span>
-                <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {step.description}
-                </p>
-              </motion.div>
-            );
-          })}
+                <h3 className="font-brand mt-3 text-xl text-white">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-white/55">{step.description}</p>
+              </SpotlightCard>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>

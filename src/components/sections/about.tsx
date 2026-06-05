@@ -1,84 +1,73 @@
 "use client";
 
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap, Shield, Users } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const values = [
   {
-    icon: Zap,
-    title: "Speed & Quality",
-    description: "We deliver fast without cutting corners. Every project goes through rigorous testing before launch.",
+    title: "Owned data — never leaves your system",
+    description:
+      "Every contact, enrichment, and email thread lives in your Scalar database. No third-party scraping your CRM. No shared pool. It is yours.",
   },
   {
-    icon: Shield,
-    title: "Transparency",
-    description: "Track every phase of your build. No black boxes — you always know exactly where your project stands.",
+    title: "Radical transparency",
+    description:
+      "Every agent action is logged. Every write is reviewable. You always know exactly what the agents did — and you can roll it back.",
   },
   {
-    icon: Users,
-    title: "Partnership",
-    description: "We're not just builders — we're partners. Direct communication, revision support, and ongoing collaboration.",
+    title: "Deep product context",
+    description:
+      "Agents read your product knowledge base before they write a single word. Outreach is informed, not generic spray.",
   },
 ];
 
 export function AboutSection() {
   return (
-    <section id="about" className="relative py-24 sm:py-32">
+    <section id="about" className="relative scroll-mt-24 bg-charcoal-dark py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
-          {/* Text content */}
           <div>
-            <Badge variant="orange" className="mb-4">About Scalar</Badge>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              A digital agency that puts{" "}
-              <span className="text-gradient-orange">you in control</span>
+            <p className="text-xs uppercase tracking-[0.25em] text-orange/80">About Scalar</p>
+            <h2 className="font-brand mt-3 text-3xl text-white sm:text-4xl lg:text-5xl">
+              The CRM for teams building in the{" "}
+              <span className="text-gradient-orange">AI age</span>
             </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Scalar was built on a simple belief: clients deserve to
-              see what&apos;s happening with their project at every step. No more
-              waiting in the dark for updates. No more surprises.
+            <p className="mt-5 text-lg text-white/65">
+              Scalar is a CRM whose operators are AI agents. They discover leads, enrich the
+              database, run email relationships, and read/write every record — on data that
+              never leaves the system.
             </p>
-            <p className="mt-4 text-muted-foreground">
-              From the moment you choose your service to the day we launch, you
-              have full visibility into the process — plus direct messaging and
-              revision support whenever you need it.
+            <p className="mt-4 text-white/55">
+              For agencies, founders, and lean teams running outbound. The world changed; how
+              you build relationships changed with it. Scalar gives your agents the context to
+              sell with understanding — not just spray.
             </p>
-            <Button variant="glow" size="lg" className="mt-8" asChild>
-              <Link href="#services">
-                Start Your Project
-                <ArrowRight className="ml-1 h-5 w-5" />
-              </Link>
-            </Button>
+            <Link
+              href="/sign-up"
+              className="mt-8 inline-flex items-center gap-2 rounded-full bg-orange px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-dark"
+            >
+              Get Started
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
 
-          {/* Values */}
-          <div className="space-y-6">
-            {values.map((value, index) => {
-              const Icon = value.icon;
-              return (
-                <motion.div
-                  key={value.title}
-                  initial={{ opacity: 0, x: 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="flex gap-4 rounded-xl border border-border bg-card p-6"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange/10">
-                    <Icon className="h-5 w-5 text-orange" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{value.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {value.description}
-                    </p>
-                  </div>
-                </motion.div>
-              );
-            })}
+          <div className="space-y-4">
+            {values.map((value, index) => (
+              <motion.div
+                key={value.title}
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: index * 0.08 }}
+              >
+                <SpotlightCard className="p-6">
+                  <h3 className="font-brand text-lg text-white">{value.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-white/55">{value.description}</p>
+                </SpotlightCard>
+              </motion.div>
+            ))}
           </div>
         </div>
       </div>
