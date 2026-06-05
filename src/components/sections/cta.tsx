@@ -4,15 +4,16 @@ import { AsciiField } from "@/components/dashboard/ascii-field";
 
 export function CTASection() {
   return (
-    <section className="bg-charcoal-dark px-4 pb-24 sm:pb-32">
-      <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-charcoal px-6 py-20 text-center sm:py-24">
-        <AsciiField className="absolute inset-0 h-full w-full opacity-50" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.2),transparent_60%)]" />
+    <section className="bg-background px-4 pb-24 sm:pb-32">
+      <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-muted/40 px-6 py-20 text-center dark:bg-card sm:py-24">
+        {/* ASCII: barely visible in light, more present in dark */}
+        <AsciiField className="absolute inset-0 h-full w-full opacity-[0.05] dark:opacity-50" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.12),transparent_60%)]" />
         <div className="relative z-10">
-          <h2 className="font-brand text-3xl text-white sm:text-4xl lg:text-5xl">
+          <h2 className="font-brand text-3xl text-foreground sm:text-4xl lg:text-5xl">
             Ready to run your <span className="text-gradient-orange">agent CRM?</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-white/65">
+          <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
             Connect your product context, point your agents at Scalar, and start building
             relationships that compound — on data that stays yours.
           </p>
@@ -26,12 +27,12 @@ export function CTASection() {
             </Link>
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-8 py-3.5 text-base font-medium text-white/80 transition-colors hover:border-white/30 hover:text-white"
+              className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-base font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
             >
               Talk to us
             </Link>
           </div>
-          <p className="mt-4 text-xs text-white/40">No commitment. Free to start.</p>
+          <p className="mt-4 text-xs text-muted-foreground">No commitment. Free to start.</p>
         </div>
       </div>
     </section>

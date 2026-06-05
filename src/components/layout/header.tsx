@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { UserButton, useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { AsciiField } from "@/components/dashboard/ascii-field";
@@ -96,7 +97,7 @@ function MegaMenuDropdown({
   return (
     <div
       ref={ref}
-      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[520px] rounded-3xl border border-white/10 bg-charcoal/95 ring-1 ring-inset ring-white/5 backdrop-blur-2xl p-3 shadow-2xl shadow-black/50 animate-fade-in z-50"
+      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[520px] rounded-3xl border border-border bg-background/95 ring-1 ring-inset ring-border/50 backdrop-blur-2xl p-3 shadow-2xl shadow-black/10 animate-fade-in z-50 dark:border-white/10 dark:bg-charcoal/95 dark:ring-white/5 dark:shadow-black/50"
     >
       <div className="grid grid-cols-2 gap-1">
         {items.map((item) => {
@@ -142,7 +143,7 @@ export function Header() {
     <>
       {/* Pill-style floating header */}
       <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-5xl">
-        <div className="rounded-full border border-white/10 bg-charcoal/80 shadow-2xl shadow-black/40 ring-1 ring-inset ring-white/5 backdrop-blur-2xl">
+        <div className="rounded-full border border-border bg-background/85 shadow-lg shadow-black/5 ring-1 ring-inset ring-border/40 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/80 dark:shadow-black/40 dark:ring-white/5">
           <div className="flex h-14 items-center justify-between pl-4 pr-3 sm:pl-5 sm:pr-3">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
@@ -194,11 +195,12 @@ export function Header() {
             <div className="flex items-center gap-2">
               {/* Desktop auth */}
               <div className="hidden items-center gap-2 lg:flex">
+                <ThemeToggle />
                 {!isSignedIn ? (
                   <>
                     <Link
                       href="/sign-in"
-                      className="rounded-full px-3.5 py-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
+                      className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                     >
                       Sign In
                     </Link>
@@ -244,8 +246,8 @@ export function Header() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="absolute inset-0 bg-charcoal-dark/95 backdrop-blur-xl" />
-            <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-30" cell={14} />
+            <div className="absolute inset-0 bg-background/97 backdrop-blur-xl dark:bg-charcoal-dark/95" />
+            <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.04] dark:opacity-30" cell={14} />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(90,176,232,0.18),transparent_60%)]" />
 
             <motion.div
@@ -265,15 +267,18 @@ export function Header() {
                     height={30}
                     className="rounded-full"
                   />
-                  <span className="font-brand font-bold text-white">Scalar</span>
+                  <span className="font-brand font-bold text-foreground">Scalar</span>
                 </Link>
-                <button
-                  aria-label="Close menu"
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white transition-colors hover:bg-white/10"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <X size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                  <button
+                    aria-label="Close menu"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-muted text-foreground transition-colors hover:bg-muted/80 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/10"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
 
               {/* Nav — big typographic groups, staggered in */}
@@ -297,7 +302,7 @@ export function Header() {
                           <Link
                             href={item.href}
                             onClick={() => setMobileOpen(false)}
-                            className="block font-brand text-3xl leading-tight text-white/90 transition-colors hover:text-orange"
+                            className="block font-brand text-3xl leading-tight text-foreground/90 transition-colors hover:text-orange"
                           >
                             {item.label}
                           </Link>
@@ -309,7 +314,7 @@ export function Header() {
               </motion.nav>
 
               {/* Footer CTA */}
-              <div className="space-y-3 border-t border-white/10 px-5 pb-8 pt-5">
+              <div className="space-y-3 border-t border-border px-5 pb-8 pt-5">
                 {!isSignedIn ? (
                   <>
                     <Link
@@ -323,7 +328,7 @@ export function Header() {
                     <Link
                       href="/sign-in"
                       onClick={() => setMobileOpen(false)}
-                      className="flex h-12 w-full items-center justify-center rounded-full border border-white/15 text-sm font-medium text-white/80 transition-colors hover:text-white"
+                      className="flex h-12 w-full items-center justify-center rounded-full border border-border text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                     >
                       Sign In
                     </Link>

@@ -38,11 +38,11 @@ const testimonials = [
 
 export function TestimonialsSection() {
   return (
-    <section className="bg-charcoal-dark py-24 sm:py-32">
+    <section className="bg-background py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs uppercase tracking-[0.25em] text-orange/80">Clients</p>
-          <h2 className="font-brand mt-3 text-3xl text-white sm:text-4xl lg:text-5xl">
+          <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             Builders they <span className="text-gradient-orange">trust</span>
           </h2>
         </div>
@@ -63,12 +63,12 @@ export function TestimonialsSection() {
                     <Star key={i} className="h-4 w-4 fill-orange text-orange" />
                   ))}
                 </div>
-                <blockquote className="text-base leading-relaxed text-white/80">
+                <blockquote className="text-base leading-relaxed text-foreground/80">
                   &ldquo;{testimonial.quote}&rdquo;
                 </blockquote>
-                <div className="mt-5 border-t border-white/10 pt-4">
-                  <p className="text-sm font-semibold text-white">{testimonial.name}</p>
-                  <p className="text-xs text-white/50">{testimonial.role}</p>
+                <div className="mt-5 border-t border-border pt-4">
+                  <p className="text-sm font-semibold text-foreground">{testimonial.name}</p>
+                  <p className="text-xs text-muted-foreground">{testimonial.role}</p>
                 </div>
               </SpotlightCard>
             </motion.div>
@@ -78,7 +78,7 @@ export function TestimonialsSection() {
         <div className="mt-12 text-center">
           <Link
             href="/portfolio"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-white/80 transition-colors hover:text-orange"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-orange"
           >
             See the work
             <ArrowRight className="h-4 w-4" />

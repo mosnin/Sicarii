@@ -25,21 +25,21 @@ const values = [
 
 export function AboutSection() {
   return (
-    <section id="about" className="relative scroll-mt-24 bg-charcoal-dark py-24 sm:py-32">
+    <section id="about" className="relative scroll-mt-24 bg-background py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-orange/80">About Scalar</p>
-            <h2 className="font-brand mt-3 text-3xl text-white sm:text-4xl lg:text-5xl">
+            <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
               The CRM for teams building in the{" "}
               <span className="text-gradient-orange">AI age</span>
             </h2>
-            <p className="mt-5 text-lg text-white/65">
+            <p className="mt-5 text-lg text-muted-foreground">
               Scalar is a CRM whose operators are AI agents. They discover leads, enrich the
               database, run email relationships, and read/write every record — on data that
               never leaves the system.
             </p>
-            <p className="mt-4 text-white/55">
+            <p className="mt-4 text-muted-foreground">
               For agencies, founders, and lean teams running outbound. The world changed; how
               you build relationships changed with it. Scalar gives your agents the context to
               sell with understanding — not just spray.
@@ -63,8 +63,8 @@ export function AboutSection() {
                 transition={{ duration: 0.4, delay: index * 0.08 }}
               >
                 <SpotlightCard className="p-6">
-                  <h3 className="font-brand text-lg text-white">{value.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-white/55">{value.description}</p>
+                  <h3 className="font-brand text-lg text-foreground">{value.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{value.description}</p>
                 </SpotlightCard>
               </motion.div>
             ))}

@@ -65,12 +65,14 @@ export function HeroSection() {
   return (
     <section
       ref={ref}
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-charcoal-dark pt-24"
+      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background pt-24"
     >
       <motion.div style={{ y: asciiY }} className="absolute inset-0">
-        <AsciiField className="absolute inset-0 h-full w-full opacity-25" cell={14} />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.16),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(90,176,232,0.08),transparent_50%)]" />
+        {/* ASCII field: low opacity in light, slightly higher in dark */}
+        <AsciiField className="absolute inset-0 h-full w-full opacity-[0.07] dark:opacity-25" cell={14} />
+        {/* Radial glow tinted primary — reads on both white and dark */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(90,176,232,0.06),transparent_50%)]" />
       </motion.div>
 
       <motion.div
@@ -89,7 +91,7 @@ export function HeroSection() {
 
           <motion.h1
             variants={item}
-            className="font-brand text-4xl leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl"
+            className="font-brand text-4xl leading-[1.05] tracking-tight text-foreground sm:text-6xl lg:text-7xl"
           >
             <span className="block">Bespoke</span>
             <span className="block">
@@ -101,7 +103,7 @@ export function HeroSection() {
             <span className="block">built for the AI age</span>
           </motion.h1>
 
-          <motion.p variants={item} className="max-w-2xl text-lg text-white/65 sm:text-xl">
+          <motion.p variants={item} className="max-w-2xl text-lg text-muted-foreground sm:text-xl">
             Discover leads, enrich your database, run email relationships, and
             read/write every record — on data that never leaves your system, with
             deep product context so you sell with understanding.
@@ -117,7 +119,7 @@ export function HeroSection() {
             </Link>
             <Link
               href="/services"
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-8 py-3.5 text-base font-medium text-white/80 transition-colors hover:border-white/30 hover:text-white"
+              className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-base font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
             >
               See what we build
             </Link>
@@ -126,9 +128,9 @@ export function HeroSection() {
           <motion.div variants={item} className="mt-4">
             <DotFlow
               items={heroItems}
-              className="border border-white/10 bg-white/[0.04] px-4 py-2.5 backdrop-blur-md"
-              dotClassName="bg-white/15 [&.active]:bg-orange"
-              textClassName="text-sm text-white/80"
+              className="border border-border bg-muted/50 px-4 py-2.5 backdrop-blur-md dark:bg-white/[0.04]"
+              dotClassName="bg-foreground/15 [&.active]:bg-orange"
+              textClassName="text-sm text-muted-foreground"
             />
           </motion.div>
         </motion.div>

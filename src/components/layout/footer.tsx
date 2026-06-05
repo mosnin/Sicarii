@@ -24,8 +24,8 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="bg-charcoal-dark px-4 pb-6 sm:px-6">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]">
+    <footer className="bg-muted/30 px-4 pb-6 sm:px-6 dark:bg-charcoal-dark">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-border bg-card dark:bg-white/[0.02]">
         <div className="px-6 py-12 sm:px-8 lg:px-12">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             {/* Brand */}
@@ -38,9 +38,9 @@ export function Footer() {
                   height={30}
                   className="rounded-full"
                 />
-                <span className="font-brand text-lg font-bold text-white">Scalar</span>
+                <span className="font-brand text-lg font-bold text-foreground">Scalar</span>
               </Link>
-              <p className="max-w-xs text-sm text-white/50">
+              <p className="max-w-xs text-sm text-muted-foreground">
                 The CRM your agents run. Discover leads, enrich your database, and
                 run email relationships — on data that never leaves your system.
               </p>
@@ -53,7 +53,7 @@ export function Footer() {
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-white/55 transition-colors hover:text-white"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -69,7 +69,7 @@ export function Footer() {
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-white/55 transition-colors hover:text-white"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -85,7 +85,7 @@ export function Footer() {
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-white/55 transition-colors hover:text-white"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -96,11 +96,11 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-2 border-t border-white/10 px-6 py-4 sm:flex-row sm:justify-between sm:px-8 lg:px-12">
-          <p className="text-xs text-white/40">
+        <div className="flex flex-col items-center gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-between sm:px-8 lg:px-12">
+          <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Scalar. All rights reserved.
           </p>
-          <p className="text-xs text-white/40">tryscalar.xyz</p>
+          <p className="text-xs text-muted-foreground">tryscalar.xyz</p>
         </div>
       </div>
     </footer>

@@ -8,7 +8,7 @@ export default function PrivacyPage() {
       <Header />
       <main className="flex-1 pt-16">
         <section className="relative py-24 sm:py-28 overflow-hidden">
-          <div className="absolute inset-0 bg-charcoal-dark" />
+          <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90, 176, 232,0.08),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
             <Badge variant="orange" className="mb-4">Legal</Badge>
@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="py-16 sm:py-20">
-          <div className="mx-auto max-w-3xl px-4 prose prose-invert prose-sm">
+          <div className="mx-auto max-w-3xl px-4 prose prose-sm dark:prose-invert">
             <div className="space-y-8 text-muted-foreground text-sm leading-relaxed">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">1. Information We Collect</h2>

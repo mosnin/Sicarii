@@ -28,14 +28,14 @@ const steps = [
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="relative scroll-mt-24 bg-charcoal-dark py-24 sm:py-32">
+    <section id="how-it-works" className="relative scroll-mt-24 bg-muted/40 py-24 dark:bg-charcoal-dark sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs uppercase tracking-[0.25em] text-orange/80">How it works</p>
-          <h2 className="font-brand mt-3 text-3xl text-white sm:text-4xl lg:text-5xl">
+          <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             From first contact to <span className="text-gradient-orange">closed deal</span>
           </h2>
-          <p className="mt-4 text-lg text-white/60">
+          <p className="mt-4 text-lg text-muted-foreground">
             A calm, transparent process that keeps you in control the whole way through.
           </p>
         </div>
@@ -54,8 +54,8 @@ export function HowItWorksSection() {
                 <span className="font-brand text-3xl text-orange tabular-nums">
                   0{index + 1}
                 </span>
-                <h3 className="font-brand mt-3 text-xl text-white">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/55">{step.description}</p>
+                <h3 className="font-brand mt-3 text-xl text-foreground">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
               </SpotlightCard>
             </motion.div>
           ))}
