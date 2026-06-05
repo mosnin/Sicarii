@@ -12,7 +12,7 @@ import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { ContactActions } from "./actions";
-import { ContactEnrich } from "./enrich";
+import { ContactEnrich, ContactEnrichAll } from "./enrich";
 import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 import { EnrichmentStatusCard, contactTier } from "@/components/dashboard/enrichment-status";
 import { ContactAgentMail } from "./agentmail";
@@ -37,6 +37,14 @@ export default async function ContactDetailPage({
     where: { contactId: id },
     orderBy: { sentAt: "desc" },
   });
+
+  // Which core fields are still missing (drives both the prominent Enrich
+  // button on the status card and the per-field Find buttons in Details).
+  const missing = [
+    !contact.linkedin ? ("linkedin" as const) : null,
+    !contact.email ? ("email" as const) : null,
+    !contact.phone ? ("phone" as const) : null,
+  ].filter((f): f is "linkedin" | "email" | "phone" => f !== null);
 
   const fields: { label: string; value: string | null; href?: string }[] = [
     { label: "Title", value: contact.title },
@@ -109,7 +117,10 @@ export default async function ContactDetailPage({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Details */}
         <FloatIn delay={0.1} className="lg:col-span-1 space-y-6">
-          <EnrichmentStatusCard tier={contactTier(contact)} />
+          <EnrichmentStatusCard
+            tier={contactTier(contact)}
+            action={<ContactEnrichAll contactId={contact.id} missing={missing} />}
+          />
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Details</CardTitle>
@@ -139,14 +150,7 @@ export default async function ContactDetailPage({
                   No details yet - enrich this contact to fill them in.
                 </p>
               )}
-              <ContactEnrich
-                contactId={contact.id}
-                missing={[
-                  !contact.linkedin ? ("linkedin" as const) : null,
-                  !contact.email ? ("email" as const) : null,
-                  !contact.phone ? ("phone" as const) : null,
-                ].filter((f): f is "linkedin" | "email" | "phone" => f !== null)}
-              />
+              <ContactEnrich contactId={contact.id} missing={missing} />
               {!contact.entity && <MatchEntity contactId={contact.id} />}
               {contact.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-2">

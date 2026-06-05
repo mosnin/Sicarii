@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export type EnrichTier = "new" | "enriched" | "full";
@@ -27,7 +28,7 @@ export function contactTier(c: { status: string; linkedin: string | null; email:
   return "new";
 }
 
-export function EnrichmentStatusCard({ tier }: { tier: EnrichTier }) {
+export function EnrichmentStatusCard({ tier, action }: { tier: EnrichTier; action?: ReactNode }) {
   const current = RANK[tier];
   const blurb =
     tier === "full" ? "Deep research complete, this record is fully built out."
@@ -59,6 +60,7 @@ export function EnrichmentStatusCard({ tier }: { tier: EnrichTier }) {
         })}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">{blurb}</p>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
