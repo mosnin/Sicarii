@@ -124,10 +124,10 @@ function SegmentsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => setMode(mode === "prompt" ? "none" : "prompt")} variant={mode === "prompt" ? "glow" : "default"}>
-          Build from prompt
+          Auto create
         </Button>
         <Button size="sm" variant="outline" onClick={() => setMode(mode === "manual" ? "none" : "manual")}>
-          New segment
+          Manual
         </Button>
         {msg && <span className="text-xs text-muted-foreground">{msg}</span>}
       </div>
@@ -197,28 +197,42 @@ function SegmentsPanel() {
 
 /* ----------------------------- Pipelines ----------------------------- */
 
-type Pipeline = { id: string; name: string; _count: { entries: number } };
+type Pipeline = { id: string; name: string; goal: string | null; _count: { entries: number } };
+type SegmentOpt = { id: string; name: string; _count: { members: number } };
 
 function PipelinesPanel() {
   const [items, setItems] = useState<Pipeline[]>([]);
+  const [segments, setSegments] = useState<SegmentOpt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [objective, setObjective] = useState("");
+  const [segmentId, setSegmentId] = useState("");
   const [creating, setCreating] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const d = await fetch("/api/pipelines").then((r) => r.json()).catch(() => ({}));
-    setItems(d.pipelines ?? []);
+    const [p, s] = await Promise.all([
+      fetch("/api/pipelines").then((r) => r.json()).catch(() => ({})),
+      fetch("/api/segments").then((r) => r.json()).catch(() => ({})),
+    ]);
+    setItems(p.pipelines ?? []);
+    setSegments(s.segments ?? []);
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
 
   async function create() {
-    if (!name.trim()) return;
-    setCreating(true);
+    if (!name.trim() || !segmentId) { setErr("Name and a segment are required."); return; }
+    setCreating(true); setErr(null);
     try {
-      const res = await fetch("/api/pipelines", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
-      if (res.ok) { setName(""); load(); }
+      const res = await fetch("/api/pipelines", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, goal: objective, segmentId }),
+      });
+      if (res.ok) { setName(""); setObjective(""); setSegmentId(""); setOpen(false); load(); }
+      else { const d = await res.json().catch(() => ({})); setErr(d.error ?? "Couldn't create pipeline."); }
     } finally { setCreating(false); }
   }
 
@@ -226,16 +240,36 @@ function PipelinesPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="New pipeline name" className="max-w-xs" />
-        <Button size="sm" onClick={create} disabled={creating || !name.trim()}>
-          {creating ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Create
-        </Button>
-      </div>
+      <Button size="sm" onClick={() => setOpen((o) => !o)} variant={open ? "glow" : "default"}>New pipeline</Button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Pipeline name" />
+              <Input value={objective} onChange={(e) => setObjective(e.target.value)} placeholder="Objective, e.g. book 10 demos with fintech founders" />
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Assign a segment to work</label>
+                <select value={segmentId} onChange={(e) => setSegmentId(e.target.value)}
+                  className="w-full rounded-full border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                  <option value="">Select a segment…</option>
+                  {segments.map((s) => <option key={s.id} value={s.id}>{s.name} ({s._count.members})</option>)}
+                </select>
+                {segments.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Create a segment first, then assign it here.</p>}
+              </div>
+              {err && <p className="text-xs text-destructive">{err}</p>}
+              <Button size="sm" onClick={create} disabled={creating || !name.trim() || !segmentId}>
+                {creating ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Create pipeline
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {loading ? null : items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
           <p className="font-brand text-base">No pipelines yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create one, or start one from a segment.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Create one and assign a segment to start working the deals.</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -243,6 +277,7 @@ function PipelinesPanel() {
             <button key={p.id} type="button" onClick={() => setSelected(p.id)}
               className="rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30">
               <p className="font-brand text-base">{p.name}</p>
+              {p.goal && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{p.goal}</p>}
               <p className="mt-1 text-sm text-muted-foreground">{p._count.entries} in pipeline</p>
             </button>
           ))}
@@ -259,12 +294,14 @@ type Entry = {
 
 function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
   const [name, setName] = useState("");
+  const [goal, setGoal] = useState<string | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     const d = await fetch(`/api/pipelines/${id}`).then((r) => r.json()).catch(() => ({}));
     setName(d.pipeline?.name ?? "Pipeline");
+    setGoal(d.pipeline?.goal ?? null);
     setEntries(d.pipeline?.entries ?? []);
     setLoading(false);
   }, [id]);
@@ -278,44 +315,61 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
     });
   }
 
+  const move = (e: Entry, dir: -1 | 1) => {
+    const i = STAGES.indexOf(e.stage);
+    const next = STAGES[Math.max(0, Math.min(STAGES.length - 1, i + dir))];
+    if (next !== e.stage) patch(e.id, { stage: next });
+  };
+
   return (
     <div className="space-y-4">
       <button type="button" onClick={onBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> All pipelines
       </button>
-      <h2 className="font-brand text-xl">{name}</h2>
+      <div>
+        <h2 className="font-brand text-xl">{name}</h2>
+        {goal && <p className="mt-0.5 text-sm text-muted-foreground">Objective: {goal}</p>}
+      </div>
 
       {loading ? null : entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No one in this pipeline yet. Start one from a segment to seed it.</p>
+        <p className="text-sm text-muted-foreground">No one in this pipeline yet. It is seeded from the assigned segment on creation.</p>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {entries.map((e) => (
-            <div key={e.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{e.contact.name || e.contact.email || "Unnamed"}</p>
-                  <p className="text-xs text-muted-foreground truncate">{[e.contact.title, e.contact.company].filter(Boolean).join(" · ")}</p>
+        // Kanban: a column per stage.
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {STAGES.map((stage) => {
+            const col = entries.filter((e) => e.stage === stage);
+            return (
+              <div key={stage} className="flex w-72 shrink-0 flex-col rounded-2xl border border-border bg-muted/30 p-2">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{stageLabel[stage]}</span>
+                  <span className="rounded-full bg-card px-2 py-0.5 text-[11px] text-muted-foreground">{col.length}</span>
                 </div>
-                <DealScore value={e.dealScore} onChange={(v) => patch(e.id, { dealScore: v })} />
+                <div className="space-y-2">
+                  {col.map((e) => (
+                    <div key={e.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{e.contact.name || e.contact.email || "Unnamed"}</p>
+                          <p className="truncate text-xs text-muted-foreground">{[e.contact.title, e.contact.company].filter(Boolean).join(" · ")}</p>
+                        </div>
+                        <DealScore value={e.dealScore} onChange={(v) => patch(e.id, { dealScore: v })} />
+                      </div>
+                      <select value={e.conversationStatus} onChange={(ev) => patch(e.id, { conversationStatus: ev.target.value })}
+                        className="mt-2 w-full rounded-full border border-border bg-background px-3 py-1 text-xs">
+                        {CONVO.map((c) => <option key={c} value={c}>{c.replace("_", " ").toLowerCase()}</option>)}
+                      </select>
+                      <div className="mt-2 flex items-center justify-between">
+                        <button type="button" onClick={() => move(e, -1)} disabled={STAGES.indexOf(e.stage) === 0}
+                          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-30">‹ Back</button>
+                        <button type="button" onClick={() => move(e, 1)} disabled={STAGES.indexOf(e.stage) === STAGES.length - 1}
+                          className="rounded-md px-2 py-1 text-xs text-primary hover:bg-muted disabled:opacity-30">Advance ›</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <label className="text-[11px] text-muted-foreground">
-                  Stage
-                  <select value={e.stage} onChange={(ev) => patch(e.id, { stage: ev.target.value })}
-                    className="mt-1 w-full rounded-full border border-border bg-background px-3 py-1.5 text-sm">
-                    {STAGES.map((s) => <option key={s} value={s}>{stageLabel[s]}</option>)}
-                  </select>
-                </label>
-                <label className="text-[11px] text-muted-foreground">
-                  Conversation
-                  <select value={e.conversationStatus} onChange={(ev) => patch(e.id, { conversationStatus: ev.target.value })}
-                    className="mt-1 w-full rounded-full border border-border bg-background px-3 py-1.5 text-sm">
-                    {CONVO.map((c) => <option key={c} value={c}>{c.replace("_", " ").toLowerCase()}</option>)}
-                  </select>
-                </label>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

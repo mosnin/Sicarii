@@ -18,6 +18,18 @@ import {
   searchCrm,
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
+import {
+  listSegments,
+  getSegment,
+  createSegment,
+  buildSmartSegment,
+  listPipelines,
+  getPipeline,
+  createPipeline,
+  addToPipeline,
+  updatePipelineEntry,
+  pipelineMetrics,
+} from "@/lib/field-operations";
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -230,6 +242,85 @@ const handler = createMcpHandler(
           return fail("Web search is not configured (TAVILY_API_KEY missing).");
         return run(() => tavilySearch(query, { maxResults }));
       },
+    );
+
+    /* -------------------------- Segments -------------------------- */
+    server.tool(
+      "list_segments",
+      "List customer segments with member counts.",
+      {},
+      async (_args, extra) => run(() => listSegments(userIdFrom(extra))),
+    );
+
+    server.tool(
+      "get_segment",
+      "Get a segment and its member contacts.",
+      { id: z.string() },
+      async ({ id }, extra) => run(() => getSegment(userIdFrom(extra), id)),
+    );
+
+    server.tool(
+      "create_segment",
+      "Create a customer segment manually, optionally with member contact ids.",
+      { name: z.string(), goal: z.string().optional(), contactIds: z.array(z.string()).optional() },
+      async (args, extra) => run(() => createSegment(userIdFrom(extra), args)),
+    );
+
+    server.tool(
+      "build_smart_segment",
+      "Build a segment from a goal: vector-matches the closest ELIGIBLE prospects (enriched, not yet contacted, not already in a pipeline). Use this to auto-create a targeted segment.",
+      { goal: z.string(), quantity: z.number().int().min(1).max(100).optional(), name: z.string().optional() },
+      async (args, extra) => run(() => buildSmartSegment(userIdFrom(extra), args)),
+    );
+
+    /* -------------------------- Pipelines ------------------------- */
+    server.tool(
+      "list_pipelines",
+      "List pipelines with entry counts.",
+      {},
+      async (_args, extra) => run(() => listPipelines(userIdFrom(extra))),
+    );
+
+    server.tool(
+      "get_pipeline",
+      "Get a pipeline with its entries (stage, deal score, conversation status) and contacts.",
+      { id: z.string() },
+      async ({ id }, extra) => run(() => getPipeline(userIdFrom(extra), id)),
+    );
+
+    server.tool(
+      "create_pipeline",
+      "Create a pipeline with an objective, optionally seeded from a segment (recommended).",
+      { name: z.string(), goal: z.string().optional(), segmentId: z.string().optional() },
+      async (args, extra) => run(() => createPipeline(userIdFrom(extra), args)),
+    );
+
+    server.tool(
+      "add_to_pipeline",
+      "Add contacts (by ids and/or a whole segment) to a pipeline as new entries.",
+      { pipelineId: z.string(), contactIds: z.array(z.string()).optional(), segmentId: z.string().optional() },
+      async ({ pipelineId, ...rest }, extra) => run(() => addToPipeline(userIdFrom(extra), pipelineId, rest)),
+    );
+
+    server.tool(
+      "update_pipeline_entry",
+      "Update a pipeline entry: move its stage, set a 0-100 deal score, or set conversation status. Set conversationStatus to CLOSED when a conversation is over so the agent stops following up.",
+      {
+        pipelineId: z.string(),
+        entryId: z.string(),
+        stage: z.enum(["NEW", "ENRICHED", "PROSPECTING", "ENGAGING", "REPLYING", "WON", "LOST"]).optional(),
+        dealScore: z.number().int().min(0).max(100).nullable().optional(),
+        conversationStatus: z.enum(["OPEN", "AWAITING_REPLY", "STALLED", "CLOSED"]).optional(),
+      },
+      async ({ pipelineId, entryId, ...patch }, extra) =>
+        run(() => updatePipelineEntry(userIdFrom(extra), pipelineId, entryId, patch)),
+    );
+
+    server.tool(
+      "pipeline_metrics",
+      "Progress metrics for a pipeline: counts by stage and conversation status, won/lost, average deal score, and open conversations.",
+      { pipelineId: z.string() },
+      async ({ pipelineId }, extra) => run(() => pipelineMetrics(userIdFrom(extra), pipelineId)),
     );
   },
   {
