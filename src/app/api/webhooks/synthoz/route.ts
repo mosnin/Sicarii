@@ -3,18 +3,23 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizeRecords, extract, isObj } from "@/lib/synthoz-extract";
 
-// POST /api/webhooks/synthoz/[token] — inbound receiver for Synthoz's async
-// "outgoing webhook" results. The token (in the URL the user pastes into
-// Synthoz) identifies the owning user. Public route (matched by /api/webhooks).
-// Always answers 200 so Synthoz doesn't retry; ingestion is best-effort.
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
-) {
-  const { token } = await params;
+// POST /api/webhooks/synthoz — single app-level inbound receiver for Synthoz's
+// async "outgoing webhook" results. The admin configures this URL once in their
+// Synthoz dashboard (one URL, all products). Public route; acks 200 always so
+// Synthoz does not retry.
+export async function POST(req: NextRequest) {
   const raw = await req.text();
-  // Log the raw delivery so we can learn Synthoz's exact payload shape.
-  console.log(`[synthoz-webhook] token=${token.slice(0, 6)}… body=${raw.slice(0, 800)}`);
+  console.log(`[synthoz-webhook] body=${raw.slice(0, 800)}`);
+
+  // Optional HMAC / shared-secret check.
+  const secret = process.env.SYNTHOZ_WEBHOOK_SECRET;
+  if (secret) {
+    const sig = req.headers.get("x-webhook-secret") ?? req.headers.get("x-synthoz-secret");
+    if (sig !== secret) {
+      console.warn("[synthoz-webhook] secret mismatch — rejected");
+      return NextResponse.json({ ok: false }, { status: 200 });
+    }
+  }
 
   let payload: unknown;
   try {
@@ -23,13 +28,15 @@ export async function POST(
     payload = raw;
   }
 
-  const user = await prisma.user.findUnique({ where: { webhookToken: token } });
-  if (!user) {
-    return NextResponse.json({ ok: false, reason: "unknown token" }, { status: 200 });
-  }
-
   // Synthoz failure envelope — nothing to ingest.
   if (isObj(payload) && (payload as { state?: unknown }).state === false) {
+    return NextResponse.json({ ok: true, ingested: 0 });
+  }
+
+  // Attribute to the oldest user (the account owner / admin who owns the API key).
+  const owner = await prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
+  if (!owner) {
+    console.warn("[synthoz-webhook] no users found — skipping");
     return NextResponse.json({ ok: true, ingested: 0 });
   }
 
@@ -40,17 +47,16 @@ export async function POST(
     const x = extract(rec);
     try {
       if (x.email || (x.name && !x.domain)) {
-        // Person → contact (dedupe by email).
         if (x.email) {
           const dupe = await prisma.contact.findFirst({
-            where: { userId: user.id, email: x.email },
+            where: { userId: owner.id, email: x.email },
             select: { id: true },
           });
           if (dupe) continue;
         }
         await prisma.contact.create({
           data: {
-            userId: user.id,
+            userId: owner.id,
             name: x.name ?? null,
             email: x.email ?? null,
             phone: x.phone ?? null,
@@ -65,17 +71,16 @@ export async function POST(
         });
         ingested++;
       } else if (x.domain || x.company || x.name) {
-        // Company → entity (dedupe by domain).
         if (x.domain) {
           const dupe = await prisma.entity.findFirst({
-            where: { userId: user.id, domain: x.domain },
+            where: { userId: owner.id, domain: x.domain },
             select: { id: true },
           });
           if (dupe) continue;
         }
         await prisma.entity.create({
           data: {
-            userId: user.id,
+            userId: owner.id,
             name: x.company || x.name || x.domain!,
             domain: x.domain ?? null,
             website: x.website ?? null,
@@ -92,6 +97,6 @@ export async function POST(
     }
   }
 
-  console.log(`[synthoz-webhook] token=${token.slice(0, 6)}… ingested=${ingested}/${records.length}`);
+  console.log(`[synthoz-webhook] ingested=${ingested}/${records.length} for user=${owner.id}`);
   return NextResponse.json({ ok: true, ingested });
 }

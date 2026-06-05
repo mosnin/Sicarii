@@ -10,7 +10,7 @@ import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
 import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
-import { getDbUser, getOrCreateWebhookToken } from "@/lib/server-user";
+import { getDbUser } from "@/lib/server-user";
 
 export const dynamic = "force-dynamic";
 
@@ -18,15 +18,11 @@ export default async function SettingsPage() {
   const user = await getDbUser();
   const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
 
-  // Per-user inbound webhook URL for Synthoz async results.
-  let webhookUrl: string | null = null;
-  if (user) {
-    const token = await getOrCreateWebhookToken(user.id);
-    const h = await headers();
-    const host = h.get("host") ?? "www.tryscalar.xyz";
-    const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
-    webhookUrl = `${proto}://${host}/api/webhooks/synthoz/${token}`;
-  }
+  // Single app-level webhook URL — same for every user, configured once in Synthoz.
+  const h = await headers();
+  const host = h.get("host") ?? "www.tryscalar.xyz";
+  const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
+  const webhookUrl = `${proto}://${host}/api/webhooks/synthoz`;
 
   return (
     <div className="space-y-8">
@@ -84,24 +80,23 @@ export default async function SettingsPage() {
         </Card>
       </FloatIn>
 
-      {/* Synthoz async results webhook */}
-      {webhookUrl && (
-        <FloatIn delay={0.26}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Discovery results webhook</CardTitle>
-              <CardDescription>
-                Some Synthoz tools (like email finding) return results asynchronously.
-                Paste this URL as the <span className="font-medium">outgoing webhook</span> in
-                your Synthoz dashboard and results will flow straight into your CRM.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <WebhookUrl url={webhookUrl} />
-            </CardContent>
-          </Card>
-        </FloatIn>
-      )}
+      {/* Synthoz async webhook — one URL for the entire app */}
+      <FloatIn delay={0.26}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Discovery results webhook</CardTitle>
+            <CardDescription>
+              Paste this URL into your{" "}
+              <span className="font-medium">Synthoz → Outgoing Webhook</span>{" "}
+              for each product you use. One URL handles all event types — contacts
+              and companies flow straight into your CRM as Synthoz delivers them.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WebhookUrl url={webhookUrl} />
+          </CardContent>
+        </Card>
+      </FloatIn>
     </div>
   );
 }

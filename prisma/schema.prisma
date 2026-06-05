@@ -29,8 +29,6 @@ model User {
   // connected AgentMail key for email. Both are per-user settings.
   productContext  String? @db.Text
   agentMailApiKey String?
-  // Stable secret in the user's inbound webhook URL (Synthoz async results).
-  webhookToken    String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
