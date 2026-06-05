@@ -61,7 +61,7 @@ export function AsciiField({
           const a = 0.06 + v * 0.5;
           // Brand green tones: bright highlight → lighter green; base → primary green
           ctx.fillStyle =
-            v > 0.86 ? `rgba(46,125,70,${a.toFixed(3)})` : `rgba(30,77,43,${a.toFixed(3)})`;
+            v > 0.86 ? `rgba(143,204,242,${a.toFixed(3)})` : `rgba(90,176,232,${a.toFixed(3)})`;
           ctx.fillText(ch, x * cw, y * cell);
         }
       }

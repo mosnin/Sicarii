@@ -246,7 +246,7 @@ export function Header() {
           >
             <div className="absolute inset-0 bg-charcoal-dark/95 backdrop-blur-xl" />
             <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-30" cell={14} />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(30,77,43,0.18),transparent_60%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(90,176,232,0.18),transparent_60%)]" />
 
             <motion.div
               className="relative flex h-full flex-col overflow-y-auto"

@@ -69,8 +69,8 @@ export function HeroSection() {
     >
       <motion.div style={{ y: asciiY }} className="absolute inset-0">
         <AsciiField className="absolute inset-0 h-full w-full opacity-25" cell={14} />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(30,77,43,0.16),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(30,77,43,0.08),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.16),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(90,176,232,0.08),transparent_50%)]" />
       </motion.div>
 
       <motion.div

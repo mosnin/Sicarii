@@ -7,7 +7,7 @@ export function CTASection() {
     <section className="bg-charcoal-dark px-4 pb-24 sm:pb-32">
       <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-charcoal px-6 py-20 text-center sm:py-24">
         <AsciiField className="absolute inset-0 h-full w-full opacity-50" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(30,77,43,0.2),transparent_60%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.2),transparent_60%)]" />
         <div className="relative z-10">
           <h2 className="font-brand text-3xl text-white sm:text-4xl lg:text-5xl">
             Ready to run your <span className="text-gradient-orange">agent CRM?</span>
