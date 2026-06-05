@@ -12,6 +12,7 @@ import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { ContactActions } from "./actions";
+import { ContactEnrich } from "./enrich";
 
 export default async function ContactDetailPage({
   params,
@@ -103,6 +104,14 @@ export default async function ContactDetailPage({
                   No details yet — enrich this contact to fill them in.
                 </p>
               )}
+              <ContactEnrich
+                contactId={contact.id}
+                missing={[
+                  !contact.linkedin ? ("linkedin" as const) : null,
+                  !contact.email ? ("email" as const) : null,
+                  !contact.phone ? ("phone" as const) : null,
+                ].filter((f): f is "linkedin" | "email" | "phone" => f !== null)}
+              />
               {contact.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-2">
                   {contact.tags.map((t) => (

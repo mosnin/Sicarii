@@ -40,6 +40,7 @@ export interface EntityInput {
   name: string;
   domain?: string | null;
   website?: string | null;
+  phone?: string | null;
   industry?: string | null;
   location?: string | null;
   description?: string | null;

@@ -138,6 +138,7 @@ model Entity {
   name        String
   domain      String?
   website     String?
+  phone       String?
   industry    String?
   location    String?
   description String? @db.Text

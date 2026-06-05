@@ -11,6 +11,7 @@ const createEntitySchema = z.object({
   name: z.string().trim().min(1).max(200),
   domain: z.string().trim().max(255).optional(),
   website: z.string().trim().max(500).optional(),
+  phone: z.string().trim().max(50).optional(),
   industry: z.string().trim().max(120).optional(),
   location: z.string().trim().max(200).optional(),
   description: z.string().trim().max(10000).optional(),

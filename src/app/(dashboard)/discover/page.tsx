@@ -254,6 +254,35 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
+    id: "prospecting",
+    label: "Prospecting",
+    tools: [
+      {
+        id: "find-entities",
+        icon: Radar,
+        title: "Find companies",
+        body: "Describe your ideal customer; Exa deep-researches a list of matching companies with full details. Add them one-by-one or all at once.",
+        saveAs: "entity",
+        badge: "Exa",
+        fields: [
+          { key: "query", label: "Describe the companies you want", placeholder: "Series A fintech startups in NYC using Stripe" },
+          {
+            key: "numResults",
+            label: "How many to find",
+            placeholder: "10",
+            type: "select",
+            options: [
+              { value: "10", label: "10" },
+              { value: "20", label: "20" },
+              { value: "30", label: "30" },
+              { value: "50", label: "50" },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: "intent",
     label: "Intent intelligence",
     tools: [
@@ -313,8 +342,6 @@ const CATEGORIES: Category[] = [
   },
 ];
 
-const ALL_TOOLS: Tool[] = CATEGORIES.flatMap((c) => c.tools);
-
 const SPRING = [0.16, 1, 0.3, 1] as const;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -323,8 +350,28 @@ function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+/** Safely derive a hostname from a possibly-invalid URL string. Never throws. */
+function hostOf(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url.startsWith("http") ? url : `https://${url}`).hostname.replace(/^www\./, "");
+  } catch {
+    return undefined;
+  }
+}
+
 function normalizeRecords(result: unknown): { records: Record<string, unknown>[]; rawText?: string } {
   if (result == null) return { records: [] };
+
+  // Enrichment envelope: { __subject, __data } — keep intact for EnrichmentResult.
+  if (isObj(result) && "__subject" in result) {
+    return { records: [result] };
+  }
+
+  // Company list: { companies: [...] } — addable prospect grid.
+  if (isObj(result) && Array.isArray(result.companies)) {
+    return { records: (result.companies as unknown[]).filter(isObj) };
+  }
 
   // Scrape result: { markdown: string }
   if (isObj(result) && typeof result.markdown === "string") {
@@ -419,6 +466,47 @@ function stripEmpty<T extends Record<string, unknown>>(obj: T): Partial<T> {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v != null && v !== "")
   ) as Partial<T>;
+}
+
+// Turn snake/camel keys into human labels: full_tech_stack → "Full tech stack".
+function humanize(key: string): string {
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .trim()
+    .replace(/^\w/, (c) => c.toUpperCase())
+    .replace(/\b(url|id|ceo|cto|cfo|hq|api)\b/gi, (m) => m.toUpperCase());
+}
+
+// Providers wrap payloads in {data}/{records}/{result}/{response}. Peel those
+// to surface the meaningful object.
+function unwrap(value: unknown): unknown {
+  let v = value;
+  for (let i = 0; i < 4; i++) {
+    if (isObj(v)) {
+      const keys = Object.keys(v);
+      if (keys.length === 1 && ["data", "records", "result", "response"].includes(keys[0])) {
+        v = v[keys[0]];
+        continue;
+      }
+    }
+    break;
+  }
+  return v;
+}
+
+// Drop noisy keys (hashes, opaque ids, internal envelope markers) for display.
+function cleanForView(value: unknown): unknown {
+  const v = unwrap(value);
+  if (Array.isArray(v)) return v.map(cleanForView);
+  if (isObj(v)) {
+    return Object.fromEntries(
+      Object.entries(v)
+        .filter(([k]) => !/_hashed$|_id$|^id$|^__|correlation|request_status/i.test(k))
+        .map(([k, val]) => [k, cleanForView(val)])
+    );
+  }
+  return v;
 }
 
 // ─── reducer ─────────────────────────────────────────────────────────────────
@@ -657,6 +745,7 @@ export default function DiscoverPage() {
 
   const run = useCallback(async () => {
     if (!active) return;
+    setShowSchedule(false);
     dispatch({ type: "RUN" });
     try {
       const res = await fetch("/api/discover", {
@@ -685,9 +774,6 @@ export default function DiscoverPage() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [stage, run]);
-
-  // Reset schedule panel when leaving results
-  useEffect(() => { if (stage !== "results") setShowSchedule(false); }, [stage]);
 
   const stageOrder: Stage[] = ["grid", "input", "working", "results"];
   const stageDir = (from: Stage, to: Stage) =>
@@ -817,7 +903,7 @@ export default function DiscoverPage() {
                     </label>
                     {f.type === "select" ? (
                       <select
-                        value={values[f.key] ?? ""}
+                        value={values[f.key] || f.options?.[0]?.value || ""}
                         onChange={(e) => dispatch({ type: "SET_VALUE", key: f.key, value: e.target.value })}
                         className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                       >
@@ -975,12 +1061,346 @@ export default function DiscoverPage() {
               </div>
             )}
 
-            {records && (
+            {records && records[0]?.__subject ? (
+              <EnrichmentResult env={records[0]} />
+            ) : records && records[0]?.__kind === "company" ? (
+              <EntityFinderResults companies={records} />
+            ) : records ? (
               <Results records={records} saveAs={active.saveAs} sourceTool={active.title} />
-            )}
+            ) : null}
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── designed JSON renderer ─────────────────────────────────────────────────
+// Renders arbitrary provider data in the app's design instead of raw JSON.
+
+function DataView({ value }: { value: unknown }) {
+  if (value == null || value === "") return <span className="text-muted-foreground">—</span>;
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    const s = String(value);
+    if (/^https?:\/\//i.test(s)) {
+      return (
+        <a href={s} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+          {s}
+        </a>
+      );
+    }
+    return <span className="break-words">{s}</span>;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-muted-foreground">—</span>;
+    const allScalar = value.every((v) => v === null || typeof v !== "object");
+    if (allScalar) {
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {value.map((v, i) => (
+            <span key={i} className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs">
+              {String(v)}
+            </span>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-2">
+        {value.map((v, i) => (
+          <div key={i} className="rounded-lg border border-border/60 bg-muted/30 p-3">
+            <DataView value={v} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (isObj(value)) {
+    const entries = Object.entries(value).filter(
+      ([, v]) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0)
+    );
+    if (entries.length === 0) return <span className="text-muted-foreground">—</span>;
+    return (
+      <div className="space-y-2">
+        {entries.map(([k, v]) => (
+          <div key={k} className="grid grid-cols-[minmax(0,9rem)_1fr] gap-3 text-sm">
+            <span className="text-xs text-muted-foreground pt-0.5">{humanize(k)}</span>
+            <div className="min-w-0">
+              <DataView value={v} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ─── enrichment result (match-or-create entity by domain) ───────────────────
+
+function EnrichmentResult({ env }: { env: Record<string, unknown> }) {
+  const subject = (env.__subject ?? {}) as { domain?: string | null; label?: string };
+  const data = env.__data;
+  const domain = subject.domain ?? undefined;
+  const [state, setState] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function attach() {
+    if (!domain) return;
+    setState("saving");
+    setMsg(null);
+    try {
+      const res = await fetch("/api/entities/upsert-enrichment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, key: subject.label ?? "enrichment", data }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg(d?.error ?? "Failed to attach."); setState("error"); return; }
+      setMsg(d.created ? "Created entity & enriched" : "Enriched existing entity");
+      setState("done");
+    } catch {
+      setMsg("Network error.");
+      setState("error");
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{subject.label}</p>
+          <p className="font-brand truncate text-base">{domain ?? "Result"}</p>
+        </div>
+        {domain && (
+          state === "done" ? (
+            <Button size="sm" variant="outline" disabled>
+              <Check className="mr-1 h-3.5 w-3.5 text-green-500" />
+              {msg}
+            </Button>
+          ) : (
+            <Button size="sm" onClick={attach} disabled={state === "saving"}>
+              {state === "saving" ? (
+                <>
+                  <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="mr-1 inline-flex">
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </motion.span>
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Add &amp; enrich entity
+                </>
+              )}
+            </Button>
+          )
+        )}
+      </div>
+
+      <div className="mt-4 max-h-[28rem] overflow-auto rounded-xl border border-border bg-muted/30 p-4">
+        <DataView value={cleanForView(data)} />
+      </div>
+
+      {msg && state === "error" && <p className="mt-2 text-xs text-destructive">{msg}</p>}
+    </div>
+  );
+}
+
+// ─── entity finder (find-entities / refined web search) ─────────────────────
+
+type FinderCompany = {
+  companyName: string;
+  domain?: string;
+  website?: string;
+  phone?: string;
+  industry?: string;
+  address?: string;
+  description?: string;
+  keyDecisionMakers?: { name: string; title?: string }[];
+  sourceUrl?: string;
+  inCrm?: boolean;
+  existingId?: string | null;
+};
+
+function companyToEntityPayload(c: FinderCompany) {
+  const dm = c.keyDecisionMakers?.length
+    ? "Key decision makers: " +
+      c.keyDecisionMakers.map((d) => (d.title ? `${d.name} (${d.title})` : d.name)).join(", ")
+    : "";
+  return stripEmpty({
+    name: c.companyName,
+    domain: c.domain,
+    website: c.website,
+    phone: c.phone,
+    industry: c.industry,
+    location: c.address,
+    description: [c.description, dm].filter(Boolean).join("\n\n"),
+    source: "discover",
+    tags: ["discovered"],
+    enrichment: c as unknown as Record<string, unknown>,
+  });
+}
+
+function EntityFinderResults({ companies }: { companies: Record<string, unknown>[] }) {
+  const list = companies as unknown as FinderCompany[];
+  const [added, setAdded] = useState<Record<number, "added" | "saving">>({});
+  const [bulk, setBulk] = useState<"idle" | "saving" | "done">("idle");
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
+
+  const addableIdx = list.map((c, i) => ({ c, i })).filter(({ c, i }) => !c.inCrm && added[i] !== "added");
+  const newCount = list.filter((c) => !c.inCrm).length;
+
+  async function addOne(i: number) {
+    setAdded((s) => ({ ...s, [i]: "saving" }));
+    try {
+      const res = await fetch("/api/entities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(companyToEntityPayload(list[i])),
+      });
+      if (res.ok) setAdded((s) => ({ ...s, [i]: "added" }));
+      else setAdded((s) => { const n = { ...s }; delete n[i]; return n; });
+    } catch {
+      setAdded((s) => { const n = { ...s }; delete n[i]; return n; });
+    }
+  }
+
+  async function addAll() {
+    setBulk("saving");
+    setBulkMsg(null);
+    try {
+      const payload = addableIdx.map(({ c }) => companyToEntityPayload(c));
+      if (payload.length === 0) { setBulk("done"); return; }
+      const res = await fetch("/api/entities/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entities: payload }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setAdded((s) => {
+          const n = { ...s };
+          addableIdx.forEach(({ i }) => (n[i] = "added"));
+          return n;
+        });
+        setBulkMsg(`Added ${d.created}${d.skipped ? ` · skipped ${d.skipped} duplicate${d.skipped === 1 ? "" : "s"}` : ""}`);
+        setBulk("done");
+      } else {
+        setBulkMsg(d?.error ?? "Bulk add failed.");
+        setBulk("idle");
+      }
+    } catch {
+      setBulkMsg("Network error.");
+      setBulk("idle");
+    }
+  }
+
+  if (list.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-10 text-center">
+        <p className="font-brand text-lg">No companies found</p>
+        <p className="text-muted-foreground mt-1 text-sm">Try a more specific description.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-muted-foreground text-sm">
+          {list.length} found · {newCount} new
+        </p>
+        <div className="flex items-center gap-3">
+          {bulkMsg && <span className="text-xs text-muted-foreground">{bulkMsg}</span>}
+          <Button size="sm" onClick={addAll} disabled={bulk === "saving" || addableIdx.length === 0}>
+            {bulk === "saving" ? (
+              <>
+                <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="mr-1 inline-flex">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </motion.span>
+                Adding…
+              </>
+            ) : bulk === "done" && addableIdx.length === 0 ? (
+              <>
+                <Check className="mr-1 h-3.5 w-3.5 text-green-500" />
+                All added
+              </>
+            ) : (
+              <>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add all ({addableIdx.length})
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {list.map((c, i) => {
+        const state = c.inCrm ? "incrm" : added[i] ?? "idle";
+        return (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: SPRING, delay: Math.min(i * 0.04, 0.4) }}
+            className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/30"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  {c.website ? (
+                    <a href={c.website} target="_blank" rel="noopener noreferrer" className="font-brand truncate text-base hover:text-primary">
+                      {c.companyName}
+                    </a>
+                  ) : (
+                    <p className="font-brand truncate text-base">{c.companyName}</p>
+                  )}
+                </div>
+                <p className="text-muted-foreground mt-0.5 truncate text-sm">
+                  {[c.industry, c.address].filter(Boolean).join(" · ") || c.domain}
+                </p>
+                {c.description && (
+                  <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed line-clamp-3">{c.description}</p>
+                )}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {c.domain && <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">{c.domain}</span>}
+                  {c.phone && <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">{c.phone}</span>}
+                  {c.keyDecisionMakers?.slice(0, 3).map((d, j) => (
+                    <span key={j} className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs text-primary">
+                      {d.name}{d.title ? ` · ${d.title}` : ""}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="shrink-0">
+                {state === "incrm" ? (
+                  <Button size="sm" variant="outline" disabled>In CRM</Button>
+                ) : state === "added" ? (
+                  <Button size="sm" variant="outline" disabled>
+                    <Check className="mr-1 h-3.5 w-3.5 text-green-500" />Added
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={() => addOne(i)} disabled={state === "saving"}>
+                    {state === "saving" ? (
+                      <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="inline-flex">
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </motion.span>
+                    ) : (
+                      <><Plus className="mr-1 h-3.5 w-3.5" />Add</>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }
@@ -1036,14 +1456,14 @@ function Results({
 function ResultCard({ rec, saveAs }: { rec: Record<string, unknown>; saveAs: SaveAs }) {
   const x = extract(rec);
 
-  const heading = x.name || x.company || x.domain || x.email || (x.website ? new URL(x.website).hostname : "") || "Untitled";
+  const heading = x.name || x.company || x.domain || x.email || hostOf(x.website) || "Untitled";
   const sub = [x.title, x.company !== heading ? x.company : null, x.location]
     .filter(Boolean).join(" · ");
 
   const chips = [
     x.email && { label: x.email },
     x.phone && { label: x.phone },
-    x.website && { label: new URL(x.website).hostname },
+    x.website && { label: hostOf(x.website) ?? x.website },
     x.domain && !x.website && { label: x.domain },
   ].filter(Boolean) as { label: string }[];
 
@@ -1117,9 +1537,7 @@ function CrmAction({ rec, extracted, saveAs }: { rec: Record<string, unknown>; e
 
   useEffect(() => {
     const email = extracted.email?.trim().toLowerCase() || "";
-    const domain = extracted.domain?.trim().toLowerCase() || extracted.website
-      ? (() => { try { return new URL(extracted.website!).hostname.replace(/^www\./, ""); } catch { return ""; } })()
-      : "";
+    const domain = (extracted.domain?.trim().toLowerCase() || hostOf(extracted.website) || "").replace(/^www\./, "");
     if (!email && !domain) {
       matchRef.current = { status: "ready", match: { contact: null, entity: null } };
       rerender();
