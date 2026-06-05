@@ -213,13 +213,10 @@ function DockNavButton({
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
     >
-      {/* layoutId ties this icon to its sidebar counterpart for the morph */}
       <motion.div
-        layoutId={`nav-icon-container-${item.href}`}
         ref={ref}
         style={{ width: size, height: size }}
         className="group relative flex items-center justify-center"
-        transition={MORPH_SPRING}
       >
         {/* Tooltip */}
         <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/60 bg-background/90 px-2.5 py-1 text-xs font-medium opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 dark:border-white/10 dark:bg-charcoal/90">
@@ -227,7 +224,6 @@ function DockNavButton({
         </span>
 
         <motion.span
-          layoutId={`nav-icon-bg-${item.href}`}
           className={cn(
             "flex h-full w-full items-center justify-center rounded-full transition-colors",
             item.accent
@@ -239,10 +235,8 @@ function DockNavButton({
           transition={MORPH_SPRING}
         >
           <motion.span
-            layoutId={`nav-icon-${item.href}`}
             style={{ width: iconSize, height: iconSize }}
             className="flex"
-            transition={MORPH_SPRING}
           >
             <Icon className="h-full w-full" strokeWidth={item.accent ? 2.4 : 2} />
           </motion.span>
@@ -319,7 +313,6 @@ function Dock({
   return (
     /* Hidden on mobile — MobileLauncher handles small screens instead */
     <motion.nav
-      layoutId="nav-container"
       initial={{ y: 30, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
@@ -428,7 +421,6 @@ function Sidebar({
 
   return (
     <motion.nav
-      layoutId="nav-container"
       key="sidebar"
       initial={{ x: -(SIDEBAR_WIDTH + 24), opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
@@ -448,16 +440,10 @@ function Sidebar({
         {/* ── Logo / wordmark ── */}
         <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border/40 px-4 dark:border-white/[0.06]">
           <Link href="/dashboard" className="flex items-center gap-2.5">
-            <motion.div layoutId="sidebar-logo" transition={MORPH_SPRING}>
-              <LogoMark className="text-xl" />
-            </motion.div>
-            <motion.span
-              layoutId="sidebar-wordmark"
-              className="font-brand text-base font-bold text-foreground"
-              transition={MORPH_SPRING}
-            >
+            <LogoMark className="text-xl" />
+            <span className="font-brand text-base font-bold text-foreground">
               Scalar
-            </motion.span>
+            </span>
           </Link>
         </div>
 
@@ -469,7 +455,6 @@ function Sidebar({
             return (
               <motion.div
                 key={item.href}
-                layoutId={`nav-icon-container-${item.href}`}
                 initial={{ opacity: 0, x: -12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{
@@ -490,7 +475,6 @@ function Sidebar({
                   )}
                 >
                   <motion.span
-                    layoutId={`nav-icon-${item.href}`}
                     className="flex h-5 w-5 shrink-0"
                     transition={MORPH_SPRING}
                   >
