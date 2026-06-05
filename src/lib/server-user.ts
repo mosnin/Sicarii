@@ -1,6 +1,22 @@
 import { currentUser } from "@clerk/nextjs/server";
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
+
+/**
+ * Get (or lazily create) the user's stable webhook token — the secret embedded
+ * in their inbound webhook URL for Synthoz async results.
+ */
+export async function getOrCreateWebhookToken(userId: string): Promise<string> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (user?.webhookToken) return user.webhookToken;
+  const token = randomUUID().replace(/-/g, "");
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { webhookToken: token },
+  });
+  return updated.webhookToken!;
+}
 
 /**
  * Resolve the Prisma user for the current Clerk session in a server component,
