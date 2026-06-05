@@ -14,7 +14,6 @@ import {
   Loader2,
   Check,
   AlertCircle,
-  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -189,16 +188,11 @@ export default function DiscoverPage() {
       {/* Header */}
       <FloatIn>
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange/10">
-              <Radar className="h-5 w-5 text-orange" />
-            </div>
-            <div>
-              <h1 className="font-brand text-2xl sm:text-3xl">Discover</h1>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                Pull real company &amp; contact data, then drop it straight into your CRM.
-              </p>
-            </div>
+          <div>
+            <h1 className="font-brand text-2xl sm:text-3xl">Discover</h1>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              Pull real company &amp; contact data, then drop it straight into your CRM.
+            </p>
           </div>
           <Button variant="outline" asChild>
             <Link href="/crm/new">
@@ -220,25 +214,19 @@ export default function DiscoverPage() {
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="grid gap-4 sm:grid-cols-2"
           >
-            {TOOLS.map((t, i) => {
-              const Icon = t.icon;
-              return (
-                <FloatIn key={t.id} delay={i * 0.06}>
-                  <button type="button" onClick={() => openTool(t)} className="block w-full text-left">
-                    <SpotlightCard className="h-full p-6 transition-transform hover:-translate-y-0.5">
-                      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-orange/10">
-                        <Icon className="h-5 w-5 text-orange" />
-                      </div>
-                      <h3 className="font-brand text-lg">{t.title}</h3>
-                      <p className="text-muted-foreground mt-1 text-sm">{t.body}</p>
-                      <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-orange">
-                        Run tool <Sparkles className="h-3.5 w-3.5" />
-                      </span>
-                    </SpotlightCard>
-                  </button>
-                </FloatIn>
-              );
-            })}
+            {TOOLS.map((t, i) => (
+              <FloatIn key={t.id} delay={i * 0.06}>
+                <button type="button" onClick={() => openTool(t)} className="block w-full text-left">
+                  <SpotlightCard className="h-full p-6 transition-transform hover:-translate-y-0.5">
+                    <h3 className="font-brand text-lg">{t.title}</h3>
+                    <p className="text-muted-foreground mt-1 text-sm">{t.body}</p>
+                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-orange">
+                      Run tool
+                    </span>
+                  </SpotlightCard>
+                </button>
+              </FloatIn>
+            ))}
           </motion.div>
         ) : (
           // ── Tool detail / runner ──
@@ -259,14 +247,9 @@ export default function DiscoverPage() {
             </button>
 
             <div className="rounded-2xl border border-border bg-card p-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange/10">
-                  <active.icon className="h-5 w-5 text-orange" />
-                </div>
-                <div>
-                  <h2 className="font-brand text-lg">{active.title}</h2>
-                  <p className="text-muted-foreground text-sm">{active.body}</p>
-                </div>
+              <div className="mb-4">
+                <h2 className="font-brand text-lg">{active.title}</h2>
+                <p className="text-muted-foreground text-sm">{active.body}</p>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">

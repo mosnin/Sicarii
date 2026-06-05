@@ -9,7 +9,6 @@ import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
 import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
 import { getDbUser } from "@/lib/server-user";
-import { Settings } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +20,7 @@ export default async function SettingsPage() {
     <div className="space-y-8">
       {/* Header */}
       <FloatIn delay={0}>
-        <h1 className="font-brand flex items-center gap-2 text-2xl sm:text-3xl text-foreground">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-            <Settings className="h-5 w-5 text-primary" />
-          </span>
+        <h1 className="font-brand text-2xl sm:text-3xl text-foreground">
           Settings
         </h1>
         <p className="text-muted-foreground mt-1">

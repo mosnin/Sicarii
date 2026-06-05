@@ -134,14 +134,18 @@ const STORAGE_KEY = "scalar-nav-mode";
 // ── Dock magnification constants ─────────────────────────────────────────────
 const BASE = 46;
 const MAX = 78;
+const MAX_TOUCH = 52; // gentler max on coarse-pointer (touch) devices
 const ICON_BASE = 20;
 const ICON_MAX = 34;
+const ICON_MAX_TOUCH = 24;
 const RADIUS = 130;
 
 // Spring used for the morph animations
 const MORPH_SPRING = { type: "spring" as const, stiffness: 260, damping: 30 };
 // Slightly snappier spring for content inset
 const INSET_SPRING = { type: "spring" as const, stiffness: 260, damping: 32 };
+// Gentler spring for touch devices
+const TOUCH_SPRING = { mass: 0.15, stiffness: 120, damping: 20 };
 
 // ── DockNavButton ────────────────────────────────────────────────────────────
 
@@ -149,26 +153,31 @@ function DockNavButton({
   item,
   mouseX,
   active,
+  isTouch,
 }: {
   item: NavItem;
   mouseX: MotionValue<number>;
   active: boolean;
+  isTouch: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const Icon = item.icon;
+
+  const sizeMax = isTouch ? MAX_TOUCH : MAX;
+  const iconMax = isTouch ? ICON_MAX_TOUCH : ICON_MAX;
+  const spring = isTouch ? TOUCH_SPRING : { mass: 0.1, stiffness: 170, damping: 14 };
 
   const distance = useTransform(mouseX, (val) => {
     const b = ref.current?.getBoundingClientRect() ?? { x: 0, width: BASE };
     return val - b.x - b.width / 2;
   });
 
-  const spring = { mass: 0.1, stiffness: 170, damping: 14 };
   const size = useSpring(
-    useTransform(distance, [-RADIUS, 0, RADIUS], [BASE, MAX, BASE]),
+    useTransform(distance, [-RADIUS, 0, RADIUS], [BASE, sizeMax, BASE]),
     spring
   );
   const iconSize = useSpring(
-    useTransform(distance, [-RADIUS, 0, RADIUS], [ICON_BASE, ICON_MAX, ICON_BASE]),
+    useTransform(distance, [-RADIUS, 0, RADIUS], [ICON_BASE, iconMax, ICON_BASE]),
     spring
   );
 
@@ -239,19 +248,30 @@ function Dock({
   const pathname = usePathname();
   const mouseX = useMotionValue(Infinity);
 
+  // Detect coarse-pointer (touch) devices — disable aggressive magnification.
+  // Initialised lazily (runs only on client) to avoid SSR mismatch.
+  const [isTouch] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(pointer: coarse)").matches
+      : false
+  );
+
+  const sizeMax = isTouch ? MAX_TOUCH : MAX;
+  const iconMax = isTouch ? ICON_MAX_TOUCH : ICON_MAX;
+  const appsSpring = isTouch ? TOUCH_SPRING : { mass: 0.1, stiffness: 170, damping: 14 };
+
   // Apps launcher magnify
   const appsRef = useRef<HTMLDivElement>(null);
   const appsDistance = useTransform(mouseX, (val) => {
     const b = appsRef.current?.getBoundingClientRect() ?? { x: 0, width: BASE };
     return val - b.x - b.width / 2;
   });
-  const appsSpring = { mass: 0.1, stiffness: 170, damping: 14 };
   const appsSize = useSpring(
-    useTransform(appsDistance, [-RADIUS, 0, RADIUS], [BASE, MAX, BASE]),
+    useTransform(appsDistance, [-RADIUS, 0, RADIUS], [BASE, sizeMax, BASE]),
     appsSpring
   );
   const appsIcon = useSpring(
-    useTransform(appsDistance, [-RADIUS, 0, RADIUS], [ICON_BASE, ICON_MAX, ICON_BASE]),
+    useTransform(appsDistance, [-RADIUS, 0, RADIUS], [ICON_BASE, iconMax, ICON_BASE]),
     appsSpring
   );
 
@@ -262,11 +282,11 @@ function Dock({
     return val - b.x - b.width / 2;
   });
   const sidebarSize = useSpring(
-    useTransform(sidebarDistance, [-RADIUS, 0, RADIUS], [BASE, MAX, BASE]),
+    useTransform(sidebarDistance, [-RADIUS, 0, RADIUS], [BASE, sizeMax, BASE]),
     appsSpring
   );
   const sidebarIcon = useSpring(
-    useTransform(sidebarDistance, [-RADIUS, 0, RADIUS], [ICON_BASE, ICON_MAX, ICON_BASE]),
+    useTransform(sidebarDistance, [-RADIUS, 0, RADIUS], [ICON_BASE, iconMax, ICON_BASE]),
     appsSpring
   );
 
@@ -291,6 +311,7 @@ function Dock({
             item={item}
             mouseX={mouseX}
             active={isActivePath(pathname, item.href)}
+            isTouch={isTouch}
           />
         ))}
 
@@ -534,7 +555,7 @@ function Launchpad({
           role="dialog"
           aria-modal="true"
           aria-label="Apps menu"
-          className="fixed inset-0 z-[100]"
+          className="fixed inset-0 z-[100] flex flex-col"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -544,26 +565,26 @@ function Launchpad({
             type="button"
             aria-label="Close apps menu"
             onClick={onClose}
-            className="absolute inset-0 cursor-default bg-charcoal-dark/95 backdrop-blur-xl"
+            className="absolute inset-0 cursor-default bg-background/95 backdrop-blur-xl"
           />
           <AsciiField
-            className="pointer-events-none absolute inset-0 h-full w-full opacity-40"
+            className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.15] dark:opacity-40"
           />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_25%,rgba(90,176,232,0.16),transparent_60%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_25%,rgba(90,176,232,0.12),transparent_60%)]" />
 
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            className="pointer-events-none relative flex h-full flex-col overflow-y-auto"
+            className="pointer-events-none relative flex h-full flex-col overflow-hidden"
           >
-            <div className="pointer-events-auto flex items-center justify-between px-5 pt-7 sm:px-10">
+            <div className="pointer-events-auto flex shrink-0 items-center justify-between px-5 pt-7 sm:px-10">
               <div>
-                <p className="text-xs uppercase tracking-[0.25em] text-orange/80">
+                <p className="text-xs uppercase tracking-[0.25em] text-primary/80">
                   Scalar // CRM
                 </p>
-                <h2 className="font-brand mt-1 text-3xl text-white sm:text-4xl">
+                <h2 className="font-brand mt-1 text-3xl text-foreground sm:text-4xl">
                   Everything
                 </h2>
               </div>
@@ -571,68 +592,70 @@ function Launchpad({
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white transition-colors hover:bg-white/10"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/60 text-foreground transition-colors hover:bg-accent"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="pointer-events-auto mx-auto w-full max-w-5xl flex-1 px-5 py-10 sm:px-10">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {LAUNCHPAD_TILES.map((tile, i) => {
-                  const active = isActivePath(pathname, tile.href);
-                  return (
-                    <Link
-                      key={tile.href}
-                      href={tile.href}
-                      onClick={onClose}
-                      className={cn(
-                        "group relative flex flex-col justify-between gap-8 overflow-hidden rounded-3xl border p-6 transition-all duration-300 hover:-translate-y-1",
-                        tile.highlight
-                          ? "border-orange/40 bg-orange/[0.07] hover:bg-orange/[0.12]"
-                          : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]",
-                        active && "ring-1 ring-orange/40"
-                      )}
-                    >
-                      <div className="flex items-start justify-between">
-                        <span
-                          className={cn(
-                            "font-brand text-sm tabular-nums",
-                            tile.highlight ? "text-orange" : "text-white/40"
-                          )}
-                        >
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <ArrowUpRight
-                          className={cn(
-                            "h-5 w-5 -translate-y-0.5 translate-x-0.5 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100",
-                            tile.highlight ? "text-orange" : "text-white"
-                          )}
-                        />
-                      </div>
-                      <div>
-                        <h3 className="font-brand text-2xl text-white">
-                          {tile.label}
-                        </h3>
-                        <p className="mt-1.5 text-sm leading-relaxed text-white/55">
-                          {tile.description}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+            <div className="pointer-events-auto flex-1 overflow-y-auto">
+              <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-10">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {LAUNCHPAD_TILES.map((tile, i) => {
+                    const active = isActivePath(pathname, tile.href);
+                    return (
+                      <Link
+                        key={tile.href}
+                        href={tile.href}
+                        onClick={onClose}
+                        className={cn(
+                          "group relative flex flex-col justify-between gap-8 overflow-hidden rounded-3xl border p-6 transition-all duration-300 hover:-translate-y-1",
+                          tile.highlight
+                            ? "border-primary/40 bg-primary/[0.07] hover:bg-primary/[0.12]"
+                            : "border-border bg-card/60 hover:border-border/80 hover:bg-card",
+                          active && "ring-1 ring-primary/40"
+                        )}
+                      >
+                        <div className="flex items-start justify-between">
+                          <span
+                            className={cn(
+                              "font-brand text-sm tabular-nums",
+                              tile.highlight ? "text-primary" : "text-muted-foreground"
+                            )}
+                          >
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <ArrowUpRight
+                            className={cn(
+                              "h-5 w-5 -translate-y-0.5 translate-x-0.5 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100",
+                              tile.highlight ? "text-primary" : "text-foreground"
+                            )}
+                          />
+                        </div>
+                        <div>
+                          <h3 className="font-brand text-2xl text-foreground">
+                            {tile.label}
+                          </h3>
+                          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                            {tile.description}
+                          </p>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
 
-              <div className="mt-10">
-                <p className="text-xs uppercase tracking-[0.25em] text-white/40">
-                  What we do
-                </p>
-                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
-                  {CAPABILITIES.map((c) => (
-                    <span key={c} className="font-brand text-xl text-white/70">
-                      {c}
-                    </span>
-                  ))}
+                <div className="mt-10">
+                  <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                    What we do
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+                    {CAPABILITIES.map((c) => (
+                      <span key={c} className="font-brand text-xl text-foreground/70">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
