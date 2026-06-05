@@ -19,7 +19,11 @@ const isPublicRoute = createRouteMatcher([
 
 const clerkHandler = clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
-    await auth.protect();
+    // Send signed-out users to /sign-in (instead of a 404). The redirect URL
+    // is hardcoded because the deployment's env vars are integration-managed.
+    await auth.protect({
+      unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
+    });
   }
 });
 
