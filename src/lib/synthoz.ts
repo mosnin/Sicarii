@@ -43,6 +43,14 @@ async function call(action: string, payload: Record<string, unknown>) {
   // deployment logs (status + body, truncated).
   console.log(`[synthoz] ${action} → ${res.status}: ${text.slice(0, 600)}`);
 
+  // Synthoz wraps failures in { state: false, event: "<message>" } (HTTP 200),
+  // e.g. "You don't have anymore credits, please upgrade to use more." Surface
+  // that message as an error instead of treating the envelope as a result.
+  if (data && typeof data === "object" && (data as { state?: unknown }).state === false) {
+    const event = (data as { event?: unknown }).event;
+    throw new Error(`Synthoz: ${typeof event === "string" ? event : "request was rejected"}`);
+  }
+
   // These webhook endpoints can return HTTP 200 with an error message body
   // (e.g. "no api key found") — detect auth failures regardless of status.
   const flat = (typeof data === "string" ? data : JSON.stringify(data ?? "")).toLowerCase();
