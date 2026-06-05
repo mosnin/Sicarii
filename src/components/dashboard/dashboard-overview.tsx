@@ -10,6 +10,7 @@ import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/count-up";
+import { GlobalSearch } from "@/components/dashboard/global-search";
 import { cn } from "@/lib/utils";
 
 // ─── Motion helpers ──────────────────────────────────────────────────────────
@@ -231,6 +232,11 @@ export function DashboardOverview({
               >
                 Your research platform — contacts discovered, enriched, and in conversation.
               </motion.p>
+
+              {/* Global search */}
+              <motion.div variants={cardVariants} className="mt-5 max-w-md">
+                <GlobalSearch />
+              </motion.div>
 
               {/* Animated hero stat */}
               <motion.div
