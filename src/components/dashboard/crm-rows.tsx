@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  Check, Trash2, Loader2, Sparkles, CheckSquare, Search, ChevronLeft, ChevronRight, X, Wand2, Target,
+  Check, Loader2, Search, ChevronDown, ChevronLeft, ChevronRight, X, Target,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -146,6 +146,7 @@ function CrmBrowser<T extends { id: string }>({
   const [scores, setScores] = useState<Record<string, number> | null>(null);
   const [fitActive, setFitActive] = useState(false);
   const [fitLoading, setFitLoading] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // selection
   const [selectMode, setSelectMode] = useState(false);
@@ -205,7 +206,7 @@ function CrmBrowser<T extends { id: string }>({
         }),
       });
       const d = await res.json().catch(() => ({}));
-      if (res.ok && Array.isArray(d.orderedIds)) { setSmart(d.orderedIds); setPage(0); }
+      if (res.ok && Array.isArray(d.orderedIds)) { setSmart(d.orderedIds); setPage(0); setFilterOpen(false); }
       else setSmartErr(d.error ?? "Smart sort failed.");
     } catch { setSmartErr("Network error."); }
     finally { setSmartLoading(false); }
@@ -223,7 +224,7 @@ function CrmBrowser<T extends { id: string }>({
         }),
       });
       const d = await res.json().catch(() => ({}));
-      if (res.ok && d.scores) { setScores(d.scores); setFitActive(true); setSmart(null); setPage(0); }
+      if (res.ok && d.scores) { setScores(d.scores); setFitActive(true); setSmart(null); setPage(0); setFilterOpen(false); }
       else setSmartErr(d.error ?? "Fit scoring failed.");
     } catch { setSmartErr("Network error."); }
     finally { setFitLoading(false); }
@@ -288,49 +289,84 @@ function CrmBrowser<T extends { id: string }>({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant={smart ? "glow" : "outline"}
-            size="sm"
-            onClick={smart ? () => setSmart(null) : runSmart}
-            disabled={smartLoading}
-            title="Sort by how well records match your search, using patterns"
-          >
-            {smartLoading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Wand2 className="mr-1.5 h-4 w-4" />}
-            {smart ? "Smart on" : "Smart sort"}
-          </Button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg"
+              onClick={() => setFilterOpen((o) => !o)}
+            >
+              Filter
+              {(smart || fitActive || sortId !== sortOptions[0].id) && (
+                <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+              )}
+              <ChevronDown className={cn("ml-1 h-3.5 w-3.5 transition-transform", filterOpen && "rotate-180")} />
+            </Button>
 
-          <Button
-            variant={fitActive ? "glow" : "outline"}
-            size="sm"
-            onClick={fitActive ? () => setFitActive(false) : runFit}
-            disabled={fitLoading}
-            title="Score each record 0-100 on fit to your saved Product Context"
-          >
-            {fitLoading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Target className="mr-1.5 h-4 w-4" />}
-            {fitActive ? "Fit on" : "Score fit"}
-          </Button>
+            <AnimatePresence>
+              {filterOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-hidden
+                    onClick={() => setFilterOpen(false)}
+                    className="fixed inset-0 z-40 cursor-default bg-background/40 backdrop-blur-sm"
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                    transition={{ duration: 0.16 }}
+                    className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-card p-2 shadow-xl"
+                  >
+                    <p className="px-2 pb-1 pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Sort by</p>
+                    {sortOptions.map((o) => {
+                      const active = !smart && !fitActive && sortId === o.id;
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={() => { setSmart(null); setFitActive(false); setSortId(o.id); setPage(0); setFilterOpen(false); }}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted",
+                            active ? "text-foreground" : "text-muted-foreground"
+                          )}
+                        >
+                          {o.label}
+                          {active && <Check className="h-3.5 w-3.5 text-primary" />}
+                        </button>
+                      );
+                    })}
 
-          <select
-            value={smart ? "__smart" : fitActive ? "__fit" : sortId}
-            onChange={(e) => {
-              setSmart(null);
-              setFitActive(false);
-              setSortId(e.target.value);
-              setPage(0);
-            }}
-            className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {smart && <option value="__smart">Smart match</option>}
-            {fitActive && <option value="__fit">Best fit</option>}
-            {sortOptions.map((o) => (
-              <option key={o.id} value={o.id}>{o.label}</option>
-            ))}
-          </select>
+                    <div className="my-1.5 h-px bg-border" />
+                    <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">AI ranking</p>
+                    <button
+                      type="button"
+                      onClick={runSmart}
+                      disabled={smartLoading}
+                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                    >
+                      <span>Smart match {!smart && <span className="text-xs opacity-50">needs a search</span>}</span>
+                      {smartLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : smart ? <span className="text-xs font-medium text-primary">On</span> : null}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={runFit}
+                      disabled={fitLoading}
+                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                    >
+                      <span>Score fit vs product</span>
+                      {fitLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : fitActive ? <span className="text-xs font-medium text-primary">On</span> : null}
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
 
           {!selectMode ? (
             <Button variant="ghost" size="sm" onClick={() => setSelectMode(true)} className="text-muted-foreground">
-              <CheckSquare className="mr-1.5 h-4 w-4" />
               Select
             </Button>
           ) : (
@@ -357,10 +393,10 @@ function CrmBrowser<T extends { id: string }>({
             {selected.size > 0 && (
               <div className="flex items-center gap-2">
                 <Button variant="glow" size="sm" onClick={() => { setResultText(null); setModalState("confirm"); setModalOpen(true); }}>
-                  <Sparkles className="mr-1 h-4 w-4" /> Enrich {selected.size}
+                  Enrich {selected.size}
                 </Button>
                 <Button variant="destructive" size="sm" onClick={remove} disabled={deleting}>
-                  {deleting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1 h-4 w-4" />}
+                  {deleting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
                   Delete {selected.size}
                 </Button>
               </div>
