@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { AppProviders } from "@/components/providers/app-providers";
+import { PwaRegister } from "@/components/providers/pwa-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,6 +8,13 @@ export const metadata: Metadata = {
   description:
     "A CRM operated by AI agents — they discover leads, enrich your database, run the conversations, and own the data. You direct; the agents operate.",
   metadataBase: new URL("https://scalar.app"),
+  applicationName: "Scalar",
+  appleWebApp: {
+    capable: true,
+    title: "Scalar",
+    statusBarStyle: "default",
+  },
+  formatDetection: { telephone: false },
   openGraph: {
     title: "Scalar | The CRM Your Agents Run",
     description:
@@ -15,6 +23,13 @@ export const metadata: Metadata = {
     siteName: "Scalar",
     type: "website",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
+  ],
 };
 
 export default function RootLayout({
@@ -26,6 +41,7 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <AppProviders>{children}</AppProviders>
+        <PwaRegister />
       </body>
     </html>
   );
