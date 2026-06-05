@@ -40,7 +40,7 @@ type Tool = {
   fields: Field[];
 };
 
-type Stage = "grid" | "input" | "working" | "results";
+type Stage = "grid" | "input" | "working" | "results" | "queued";
 
 type State = {
   stage: Stage;
@@ -56,6 +56,7 @@ type Action =
   | { type: "SET_VALUE"; key: string; value: string }
   | { type: "RUN" }
   | { type: "SUCCESS"; records: Record<string, unknown>[] }
+  | { type: "QUEUED" }
   | { type: "FAIL"; error: string };
 
 // ─── constants ───────────────────────────────────────────────────────────────
@@ -209,6 +210,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, stage: "working", error: null, records: null };
     case "SUCCESS":
       return { ...state, stage: "results", records: action.records };
+    case "QUEUED":
+      return { ...state, stage: "queued", error: null };
     case "FAIL":
       return { ...state, stage: "input", error: action.error };
     default:
@@ -254,6 +257,10 @@ export default function DiscoverPage() {
           type: "FAIL",
           error: data?.error ?? "Discovery failed. Please try again.",
         });
+        return;
+      }
+      if (data?.queued) {
+        dispatch({ type: "QUEUED" });
         return;
       }
       dispatch({ type: "SUCCESS", records: normalizeRecords(data.result) });
@@ -417,6 +424,49 @@ export default function DiscoverPage() {
             transition={{ duration: 0.32, ease: SPRING }}
           >
             <DiscoverWorking />
+          </motion.div>
+        )}
+
+        {/* ── QUEUED ── */}
+        {stage === "queued" && active && (
+          <motion.div
+            key="queued"
+            custom={1}
+            variants={reduce ? undefined : slideVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.32, ease: SPRING }}
+            className="space-y-4"
+          >
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "BACK" })}
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" /> All tools
+            </button>
+            <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+              <motion.div
+                className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10"
+                animate={reduce ? {} : { scale: [1, 1.08, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <span className="font-brand text-xl text-primary">S</span>
+              </motion.div>
+              <p className="font-brand text-lg text-foreground">Processing</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Your request is queued. Results will appear in your CRM automatically
+                once they're ready — no need to wait here.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-5 rounded-full"
+                onClick={() => dispatch({ type: "OPEN_TOOL", tool: active })}
+              >
+                Run another
+              </Button>
+            </div>
           </motion.div>
         )}
 

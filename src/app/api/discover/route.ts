@@ -7,6 +7,7 @@ import {
   convertCompanyNames,
   extractEmailsFromUrls,
   findEmailsFirstLast,
+  SynthozQueuedError,
 } from "@/lib/synthoz";
 
 // POST /api/discover — run a discovery tool via Synthoz and return the raw result.
@@ -82,6 +83,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ result });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    // Async tool — Synthoz queued the request; result arrives via outgoing webhook.
+    if (e instanceof SynthozQueuedError) {
+      return NextResponse.json({ queued: true });
+    }
     console.error("POST /api/discover", e);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }

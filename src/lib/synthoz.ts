@@ -28,6 +28,19 @@ export class SynthozNotConfiguredError extends Error {
   }
 }
 
+/**
+ * Thrown when Synthoz responds with { state: false } for an async tool.
+ * This is NOT a failure — it means the request was queued and the result
+ * will arrive via the outgoing webhook. Callers should surface "processing"
+ * to the user rather than an error.
+ */
+export class SynthozQueuedError extends Error {
+  constructor() {
+    super("Request queued — result will be delivered via webhook");
+    this.name = "SynthozQueuedError";
+  }
+}
+
 export function isSynthozConfigured(): boolean {
   return Boolean(process.env.SYNTHOZ_API_KEY?.trim());
 }
@@ -60,16 +73,7 @@ async function call(
   const fp = `${apiKey.slice(0, 6)}…${apiKey.slice(-4)} (len ${apiKey.length})`;
   console.log(`[synthoz] ${action} key=${fp} → ${res.status}: ${text.slice(0, 600)}`);
 
-  // Synthoz wraps failures in { state: false, event: "<message>" } (HTTP 200),
-  // e.g. "You don't have anymore credits, please upgrade to use more." Surface
-  // that message as an error instead of treating the envelope as a result.
-  if (data && typeof data === "object" && (data as { state?: unknown }).state === false) {
-    const event = (data as { event?: unknown }).event;
-    throw new Error(`Synthoz: ${typeof event === "string" ? event : "request was rejected"}`);
-  }
-
-  // These webhook endpoints can return HTTP 200 with an error message body
-  // (e.g. "no api key found") — detect auth failures regardless of status.
+  // Detect hard auth failures regardless of status or envelope shape.
   const flat = (typeof data === "string" ? data : JSON.stringify(data ?? "")).toLowerCase();
   if (
     flat.includes("no api key") ||
@@ -77,31 +81,30 @@ async function call(
     flat.includes("api key not") ||
     flat.includes("api_key not")
   ) {
-    throw new Error(
-      "Synthoz rejected the API key. Double-check the exact SYNTHOZ_API_KEY value on the deployment (no extra spaces, your real key — not the example from the docs)."
-    );
-  }
-  // Surface Synthoz's own credit/billing response verbatim (same key works for
-  // other tools, so this is account-side — show the exact message for support).
-  if (/not enough credit|insufficient credit|out of credit|no credits?\b|credit limit/.test(flat)) {
-    throw new Error(
-      `Synthoz reported a credits error on "${action}". Its exact response: ${
-        typeof data === "string" ? data : JSON.stringify(data)
-      }`
-    );
+    throw new Error("Synthoz rejected the API key — check SYNTHOZ_API_KEY on the deployment.");
   }
 
   if (!res.ok) {
-    throw new Error(
-      `Synthoz ${action} failed (${res.status}): ${
-        typeof data === "string" ? data : JSON.stringify(data)
-      }`
-    );
+    throw new Error(`Synthoz ${action} failed (${res.status}): ${text.slice(0, 200)}`);
   }
 
-  // The call was accepted. Stamp a correlation job so the async result that
-  // POSTs back to our webhook is attributed to this user. Keys come straight
-  // from the request payload (domain / url / company_name).
+  // { state: false } is Synthoz's synchronous ACK for ASYNC tools (find-emails,
+  // convert-company-names). It means "request queued — result incoming via
+  // outgoing webhook." It is NOT a failure. Record the correlation job NOW so the
+  // webhook delivery is attributed to this user, then signal the caller to show
+  // "processing" instead of results.
+  if (data && typeof data === "object" && (data as { state?: unknown }).state === false) {
+    if (ctx?.userId) {
+      await recordSynthozJob(ctx.userId, action, {
+        domain: typeof payload.domain === "string" ? payload.domain : undefined,
+        url: typeof payload.url === "string" ? payload.url : undefined,
+        company: typeof payload.company_name === "string" ? payload.company_name : undefined,
+      });
+    }
+    throw new SynthozQueuedError();
+  }
+
+  // Sync result received. Stamp a job for completeness (webhook may still fire).
   if (ctx?.userId) {
     await recordSynthozJob(ctx.userId, action, {
       domain: typeof payload.domain === "string" ? payload.domain : undefined,

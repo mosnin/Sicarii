@@ -68,6 +68,10 @@ async function exec(fn: () => Promise<unknown>) {
     return await fn();
   } catch (e) {
     if (e instanceof OpError) return { error: e.message };
+    // Async Synthoz tool — not an error, result incoming via webhook.
+    if (e instanceof Error && e.name === "SynthozQueuedError") {
+      return { queued: true, message: "Request queued — result will appear in the CRM via webhook." };
+    }
     console.error("agent tool error", e);
     return { error: "Internal error" };
   }
