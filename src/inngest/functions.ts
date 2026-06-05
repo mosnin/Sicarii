@@ -3,8 +3,20 @@
 
 import { inngest } from "@/lib/inngest";
 import { prisma } from "@/lib/prisma";
-import { exaIntentSearch, isExaConfigured } from "@/lib/exa";
+import { exaIntentSearch, isExaConfigured, isMeaningful } from "@/lib/exa";
 import { linkupDeepResearch, linkupSearch, isLinkupConfigured } from "@/lib/linkup";
+import { notifyTaskWebhook } from "@/lib/notify";
+
+type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
+
+// Per-run cache of each user's outbound webhook URL.
+async function getWebhook(cache: Map<string, string | null>, userId: string): Promise<string | null> {
+  if (cache.has(userId)) return cache.get(userId)!;
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { taskWebhookUrl: true } });
+  const url = u?.taskWebhookUrl ?? null;
+  cache.set(userId, url);
+  return url;
+}
 
 // ── Intent Monitors ───────────────────────────────────────────────────────────
 // Runs Exa neural search for each active monitor due to fire, deduplicates by
@@ -25,6 +37,7 @@ export const runIntentMonitors = inngest.createFunction(
     });
 
     let saved = 0;
+    const webhookCache = new Map<string, string | null>();
     for (const monitor of monitors) {
       try {
         const results = await exaIntentSearch(monitor.query, {
@@ -33,10 +46,14 @@ export const runIntentMonitors = inngest.createFunction(
           includeSummary: true,
         });
 
+        const created: CreatedItem[] = [];
         for (const r of results) {
           if (!r.url) continue;
           let domain: string | undefined;
           try { domain = new URL(r.url).hostname.replace(/^www\./, ""); } catch { /* skip */ }
+
+          const name = isMeaningful(r.title) ? r.title : domain;
+          if (!isMeaningful(name)) continue; // never persist junk
 
           if (domain) {
             const exists = await prisma.entity.findFirst({
@@ -46,10 +63,10 @@ export const runIntentMonitors = inngest.createFunction(
             if (exists) continue;
           }
 
-          await prisma.entity.create({
+          const entity = await prisma.entity.create({
             data: {
               userId: monitor.userId,
-              name: r.title ?? domain ?? "Unknown",
+              name,
               domain,
               website: r.url,
               source: "intent-monitor",
@@ -57,6 +74,7 @@ export const runIntentMonitors = inngest.createFunction(
               notes: [r.summary, ...(r.highlights ?? [])].filter(Boolean).join("\n\n") || undefined,
             },
           });
+          created.push({ id: entity.id, kind: "entity", name: entity.name, domain: entity.domain, url: entity.website });
           saved++;
         }
 
@@ -68,6 +86,20 @@ export const runIntentMonitors = inngest.createFunction(
           where: { id: monitor.id },
           data: { lastRunAt: now, nextRunAt: nextRun },
         });
+
+        // Wake the user's agent if they registered a webhook.
+        if (created.length > 0) {
+          const url = await getWebhook(webhookCache, monitor.userId);
+          await notifyTaskWebhook(url, {
+            event: "intent-monitor.completed",
+            taskId: monitor.id,
+            name: monitor.name,
+            query: monitor.query,
+            created: created.length,
+            items: created,
+            completedAt: now.toISOString(),
+          });
+        }
       } catch (e) {
         console.error(`[inngest] intent monitor ${monitor.id} failed`, e);
       }
@@ -95,8 +127,10 @@ export const runResearchSchedules = inngest.createFunction(
     });
 
     let updated = 0;
+    const webhookCache = new Map<string, string | null>();
     for (const schedule of schedules) {
       try {
+        const created: CreatedItem[] = [];
         const useLinkup = schedule.provider === "linkup" && isLinkupConfigured();
         const useExa = schedule.provider === "exa" && isExaConfigured();
         if (!useLinkup && !useExa) continue;
@@ -133,16 +167,21 @@ export const runResearchSchedules = inngest.createFunction(
             where: { id: schedule.targetId, userId: schedule.userId },
             data: { notes: researchNote || undefined, status: "ENRICHED" },
           });
+          created.push({ id: schedule.targetId, kind: "entity" });
         } else if (schedule.targetType === "contact" && schedule.targetId) {
           await prisma.contact.updateMany({
             where: { id: schedule.targetId, userId: schedule.userId },
             data: { notes: researchNote || undefined, status: "ENRICHED" },
           });
+          created.push({ id: schedule.targetId, kind: "contact" });
         } else {
           for (const source of sources.slice(0, 5)) {
             if (!source.url) continue;
             let domain: string | undefined;
             try { domain = new URL(source.url).hostname.replace(/^www\./, ""); } catch { continue; }
+
+            const name = isMeaningful(source.title) ? source.title : domain;
+            if (!isMeaningful(name)) continue;
 
             const exists = await prisma.entity.findFirst({
               where: { userId: schedule.userId, domain },
@@ -150,10 +189,10 @@ export const runResearchSchedules = inngest.createFunction(
             });
             if (exists) continue;
 
-            await prisma.entity.create({
+            const entity = await prisma.entity.create({
               data: {
                 userId: schedule.userId,
-                name: source.title ?? domain ?? "Unknown",
+                name,
                 domain,
                 website: source.url,
                 description: source.snippet ?? undefined,
@@ -161,6 +200,7 @@ export const runResearchSchedules = inngest.createFunction(
                 tags: ["research"],
               },
             });
+            created.push({ id: entity.id, kind: "entity", name: entity.name, domain: entity.domain, url: entity.website });
           }
         }
 
@@ -174,6 +214,19 @@ export const runResearchSchedules = inngest.createFunction(
           data: { lastRunAt: now, nextRunAt: nextRun },
         });
         updated++;
+
+        if (created.length > 0) {
+          const url = await getWebhook(webhookCache, schedule.userId);
+          await notifyTaskWebhook(url, {
+            event: "research-schedule.completed",
+            taskId: schedule.id,
+            name: schedule.name,
+            query: schedule.query,
+            created: created.length,
+            items: created,
+            completedAt: now.toISOString(),
+          });
+        }
       } catch (e) {
         console.error(`[inngest] research schedule ${schedule.id} failed`, e);
       }

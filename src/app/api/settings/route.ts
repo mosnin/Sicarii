@@ -6,6 +6,12 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 const patchSchema = z.object({
   productContext: z.string().max(20000).optional(),
   agentMailApiKey: z.string().trim().max(300).optional(),
+  taskWebhookUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === "" || /^https?:\/\/.+/i.test(v), "Must be a valid URL")
+    .optional(),
 });
 
 // PATCH /api/settings - update the current user's per-user settings
@@ -22,13 +28,20 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const data: { productContext?: string; agentMailApiKey?: string | null } = {};
+    const data: {
+      productContext?: string;
+      agentMailApiKey?: string | null;
+      taskWebhookUrl?: string | null;
+    } = {};
     if (parsed.data.productContext !== undefined) {
       data.productContext = parsed.data.productContext;
     }
     if (parsed.data.agentMailApiKey !== undefined) {
       // Empty string clears the key.
       data.agentMailApiKey = parsed.data.agentMailApiKey || null;
+    }
+    if (parsed.data.taskWebhookUrl !== undefined) {
+      data.taskWebhookUrl = parsed.data.taskWebhookUrl || null;
     }
 
     if (Object.keys(data).length === 0) {
@@ -41,6 +54,7 @@ export async function PATCH(req: NextRequest) {
       ok: true,
       productContext: updated.productContext ?? "",
       agentMailKeyLast4: updated.agentMailApiKey ? updated.agentMailApiKey.slice(-4) : null,
+      taskWebhookUrl: updated.taskWebhookUrl ?? "",
     });
   } catch (e) {
     if (e instanceof NextResponse) return e;

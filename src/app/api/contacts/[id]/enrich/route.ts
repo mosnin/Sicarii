@@ -95,7 +95,11 @@ export async function POST(
       if (!contact.name) {
         return NextResponse.json({ error: "Add a name first to find a LinkedIn profile." }, { status: 400 });
       }
-      const url = await exaFindLinkedIn(contact.name, contact.company ?? contact.entity?.name ?? undefined);
+      const url = await exaFindLinkedIn(contact.name, {
+        company: contact.company ?? contact.entity?.name ?? undefined,
+        title: contact.title ?? undefined,
+        location: contact.location ?? undefined,
+      });
       // Only accept an actual LinkedIn profile URL.
       value = url && /linkedin\.com\/(in|company)\//i.test(url) ? url : null;
     } else {

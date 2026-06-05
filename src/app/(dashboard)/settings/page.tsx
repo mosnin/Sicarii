@@ -5,11 +5,10 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { headers } from "next/headers";
 import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
 import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
-import { WebhookUrl } from "@/components/dashboard/webhook-url";
+import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { getDbUser } from "@/lib/server-user";
 
 export const dynamic = "force-dynamic";
@@ -17,12 +16,6 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const user = await getDbUser();
   const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
-
-  // Single app-level webhook URL - same for every user, configured once in Synthoz.
-  const h = await headers();
-  const host = h.get("host") ?? "www.tryscalar.xyz";
-  const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
-  const webhookUrl = `${proto}://${host}/api/webhooks/synthoz`;
 
   return (
     <div className="space-y-8">
@@ -80,20 +73,19 @@ export default async function SettingsPage() {
         </Card>
       </FloatIn>
 
-      {/* Synthoz async webhook - one URL for the entire app */}
+      {/* Outbound webhook - notify your agent when a scheduled task completes */}
       <FloatIn delay={0.26}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Discovery results webhook</CardTitle>
+            <CardTitle className="text-base">Agent notifications webhook</CardTitle>
             <CardDescription>
-              Paste this URL into your{" "}
-              <span className="font-medium">Synthoz → Outgoing Webhook</span>{" "}
-              for each product you use. One URL handles all event types - contacts
-              and companies flow straight into your CRM as Synthoz delivers them.
+              When a scheduled task finishes (intent monitor or background
+              research), Scalar POSTs the new results to this URL so your agent
+              (e.g. openclaw or Hermes) can wake up and act on them.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <WebhookUrl url={webhookUrl} />
+            <TaskWebhookForm initialUrl={user?.taskWebhookUrl ?? null} />
           </CardContent>
         </Card>
       </FloatIn>

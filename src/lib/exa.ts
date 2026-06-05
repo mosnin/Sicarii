@@ -80,8 +80,7 @@ export async function exaIntentSearch(
   const body: Record<string, unknown> = {
     query,
     numResults: opts.numResults ?? 10,
-    type: "neural",
-    useAutoprompt: true,
+    type: "auto",
     ...(opts.category ? { category: opts.category } : {}),
     ...(opts.startPublishedDate ? { startPublishedDate: opts.startPublishedDate } : {}),
     ...(opts.endPublishedDate ? { endPublishedDate: opts.endPublishedDate } : {}),
@@ -329,12 +328,47 @@ export async function exaResearchContacts(
   return people;
 }
 
-// Find a single person's LinkedIn profile URL.
-export async function exaFindLinkedIn(name: string, company?: string): Promise<string | null> {
-  const results = await exaIntentSearch(
-    `LinkedIn profile of ${name}${company ? ` at ${company}` : ""}`,
-    { numResults: 5, category: "linkedin profile" }
-  );
-  const hit = results.find((r) => /linkedin\.com\/in\//i.test(r.url));
-  return hit?.url ?? results[0]?.url ?? null;
+// Find a single person's LinkedIn profile URL, verified against their company/
+// title so a same-name stranger is not returned. When the company is known we
+// REQUIRE it to appear in the candidate, and return null otherwise (accuracy
+// over coverage) - a wrong profile is worse than none.
+export async function exaFindLinkedIn(
+  name: string,
+  opts: { company?: string; title?: string; location?: string } = {}
+): Promise<string | null> {
+  const { company, title, location } = opts;
+  const query = [`"${name}"`, title, company, location, "LinkedIn profile"]
+    .filter(Boolean)
+    .join(" ");
+
+  const results = await exaIntentSearch(query, {
+    numResults: 10,
+    category: "linkedin profile",
+    includeText: true,
+    includeHighlights: true,
+  });
+
+  const candidates = results.filter((r) => /linkedin\.com\/in\//i.test(r.url));
+  if (candidates.length === 0) return null;
+
+  const nameTokens = name.toLowerCase().split(/\s+/).filter((t) => t.length > 1);
+  const comp = company?.trim().toLowerCase();
+  const titleWords = (title ?? "").toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+
+  let best: ExaResult | null = null;
+  let bestScore = -1;
+  for (const c of candidates) {
+    const hay = `${c.title ?? ""} ${c.text ?? ""} ${(c.highlights ?? []).join(" ")} ${c.url}`.toLowerCase();
+    const nameHits = nameTokens.filter((t) => hay.includes(t)).length;
+    let score = 0;
+    if (comp && hay.includes(comp)) score += 3; // strongest signal
+    if (titleWords.some((w) => hay.includes(w))) score += 1;
+    if (nameHits >= Math.max(1, nameTokens.length - 1)) score += 1;
+    if (score > bestScore) { bestScore = score; best = c; }
+  }
+
+  // If we know the company, only accept a candidate that actually matches it.
+  if (comp) return bestScore >= 3 ? best!.url : null;
+  // No company context: fall back to the top profile result.
+  return best?.url ?? candidates[0].url;
 }

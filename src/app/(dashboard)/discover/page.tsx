@@ -564,31 +564,21 @@ type RecentItem = {
   createdAt: string;
 };
 
-function RecentResults({ pollWhilePending }: { pollWhilePending: boolean }) {
+function RecentResults() {
   const [items, setItems] = useState<RecentItem[]>([]);
-  const [pending, setPending] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/discover/recent");
-      const data = await res.json().catch(() => ({}));
-      if (data.results) setItems(data.results);
-      if (typeof data.pendingJobs === "number") setPending(data.pendingJobs);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/discover/recent")
+      .then((r) => r.json())
+      .then((data) => { if (!cancelled && data.results) setItems(data.results); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    if (!pollWhilePending && pending === 0) return;
-    const id = setInterval(load, 8000);
-    return () => clearInterval(id);
-  }, [load, pending, pollWhilePending]);
-
-  if (loading || (items.length === 0 && pending === 0)) return null;
+  if (loading || items.length === 0) return null;
 
   return (
     <motion.div
@@ -597,26 +587,14 @@ function RecentResults({ pollWhilePending }: { pollWhilePending: boolean }) {
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className="space-y-3"
     >
-      <div className="flex items-center justify-between">
-        <h2 className="font-brand text-base text-foreground">Recent results</h2>
-        {pending > 0 && (
-          <motion.span
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-          >
-            <Clock className="h-3 w-3" />
-            {pending} pending
-          </motion.span>
-        )}
-      </div>
+      <h2 className="font-brand text-base text-foreground">Recently added</h2>
       <div className="divide-y divide-border rounded-2xl border border-border bg-card overflow-hidden">
         {items.map((item) => {
           const label = item.name ?? item.company ?? item.domain ?? item.email ?? "Unnamed";
           const sub = item.kind === "contact"
             ? [item.title, item.company].filter(Boolean).join(" · ")
             : item.domain ?? item.location ?? "";
-          const href = item.kind === "contact" ? `/crm/contacts/${item.id}` : `/crm/entities/${item.id}`;
+          const href = item.kind === "contact" ? `/crm/${item.id}` : `/crm/entity/${item.id}`;
           return (
             <motion.div
               key={item.id}
@@ -853,7 +831,6 @@ export default function DiscoverPage() {
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const reduce = useReducedMotion();
   const { stage, active, values, records, rawText, error } = state;
-  const hasQueued = stage === "queued";
   const [showSchedule, setShowSchedule] = useState(false);
 
   const run = useCallback(async () => {
@@ -894,21 +871,27 @@ export default function DiscoverPage() {
 
   const canSchedule = active && (active.id === "intent-scan" || active.id === "deep-research" || active.id === "quick-research");
 
-  // Which CRM record (if any) this tool can be pre-filled from.
-  const pickType: "entity" | "contact" | null = active
-    ? active.fields.some((f) => f.key === "firstName")
+  // Which CRM record (if any) this tool can be pre-filled from. Any tool scoped
+  // to a company (domain or url field) can attach an entity; people tools attach
+  // a contact.
+  const hasField = (k: string) => active?.fields.some((f) => f.key === k) ?? false;
+  const pickType: "entity" | "contact" | null = !active
+    ? null
+    : hasField("firstName")
       ? "contact"
-      : active.fields.some((f) => f.key === "domain")
+      : hasField("domain") || hasField("url")
         ? "entity"
-        : null
-    : null;
+        : null;
 
   const set = (key: string, value?: string) => {
     if (value) dispatch({ type: "SET_VALUE", key, value });
   };
   const fillFromEntity = (e: PickEntity) => {
-    set("domain", e.domain ?? hostOf(e.website));
+    const domain = e.domain ?? hostOf(e.website);
+    const website = e.website ?? (domain ? `https://${domain}` : undefined);
+    set("domain", domain);
     set("companyName", e.name ?? undefined);
+    set("url", website); // for scrape/crawl/extract tools
   };
   const fillFromContact = (c: PickContact) => {
     const parts = (c.name ?? "").trim().split(/\s+/).filter(Boolean);
@@ -989,7 +972,7 @@ export default function DiscoverPage() {
               </FloatIn>
             ))}
 
-            <RecentResults pollWhilePending={hasQueued} />
+            <RecentResults />
           </motion.div>
         )}
 

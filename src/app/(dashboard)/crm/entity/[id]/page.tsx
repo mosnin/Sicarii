@@ -14,6 +14,7 @@ import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 import { entityStatusBadgeVariant, entityStatusLabel } from "@/lib/entity-status";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
+import { DataView, cleanForView, humanizeKey } from "@/components/dashboard/data-view";
 import { EntityActions } from "./actions";
 
 export default async function EntityDetailPage({
@@ -46,6 +47,16 @@ export default async function EntityDetailPage({
     { label: "Location", value: entity.location },
     { label: "Size", value: entity.size },
   ];
+
+  // Enrichment payloads attached by the Enrich dropdown (firmographics, tech
+  // stack, funding, ...), keyed by aspect. Rendered below so they're visible.
+  const enrichment =
+    entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
+      ? (entity.enrichment as Record<string, unknown>)
+      : null;
+  const enrichmentEntries = enrichment
+    ? Object.entries(enrichment).filter(([, v]) => v != null)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -179,6 +190,29 @@ export default async function EntityDetailPage({
           </Card>
         </FloatIn>
       </div>
+
+      {/* Enrichment payloads (tech stack, funding, firmographics, ...) */}
+      {enrichmentEntries.length > 0 && (
+        <FloatIn delay={0.18}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Enrichment</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {enrichmentEntries.map(([key, val]) => (
+                <details key={key} className="group" open>
+                  <summary className="flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-foreground">
+                    {humanizeKey(key)}
+                  </summary>
+                  <div className="mt-3 max-h-96 overflow-auto rounded-xl border border-border bg-muted/30 p-4">
+                    <DataView value={cleanForView(val)} />
+                  </div>
+                </details>
+              ))}
+            </CardContent>
+          </Card>
+        </FloatIn>
+      )}
     </div>
   );
 }
