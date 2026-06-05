@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Loader2, ChevronDown, Trash2, ExternalLink } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloatIn } from "@/components/ui/float-in";

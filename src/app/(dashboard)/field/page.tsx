@@ -321,6 +321,17 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
     if (next !== e.stage) patch(e.id, { stage: next });
   };
 
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overStage, setOverStage] = useState<Stage | null>(null);
+  const drop = (stage: Stage) => {
+    if (dragId) {
+      const e = entries.find((x) => x.id === dragId);
+      if (e && e.stage !== stage) patch(dragId, { stage });
+    }
+    setDragId(null);
+    setOverStage(null);
+  };
+
   return (
     <div className="space-y-4">
       <button type="button" onClick={onBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -339,14 +350,32 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
           {STAGES.map((stage) => {
             const col = entries.filter((e) => e.stage === stage);
             return (
-              <div key={stage} className="flex w-72 shrink-0 flex-col rounded-2xl border border-border bg-muted/30 p-2">
+              <div
+                key={stage}
+                onDragOver={(ev) => { ev.preventDefault(); setOverStage(stage); }}
+                onDragLeave={() => setOverStage((s) => (s === stage ? null : s))}
+                onDrop={() => drop(stage)}
+                className={cn(
+                  "flex w-72 shrink-0 flex-col rounded-2xl border bg-muted/30 p-2 transition-colors",
+                  overStage === stage ? "border-primary/50 bg-primary/5" : "border-border"
+                )}
+              >
                 <div className="flex items-center justify-between px-2 py-1.5">
                   <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{stageLabel[stage]}</span>
                   <span className="rounded-full bg-card px-2 py-0.5 text-[11px] text-muted-foreground">{col.length}</span>
                 </div>
                 <div className="space-y-2">
                   {col.map((e) => (
-                    <div key={e.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                    <div
+                      key={e.id}
+                      draggable
+                      onDragStart={() => setDragId(e.id)}
+                      onDragEnd={() => { setDragId(null); setOverStage(null); }}
+                      className={cn(
+                        "cursor-grab rounded-xl border border-border bg-card p-3 shadow-sm active:cursor-grabbing",
+                        dragId === e.id && "opacity-50"
+                      )}
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{e.contact.name || e.contact.email || "Unnamed"}</p>

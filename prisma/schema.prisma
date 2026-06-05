@@ -145,6 +145,10 @@ model Entity {
   phone       String?
   industry    String?
   location    String?
+  // Geocoded coordinates for the map view (from `location`, via Nominatim).
+  lat         Float?
+  lng         Float?
+  geocodedAt  DateTime?
   description String? @db.Text
   size        String?
 

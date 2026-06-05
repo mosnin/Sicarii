@@ -34,6 +34,7 @@ export type CrmEntity = {
   status: string;
   industry: string | null;
   domain: string | null;
+  location: string | null;
   logoUrl: string | null;
   updatedAt: string;
   _count: { contacts: number };
@@ -528,6 +529,7 @@ export function EntityRows({ entities }: { entities: CrmEntity[] }) {
     { id: "recent", label: "Recently updated", cmp: (a, b) => b.updatedAt.localeCompare(a.updatedAt) },
     { id: "name", label: "Name A-Z", cmp: (a, b) => a.name.localeCompare(b.name) },
     { id: "industry", label: "Industry A-Z", cmp: (a, b) => (a.industry ?? "~").localeCompare(b.industry ?? "~") },
+    { id: "location", label: "Location A-Z", cmp: (a, b) => (a.location ?? "~").localeCompare(b.location ?? "~") },
     { id: "contacts", label: "Most contacts", cmp: (a, b) => b._count.contacts - a._count.contacts },
     { id: "status", label: "Stage", cmp: (a, b) => (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9) },
   ];
