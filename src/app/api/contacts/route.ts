@@ -119,3 +119,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to create contact" }, { status: 500 });
   }
 }
+
+const bulkDeleteSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+});
+
+// DELETE /api/contacts — bulk-delete the authenticated user's contacts by id.
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getAuthenticatedUser();
+    const parsed = bulkDeleteSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Provide ids: string[]" }, { status: 400 });
+    }
+    const result = await prisma.contact.deleteMany({
+      where: { userId: user.id, id: { in: parsed.data.ids } },
+    });
+    return NextResponse.json({ deleted: result.count });
+  } catch (e) {
+    if (e instanceof NextResponse) return e;
+    console.error("DELETE /api/contacts", e);
+    return NextResponse.json({ error: "Failed to delete contacts" }, { status: 500 });
+  }
+}
