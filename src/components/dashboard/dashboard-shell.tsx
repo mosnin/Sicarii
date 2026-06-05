@@ -440,7 +440,7 @@ function Sidebar({
         {/* ── Logo / wordmark ── */}
         <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border/40 px-4 dark:border-white/[0.06]">
           <Link href="/dashboard" className="flex items-center gap-2.5">
-            <LogoMark className="text-xl" />
+            <LogoMark className="h-6 w-6" />
             <span className="font-brand text-base font-bold text-foreground">
               Scalar
             </span>
@@ -625,7 +625,7 @@ function MobileLauncher({
             {/* Header */}
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border/40 px-4 dark:border-white/[0.06]">
               <Link href="/dashboard" onClick={onClose} className="flex items-center gap-2.5">
-                <LogoMark className="text-xl" />
+                <LogoMark className="h-6 w-6" />
                 <span className="font-brand text-base font-bold text-foreground">Scalar</span>
               </Link>
               <button
@@ -942,7 +942,7 @@ export function DashboardShell({
             <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-5 lg:px-8">
               <div className="flex h-12 items-center justify-between gap-2">
                 <Link href="/dashboard" className="flex items-center gap-2">
-                  <LogoMark className="text-xl" />
+                  <LogoMark className="h-6 w-6" />
                   <span className="font-brand text-base font-bold text-foreground hidden sm:inline">
                     Scalar
                   </span>

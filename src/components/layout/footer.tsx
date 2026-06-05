@@ -31,7 +31,7 @@ export function Footer() {
             {/* Brand */}
             <div className="col-span-2 space-y-4 md:col-span-1">
               <Link href="/" className="flex items-center gap-2">
-                <LogoMark className="text-2xl" />
+                <LogoMark className="h-7 w-7" />
                 <span className="font-brand text-lg font-bold text-foreground">Scalar</span>
               </Link>
               <p className="max-w-xs text-sm text-muted-foreground">

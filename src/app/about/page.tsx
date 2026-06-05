@@ -96,7 +96,7 @@ export default function AboutPage() {
               <div className="flex justify-center">
                 <div className="relative">
                   <div className="rounded-2xl border border-border bg-card p-8 max-w-sm">
-                    <LogoMark className="block text-center text-7xl" />
+                    <LogoMark className="mx-auto block h-20 w-20" />
                     <h3 className="text-xl font-bold text-center mt-6">Scalar</h3>
                     <p className="text-sm text-muted-foreground text-center mt-2">
                       Strength through clarity. Excellence through transparency.
