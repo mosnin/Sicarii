@@ -31,7 +31,7 @@ import {
   useContext,
 } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { LogoMark } from "@/components/brand/logo-mark";
 import { usePathname } from "next/navigation";
 import {
   motion,
@@ -151,7 +151,10 @@ function isActivePath(pathname: string, href: string) {
 
 type NavMode = "dock" | "sidebar";
 
-const SIDEBAR_WIDTH = 224; // px — must match the sidebar motion div width
+const SIDEBAR_WIDTH = 224; // px — the sidebar panel's own width
+// When sidebar is floating (left-3 = 12px margin), content must shift by:
+//   sidebar width + left margin + gutter between sidebar edge and content
+const SIDEBAR_INSET = SIDEBAR_WIDTH + 12 + 16; // 252 px total
 const STORAGE_KEY = "scalar-nav-mode";
 
 // ── Dock magnification constants ─────────────────────────────────────────────
@@ -427,119 +430,121 @@ function Sidebar({
     <motion.nav
       layoutId="nav-container"
       key="sidebar"
-      initial={{ x: -SIDEBAR_WIDTH, opacity: 0 }}
+      initial={{ x: -(SIDEBAR_WIDTH + 24), opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      exit={{ x: -SIDEBAR_WIDTH, opacity: 0 }}
+      exit={{ x: -(SIDEBAR_WIDTH + 24), opacity: 0 }}
       transition={MORPH_SPRING}
-      className="fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-border/60 bg-background/95 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/95"
-      style={{ width: SIDEBAR_WIDTH, borderRadius: 0 }}
+      className="fixed inset-y-3 left-3 z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-background/95 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/95"
+      style={{ width: SIDEBAR_WIDTH }}
       aria-label="Primary sidebar"
     >
-      {/* ── Logo / wordmark ── */}
-      <div className="flex h-16 items-center gap-2.5 px-4 border-b border-border/40 dark:border-white/[0.06]">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
-          <motion.div layoutId="sidebar-logo" transition={MORPH_SPRING}>
-            <Image
-              src="/logo.svg"
-              alt="Scalar"
-              width={28}
-              height={28}
-              className="rounded-full"
-            />
-          </motion.div>
-          <motion.span
-            layoutId="sidebar-wordmark"
-            className="font-brand text-base font-bold text-foreground"
-            transition={MORPH_SPRING}
-          >
-            Scalar
-          </motion.span>
-        </Link>
-      </div>
+      {/* ── ASCII background — absolute, behind nav content ── */}
+      <AsciiField
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.18] dark:opacity-40"
+      />
 
-      {/* ── Nav items ── */}
-      <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto py-4 px-2">
-        {NAV_ITEMS.map((item, i) => {
-          const Icon = item.icon;
-          const active = isActivePath(pathname, item.href);
-          return (
-            <motion.div
-              key={item.href}
-              layoutId={`nav-icon-container-${item.href}`}
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{
-                ...MORPH_SPRING,
-                delay: i * 0.035,
-              }}
-            >
-              <Link
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  item.accent
-                    ? "bg-orange/10 text-orange hover:bg-orange/15"
-                    : active
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-                )}
-              >
-                <motion.span
-                  layoutId={`nav-icon-${item.href}`}
-                  className="flex h-5 w-5 shrink-0"
-                  transition={MORPH_SPRING}
-                >
-                  <Icon
-                    className="h-full w-full"
-                    strokeWidth={item.accent ? 2.4 : active ? 2.2 : 2}
-                  />
-                </motion.span>
-                <span>{item.label}</span>
-                {active && !item.accent && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
-                )}
-              </Link>
+      {/* All nav content sits on top of the ASCII field */}
+      <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
+        {/* ── Logo / wordmark ── */}
+        <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border/40 px-4 dark:border-white/[0.06]">
+          <Link href="/dashboard" className="flex items-center gap-2.5">
+            <motion.div layoutId="sidebar-logo" transition={MORPH_SPRING}>
+              <LogoMark className="text-xl" />
             </motion.div>
-          );
-        })}
-      </div>
+            <motion.span
+              layoutId="sidebar-wordmark"
+              className="font-brand text-base font-bold text-foreground"
+              transition={MORPH_SPRING}
+            >
+              Scalar
+            </motion.span>
+          </Link>
+        </div>
 
-      {/* ── Bottom actions ── */}
-      <div className="border-t border-border/40 dark:border-white/[0.06] px-2 py-3 flex flex-col gap-2">
-        {/* Apps launcher */}
-        <button
-          type="button"
-          onClick={onOpenLaunchpad}
-          aria-label="Open apps menu"
-          aria-haspopup="dialog"
-          aria-expanded={launchpadOpen}
-          className={cn(
-            "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors w-full",
-            launchpadOpen
-              ? "bg-orange/10 text-orange"
-              : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-          )}
-        >
-          <LayoutGrid className="h-5 w-5 shrink-0" />
-          <span>Apps</span>
-        </button>
+        {/* ── Nav items ── */}
+        <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto py-4 px-2">
+          {NAV_ITEMS.map((item, i) => {
+            const Icon = item.icon;
+            const active = isActivePath(pathname, item.href);
+            return (
+              <motion.div
+                key={item.href}
+                layoutId={`nav-icon-container-${item.href}`}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{
+                  ...MORPH_SPRING,
+                  delay: i * 0.035,
+                }}
+              >
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    item.accent
+                      ? "bg-orange/10 text-orange hover:bg-orange/15"
+                      : active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+                  )}
+                >
+                  <motion.span
+                    layoutId={`nav-icon-${item.href}`}
+                    className="flex h-5 w-5 shrink-0"
+                    transition={MORPH_SPRING}
+                  >
+                    <Icon
+                      className="h-full w-full"
+                      strokeWidth={item.accent ? 2.4 : active ? 2.2 : 2}
+                    />
+                  </motion.span>
+                  <span>{item.label}</span>
+                  {active && !item.accent && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                  )}
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
 
-        {/* Collapse to dock */}
-        <button
-          type="button"
-          onClick={onCloseSidebar}
-          aria-label="Switch to dock navigation"
-          className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground w-full"
-        >
-          <PanelLeftClose className="h-5 w-5 shrink-0" />
-          <span>Collapse</span>
-        </button>
+        {/* ── Bottom actions ── */}
+        <div className="shrink-0 border-t border-border/40 px-2 py-3 dark:border-white/[0.06] flex flex-col gap-2">
+          {/* Apps launcher */}
+          <button
+            type="button"
+            onClick={onOpenLaunchpad}
+            aria-label="Open apps menu"
+            aria-haspopup="dialog"
+            aria-expanded={launchpadOpen}
+            className={cn(
+              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors w-full",
+              launchpadOpen
+                ? "bg-orange/10 text-orange"
+                : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+            )}
+          >
+            <LayoutGrid className="h-5 w-5 shrink-0" />
+            <span>Apps</span>
+          </button>
 
-        {/* User + theme */}
-        <div className="flex items-center gap-2 px-3 py-2">
-          <UserButton />
-          <ThemeToggle />
+          {/* Collapse to dock */}
+          <button
+            type="button"
+            onClick={onCloseSidebar}
+            aria-label="Switch to dock navigation"
+            className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground w-full"
+          >
+            <PanelLeftClose className="h-5 w-5 shrink-0" />
+            <span>Collapse</span>
+          </button>
+
+          {/* User + theme */}
+          <div className="flex items-center gap-2 px-3 py-2">
+            <UserButton />
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </motion.nav>
@@ -636,7 +641,7 @@ function MobileLauncher({
             {/* Header */}
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-border/40 px-4 dark:border-white/[0.06]">
               <Link href="/dashboard" onClick={onClose} className="flex items-center gap-2.5">
-                <Image src="/logo.svg" alt="Scalar" width={26} height={26} className="rounded-full" />
+                <LogoMark className="text-xl" />
                 <span className="font-brand text-base font-bold text-foreground">Scalar</span>
               </Link>
               <button
@@ -925,8 +930,9 @@ export function DashboardShell({
 
   const isSidebar = mode === "sidebar" && isDesktop && hydrated;
 
-  // Content inset — slides right to make room for sidebar
-  const contentPaddingLeft = isSidebar ? SIDEBAR_WIDTH : 0;
+  // Content inset — slides right to make room for the floating sidebar.
+  // SIDEBAR_INSET = sidebar width (224) + left margin (12) + gutter (16) = 252px
+  const contentPaddingLeft = isSidebar ? SIDEBAR_INSET : 0;
   const contentTransition = prefersReduced
     ? { duration: 0 }
     : INSET_SPRING;
@@ -936,27 +942,23 @@ export function DashboardShell({
       <LayoutGroup>
         <div className="min-h-screen bg-background dark:bg-charcoal-dark">
           {/* ── Floating top header ── */}
-          {/* Hidden in sidebar mode (sidebar has its own wordmark + user/theme) */}
+          {/* In sidebar mode: collapsed to zero height (out of flow) so it
+              leaves no dead gap at the top of the main content area.
+              In dock mode: rendered normally as a sticky header. */}
           <motion.div
-            className="sticky top-0 z-40 px-4 pt-4 sm:px-6 sm:pt-5"
+            className="sticky top-0 z-40 overflow-hidden"
             animate={{
-              paddingLeft: isSidebar ? SIDEBAR_WIDTH + 24 : undefined,
+              height: isSidebar ? 0 : "auto",
               opacity: isSidebar ? 0 : 1,
               pointerEvents: isSidebar ? "none" : "auto",
             }}
             transition={contentTransition}
             aria-hidden={isSidebar}
           >
-            <header className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-5 lg:px-8">
               <div className="flex h-12 items-center justify-between gap-2">
                 <Link href="/dashboard" className="flex items-center gap-2">
-                  <Image
-                    src="/logo.svg"
-                    alt="Scalar"
-                    width={28}
-                    height={28}
-                    className="rounded-full"
-                  />
+                  <LogoMark className="text-xl" />
                   <span className="font-brand text-base font-bold text-foreground hidden sm:inline">
                     Scalar
                   </span>
@@ -966,18 +968,17 @@ export function DashboardShell({
                   <UserButton />
                 </div>
               </div>
-            </header>
+            </div>
           </motion.div>
 
-          {/* ── Main content — animated inset ── */}
+          {/* ── Main content — animated inset; inner column stays max-w-7xl so it
+              keeps its size (just re-centers) when the sidebar opens ── */}
           <motion.main
             animate={{ paddingLeft: contentPaddingLeft }}
             transition={contentTransition}
-            /* Mobile: reduced bottom padding (no dock); desktop: keep dock clearance */
-            className="mx-auto max-w-7xl px-4 pb-20 pt-6 sm:px-6 lg:px-8 lg:pb-36"
-            style={{ maxWidth: isSidebar ? "none" : undefined }}
+            className="pb-20 pt-6 lg:pb-36"
           >
-            {children}
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
           </motion.main>
 
           {/* ── Nav — dock (desktop) or sidebar (desktop) or mobile panel ── */}
