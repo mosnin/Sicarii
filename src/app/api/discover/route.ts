@@ -107,6 +107,24 @@ function isEmptyData(data: unknown): boolean {
   return false;
 }
 
+// Refine noisy results into a company list via the model; on ANY failure
+// (model unavailable, bad output) fall back to the raw results so the tool never
+// hard-fails. Returns either a {companies} envelope or the raw payload.
+async function refineOrRaw(userId: string, query: string, raw: unknown): Promise<unknown> {
+  if (!isRefinerConfigured()) return raw;
+  try {
+    const refined = await refineToCompanies(query, raw);
+    if (refined.length === 0) return raw;
+    return companyListResult(
+      userId,
+      refined.map((c) => ({ ...c, companyName: c.name, address: c.location }))
+    );
+  } catch (e) {
+    console.error("[discover] refiner failed, returning raw results", e);
+    return raw;
+  }
+}
+
 // Wrap an enrichment payload with the subject domain so the client can match it
 // to an existing entity (or create one) and attach the data — instead of saving
 // the raw blob as a junk record. Returns a 404 NextResponse when there's no data
@@ -169,15 +187,7 @@ export async function POST(req: NextRequest) {
         const q = body.query?.trim();
         if (!q) return NextResponse.json({ error: "Enter a search query." }, { status: 400 });
         const raw = await tavilySearch(q, { maxResults: body.numResults ?? 15 });
-        if (isRefinerConfigured()) {
-          const refined = await refineToCompanies(q, raw);
-          result = await companyListResult(
-            user.id,
-            refined.map((c) => ({ ...c, companyName: c.name, address: c.location }))
-          );
-        } else {
-          result = raw;
-        }
+        result = await refineOrRaw(user.id, q, raw);
         break;
       }
 
@@ -186,15 +196,7 @@ export async function POST(req: NextRequest) {
         const q = body.query?.trim();
         if (!q) return NextResponse.json({ error: "Enter a search query." }, { status: 400 });
         const raw = await googleSerp(q, body.country ?? "us");
-        if (isRefinerConfigured()) {
-          const refined = await refineToCompanies(q, raw);
-          result = await companyListResult(
-            user.id,
-            refined.map((c) => ({ ...c, companyName: c.name, address: c.location }))
-          );
-        } else {
-          result = raw;
-        }
+        result = await refineOrRaw(user.id, q, raw);
         break;
       }
 
@@ -364,19 +366,8 @@ export async function POST(req: NextRequest) {
               includeHighlights: true,
               includeSummary: true,
             });
-        // Refine the raw intent signals (articles, pages) into addable companies.
-        if (isRefinerConfigured()) {
-          const refined = await refineToCompanies(
-            `Companies showing buying intent for: ${q}`,
-            signals
-          );
-          result = await companyListResult(
-            user.id,
-            refined.map((c) => ({ ...c, companyName: c.name, address: c.location }))
-          );
-        } else {
-          result = signals;
-        }
+        // Refine raw intent signals into addable companies; fall back to signals.
+        result = await refineOrRaw(user.id, `Companies showing buying intent for: ${q}`, signals);
         break;
       }
 

@@ -24,15 +24,21 @@ routing and the four-gate synthesis order live in the imported engine above.
 
 ## What we're building
 
-**Scalar — the CRM your agents run.** A CRM whose operators are AI agents: they
-discover leads, enrich the database, run email relationships, and read/write every
-record — on data that never leaves the system, with deep product context so they
-sell with understanding. For agencies, founders, and lean teams running outbound.
+**Scalar — the CRM your agents run.** A structured CRM with a real UI and built-in
+intelligence, operated by AI agents: they discover leads, enrich the database,
+track deals, and run email relationships — reading/writing every record over MCP.
+For anyone working with AI agents who wants lead intelligence + deal tracking that
+stays consistent. **Moat:** structure + UI + intelligence as one system — vs agent
+frameworks that dump everything into messy `.md` files. **Data:** a single source
+of truth you control (enrichment flows in; your data is owned, exportable, never
+resold). Full identity: `docs/foundation/product.md` + `valueprop.md`.
 
 ## Foundation
 
 - North Star — `@docs/foundation/north-star.md` — the taste calibration
-- Value proposition — `@docs/foundation/value-proposition.md`
+- Product (what it is) — `docs/foundation/product.md`
+- Value proposition / positioning — `docs/foundation/valueprop.md`
+- Value proposition (legacy) — `@docs/foundation/value-proposition.md`
 - PRD / build brief — `docs/foundation/prd.md`
 - Brand kit — not yet provided (colors set: white/charcoal + `#1E4D2B`; logo at `public/logo.svg`)
 - User experience — not yet provided

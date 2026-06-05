@@ -9,7 +9,9 @@
 | Doc | What's there | Read when |
 |-----|--------------|-----------|
 | `foundation/north-star.md` | The taste calibration — soul, five-second promise, the bar. The Ratchet reads this. | ✅ set — read for any desirability/taste call |
-| `foundation/value-proposition.md` | Who it's for, the value delivered, positioning | ✅ set |
+| `foundation/product.md` | **What Scalar is** — identity, moat, objects, capabilities, scope, model. The source of truth for what we're building. | ✅ set — read before any product/feature work |
+| `foundation/valueprop.md` | **Positioning & messaging** — one-liner, differentiation table, pillars, voice. | ✅ set — read before any copy/positioning |
+| `foundation/value-proposition.md` | Earlier value-prop notes (superseded by `valueprop.md`; kept for history) | ⚠️ legacy |
 | `foundation/prd.md` | The build brief — features, rebrand, IA, integrations | ✅ set — read before feature work |
 | `foundation/brand-kit.md` | Voice, look, feel | _not yet provided (colors set in `src/app/globals.css`; logo `public/logo.svg`)_ |
 | `foundation/user-experience.md` | Flows, the felt experience | _not yet provided_ |
