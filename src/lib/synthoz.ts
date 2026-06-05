@@ -18,11 +18,11 @@ export class SynthozNotConfiguredError extends Error {
 }
 
 export function isSynthozConfigured(): boolean {
-  return Boolean(process.env.SYNTHOZ_API_KEY);
+  return Boolean(process.env.SYNTHOZ_API_KEY?.trim());
 }
 
 async function call(action: string, payload: Record<string, unknown>) {
-  const apiKey = process.env.SYNTHOZ_API_KEY;
+  const apiKey = process.env.SYNTHOZ_API_KEY?.trim();
   if (!apiKey) throw new SynthozNotConfiguredError();
 
   const res = await fetch(`${BASE}/${action}`, {
@@ -38,6 +38,21 @@ async function call(action: string, payload: Record<string, unknown>) {
   } catch {
     data = text;
   }
+
+  // These webhook endpoints can return HTTP 200 with an error message body
+  // (e.g. "no api key found") — detect auth failures regardless of status.
+  const flat = (typeof data === "string" ? data : JSON.stringify(data ?? "")).toLowerCase();
+  if (
+    flat.includes("no api key") ||
+    flat.includes("invalid api key") ||
+    flat.includes("api key not") ||
+    flat.includes("api_key not")
+  ) {
+    throw new Error(
+      "Synthoz rejected the API key. Double-check the exact SYNTHOZ_API_KEY value on the deployment (no extra spaces, your real key — not the example from the docs)."
+    );
+  }
+
   if (!res.ok) {
     throw new Error(
       `Synthoz ${action} failed (${res.status}): ${
