@@ -99,8 +99,8 @@ export default function PricingPage() {
       <main className="flex-1 pt-16">
         {/* Hero */}
         <section className="relative py-24 sm:py-32 overflow-hidden">
-          <div className="absolute inset-0 bg-charcoal-dark" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(30, 77, 43,0.12),transparent_50%)]" />
+          <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90, 176, 232,0.12),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
             <Badge variant="orange" className="mb-4">Pricing</Badge>
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
@@ -214,7 +214,7 @@ export default function PricingPage() {
         </section>
 
         {/* FAQ CTA */}
-        <section className="py-16 sm:py-20 bg-charcoal-dark/30">
+        <section className="py-16 sm:py-20 bg-muted/30 dark:bg-charcoal-dark/30">
           <div className="mx-auto max-w-3xl px-4 text-center">
             <h2 className="text-2xl font-bold">Have questions about pricing?</h2>
             <p className="mt-3 text-muted-foreground">

@@ -1,28 +1,45 @@
-import { BookOpen } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
+import { FloatIn } from "@/components/ui/float-in";
+import { getDbUser } from "@/lib/server-user";
+import { ProductContextEditor } from "@/components/dashboard/product-context-editor";
 
-export default function ProductContextPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ProductContextPage() {
+  const user = await getDbUser();
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold sm:text-3xl">
-          <BookOpen className="h-6 w-6 text-primary" />
+      {/* Header */}
+      <FloatIn delay={0}>
+        <h1 className="font-brand text-2xl sm:text-3xl text-foreground">
           Product Context
         </h1>
         <p className="text-muted-foreground mt-1">
-          A comprehensive, structured store of what you&apos;re selling — readable
-          by every agent, so outreach is informed instead of generic.
+          A store of what you&apos;re selling — read by Scalar before every action, so
+          outreach is informed instead of generic.
         </p>
-      </div>
+      </FloatIn>
 
-      <Card>
-        <EmptyState
-          icon={BookOpen}
-          title="Build your product context next"
-          description="This becomes an agent-consumable knowledge base your internal and connected agents read before they act. Coming in an upcoming cycle."
-        />
-      </Card>
+      {/* Value pitch */}
+      <FloatIn delay={0.06}>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            { label: "Agent-consumable", body: "Scalar reads this before it acts — discovering, enriching, and writing." },
+            { label: "Single source of truth", body: "One canonical store of your positioning, ICP, and message fit." },
+            { label: "Informed outreach", body: "Agents sell with understanding, not generic copy." },
+          ].map((item, i) => (
+            <FloatIn key={item.label} delay={0.1 + i * 0.06}>
+              <div className="rounded-2xl bg-card p-5 shadow-sm">
+                <p className="font-semibold text-foreground text-sm">{item.label}</p>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{item.body}</p>
+              </div>
+            </FloatIn>
+          ))}
+        </div>
+      </FloatIn>
+
+      {/* Editor */}
+      <ProductContextEditor initial={user?.productContext ?? ""} />
     </div>
   );
 }

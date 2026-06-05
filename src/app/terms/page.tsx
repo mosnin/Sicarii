@@ -8,8 +8,8 @@ export default function TermsPage() {
       <Header />
       <main className="flex-1 pt-16">
         <section className="relative py-24 sm:py-28 overflow-hidden">
-          <div className="absolute inset-0 bg-charcoal-dark" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(30, 77, 43,0.08),transparent_50%)]" />
+          <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90, 176, 232,0.08),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
             <Badge variant="orange" className="mb-4">Legal</Badge>
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Terms of Service</h1>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { LogoMark } from "@/components/brand/logo-mark";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -55,8 +55,8 @@ export default function AboutPage() {
       <main className="flex-1 pt-16">
         {/* Hero */}
         <section className="relative py-24 sm:py-32 overflow-hidden">
-          <div className="absolute inset-0 bg-charcoal-dark" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(30, 77, 43,0.12),transparent_50%)]" />
+          <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90, 176, 232,0.12),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
             <Badge variant="orange" className="mb-4">About Us</Badge>
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
@@ -96,13 +96,7 @@ export default function AboutPage() {
               <div className="flex justify-center">
                 <div className="relative">
                   <div className="rounded-2xl border border-border bg-card p-8 max-w-sm">
-                    <Image
-                      src="/logo.svg"
-                      alt="Scalar"
-                      width={120}
-                      height={120}
-                      className="rounded-xl mx-auto"
-                    />
+                    <LogoMark className="block text-center text-7xl" />
                     <h3 className="text-xl font-bold text-center mt-6">Scalar</h3>
                     <p className="text-sm text-muted-foreground text-center mt-2">
                       Strength through clarity. Excellence through transparency.
@@ -116,7 +110,7 @@ export default function AboutPage() {
         </section>
 
         {/* Values */}
-        <section className="py-20 sm:py-28 bg-charcoal-dark/30">
+        <section className="py-20 sm:py-28 bg-muted/30 dark:bg-charcoal-dark/30">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
               <Badge variant="orange" className="mb-4">Our Values</Badge>
@@ -179,7 +173,7 @@ export default function AboutPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-24 sm:py-32 bg-charcoal-dark/30">
+        <section className="py-24 sm:py-32 bg-muted/30 dark:bg-charcoal-dark/30">
           <div className="mx-auto max-w-3xl px-4 text-center">
             <h2 className="text-3xl font-bold sm:text-4xl">
               Let&apos;s build something great together

@@ -1,15 +1,14 @@
 import Link from "next/link";
-import Image from "next/image";
+import { LogoMark } from "@/components/brand/logo-mark";
 
 const footerLinks = {
-  services: [
-    { label: "Web Applications", href: "/services#web-application" },
-    { label: "Ecommerce Stores", href: "/services#ecommerce-store" },
-    { label: "Funnels", href: "/services#funnels" },
-    { label: "AI Automation", href: "/services#ai-automation" },
-    { label: "Open Claw Deployment", href: "/services#open-claw-deployment" },
+  build: [
+    { label: "Software", href: "/services#software" },
+    { label: "Commerce", href: "/services#commerce" },
+    { label: "AI", href: "/services#ai" },
+    { label: "Infrastructure", href: "/services#infrastructure" },
   ],
-  company: [
+  studio: [
     { label: "About Us", href: "/about" },
     { label: "Portfolio", href: "/portfolio" },
     { label: "Pricing", href: "/pricing" },
@@ -25,37 +24,30 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="px-4 pb-4 sm:px-6 sm:pb-6">
-      <div className="mx-auto max-w-7xl rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
-        <div className="px-6 py-10 sm:px-8 sm:py-12 lg:px-12">
+    <footer className="bg-muted/30 px-4 pb-6 sm:px-6 dark:bg-charcoal-dark">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-border bg-card dark:bg-white/[0.02]">
+        <div className="px-6 py-12 sm:px-8 lg:px-12">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             {/* Brand */}
-            <div className="col-span-2 md:col-span-1 space-y-4">
+            <div className="col-span-2 space-y-4 md:col-span-1">
               <Link href="/" className="flex items-center gap-2">
-                <Image
-                  src="/logo.svg"
-                  alt="Scalar"
-                  width={32}
-                  height={32}
-                  className="rounded-md"
-                />
-                <span className="text-lg font-bold">Scalar</span>
+                <LogoMark className="text-2xl" />
+                <span className="font-brand text-lg font-bold text-foreground">Scalar</span>
               </Link>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Digital solutions built for growth. Transparent process,
-                real-time tracking, and direct collaboration.
+              <p className="max-w-xs text-sm text-muted-foreground">
+                The CRM your agents run. Discover leads, enrich your database, and
+                run email relationships — on data that never leaves your system.
               </p>
             </div>
 
-            {/* Services */}
             <div>
-              <h4 className="text-sm font-semibold mb-4">Services</h4>
+              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Build</h4>
               <ul className="space-y-2.5">
-                {footerLinks.services.map((link) => (
+                {footerLinks.build.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -64,15 +56,14 @@ export function Footer() {
               </ul>
             </div>
 
-            {/* Company */}
             <div>
-              <h4 className="text-sm font-semibold mb-4">Company</h4>
+              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Studio</h4>
               <ul className="space-y-2.5">
-                {footerLinks.company.map((link) => (
+                {footerLinks.studio.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -81,15 +72,14 @@ export function Footer() {
               </ul>
             </div>
 
-            {/* Legal */}
             <div>
-              <h4 className="text-sm font-semibold mb-4">Legal</h4>
+              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Legal</h4>
               <ul className="space-y-2.5">
                 {footerLinks.legal.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -100,14 +90,11 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-border/50 px-6 py-4 sm:px-8 lg:px-12 flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+        <div className="flex flex-col items-center gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-between sm:px-8 lg:px-12">
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Scalar. All rights reserved.
           </p>
-          <p className="text-xs text-muted-foreground">
-            scalar.agency
-          </p>
+          <p className="text-xs text-muted-foreground">tryscalar.xyz</p>
         </div>
       </div>
     </footer>

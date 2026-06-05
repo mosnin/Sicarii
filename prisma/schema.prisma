@@ -8,9 +8,11 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // Supabase: pooled connection in DATABASE_URL, direct connection for migrations.
-  directUrl = env("DIRECT_URL")
+  // Read the Supabase Vercel integration's auto-injected vars directly so no
+  // manual env control is needed. POSTGRES_PRISMA_URL = pooled (pgbouncer),
+  // POSTGRES_URL_NON_POOLING = direct connection (migrations / db push).
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
   // pgvector powers the agent's token-efficient recall (memory_chunks.embedding).
   extensions = [vector]
 }
@@ -23,6 +25,12 @@ model User {
   lastName  String?
   imageUrl  String?
   role      String   @default("member")
+  // Operator-authored context the agent reads (what you're selling) + a
+  // connected AgentMail key for email. Both are per-user settings.
+  productContext  String? @db.Text
+  agentMailApiKey String?
+  // Stable secret in the user's inbound webhook URL (Synthoz async results).
+  webhookToken    String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

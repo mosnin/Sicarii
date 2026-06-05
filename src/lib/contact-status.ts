@@ -8,8 +8,6 @@ const STATUS_META: Record<string, { label: string; variant: BadgeVariant }> = {
   CONTACTED: { label: "Contacted", variant: "orange" },
   REPLIED: { label: "Replied", variant: "warning" },
   QUALIFIED: { label: "Qualified", variant: "orange" },
-  WON: { label: "Won", variant: "success" },
-  LOST: { label: "Lost", variant: "destructive" },
   ARCHIVED: { label: "Archived", variant: "secondary" },
 };
 

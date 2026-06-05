@@ -93,3 +93,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to create entity" }, { status: 500 });
   }
 }
+
+const bulkDeleteSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+});
+
+// DELETE /api/entities — bulk-delete the user's companies (contacts are detached
+// via the schema's onDelete: SetNull, not deleted).
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getAuthenticatedUser();
+    const parsed = bulkDeleteSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Provide ids: string[]" }, { status: 400 });
+    }
+    const result = await prisma.entity.deleteMany({
+      where: { userId: user.id, id: { in: parsed.data.ids } },
+    });
+    return NextResponse.json({ deleted: result.count });
+  } catch (e) {
+    if (e instanceof NextResponse) return e;
+    console.error("DELETE /api/entities", e);
+    return NextResponse.json({ error: "Failed to delete entities" }, { status: 500 });
+  }
+}

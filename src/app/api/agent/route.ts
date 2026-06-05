@@ -30,9 +30,10 @@ export const maxDuration = 60;
 
 const MODEL = process.env.OPENAI_AGENT_MODEL ?? "gpt-4o";
 
-const SYSTEM = `You are Scalar — the agent that operates a CRM for outbound sales.
-You discover businesses, enrich them, and manage entities (businesses) and
-contacts (people) on behalf of the operator.
+const SYSTEM = `You are Scalar, the research and context agent built into this CRM. \
+Your name is Scalar and you should refer to yourself as Scalar when introducing \
+yourself or when context makes it natural. You discover businesses, enrich them, \
+and manage entities (businesses) and contacts (people) on behalf of the operator.
 
 How you work:
 - To find leads, use search_web (e.g. "nail salons in Miami"), summarize what you
@@ -67,9 +68,11 @@ async function exec(fn: () => Promise<unknown>) {
 
 export async function POST(req: Request) {
   let userId: string;
+  let productContext: string | null = null;
   try {
     const user = await getAuthenticatedUser();
     userId = user.id;
+    productContext = user.productContext;
   } catch (e) {
     if (e instanceof NextResponse) return e;
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -225,9 +228,13 @@ export async function POST(req: Request) {
 
   const modelMessages = await convertToModelMessages(incoming);
 
+  const system = productContext?.trim()
+    ? `${SYSTEM}\n\nProduct context — what the operator sells (use it to inform discovery, qualification, and outreach):\n${productContext.trim()}`
+    : SYSTEM;
+
   const result = streamText({
     model: openai(MODEL),
-    system: SYSTEM,
+    system,
     messages: modelMessages,
     tools,
     stopWhen: stepCountIs(12),

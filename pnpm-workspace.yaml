@@ -1,3 +1,11 @@
+allowBuilds:
+  '@clerk/shared': set this to true or false
+  '@prisma/client': set this to true or false
+  '@prisma/engines': set this to true or false
+  msgpackr-extract: set this to true or false
+  prisma: set this to true or false
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false
 # Allow these dependencies to run install/build scripts (pnpm gates them by default).
 # Prisma must generate its client + engines; sharp builds native image bindings.
 onlyBuiltDependencies:

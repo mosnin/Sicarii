@@ -74,9 +74,18 @@ Deep context and all decisions are indexed in `@docs/README.md`.
 - **Run (dev):** `pnpm dev` · **Build:** `pnpm build` · **Start:** `pnpm start`
   · **Lint:** `pnpm lint`.
 - **Conventions:** import alias `@/*` → `src/*`. Route groups: `(auth)`,
-  `(dashboard)`, `(admin)`. Theme tokens (incl. brand green) live in
-  `src/app/globals.css`; legacy `orange` Tailwind tokens are repointed to green
-  (rename to `brand` is a tracked debt). Logo: `public/logo.svg`.
-- **Origin:** rebranded from the `mosnin/fortitudov4` agency scaffolding.
+  `(dashboard)`, `(admin)`. Theme tokens live in `src/app/globals.css`
+  (**baby-blue + white, light by default**; legacy `orange`/`brand` Tailwind
+  utilities are aliased to baby blue — rename is a tracked debt). Logo: the
+  `]s[` `LogoMark` (no image).
+- **Design & agent rules — read before any UI work:** `DESIGN.md` (the durable
+  design system) and `AGENTS.md`. Two hard rules: **no decorative icons** (never
+  an icon-in-a-tinted-box badge), and **this is NOT vanilla Next.js** — Next 16
+  specifics (middleware = `src/proxy.ts`; dynamic `params` are a `Promise`;
+  `export const viewport`; file-convention `app/manifest.ts` / `app/apple-icon.tsx`).
+  Verify APIs against the installed Next, not memory.
+- **Origin:** rebranded from the `mosnin/fortitudov4` agency scaffolding (forked
+  the orange/charcoal studio site, then diverged to baby-blue/white — do not
+  reintroduce orange/charcoal as the brand).
 
 <!-- ritual:installed -->
