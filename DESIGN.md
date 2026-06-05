@@ -138,9 +138,41 @@ field; background texture only. Ramp `" .·:-=+*≡#%@"`, ~30fps, honors
 - Container: `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` (marketing prose `max-w-5xl/6xl`).
 - Section spacing `py-20 sm:py-28`.
 - **Theme:** light by default; dark via the header/sidebar toggle (`next-themes`, class strategy).
-- **Mobile nav:** no bottom dock on `< lg` — a side launcher opens a slide-in panel,
-  and opening it minimizes the agent chat input. Desktop = dock ⇄ floating sidebar.
 - **Horizontal lock:** `html`/`body { overflow-x: clip }`. No full-bleed child wider than the viewport.
+
+### Dashboard shell — `src/components/dashboard/dashboard-shell.tsx`
+The signed-in shell owns navigation in three modes, persisted to `localStorage`
+(`scalar-nav-mode`); `lg` breakpoint = 1024px. Constants: `SIDEBAR_WIDTH = 224`,
+`SIDEBAR_INSET = 252` (224 + 12 gutter + 16), `MORPH_SPRING`/`INSET_SPRING` ≈
+`{ stiffness: 260, damping: 30–32 }`.
+
+- **Dock (desktop default):** a floating pill — `fixed bottom-5 left-1/2
+  -translate-x-1/2 z-50 hidden lg:block`; inner `flex items-end gap-2 rounded-full
+  border border-border/60 bg-background/80 shadow-xl backdrop-blur-2xl` (dark:
+  `border-white/10 bg-charcoal/80`). Apple-style **magnify** on hover (icon box 46→78px,
+  influence radius 130px); **gentler on touch** (`pointer: coarse` → max 52px, softer
+  spring). Items: Home · Discover · CRM · Agent (accent) · Context, a divider, the Apps
+  launcher, then the sidebar toggle (`PanelLeft`).
+- **Sidebar (desktop, toggled):** a **floating panel** — `fixed inset-y-3 left-3 z-50
+  flex flex-col overflow-hidden rounded-2xl border border-border bg-background/95
+  shadow-xl backdrop-blur-2xl` (dark: `border-white/10 bg-charcoal/95`), `width: 224px`,
+  detached on all sides (12px gutters) so it floats like the cards. A subtle animated
+  `AsciiField` sits behind the nav (`opacity-[0.18] dark:opacity-40`; content `relative
+  z-10`). Header: `]s[` LogoMark + "Scalar". Nav rows `rounded-lg px-3 py-2.5 text-sm
+  font-medium`; active `bg-primary/10 text-primary` (accent item `bg-orange/10
+  text-orange`) with a trailing `bg-primary` dot. Footer: Apps, Collapse
+  (`PanelLeftClose` → back to dock), and `UserButton` + `ThemeToggle`. Enters with a
+  clean slide (`x: -(224+24) → 0` + opacity) and staggered items — **not** a shared-layout
+  `layoutId` morph (those glitched; see §6).
+- **Content inset:** `<main>` springs `paddingLeft` `0 → 252` when the sidebar opens,
+  but the inner column stays `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` so content
+  **keeps its size and just re-centers** (never stretches to full-bleed). The floating
+  top header is taken out of flow in sidebar mode (no dead gap at the top).
+- **Mobile (`< lg`):** no dock — a small launcher pill (`fixed bottom-6 left-3`) opens a
+  slide-in nav panel (spring from `x: -100%`, with backdrop); opening it **minimizes the
+  agent chat input** via `MobileNavContext`. The desktop dock/sidebar never render on mobile.
+- **Launchpad ("Apps"):** a full-screen overlay — scrollable, themed with semantic
+  tokens (correct in light **and** dark) — of nav tiles.
 
 ---
 
