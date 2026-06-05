@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "motion/react";
 import { AsciiField } from "@/components/dashboard/ascii-field";
+import { Component as CloudsBackground } from "@/components/ui/clouds-animated-background";
 import { DotFlow, type DotFlowProps } from "@/components/ui/dot-flow";
 import { RotatingWord } from "@/components/ui/rotating-word";
 import { ArrowRight } from "lucide-react";
@@ -67,13 +68,27 @@ export function HeroSection() {
       ref={ref}
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background pt-24"
     >
-      <motion.div style={{ y: asciiY }} className="absolute inset-0">
-        {/* ASCII field: low opacity in light, slightly higher in dark */}
-        <AsciiField className="absolute inset-0 h-full w-full opacity-[0.07] dark:opacity-25" cell={14} />
-        {/* Radial glow tinted primary — reads on both white and dark */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(90,176,232,0.06),transparent_50%)]" />
+      {/* Animated clouds-in-the-sky background (UnicornStudio, client-only) */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden [&_canvas]:!h-full [&_canvas]:!w-full [&>div]:!h-full [&>div]:!w-full">
+        <CloudsBackground />
+      </div>
+
+      {/* ASCII drawn ON the clouds (blended) + a soft scrim so text stays legible */}
+      <motion.div style={{ y: asciiY }} className="pointer-events-none absolute inset-0">
+        <AsciiField
+          className="absolute inset-0 h-full w-full opacity-40 mix-blend-overlay dark:opacity-50"
+          cell={14}
+        />
       </motion.div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 62% 56% at 50% 50%, var(--background) 0%, transparent 72%)",
+          opacity: 0.55,
+        }}
+      />
 
       <motion.div
         style={{ y: contentY, opacity: contentOpacity }}

@@ -7,12 +7,12 @@ import type { NextConfig } from "next";
 // Clerk's bot protection. Both prod (*.tryscalar.xyz) and dev domains are kept.
 const cspHeader = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.tryscalar.xyz https://*.clerk.accounts.dev https://challenges.cloudflare.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.tryscalar.xyz https://*.clerk.accounts.dev https://challenges.cloudflare.com https://*.unicorn.studio https://cdn.jsdelivr.net",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://blogger.googleusercontent.com https://img.clerk.com https://utfs.io",
+  "img-src 'self' data: blob: https://blogger.googleusercontent.com https://img.clerk.com https://utfs.io https://*.unicorn.studio",
   "font-src 'self'",
-  "connect-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://checkout.creem.io",
+  "connect-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://checkout.creem.io https://*.unicorn.studio https://cdn.jsdelivr.net",
   "frame-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com",
 ].join("; ");
 
