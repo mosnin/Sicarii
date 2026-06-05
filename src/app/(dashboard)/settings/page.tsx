@@ -1,4 +1,3 @@
-import { currentUser } from "@clerk/nextjs/server";
 import {
   Card,
   CardContent,
@@ -6,13 +5,17 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
+import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
+import { getDbUser } from "@/lib/server-user";
 import { Settings } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function SettingsPage() {
-  const user = await currentUser();
+  const user = await getDbUser();
+  const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
 
   return (
     <div className="space-y-8">
@@ -46,7 +49,7 @@ export default async function SettingsPage() {
               </div>
               <div className="flex items-center justify-between py-3 text-sm">
                 <span className="text-muted-foreground">Email</span>
-                <span className="font-medium">{user?.emailAddresses[0]?.emailAddress}</span>
+                <span className="font-medium">{user?.email}</span>
               </div>
             </div>
           </CardContent>
@@ -68,10 +71,7 @@ export default async function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="secondary">Coming next</Badge>
-              Email connection lands in an upcoming cycle.
-            </div>
+            <AgentMailKeyForm initialLast4={agentMailLast4} />
           </CardContent>
         </Card>
       </FloatIn>
