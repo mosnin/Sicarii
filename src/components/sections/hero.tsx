@@ -69,7 +69,7 @@ export function HeroSection() {
     >
       <motion.div style={{ y: asciiY }} className="absolute inset-0">
         {/* ASCII field: low opacity in light, slightly higher in dark */}
-        <AsciiField className="absolute inset-0 h-full w-full opacity-[0.07] dark:opacity-25" cell={14} />
+        <AsciiField className="absolute inset-0 h-full w-full opacity-30 dark:opacity-25" cell={14} />
         {/* Radial glow tinted primary — reads on both white and dark */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(90,176,232,0.06),transparent_50%)]" />
