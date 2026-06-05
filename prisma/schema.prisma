@@ -2,7 +2,8 @@
 // Auth is Clerk; users are mirrored here via the Clerk webhook.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
@@ -10,6 +11,8 @@ datasource db {
   url       = env("DATABASE_URL")
   // Supabase: pooled connection in DATABASE_URL, direct connection for migrations.
   directUrl = env("DIRECT_URL")
+  // pgvector powers the agent's token-efficient recall (memory_chunks.embedding).
+  extensions = [vector]
 }
 
 model User {
@@ -23,11 +26,56 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  entities Entity[]
-  contacts Contact[]
-  apiKeys  ApiKey[]
+  entities      Entity[]
+  contacts      Contact[]
+  apiKeys       ApiKey[]
+  conversations Conversation[]
+  memoryChunks  MemoryChunk[]
 
   @@map("users")
+}
+
+// A chat with the Scalar agent. A fresh one is created on each page load; long-term
+// continuity comes from vector recall over memory_chunks, not from replaying history.
+model Conversation {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // "user" | "assistant"
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+// Token-efficient memory: embedded snippets of past messages and CRM data the agent
+// can recall by similarity instead of stuffing everything into the prompt.
+model MemoryChunk {
+  id        String                       @id @default(uuid())
+  userId    String
+  user      User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // "message" | "entity" | "contact" | "email"
+  refId     String? // id of the source record
+  content   String                       @db.Text
+  embedding Unsupported("vector(1536)")?
+  createdAt DateTime                     @default(now())
+
+  @@index([userId])
+  @@map("memory_chunks")
 }
 
 // Per-user API key for the MCP server / REST API. We store only a SHA-256 hash;

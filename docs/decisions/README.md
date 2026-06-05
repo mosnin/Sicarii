@@ -42,8 +42,14 @@ exponential growth into a plateau.
   (userId-scoped) — no logic drift across surfaces. _(Card 0004)_
 - **Secrets hashed at rest, shown once.** API keys stored as SHA-256; plaintext
   surfaced a single time at creation. _(Card 0004)_
-- **Verify third-party APIs against their real types.** Read `mcp-handler`'s
-  `.d.ts` before wiring; tsc then catches misuse. _(Card 0004)_
+- **Verify third-party APIs against their real types.** Read the installed
+  `.d.ts` before wiring (caught AI SDK **v6**'s async `convertToModelMessages`);
+  tsc then catches misuse. _(Cards 0004, 0005)_
+- **Gate every paid integration behind its key.** Synthoz/Tavily/OpenAI features
+  build and run without keys (clear 5xx / no-op), so the app is never bricked by a
+  missing secret. _(Cards 0003, 0005)_
+- **Token-efficient memory = fresh context + recall.** Don't replay history; mint a
+  fresh conversation per load and pull top-k vector matches on demand. _(Card 0005)_
 
 ## Open debts (owed to reality)
 
@@ -59,7 +65,9 @@ exponential growth into a plateau.
 | External keys on Vercel | 0003 | Supabase, Synthoz, Tavily, AgentMail, Clerk | founder |
 | Synthoz response → Contacts | 0003 | sample payload to parse | founder + eng |
 | MCP runtime handshake | 0004 · Feasible | tool call from a real MCP client + key | founder + eng |
-| Agent + vector memory | (next) | LLM + embedding provider keys | founder |
+| Agent runtime (LLM loop, streaming, pgvector) | 0005 · Feasible | `OPENAI_API_KEY` + live run | founder + eng |
+| pgvector `db push` | 0005 | enable `vector` ext on Supabase; push succeeds | founder + eng |
+| 5-second spark (agent) | 0005 · Desirable | observe discover→push→enrich live | founder |
 
 ## Kills & falsifieds (do not re-open)
 
