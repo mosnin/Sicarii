@@ -41,7 +41,7 @@ export function SpotlightCard({
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
           background:
-            "radial-gradient(360px circle at var(--x) var(--y), rgba(30,77,43,0.18), transparent 60%)",
+            "radial-gradient(360px circle at var(--x) var(--y), rgba(90,176,232,0.18), transparent 60%)",
         }}
       />
       {/* Top hairline */}

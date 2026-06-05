@@ -27,7 +27,7 @@ export default function RootLayout({
     <ClerkProvider
       appearance={{
         variables: {
-          colorPrimary: "#1E4D2B",
+          colorPrimary: "#5AB0E8",
           colorBackground: "#141414",
           colorText: "#F5F5F5",
           colorTextSecondary: "#A3A3A3",
@@ -67,7 +67,7 @@ export default function RootLayout({
         },
       }}
     >
-      <html lang="en" className="dark h-full antialiased" suppressHydrationWarning>
+      <html lang="en" className="h-full antialiased" suppressHydrationWarning>
         <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
           <ThemeProvider>{children}</ThemeProvider>
         </body>

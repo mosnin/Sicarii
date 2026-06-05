@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { FloatIn } from "@/components/ui/float-in";
 
 const FIELDS = [
   { name: "name", label: "Business name", type: "text", required: true },
@@ -63,59 +64,63 @@ export default function NewEntityPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <Link
-        href="/crm?tab=entities"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to entities
-      </Link>
+      <FloatIn delay={0}>
+        <Link
+          href="/crm?tab=entities"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to entities
+        </Link>
+      </FloatIn>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add an entity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {FIELDS.map((f) => (
-                <div key={f.name} className="space-y-1.5">
-                  <label
-                    htmlFor={f.name}
-                    className="text-sm font-medium text-muted-foreground"
-                  >
-                    {f.label}
-                    {"required" in f && f.required && (
-                      <span className="text-destructive"> *</span>
-                    )}
-                  </label>
-                  <Input id={f.name} name={f.name} type={f.type} />
-                </div>
-              ))}
-            </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="description"
-                className="text-sm font-medium text-muted-foreground"
-              >
-                Description
-              </label>
-              <Textarea id="description" name="description" rows={3} />
-            </div>
+      <FloatIn delay={0.06}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-brand text-xl">Add an entity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {FIELDS.map((f) => (
+                  <div key={f.name} className="space-y-1.5">
+                    <label
+                      htmlFor={f.name}
+                      className="text-sm font-medium text-muted-foreground"
+                    >
+                      {f.label}
+                      {"required" in f && f.required && (
+                        <span className="text-destructive"> *</span>
+                      )}
+                    </label>
+                    <Input id={f.name} name={f.name} type={f.type} />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="description"
+                  className="text-sm font-medium text-muted-foreground"
+                >
+                  Description
+                </label>
+                <Textarea id="description" name="description" rows={3} />
+              </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" asChild>
-                <Link href="/crm?tab=entities">Cancel</Link>
-              </Button>
-              <Button type="submit" variant="glow" disabled={busy}>
-                {busy ? "Saving…" : "Save entity"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" asChild>
+                  <Link href="/crm?tab=entities">Cancel</Link>
+                </Button>
+                <Button type="submit" variant="glow" disabled={busy}>
+                  {busy ? "Saving…" : "Save entity"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </FloatIn>
     </div>
   );
 }

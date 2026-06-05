@@ -236,7 +236,7 @@ export function AppDock({ isStaff = false }: { isStaff?: boolean }) {
               className="absolute inset-0 cursor-default bg-charcoal-dark/95 backdrop-blur-xl"
             />
             <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-40" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_25%,rgba(30,77,43,0.16),transparent_60%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_25%,rgba(90,176,232,0.16),transparent_60%)]" />
 
             <motion.div
               initial={{ opacity: 0, y: 24 }}
