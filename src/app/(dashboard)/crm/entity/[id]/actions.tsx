@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Sparkles, Trash2, UserPlus, ChevronDown, Check, RefreshCw } from "lucide-react";
+import { Sparkles, Trash2, UserPlus, ChevronDown, Check, RefreshCw, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,10 +28,32 @@ export function EntityActions({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [spawning, setSpawning] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<Aspect | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState<string | null>(null);
+
+  // Deep website analysis (Firecrawl): company context + logo + people found.
+  async function analyzeSite() {
+    setAnalyzing(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/entities/${entityId}/analyze-site`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const bits = [];
+        if (data.logo) bits.push("logo");
+        if (data.created > 0) bits.push(`${data.created} contact${data.created === 1 ? "" : "s"}`);
+        setMsg(bits.length ? `Analyzed site, added ${bits.join(" + ")}.` : "Analyzed site, context updated.");
+        router.refresh();
+      } else {
+        setMsg(data.error || "Couldn't analyze the site.");
+      }
+    } finally {
+      setAnalyzing(false);
+    }
+  }
 
   // Enrich a single aspect; additive - running one never blocks the others.
   async function enrich(type: Aspect) {
@@ -92,6 +114,16 @@ export function EntityActions({
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={analyzeSite}
+          disabled={analyzing || busy}
+          title="Deep-analyze the website for context, logo, and people"
+        >
+          <Globe className="mr-1 h-4 w-4" />
+          {analyzing ? "Analyzing…" : "Analyze site"}
+        </Button>
         <Button
           variant="outline"
           size="sm"

@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { ContactActions } from "./actions";
 import { ContactEnrich } from "./enrich";
+import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 import { ContactAgentMail } from "./agentmail";
 import { MatchEntity } from "./match-entity";
 
@@ -76,25 +77,28 @@ export default async function ContactDetailPage({
 
       <FloatIn delay={0.06}>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="font-brand text-2xl sm:text-3xl text-foreground">
-                {contact.name || contact.email || "Unnamed contact"}
-              </h1>
-              <Badge variant={statusBadgeVariant(contact.status)}>
-                {statusLabel(contact.status)}
-              </Badge>
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
-              {contact.entity && (
-                <Link
-                  href={`/crm/entity/${contact.entity.id}`}
-                  className="text-primary underline-offset-4 hover:underline"
-                >
-                  {contact.entity.name}
-                </Link>
-              )}
-              {contact.source && <span>Source: {contact.source}</span>}
+          <div className="flex items-start gap-3">
+            <CrmAvatar src={contact.imageUrl} label={contact.name || contact.email} shape="circle" size={44} className="mt-0.5" />
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="font-brand text-2xl sm:text-3xl text-foreground">
+                  {contact.name || contact.email || "Unnamed contact"}
+                </h1>
+                <Badge variant={statusBadgeVariant(contact.status)}>
+                  {statusLabel(contact.status)}
+                </Badge>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+                {contact.entity && (
+                  <Link
+                    href={`/crm/entity/${contact.entity.id}`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    {contact.entity.name}
+                  </Link>
+                )}
+                {contact.source && <span>Source: {contact.source}</span>}
+              </div>
             </div>
           </div>
           <ContactActions contactId={contact.id} currentStatus={contact.status} />

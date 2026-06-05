@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { entityStatusBadgeVariant, entityStatusLabel } from "@/lib/entity-status";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { DataView, cleanForView, humanizeKey } from "@/components/dashboard/data-view";
+import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 import { EntityActions } from "./actions";
 
 export default async function EntityDetailPage({
@@ -72,18 +73,21 @@ export default async function EntityDetailPage({
 
       <FloatIn delay={0.06}>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="font-brand text-2xl sm:text-3xl text-foreground">{entity.name}</h1>
-              <Badge variant={entityStatusBadgeVariant(entity.status)}>
-                {entityStatusLabel(entity.status)}
-              </Badge>
+          <div className="flex items-start gap-3">
+            <CrmAvatar src={entity.logoUrl} label={entity.name} shape="square" size={44} className="mt-0.5" />
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="font-brand text-2xl sm:text-3xl text-foreground">{entity.name}</h1>
+                <Badge variant={entityStatusBadgeVariant(entity.status)}>
+                  {entityStatusLabel(entity.status)}
+                </Badge>
+              </div>
+              {entity.source && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Source: {entity.source}
+                </p>
+              )}
             </div>
-            {entity.source && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                Source: {entity.source}
-              </p>
-            )}
           </div>
           <EntityActions
             entityId={entity.id}

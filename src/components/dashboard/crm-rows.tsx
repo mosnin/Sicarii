@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { FloatIn } from "@/components/ui/float-in";
 import { cn } from "@/lib/utils";
 import { BulkEnrichModal } from "@/components/dashboard/bulk-enrich-modal";
+import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 
 /* ---------- Types passed in from the server ---------- */
 
@@ -22,6 +23,7 @@ export type CrmContact = {
   email: string | null;
   title: string | null;
   status: string;
+  imageUrl: string | null;
   updatedAt: string;
   entity: { id: string; name: string } | null;
 };
@@ -32,6 +34,7 @@ export type CrmEntity = {
   status: string;
   industry: string | null;
   domain: string | null;
+  logoUrl: string | null;
   updatedAt: string;
   _count: { contacts: number };
 };
@@ -470,6 +473,7 @@ export function ContactRows({ contacts }: { contacts: CrmContact[] }) {
       hrefFor={(c) => `/crm/${c.id}`}
       renderRow={(c, score) => (
         <>
+          <CrmAvatar src={c.imageUrl} label={c.name || c.email} shape="circle" size={40} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="truncate font-medium text-foreground">{c.name || c.email || "Unnamed contact"}</span>
@@ -513,6 +517,7 @@ export function EntityRows({ entities }: { entities: CrmEntity[] }) {
       hrefFor={(e) => `/crm/entity/${e.id}`}
       renderRow={(e, score) => (
         <>
+          <CrmAvatar src={e.logoUrl} label={e.name} shape="square" size={40} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="truncate font-medium text-foreground">{e.name}</span>

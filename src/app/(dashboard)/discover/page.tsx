@@ -137,6 +137,17 @@ const CATEGORIES: Category[] = [
           { key: "url", label: "Site URL", placeholder: "https://acme.com" },
         ],
       },
+      {
+        id: "analyze-site",
+        icon: ScanSearch,
+        title: "Analyze website",
+        body: "Firecrawl deep-reads a company site and pulls the people on it as contacts.",
+        saveAs: "contact",
+        badge: "Firecrawl",
+        fields: [
+          { key: "url", label: "Company website", placeholder: "https://acme.com" },
+        ],
+      },
     ],
   },
   {

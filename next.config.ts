@@ -10,7 +10,8 @@ const cspHeader = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.tryscalar.xyz https://*.clerk.accounts.dev https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://blogger.googleusercontent.com https://img.clerk.com https://utfs.io",
+  // Allow any https image so scraped company logos / contact photos can render.
+  "img-src 'self' data: blob: https:",
   "font-src 'self'",
   "connect-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://checkout.creem.io",
   "frame-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com",

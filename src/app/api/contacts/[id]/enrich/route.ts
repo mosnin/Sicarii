@@ -55,6 +55,21 @@ function toDomain(c?: string | null): string | undefined {
   }
 }
 
+// Registrable domain (eTLD+1 approximation) for company-fit comparison.
+function registrable(host: string): string {
+  const parts = host.toLowerCase().replace(/^www\./, "").split(".");
+  return parts.length <= 2 ? parts.join(".") : parts.slice(-2).join(".");
+}
+
+// True when two hosts belong to the same company domain (equal, subdomain, or
+// same registrable domain). Used to FORCE company fit on emails.
+function sameCompany(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  const x = a.toLowerCase().replace(/^www\./, "");
+  const y = b.toLowerCase().replace(/^www\./, "");
+  return x === y || x.endsWith(`.${y}`) || y.endsWith(`.${x}`) || registrable(x) === registrable(y);
+}
+
 // POST /api/contacts/[id]/enrich  body: { field: "linkedin" | "email" | "phone" }
 export async function POST(
   req: NextRequest,
@@ -107,21 +122,22 @@ export async function POST(
         return NextResponse.json({ error: "Pipe0 is not configured (PIPE0_API_KEY missing)." }, { status: 501 });
       }
       const { first, last } = splitName(contact.name);
-      // Prefer a corporate domain; ignore freemail addresses for the company domain.
+      // The company domain must come from a STRONG source (the contact's own
+      // website, their linked entity, or a corporate work-email domain). We never
+      // guess it from a free-text company name - that risks the wrong company.
       const emailDomain = contact.email?.includes("@") ? contact.email.split("@")[1]?.toLowerCase() : undefined;
       const domain =
         toDomain(contact.website) ||
         toDomain(contact.entity?.website) ||
         toDomain(contact.entity?.domain) ||
-        (emailDomain && !FREEMAIL.has(emailDomain) ? emailDomain : undefined) ||
-        toDomain(contact.company);
+        (emailDomain && !FREEMAIL.has(emailDomain) ? emailDomain : undefined);
 
       if (!first || !last) {
         return NextResponse.json({ error: "Add the contact's full name to enrich contact info." }, { status: 400 });
       }
       if (!domain) {
         return NextResponse.json(
-          { error: "Couldn't determine a company domain. Add a website or assign this contact to a company first." },
+          { error: "Link this contact to a company (or add a work email/website) first - we won't guess the company." },
           { status: 400 }
         );
       }
@@ -132,8 +148,11 @@ export async function POST(
 
       if (field === "email") {
         const e = pick(records, ["email"]);
-        value = e && e.includes("@") ? e : null;
+        // FORCE company fit: the email must be at the company's domain, else reject.
+        value = e && e.includes("@") && sameCompany(e.split("@")[1], domain) ? e : null;
       } else {
+        // Phone is gated on a verified company domain + name match above; Pipe0
+        // resolves by name+domain so the number is company-scoped.
         value = pick(records, ["mobile", "phone", "number", "tel"]) ?? null;
       }
     }

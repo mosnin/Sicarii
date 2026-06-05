@@ -137,6 +137,12 @@ const LAUNCHPAD_TILES: Tile[] = [
       "Ground your agents in your product - positioning, ICP, and message fit.",
   },
   {
+    label: "Skills",
+    href: "/skills",
+    description:
+      "Ready-made playbooks for operating Scalar. Copy or download as .md for your agent.",
+  },
+  {
     label: "Settings",
     href: "/settings",
     description:

@@ -32,6 +32,7 @@ import {
 } from "@/lib/exa";
 import { linkupSearch, linkupDeepResearch, isLinkupConfigured } from "@/lib/linkup";
 import { refineToCompanies, isRefinerConfigured } from "@/lib/result-refiner";
+import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
 
 function notConfigured(provider: string) {
   return NextResponse.json(
@@ -221,6 +222,28 @@ export async function POST(req: NextRequest) {
         const url = body.url?.trim();
         if (!url) return NextResponse.json({ error: "Enter a URL to extract." }, { status: 400 });
         result = await tavilyExtract([url]);
+        break;
+      }
+
+      case "analyze-site": {
+        if (!isFirecrawlConfigured()) return notConfigured("Firecrawl");
+        const url = body.url?.trim();
+        if (!url) return NextResponse.json({ error: "Enter a company website URL." }, { status: 400 });
+        const a = await analyzeSite(url);
+        const site = url.startsWith("http") ? url : `https://${url}`;
+        const company = host(site);
+        // Return the people found as addable contacts.
+        result = a.contacts
+          .filter((c) => c.name && c.name.trim().length > 1)
+          .map((c) => ({
+            name: c.name,
+            title: c.title,
+            email: c.email,
+            linkedin: c.linkedin,
+            imageUrl: c.photo,
+            company,
+            website: site,
+          }));
         break;
       }
 

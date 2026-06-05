@@ -141,6 +141,7 @@ model Entity {
   name        String
   domain      String?
   website     String?
+  logoUrl     String?
   phone       String?
   industry    String?
   location    String?
@@ -190,6 +191,7 @@ model Contact {
   website   String?
   linkedin  String?
   location  String?
+  imageUrl  String?
 
   // Pipeline
   status    ContactStatus @default(NEW)

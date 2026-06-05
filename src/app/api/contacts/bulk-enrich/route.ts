@@ -35,6 +35,18 @@ function toDomain(c?: string | null): string | undefined {
   catch { return /^[\w-]+\.[\w.-]+$/.test(c.trim()) ? c.trim().toLowerCase().replace(/^www\./, "") : undefined; }
 }
 
+function registrable(host: string): string {
+  const parts = host.toLowerCase().replace(/^www\./, "").split(".");
+  return parts.length <= 2 ? parts.join(".") : parts.slice(-2).join(".");
+}
+// FORCE company fit: emails must belong to the company's domain.
+function sameCompany(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  const x = a.toLowerCase().replace(/^www\./, "");
+  const y = b.toLowerCase().replace(/^www\./, "");
+  return x === y || x.endsWith(`.${y}`) || y.endsWith(`.${x}`) || registrable(x) === registrable(y);
+}
+
 // POST /api/contacts/bulk-enrich - fill missing linkedin/email/phone for many
 // contacts at once. Sequential + capped.
 export async function POST(req: NextRequest) {
@@ -62,9 +74,10 @@ export async function POST(req: NextRequest) {
       const first = parts[0];
       const last = parts.length > 1 ? parts[parts.length - 1] : undefined;
       const emailDomain = c.email?.includes("@") ? c.email.split("@")[1]?.toLowerCase() : undefined;
+      // Strong-source company domain only (no guessing from a company name).
       const domain =
         toDomain(c.website) || toDomain(c.entity?.website) || toDomain(c.entity?.domain) ||
-        (emailDomain && !FREEMAIL.has(emailDomain) ? emailDomain : undefined) || toDomain(c.company);
+        (emailDomain && !FREEMAIL.has(emailDomain) ? emailDomain : undefined);
 
       try {
         if (!c.linkedin && exaOn && c.name) {
@@ -77,7 +90,8 @@ export async function POST(req: NextRequest) {
         }
         if (!c.email && pipe0On && first && last && domain) {
           const e = pick(await findWorkEmail(first, last, domain, c.company ?? undefined), ["email"]);
-          if (e && e.includes("@")) update.email = e;
+          // FORCE company fit: only accept an email at the company's domain.
+          if (e && e.includes("@") && sameCompany(e.split("@")[1], domain)) update.email = e;
         }
         if (!c.phone && pipe0On && first && last && domain) {
           const p = pick(await findMobile(first, last, domain, c.company ?? undefined), ["mobile", "phone", "number"]);
