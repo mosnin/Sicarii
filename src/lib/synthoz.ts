@@ -39,9 +39,11 @@ async function call(action: string, payload: Record<string, unknown>) {
     data = text;
   }
 
-  // Diagnostic — log Synthoz's raw response so failures are inspectable in the
-  // deployment logs (status + body, truncated).
-  console.log(`[synthoz] ${action} → ${res.status}: ${text.slice(0, 600)}`);
+  // Diagnostic — log the masked key fingerprint + Synthoz's raw response so
+  // failures are inspectable in the deployment logs. The fingerprint lets you
+  // confirm the DEPLOYED key is your real one (and not the docs' example key).
+  const fp = `${apiKey.slice(0, 6)}…${apiKey.slice(-4)} (len ${apiKey.length})`;
+  console.log(`[synthoz] ${action} key=${fp} → ${res.status}: ${text.slice(0, 600)}`);
 
   // Synthoz wraps failures in { state: false, event: "<message>" } (HTTP 200),
   // e.g. "You don't have anymore credits, please upgrade to use more." Surface
