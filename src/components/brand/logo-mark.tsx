@@ -1,22 +1,32 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * The Scalar logo: ]s[ — rendered in the brand font. Brackets in the
- * foreground tone (so they flip black-on-light / white-on-dark with the theme)
- * and the "s" in brand baby blue. Size/weight come from `className`.
+ * The Scalar logo: the λ mark. Blue on light backgrounds, white on dark —
+ * two raster variants swapped by the active theme (class-based dark mode).
+ * Size comes from `className` (set height + width, e.g. "h-7 w-7"); the images
+ * are square so width and height should match.
  */
 export function LogoMark({ className }: { className?: string }) {
   return (
-    <span
-      aria-label="Scalar"
-      className={cn(
-        "font-brand select-none font-bold leading-none tracking-tight",
-        className
-      )}
-    >
-      <span className="text-foreground/45">]</span>
-      <span className="text-primary">s</span>
-      <span className="text-foreground/45">[</span>
-    </span>
+    <>
+      <Image
+        src="/logo-icon-light.png"
+        alt="Scalar"
+        width={96}
+        height={96}
+        className={cn("inline-block select-none object-contain dark:hidden", className)}
+        draggable={false}
+      />
+      <Image
+        src="/logo-icon-dark.png"
+        alt="Scalar"
+        width={96}
+        height={96}
+        aria-hidden
+        className={cn("hidden select-none object-contain dark:inline-block", className)}
+        draggable={false}
+      />
+    </>
   );
 }

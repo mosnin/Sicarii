@@ -6,6 +6,7 @@ import {
   enrichCompany,
   isSynthozConfigured,
   SynthozNotConfiguredError,
+  SynthozQueuedError,
 } from "@/lib/synthoz";
 
 // POST /api/entities/[id]/enrich — enrich a business via Synthoz using its domain.
@@ -36,7 +37,7 @@ export async function POST(
       );
     }
 
-    const result = await enrichCompany(entity.domain);
+    const result = await enrichCompany(entity.domain, { userId: user.id });
 
     const updated = await prisma.entity.update({
       where: { id },
@@ -51,6 +52,10 @@ export async function POST(
     if (e instanceof NextResponse) return e;
     if (e instanceof SynthozNotConfiguredError) {
       return NextResponse.json({ error: e.message }, { status: 501 });
+    }
+    if (e instanceof SynthozQueuedError) {
+      // Async enrichment — job is stamped, result arrives via webhook.
+      return NextResponse.json({ queued: true });
     }
     console.error("POST /api/entities/[id]/enrich", e);
     return NextResponse.json({ error: "Enrichment failed" }, { status: 502 });

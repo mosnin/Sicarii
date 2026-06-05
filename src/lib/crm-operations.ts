@@ -5,7 +5,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { enrichCompany, isSynthozConfigured } from "@/lib/synthoz";
+import { enrichCompany, isSynthozConfigured, SynthozQueuedError } from "@/lib/synthoz";
 
 export class OpError extends Error {
   status: number;
@@ -40,6 +40,7 @@ export interface EntityInput {
   name: string;
   domain?: string | null;
   website?: string | null;
+  phone?: string | null;
   industry?: string | null;
   location?: string | null;
   description?: string | null;
@@ -126,11 +127,19 @@ export async function enrichEntity(userId: string, id: string) {
   if (!isSynthozConfigured())
     throw new OpError("Synthoz is not configured (SYNTHOZ_API_KEY missing)", 501);
 
-  const result = await enrichCompany(entity.domain);
-  return prisma.entity.update({
-    where: { id },
-    data: { status: "ENRICHED", enrichment: result as Prisma.InputJsonValue },
-  });
+  try {
+    const result = await enrichCompany(entity.domain, { userId });
+    return prisma.entity.update({
+      where: { id },
+      data: { status: "ENRICHED", enrichment: result as Prisma.InputJsonValue },
+    });
+  } catch (e) {
+    if (e instanceof SynthozQueuedError) {
+      // Async enrichment — result arrives via webhook; mark as enriched in-progress.
+      return prisma.entity.update({ where: { id }, data: { status: "ENRICHED" } });
+    }
+    throw e;
+  }
 }
 
 /* ----------------------------- Contacts ----------------------------- */

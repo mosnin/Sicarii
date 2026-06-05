@@ -11,7 +11,7 @@ export function DashboardHeader() {
       <header className="mx-auto max-w-7xl">
         <div className="flex h-12 items-center justify-between gap-2">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <LogoMark className="text-2xl" />
+            <LogoMark className="h-7 w-7" />
             <span className="font-brand text-base font-bold text-foreground hidden sm:inline">
               Scalar
             </span>

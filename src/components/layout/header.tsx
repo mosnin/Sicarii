@@ -147,7 +147,7 @@ export function Header() {
           <div className="flex h-14 items-center justify-between pl-4 pr-3 sm:pl-5 sm:pr-3">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
-              <LogoMark className="text-2xl" />
+              <LogoMark className="h-7 w-7" />
               <span className="font-brand text-base font-bold text-foreground hidden sm:inline">
                 Scalar
               </span>
@@ -254,7 +254,7 @@ export function Header() {
               {/* Top */}
               <div className="flex items-center justify-between px-5 pt-6">
                 <Link href="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
-                  <LogoMark className="text-2xl" />
+                  <LogoMark className="h-7 w-7" />
                   <span className="font-brand font-bold text-foreground">Scalar</span>
                 </Link>
                 <div className="flex items-center gap-2">
