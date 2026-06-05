@@ -2,6 +2,7 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { authenticateApiKey, bearerFromRequest } from "@/lib/api-auth";
+import { userIdFromAccessToken } from "@/lib/oauth";
 import {
   OpError,
   listEntities,
@@ -243,16 +244,27 @@ const authHandler = withMcpAuth(
   handler,
   async (req, bearerToken): Promise<AuthInfo | undefined> => {
     const token = bearerToken ?? bearerFromRequest(req);
+    if (!token) return undefined;
+
+    // Per-user API key (scl_...) first.
     const user = await authenticateApiKey(token);
-    if (!user) return undefined;
-    return {
-      token: token as string,
-      clientId: user.id,
-      scopes: [],
-      extra: { userId: user.id },
-    };
+    if (user) {
+      return { token, clientId: user.id, scopes: [], extra: { userId: user.id } };
+    }
+
+    // OAuth access token (issued by our authorization server).
+    const userId = await userIdFromAccessToken(token);
+    if (userId) {
+      return { token, clientId: userId, scopes: [], extra: { userId } };
+    }
+
+    return undefined;
   },
-  { required: true },
+  {
+    required: true,
+    // 401s point clients at our protected-resource metadata, kicking off OAuth.
+    resourceMetadataPath: "/.well-known/oauth-protected-resource",
+  },
 );
 
 export { authHandler as GET, authHandler as POST, authHandler as DELETE };

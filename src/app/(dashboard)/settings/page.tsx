@@ -5,10 +5,12 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { headers } from "next/headers";
 import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
 import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
+import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { getDbUser } from "@/lib/server-user";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +18,11 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const user = await getDbUser();
   const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
+
+  const h = await headers();
+  const host = h.get("host") ?? "www.tryscalar.xyz";
+  const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
+  const mcpUrl = `${proto}://${host}/api/mcp/mcp`;
 
   return (
     <div className="space-y-8">
@@ -56,6 +63,23 @@ export default async function SettingsPage() {
       {/* API keys */}
       <FloatIn delay={0.14}>
         <ApiKeysManager />
+      </FloatIn>
+
+      {/* MCP connector */}
+      <FloatIn delay={0.17}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Connect your agent (MCP)</CardTitle>
+            <CardDescription>
+              Add Scalar as a remote MCP connector in Claude or any MCP client.
+              Use this URL. It authorizes over OAuth (you sign in to approve), or
+              your agent can pass an API key above as a Bearer token.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WebhookUrl url={mcpUrl} />
+          </CardContent>
+        </Card>
       </FloatIn>
 
       {/* AgentMail */}

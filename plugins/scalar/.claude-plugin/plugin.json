@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "scalar",
+  "displayName": "Scalar",
+  "version": "0.1.0",
+  "description": "Scalar, the CRM your agents run. Bundles skills for lead discovery, accurate enrichment, CRM hygiene, intent monitors, and connects Scalar's remote MCP server so your agent can read and write every record.",
+  "author": {
+    "name": "Scalar",
+    "url": "https://www.tryscalar.xyz"
+  },
+  "homepage": "https://www.tryscalar.xyz",
+  "repository": "https://www.tryscalar.xyz",
+  "license": "MIT",
+  "keywords": ["crm", "leads", "enrichment", "mcp", "agents", "scalar"],
+  "mcpServers": {
+    "scalar": {
+      "type": "http",
+      "url": "https://www.tryscalar.xyz/api/mcp/mcp"
+    }
+  }
+}

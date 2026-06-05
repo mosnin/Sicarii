@@ -35,6 +35,7 @@
     "exa-js": "^2.13.0",
     "geist": "^1.7.0",
     "inngest": "^4.5.0",
+    "jose": "6.2.3",
     "lucide-react": "^1.0.1",
     "mcp-handler": "^1.0.1",
     "motion": "^12.38.0",

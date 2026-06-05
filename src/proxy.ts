@@ -16,6 +16,10 @@ const isPublicRoute = createRouteMatcher([
   "/terms(.*)",
   "/api/webhooks(.*)",
   "/api/inngest(.*)",
+  // MCP server + OAuth endpoints do their own auth (Bearer / OAuth / Clerk).
+  "/api/mcp(.*)",
+  "/api/oauth(.*)",
+  "/.well-known(.*)",
 ]);
 
 const clerkHandler = clerkMiddleware(async (auth, req) => {
