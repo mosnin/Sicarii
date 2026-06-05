@@ -39,6 +39,10 @@ async function call(action: string, payload: Record<string, unknown>) {
     data = text;
   }
 
+  // Diagnostic — log Synthoz's raw response so failures are inspectable in the
+  // deployment logs (status + body, truncated).
+  console.log(`[synthoz] ${action} → ${res.status}: ${text.slice(0, 600)}`);
+
   // These webhook endpoints can return HTTP 200 with an error message body
   // (e.g. "no api key found") — detect auth failures regardless of status.
   const flat = (typeof data === "string" ? data : JSON.stringify(data ?? "")).toLowerCase();
@@ -52,11 +56,13 @@ async function call(action: string, payload: Record<string, unknown>) {
       "Synthoz rejected the API key. Double-check the exact SYNTHOZ_API_KEY value on the deployment (no extra spaces, your real key — not the example from the docs)."
     );
   }
-  // Each Synthoz product meters separately — a tool can report "not enough
-  // credits" even when the key is valid and other tools work.
+  // Surface Synthoz's own credit/billing response verbatim (same key works for
+  // other tools, so this is account-side — show the exact message for support).
   if (/not enough credit|insufficient credit|out of credit|no credits?\b|credit limit/.test(flat)) {
     throw new Error(
-      `Synthoz: not enough credits for this tool (${action}). This product draws from a separate Synthoz credit pool than enrichment — top up or enable it in your Synthoz account.`
+      `Synthoz reported a credits error on "${action}". Its exact response: ${
+        typeof data === "string" ? data : JSON.stringify(data)
+      }`
     );
   }
 
