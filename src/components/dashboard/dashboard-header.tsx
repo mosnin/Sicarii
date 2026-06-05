@@ -1,6 +1,6 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
-import Image from "next/image";
+import { LogoMark } from "@/components/brand/logo-mark";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 // Minimal, backgroundless top strip. Navigation lives in the dock; up here we
@@ -11,13 +11,7 @@ export function DashboardHeader() {
       <header className="mx-auto max-w-7xl">
         <div className="flex h-12 items-center justify-between gap-2">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image
-              src="/logo.svg"
-              alt="Scalar"
-              width={28}
-              height={28}
-              className="rounded-full"
-            />
+            <LogoMark className="text-2xl" />
             <span className="font-brand text-base font-bold text-foreground hidden sm:inline">
               Scalar
             </span>

@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 
 /**
- * The Scalar wordmark: [s] — brackets in the foreground tone (so they flip
- * black-on-light / white-on-dark with the theme) and the "s" in brand baby
- * blue. Size/weight come from `className` (defaults are sensible).
+ * The Scalar logo: ]s[ — rendered in the brand font. Brackets in the
+ * foreground tone (so they flip black-on-light / white-on-dark with the theme)
+ * and the "s" in brand baby blue. Size/weight come from `className`.
  */
 export function LogoMark({ className }: { className?: string }) {
   return (
@@ -14,9 +14,9 @@ export function LogoMark({ className }: { className?: string }) {
         className
       )}
     >
-      <span className="text-foreground/45">[</span>
-      <span className="text-primary">s</span>
       <span className="text-foreground/45">]</span>
+      <span className="text-primary">s</span>
+      <span className="text-foreground/45">[</span>
     </span>
   );
 }

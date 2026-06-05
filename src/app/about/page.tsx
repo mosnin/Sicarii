@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { LogoMark } from "@/components/brand/logo-mark";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -96,13 +96,7 @@ export default function AboutPage() {
               <div className="flex justify-center">
                 <div className="relative">
                   <div className="rounded-2xl border border-border bg-card p-8 max-w-sm">
-                    <Image
-                      src="/logo.svg"
-                      alt="Scalar"
-                      width={120}
-                      height={120}
-                      className="rounded-xl mx-auto"
-                    />
+                    <LogoMark className="block text-center text-7xl" />
                     <h3 className="text-xl font-bold text-center mt-6">Scalar</h3>
                     <p className="text-sm text-muted-foreground text-center mt-2">
                       Strength through clarity. Excellence through transparency.
