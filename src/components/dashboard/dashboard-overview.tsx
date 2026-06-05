@@ -384,6 +384,7 @@ export function DashboardOverview({
               <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {[
                   { label: "Discover", href: "/discover", body: "Find contacts" },
+                  { label: "Radar", href: "/radar", body: "Scheduled scans" },
                   { label: "CRM", href: "/crm", body: "Your database" },
                   { label: "Field", href: "/field", body: "Segments + deals" },
                   { label: "Scalar", href: "/agent", body: "AI assistant" },

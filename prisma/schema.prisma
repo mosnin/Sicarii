@@ -266,17 +266,39 @@ model IntentMonitor {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
   query        String    @db.Text
-  frequency    String    @default("daily") // "daily" | "weekly"
+  frequency    String    @default("daily") // "daily" | "weekly" | "hourly"
   exaMonitorId String? // Exa's remote monitor ID (set after createExaMonitor succeeds)
   active       Boolean   @default(true)
+  // When true, runs auto-add new records to the CRM. When false, runs are stored
+  // for review and the user/agent can "Add to CRM" later.
+  autoAdd      Boolean   @default(true)
   lastRunAt    DateTime?
   nextRunAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  runs MonitorRun[]
+
   @@index([userId])
   @@index([active, nextRunAt])
   @@map("intent_monitors")
+}
+
+// A single execution of an intent monitor: what it pulled, and how much was added.
+model MonitorRun {
+  id        String        @id @default(uuid())
+  userId    String
+  monitorId String
+  monitor   IntentMonitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  items     Json? // the pulled results [{ title, url, summary }]
+  found     Int           @default(0)
+  added     Int           @default(0)
+  addedToCrm Boolean      @default(false) // whether results were ingested
+  createdAt DateTime      @default(now())
+
+  @@index([monitorId])
+  @@index([userId])
+  @@map("monitor_runs")
 }
 
 // Scheduled deep research (Linkup or Exa) on a topic, contact, or entity.

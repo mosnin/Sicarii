@@ -51,6 +51,7 @@ import { AsciiField } from "@/components/dashboard/ascii-field";
 import {
   Home,
   Radar,
+  Telescope,
   Users,
   Crosshair,
   BookOpen,
@@ -89,7 +90,8 @@ const ScalarLogoIcon: NavIcon = ({ className }) => <LogoMark className={classNam
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/dashboard", icon: Home },
-  { label: "Discover", href: "/discover", icon: Radar },
+  { label: "Discover", href: "/discover", icon: Telescope },
+  { label: "Radar", href: "/radar", icon: Radar },
   { label: "CRM", href: "/crm", icon: Users },
   { label: "Field", href: "/field", icon: Crosshair },
   { label: "Scalar", href: "/agent", icon: ScalarLogoIcon },
@@ -137,6 +139,12 @@ const LAUNCHPAD_TILES: Tile[] = [
     href: "/product-context",
     description:
       "Ground your agents in your product - positioning, ICP, and message fit.",
+  },
+  {
+    label: "Radar",
+    href: "/radar",
+    description:
+      "Scheduled scans for in-market signals. Auto-add new records, or review run history.",
   },
   {
     label: "Field",

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { exaIntentSearch, isExaConfigured, isMeaningful } from "@/lib/exa";
 import { linkupDeepResearch, linkupSearch, isLinkupConfigured } from "@/lib/linkup";
 import { notifyTaskWebhook } from "@/lib/notify";
+import { runIntentMonitorOnce } from "@/lib/radar-run";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -40,46 +41,13 @@ export const runIntentMonitors = inngest.createFunction(
     const webhookCache = new Map<string, string | null>();
     for (const monitor of monitors) {
       try {
-        const results = await exaIntentSearch(monitor.query, {
-          numResults: 10,
-          includeHighlights: true,
-          includeSummary: true,
-        });
-
-        const created: CreatedItem[] = [];
-        for (const r of results) {
-          if (!r.url) continue;
-          let domain: string | undefined;
-          try { domain = new URL(r.url).hostname.replace(/^www\./, ""); } catch { /* skip */ }
-
-          const name = isMeaningful(r.title) ? r.title : domain;
-          if (!isMeaningful(name)) continue; // never persist junk
-
-          if (domain) {
-            const exists = await prisma.entity.findFirst({
-              where: { userId: monitor.userId, domain },
-              select: { id: true },
-            });
-            if (exists) continue;
-          }
-
-          const entity = await prisma.entity.create({
-            data: {
-              userId: monitor.userId,
-              name,
-              domain,
-              website: r.url,
-              source: "intent-monitor",
-              tags: ["intent"],
-              notes: [r.summary, ...(r.highlights ?? [])].filter(Boolean).join("\n\n") || undefined,
-            },
-          });
-          created.push({ id: entity.id, kind: "entity", name: entity.name, domain: entity.domain, url: entity.website });
-          saved++;
-        }
+        // Run + record history (auto-adds to CRM only when the monitor says so).
+        const { added, created } = await runIntentMonitorOnce(monitor);
+        saved += added;
 
         const nextRun = new Date(now);
         if (monitor.frequency === "weekly") nextRun.setDate(nextRun.getDate() + 7);
+        else if (monitor.frequency === "hourly") nextRun.setHours(nextRun.getHours() + 1);
         else nextRun.setDate(nextRun.getDate() + 1);
 
         await prisma.intentMonitor.update({

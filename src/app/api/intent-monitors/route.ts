@@ -10,6 +10,7 @@ export async function GET() {
     const monitors = await prisma.intentMonitor.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
+      include: { _count: { select: { runs: true } } },
     });
     return NextResponse.json({ monitors });
   } catch (e) {
@@ -27,20 +28,24 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => null)) as {
       name?: string;
       query?: string;
-      frequency?: "daily" | "weekly";
+      frequency?: "daily" | "weekly" | "hourly";
+      autoAdd?: boolean;
     } | null;
 
-    if (!body?.name || !body?.query) {
-      return NextResponse.json({ error: "name and query are required" }, { status: 400 });
+    if (!body?.query) {
+      return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
+    const name = body.name?.trim() || body.query.slice(0, 60);
 
     if (!isExaConfigured()) {
       return NextResponse.json({ error: "EXA_API_KEY is not configured" }, { status: 501 });
     }
 
-    // Set nextRunAt to 1 day from now (first scheduled run via Inngest)
+    // First scheduled run: next hour/day/week depending on frequency.
     const nextRunAt = new Date();
-    nextRunAt.setDate(nextRunAt.getDate() + 1);
+    if (body.frequency === "hourly") nextRunAt.setHours(nextRunAt.getHours() + 1);
+    else if (body.frequency === "weekly") nextRunAt.setDate(nextRunAt.getDate() + 7);
+    else nextRunAt.setDate(nextRunAt.getDate() + 1);
 
     // Register with Exa Monitors for webhook delivery on top of Inngest polling.
     let exaMonitorId: string | undefined;
@@ -61,9 +66,10 @@ export async function POST(req: NextRequest) {
     const monitor = await prisma.intentMonitor.create({
       data: {
         userId: user.id,
-        name: body.name,
+        name,
         query: body.query,
         frequency: body.frequency ?? "daily",
+        autoAdd: body.autoAdd ?? true,
         exaMonitorId,
         nextRunAt,
       },
