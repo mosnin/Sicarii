@@ -58,7 +58,7 @@ const faqCategories = [
     questions: [
       {
         q: "How do I track my project's progress?",
-        a: "Your dashboard includes a real-time phase tracker (similar to DoorDash order tracking) that shows exactly where your project stands. Each phase — Discovery, Design, Development, Testing, Review, and Launch — updates as work progresses.",
+        a: "Your dashboard includes a real-time phase tracker (similar to DoorDash order tracking) that shows exactly where your project stands. Each phase - Discovery, Design, Development, Testing, Review, and Launch - updates as work progresses.",
       },
       {
         q: "How many revisions are included?",
@@ -70,7 +70,7 @@ const faqCategories = [
       },
       {
         q: "How do I communicate with the team?",
-        a: "Every project includes a direct messaging feature. You can chat with our team in real-time through your dashboard — no need for external email threads or Slack channels.",
+        a: "Every project includes a direct messaging feature. You can chat with our team in real-time through your dashboard - no need for external email threads or Slack channels.",
       },
     ],
   },
@@ -91,7 +91,7 @@ const faqCategories = [
       },
       {
         q: "What about ongoing maintenance?",
-        a: "All plans include post-launch support (7-90 days depending on your plan). For ongoing maintenance, we offer separate support agreements — contact us for details.",
+        a: "All plans include post-launch support (7-90 days depending on your plan). For ongoing maintenance, we offer separate support agreements - contact us for details.",
       },
     ],
   },

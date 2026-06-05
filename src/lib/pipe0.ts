@@ -1,4 +1,4 @@
-// Pipe0 enrichment client — 70+ pipes across 50+ data providers.
+// Pipe0 enrichment client - 70+ pipes across 50+ data providers.
 // Base: https://api.pipe0.com/v1  Auth: Authorization: Bearer KEY
 // All calls use /pipes/run/sync for synchronous results.
 
@@ -34,7 +34,7 @@ async function runPipe(pipeId: string, input: Record<string, string>, config?: R
   return data.records ?? data;
 }
 
-// Work email — waterfall across 50+ providers
+// Work email - waterfall across 50+ providers
 export async function findWorkEmail(firstName: string, lastName: string, domain: string, companyName?: string) {
   return runPipe("people:workemail:waterfall@1", {
     first_name: firstName,

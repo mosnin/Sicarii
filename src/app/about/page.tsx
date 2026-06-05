@@ -18,7 +18,7 @@ const values = [
   {
     icon: Zap,
     title: "Speed Without Shortcuts",
-    description: "We deliver fast because we have battle-tested processes — not because we cut corners. Quality is non-negotiable.",
+    description: "We deliver fast because we have battle-tested processes - not because we cut corners. Quality is non-negotiable.",
   },
   {
     icon: Target,
@@ -33,7 +33,7 @@ const values = [
   {
     icon: Heart,
     title: "Partnership",
-    description: "We're not just vendors — we're invested in your success. Direct communication, honest feedback, and genuine care.",
+    description: "We're not just vendors - we're invested in your success. Direct communication, honest feedback, and genuine care.",
   },
   {
     icon: Users,
@@ -79,14 +79,14 @@ export default function AboutPage() {
                 <h2 className="text-3xl font-bold sm:text-4xl">Our Mission</h2>
                 <p className="mt-4 text-lg text-muted-foreground">
                   We created Scalar because we saw too many businesses getting burned by
-                  opaque agencies — missed deadlines, unclear pricing, and zero visibility
+                  opaque agencies - missed deadlines, unclear pricing, and zero visibility
                   into what was actually happening with their project.
                 </p>
                 <p className="mt-4 text-muted-foreground">
                   Our platform changes that. From the moment you select a service to the
                   day we launch, you have a real-time dashboard showing exactly where your
                   project stands. You can upload files, request revisions, and message our
-                  team directly — all in one place.
+                  team directly - all in one place.
                 </p>
                 <p className="mt-4 text-muted-foreground">
                   We believe the best client relationships are built on trust, and trust

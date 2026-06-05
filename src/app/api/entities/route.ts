@@ -23,7 +23,7 @@ const createEntitySchema = z.object({
   enrichment: z.record(z.string(), z.unknown()).optional(),
 });
 
-// GET /api/entities — list the authenticated user's entities (with contact counts).
+// GET /api/entities - list the authenticated user's entities (with contact counts).
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/entities — create an entity.
+// POST /api/entities - create an entity.
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
@@ -99,7 +99,7 @@ const bulkDeleteSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(500),
 });
 
-// DELETE /api/entities — bulk-delete the user's companies (contacts are detached
+// DELETE /api/entities - bulk-delete the user's companies (contacts are detached
 // via the schema's onDelete: SetNull, not deleted).
 export async function DELETE(req: NextRequest) {
   try {

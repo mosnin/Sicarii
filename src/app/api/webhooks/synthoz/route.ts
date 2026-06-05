@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeRecords, extract, isObj } from "@/lib/synthoz-extract";
 import { resolveSynthozOwner } from "@/lib/synthoz-jobs";
 
-// POST /api/webhooks/synthoz — single app-level inbound receiver for Synthoz's
+// POST /api/webhooks/synthoz - single app-level inbound receiver for Synthoz's
 // async "outgoing webhook" results. The developer configures this ONE URL in
 // their Synthoz dashboard (one account, all products). Synthoz carries no user
 // identity, so each inbound record is attributed back to the Scalar user who
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   if (secret) {
     const sig = req.headers.get("x-webhook-secret") ?? req.headers.get("x-synthoz-secret");
     if (sig !== secret) {
-      console.warn("[synthoz-webhook] secret mismatch — rejected");
+      console.warn("[synthoz-webhook] secret mismatch - rejected");
       return NextResponse.json({ ok: false }, { status: 200 });
     }
   }
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     payload = raw;
   }
 
-  // Synthoz failure envelope — nothing to ingest.
+  // Synthoz failure envelope - nothing to ingest.
   if (isObj(payload) && (payload as { state?: unknown }).state === false) {
     return NextResponse.json({ ok: true, ingested: 0 });
   }

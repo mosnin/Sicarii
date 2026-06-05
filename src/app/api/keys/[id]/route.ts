@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 
-// DELETE /api/keys/[id] — revoke a key (soft delete; keeps it auditable).
+// DELETE /api/keys/[id] - revoke a key (soft delete; keeps it auditable).
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

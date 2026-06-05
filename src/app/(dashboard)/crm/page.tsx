@@ -48,7 +48,7 @@ export default async function CrmPage({
         <div>
           <h1 className="font-brand text-2xl sm:text-3xl text-foreground">CRM</h1>
           <p className="text-muted-foreground mt-1">
-            Your context engine — businesses and the people inside them, owned and
+            Your context engine - businesses and the people inside them, owned and
             enriched.
           </p>
         </div>

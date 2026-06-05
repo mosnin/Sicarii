@@ -8,7 +8,7 @@ const patchSchema = z.object({
   agentMailApiKey: z.string().trim().max(300).optional(),
 });
 
-// PATCH /api/settings — update the current user's per-user settings
+// PATCH /api/settings - update the current user's per-user settings
 // (productContext = what you're selling; agentMailApiKey = connected email key).
 export async function PATCH(req: NextRequest) {
   try {

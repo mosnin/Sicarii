@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DashboardShell — owns the nav-mode state ("dock" | "sidebar") and wires
+ * DashboardShell - owns the nav-mode state ("dock" | "sidebar") and wires
  * the morphing nav + header into a single, animated shell.
  *
  * Architecture:
@@ -29,6 +29,7 @@ import {
   useCallback,
   createContext,
   useContext,
+  type ComponentType,
 } from "react";
 import Link from "next/link";
 import { LogoMark } from "@/components/brand/logo-mark";
@@ -51,7 +52,6 @@ import {
   Home,
   Radar,
   Users,
-  Bot,
   BookOpen,
   LayoutGrid,
   X,
@@ -59,7 +59,6 @@ import {
   PanelLeft,
   PanelLeftClose,
   Settings,
-  type LucideIcon,
 } from "lucide-react";
 
 // ── MobileNavContext ──────────────────────────────────────────────────────────
@@ -74,18 +73,24 @@ export function useMobileNav() {
 
 // ── Shared nav data ──────────────────────────────────────────────────────────
 
+// Icons may be lucide icons or our own brand mark; both accept className.
+type NavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
+
 type NavItem = {
   label: string;
   href: string;
-  icon: LucideIcon;
+  icon: NavIcon;
   accent?: boolean;
 };
+
+// The agent is Scalar; render the brand logo as its nav icon.
+const ScalarLogoIcon: NavIcon = ({ className }) => <LogoMark className={className} />;
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/dashboard", icon: Home },
   { label: "Discover", href: "/discover", icon: Radar },
   { label: "CRM", href: "/crm", icon: Users },
-  { label: "Agent", href: "/agent", icon: Bot, accent: true },
+  { label: "Scalar", href: "/agent", icon: ScalarLogoIcon },
   { label: "Context", href: "/product-context", icon: BookOpen },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
@@ -104,32 +109,32 @@ const LAUNCHPAD_TILES: Tile[] = [
     label: "Dashboard",
     href: "/dashboard",
     description:
-      "Your CRM at a glance — pipeline health, recent activity, and agent status.",
+      "Your CRM at a glance - pipeline health, recent activity, and agent status.",
   },
   {
     label: "Discover",
     href: "/discover",
     description:
-      "AI-powered lead discovery — find the right people before they find you.",
+      "AI-powered lead discovery - find the right people before they find you.",
   },
   {
     label: "CRM",
     href: "/crm",
     description:
-      "Your contact and entity database — enriched, organised, and always current.",
+      "Your contact and entity database - enriched, organised, and always current.",
   },
   {
-    label: "Agent",
+    label: "Scalar",
     href: "/agent",
     description:
-      "Talk to your agent — search, enrich, and orchestrate your pipeline in plain language.",
+      "Talk to Scalar, your agent. Search, enrich, and orchestrate your pipeline in plain language.",
     highlight: true,
   },
   {
     label: "Product Context",
     href: "/product-context",
     description:
-      "Ground your agents in your product — positioning, ICP, and message fit.",
+      "Ground your agents in your product - positioning, ICP, and message fit.",
   },
   {
     label: "Settings",
@@ -150,7 +155,7 @@ function isActivePath(pathname: string, href: string) {
 
 type NavMode = "dock" | "sidebar";
 
-const SIDEBAR_WIDTH = 224; // px — the sidebar panel's own width
+const SIDEBAR_WIDTH = 224; // px - the sidebar panel's own width
 // When sidebar is floating (left-3 = 12px margin), content must shift by:
 //   sidebar width + left margin + gutter between sidebar edge and content
 const SIDEBAR_INSET = SIDEBAR_WIDTH + 12 + 16; // 252 px total
@@ -250,7 +255,7 @@ function DockNavButton({
   );
 }
 
-// ── Dock (desktop only — hidden on mobile via lg: prefix) ────────────────────
+// ── Dock (desktop only - hidden on mobile via lg: prefix) ────────────────────
 
 function Dock({
   isStaff,
@@ -267,7 +272,7 @@ function Dock({
   const pathname = usePathname();
   const mouseX = useMotionValue(Infinity);
 
-  // Detect coarse-pointer (touch) devices — disable aggressive magnification.
+  // Detect coarse-pointer (touch) devices - disable aggressive magnification.
   // Initialised lazily (runs only on client) to avoid SSR mismatch.
   const [isTouch] = useState(() =>
     typeof window !== "undefined"
@@ -310,7 +315,7 @@ function Dock({
   );
 
   return (
-    /* Hidden on mobile — MobileLauncher handles small screens instead */
+    /* Hidden on mobile - MobileLauncher handles small screens instead */
     <motion.nav
       initial={{ y: 30, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -373,7 +378,7 @@ function Dock({
           </motion.div>
         </button>
 
-        {/* Sidebar toggle — desktop only */}
+        {/* Sidebar toggle - desktop only */}
         <button
           type="button"
           onClick={onOpenSidebar}
@@ -429,7 +434,7 @@ function Sidebar({
       style={{ width: SIDEBAR_WIDTH }}
       aria-label="Primary sidebar"
     >
-      {/* ── ASCII background — absolute, behind nav content ── */}
+      {/* ── ASCII background - absolute, behind nav content ── */}
       <AsciiField
         className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.18] dark:opacity-40"
       />
@@ -534,7 +539,7 @@ function Sidebar({
   );
 }
 
-// ── MobileBottomNav — persistent bottom tab bar (mobile only) ─────────────────
+// ── MobileBottomNav - persistent bottom tab bar (mobile only) ─────────────────
 // No sidebar on mobile; the sidebar toggle lives only in the desktop dock.
 
 function MobileBottomNav({
@@ -756,13 +761,13 @@ export function DashboardShell({
 }) {
   const prefersReduced = useReducedMotion();
 
-  // ── Nav mode — persisted, forced to dock on mobile ──────────────────────
+  // ── Nav mode - persisted, forced to dock on mobile ──────────────────────
   const [mode, setMode] = useState<NavMode>("dock");
   const [hydrated, setHydrated] = useState(false);
   const [launchpadOpen, setLaunchpadOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  // Hydration + localStorage read. Canonical next-themes pattern — set state
+  // Hydration + localStorage read. Canonical next-themes pattern - set state
   // in effect on mount to read browser APIs after SSR.
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as NavMode | null;
@@ -774,7 +779,7 @@ export function DashboardShell({
     setHydrated(true);
   }, []);
 
-  // Resize listener — force dock on <lg; close mobile nav if resized to desktop
+  // Resize listener - force dock on <lg; close mobile nav if resized to desktop
   useEffect(() => {
     const onResize = () => {
       const desktop = window.innerWidth >= 1024;
@@ -800,7 +805,7 @@ export function DashboardShell({
 
   const isSidebar = mode === "sidebar" && isDesktop && hydrated;
 
-  // Content inset — slides right to make room for the floating sidebar.
+  // Content inset - slides right to make room for the floating sidebar.
   // SIDEBAR_INSET = sidebar width (224) + left margin (12) + gutter (16) = 252px
   const contentPaddingLeft = isSidebar ? SIDEBAR_INSET : 0;
   const contentTransition = prefersReduced
@@ -841,7 +846,7 @@ export function DashboardShell({
             </div>
           </motion.div>
 
-          {/* ── Main content — animated inset; inner column stays max-w-7xl so it
+          {/* ── Main content - animated inset; inner column stays max-w-7xl so it
               keeps its size (just re-centers) when the sidebar opens ── */}
           <motion.main
             animate={{ paddingLeft: contentPaddingLeft }}
@@ -851,7 +856,7 @@ export function DashboardShell({
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
           </motion.main>
 
-          {/* ── Nav — dock (desktop) or sidebar (desktop) or mobile panel ── */}
+          {/* ── Nav - dock (desktop) or sidebar (desktop) or mobile panel ── */}
           <AnimatePresence mode="wait">
             {isSidebar ? (
               <Sidebar
@@ -872,7 +877,7 @@ export function DashboardShell({
             )}
           </AnimatePresence>
 
-          {/* ── Mobile bottom nav — mobile only ── */}
+          {/* ── Mobile bottom nav - mobile only ── */}
           <MobileBottomNav onOpenLaunchpad={openLaunchpad} launchpadOpen={launchpadOpen} />
 
           {/* ── Launchpad overlay ── */}

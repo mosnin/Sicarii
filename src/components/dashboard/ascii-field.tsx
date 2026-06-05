@@ -120,7 +120,7 @@ export function AsciiField({
     if (!reduce) {
       const loop = (ts: number) => {
         raf = requestAnimationFrame(loop);
-        if (ts - last < 33) return; // ~30 fps — alive but easy
+        if (ts - last < 33) return; // ~30 fps - alive but easy
         last = ts;
         t += speed;
         draw();

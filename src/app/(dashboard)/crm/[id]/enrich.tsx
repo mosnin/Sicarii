@@ -14,7 +14,7 @@ const META: Record<Field, { label: string; icon: typeof Mail }> = {
   phone: { label: "Find phone", icon: Phone },
 };
 
-// Enrichment buttons for a contact — one per *missing* field. Once a field is
+// Enrichment buttons for a contact - one per *missing* field. Once a field is
 // filled (here or upstream) its button disappears on the next render.
 export function ContactEnrich({
   contactId,

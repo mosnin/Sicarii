@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Scalar | The CRM Your Agents Run",
   description:
-    "A CRM operated by AI agents — they discover leads, enrich your database, run the conversations, and own the data. You direct; the agents operate.",
+    "A CRM operated by AI agents - they discover leads, enrich your database, run the conversations, and own the data. You direct; the agents operate.",
   metadataBase: new URL("https://scalar.app"),
   applicationName: "Scalar",
   appleWebApp: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Scalar | The CRM Your Agents Run",
     description:
-      "A CRM operated by AI agents — discover, enrich, and own every relationship, all on data that stays inside.",
+      "A CRM operated by AI agents - discover, enrich, and own every relationship, all on data that stays inside.",
     url: "https://scalar.app",
     siteName: "Scalar",
     type: "website",

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { searchCrm } from "@/lib/crm-operations";
 
-// GET /api/search?q= — search the user's CRM (companies + contacts) for the
+// GET /api/search?q= - search the user's CRM (companies + contacts) for the
 // global search surfaced in the dashboard hero.
 export async function GET(req: NextRequest) {
   try {

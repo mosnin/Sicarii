@@ -14,7 +14,7 @@
   --color-4: 195 100% 63%;
   --color-5: 90 100% 63%;
 
-  /* Scalar — Charcoal & Green Palette */
+  /* Scalar - Charcoal & Green Palette */
   --background: #ffffff;
   --foreground: #1C1C1C;
   --card: #ffffff;
@@ -172,7 +172,7 @@
 
 html {
   scroll-behavior: smooth;
-  /* Lock horizontal scroll at the root — `clip` keeps position:sticky working. */
+  /* Lock horizontal scroll at the root - `clip` keeps position:sticky working. */
   overflow-x: clip;
 }
 
@@ -192,7 +192,7 @@ body {
   }
 }
 
-/* Scalar brand type — Bitcount Grid Single. Used for headings and the
+/* Scalar brand type - Bitcount Grid Single. Used for headings and the
    wordmark in the app shell. Pairs with the ASCII signature in the dock. */
 h1,
 .font-brand {

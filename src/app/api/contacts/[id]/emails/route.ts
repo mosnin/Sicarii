@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { getThreadsForContact, isAgentMailConfigured } from "@/lib/agentmail";
 
-// GET /api/contacts/[id]/emails — AgentMail threads involving this contact.
+// GET /api/contacts/[id]/emails - AgentMail threads involving this contact.
 // Returns { connected: false } when no AgentMail key is set (UI shows a CTA).
 export async function GET(
   _req: NextRequest,

@@ -218,7 +218,7 @@ export default function PricingPage() {
           <div className="mx-auto max-w-3xl px-4 text-center">
             <h2 className="text-2xl font-bold">Have questions about pricing?</h2>
             <p className="mt-3 text-muted-foreground">
-              Check our FAQ or reach out — we&apos;re happy to help you find the right plan.
+              Check our FAQ or reach out - we&apos;re happy to help you find the right plan.
             </p>
             <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Button variant="outline" asChild>

@@ -30,13 +30,13 @@ export class SynthozNotConfiguredError extends Error {
 
 /**
  * Thrown when Synthoz responds with { state: false } for an async tool.
- * This is NOT a failure — it means the request was queued and the result
+ * This is NOT a failure - it means the request was queued and the result
  * will arrive via the outgoing webhook. Callers should surface "processing"
  * to the user rather than an error.
  */
 export class SynthozQueuedError extends Error {
   constructor() {
-    super("Request queued — result will be delivered via webhook");
+    super("Request queued - result will be delivered via webhook");
     this.name = "SynthozQueuedError";
   }
 }
@@ -67,7 +67,7 @@ async function call(
     data = text;
   }
 
-  // Diagnostic — log the masked key fingerprint + Synthoz's raw response so
+  // Diagnostic - log the masked key fingerprint + Synthoz's raw response so
   // failures are inspectable in the deployment logs. The fingerprint lets you
   // confirm the DEPLOYED key is your real one (and not the docs' example key).
   const fp = `${apiKey.slice(0, 6)}…${apiKey.slice(-4)} (len ${apiKey.length})`;
@@ -81,7 +81,7 @@ async function call(
     flat.includes("api key not") ||
     flat.includes("api_key not")
   ) {
-    throw new Error("Synthoz rejected the API key — check SYNTHOZ_API_KEY on the deployment.");
+    throw new Error("Synthoz rejected the API key - check SYNTHOZ_API_KEY on the deployment.");
   }
 
   if (!res.ok) {
@@ -89,7 +89,7 @@ async function call(
   }
 
   // { state: false } is Synthoz's synchronous ACK for ASYNC tools (find-emails,
-  // convert-company-names). It means "request queued — result incoming via
+  // convert-company-names). It means "request queued - result incoming via
   // outgoing webhook." It is NOT a failure. Record the correlation job NOW so the
   // webhook delivery is attributed to this user, then signal the caller to show
   // "processing" instead of results.

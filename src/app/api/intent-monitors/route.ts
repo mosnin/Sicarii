@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { createExaMonitor, deleteExaMonitor, isExaConfigured } from "@/lib/exa";
 
-// GET /api/intent-monitors — list all monitors for the current user.
+// GET /api/intent-monitors - list all monitors for the current user.
 export async function GET() {
   try {
     const user = await getAuthenticatedUser();
@@ -19,7 +19,7 @@ export async function GET() {
   }
 }
 
-// POST /api/intent-monitors — create a new intent monitor.
+// POST /api/intent-monitors - create a new intent monitor.
 // Registers it with Exa (if configured) and saves locally.
 export async function POST(req: NextRequest) {
   try {
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE /api/intent-monitors?id=xxx — delete a monitor.
+// DELETE /api/intent-monitors?id=xxx - delete a monitor.
 export async function DELETE(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();

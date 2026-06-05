@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
 /**
- * A single word that morphs to the next on an interval — blur + vertical slide,
+ * A single word that morphs to the next on an interval - blur + vertical slide,
  * so it reads as a soft "morph" rather than a hard cut. Used in display headings.
  */
 export function RotatingWord({

@@ -88,7 +88,7 @@ export async function POST(req: Request) {
       await prisma.user
         .delete({ where: { clerkId: data.id as string } })
         .catch(() => {
-          /* already gone — ignore */
+          /* already gone - ignore */
         });
     }
 

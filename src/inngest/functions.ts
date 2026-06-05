@@ -1,4 +1,4 @@
-// Inngest background functions — scheduled research + intent scans.
+// Inngest background functions - scheduled research + intent scans.
 // Runs every hour; processes all due monitors/schedules for all users.
 
 import { inngest } from "@/lib/inngest";

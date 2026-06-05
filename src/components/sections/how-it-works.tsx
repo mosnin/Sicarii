@@ -12,12 +12,12 @@ const steps = [
   {
     title: "Discover",
     description:
-      "Tell the agent what you want — a company, a role, a list of sites. It finds contacts, pulls emails, and saves them straight into your CRM.",
+      "Tell the agent what you want - a company, a role, a list of sites. It finds contacts, pulls emails, and saves them straight into your CRM.",
   },
   {
     title: "Enrich",
     description:
-      "Every record stays alive. Agents fill the gaps — title, company, socials — so your database compounds instead of rotting.",
+      "Every record stays alive. Agents fill the gaps - title, company, socials - so your database compounds instead of rotting.",
   },
   {
     title: "Operate",

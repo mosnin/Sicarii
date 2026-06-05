@@ -126,7 +126,7 @@ async function refineOrRaw(userId: string, query: string, raw: unknown): Promise
 }
 
 // Wrap an enrichment payload with the subject domain so the client can match it
-// to an existing entity (or create one) and attach the data — instead of saving
+// to an existing entity (or create one) and attach the data - instead of saving
 // the raw blob as a junk record. Returns a 404 NextResponse when there's no data
 // (so the UI never shows/saves "null").
 function enrichmentResult(domain: string, label: string, data: unknown) {
@@ -139,14 +139,14 @@ function enrichmentResult(domain: string, label: string, data: unknown) {
   return { __subject: { domain, label }, __data: data };
 }
 
-// POST /api/discover — run a discovery tool and return shaped results.
+// POST /api/discover - run a discovery tool and return shaped results.
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
 
     const rate = checkRateLimit(`discover:${user.id}`, 30, 60_000);
     if (!rate.success) {
-      return NextResponse.json({ error: "Too many requests — slow down a moment." }, { status: 429 });
+      return NextResponse.json({ error: "Too many requests - slow down a moment." }, { status: 429 });
     }
 
     const body = (await req.json().catch(() => null)) as {
@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      // Enrichment tools — return a subject envelope so the client attaches the
+      // Enrichment tools - return a subject envelope so the client attaches the
       // data to a matching entity (match-or-create by domain) rather than
       // creating a junk record from the raw blob.
       case "enrich-domain": {
@@ -300,7 +300,7 @@ export async function POST(req: NextRequest) {
         const domain = host(body.domain) ?? body.domain?.trim();
         if (!domain) return NextResponse.json({ error: "Enter a company domain." }, { status: 400 });
         const raw = await getCompanyLookalikes(domain);
-        // Explorium wraps lookalikes in {data:[...]} (or nested) — surface the array.
+        // Explorium wraps lookalikes in {data:[...]} (or nested) - surface the array.
         const rows = Array.isArray(raw)
           ? raw
           : ((raw as { data?: unknown[] } | null)?.data ?? []);

@@ -18,7 +18,7 @@ export default async function SettingsPage() {
   const user = await getDbUser();
   const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
 
-  // Single app-level webhook URL — same for every user, configured once in Synthoz.
+  // Single app-level webhook URL - same for every user, configured once in Synthoz.
   const h = await headers();
   const host = h.get("host") ?? "www.tryscalar.xyz";
   const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
@@ -80,7 +80,7 @@ export default async function SettingsPage() {
         </Card>
       </FloatIn>
 
-      {/* Synthoz async webhook — one URL for the entire app */}
+      {/* Synthoz async webhook - one URL for the entire app */}
       <FloatIn delay={0.26}>
         <Card>
           <CardHeader>
@@ -88,7 +88,7 @@ export default async function SettingsPage() {
             <CardDescription>
               Paste this URL into your{" "}
               <span className="font-medium">Synthoz → Outgoing Webhook</span>{" "}
-              for each product you use. One URL handles all event types — contacts
+              for each product you use. One URL handles all event types - contacts
               and companies flow straight into your CRM as Synthoz delivers them.
             </CardDescription>
           </CardHeader>

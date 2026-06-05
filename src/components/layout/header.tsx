@@ -269,7 +269,7 @@ export function Header() {
                 </div>
               </div>
 
-              {/* Nav — big typographic groups, staggered in */}
+              {/* Nav - big typographic groups, staggered in */}
               <motion.nav
                 className="flex-1 space-y-9 px-5 py-10"
                 variants={{ hidden: {}, show: { transition: { staggerChildren: 0.045, delayChildren: 0.12 } } }}

@@ -33,7 +33,7 @@ export default async function EntityDetailPage({
     orderBy: { updatedAt: "desc" },
   });
 
-  // Website and domain are the same fact — show one clickable Website row.
+  // Website and domain are the same fact - show one clickable Website row.
   const websiteUrl = entity.website || (entity.domain ? `https://${entity.domain}` : null);
   const websiteText = entity.website
     ? entity.website.replace(/^https?:\/\//, "").replace(/\/$/, "")

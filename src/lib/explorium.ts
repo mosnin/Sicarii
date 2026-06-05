@@ -145,7 +145,7 @@ export interface PersonRecord {
 
 // Returns CRM-ready people. Explorium's /prospects returns only a HASHED email,
 // so we take the prospect_ids and call contacts_information to resolve plaintext
-// emails/phones, then merge — otherwise contacts would save with a useless hash.
+// emails/phones, then merge - otherwise contacts would save with a useless hash.
 export async function getPeopleAtCompany(
   domain: string,
   opts: PeopleAtCompanyOpts = {}

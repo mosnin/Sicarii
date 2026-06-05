@@ -41,13 +41,13 @@ How you work:
   create_entity for each business.
 - Enrich a business with enrich_entity.
 - Read/write the CRM with the list/get/create/update tools. Always work from real
-  data — call tools rather than guessing.
+  data - call tools rather than guessing.
 - You have long-term memory: call recall to retrieve relevant past context (earlier
   conversations and CRM notes) instead of assuming. Each chat starts fresh, so
   recall is how you remember.
 - Be concise and action-oriented. Confirm before bulk writes.
 
-Response style — critical:
+Response style - critical:
 - Write in plain conversational prose. No markdown: no **bold**, no bullet lists,
   no numbered lists, no [links](url), no headers. Just clear direct sentences.
 - When listing results, use natural language: "I found 3 companies: Acme (acme.com),
@@ -68,9 +68,9 @@ async function exec(fn: () => Promise<unknown>) {
     return await fn();
   } catch (e) {
     if (e instanceof OpError) return { error: e.message };
-    // Async Synthoz tool — not an error, result incoming via webhook.
+    // Async Synthoz tool - not an error, result incoming via webhook.
     if (e instanceof Error && e.name === "SynthozQueuedError") {
-      return { queued: true, message: "Request queued — result will appear in the CRM via webhook." };
+      return { queued: true, message: "Request queued - result will appear in the CRM via webhook." };
     }
     console.error("agent tool error", e);
     return { error: "Internal error" };
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
 
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json(
-      { error: "The agent isn't configured yet — add OPENAI_API_KEY." },
+      { error: "The agent isn't configured yet - add OPENAI_API_KEY." },
       { status: 503 },
     );
   }
@@ -240,7 +240,7 @@ export async function POST(req: Request) {
   const modelMessages = await convertToModelMessages(incoming);
 
   const system = productContext?.trim()
-    ? `${SYSTEM}\n\nProduct context — what the operator sells (use it to inform discovery, qualification, and outreach):\n${productContext.trim()}`
+    ? `${SYSTEM}\n\nProduct context - what the operator sells (use it to inform discovery, qualification, and outreach):\n${productContext.trim()}`
     : SYSTEM;
 
   const result = streamText({

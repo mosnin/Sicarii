@@ -33,7 +33,7 @@ const createContactSchema = z.object({
   entityId: z.string().uuid().nullable().optional(),
 });
 
-// GET /api/contacts — list the authenticated user's contacts.
+// GET /api/contacts - list the authenticated user's contacts.
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/contacts — create a contact.
+// POST /api/contacts - create a contact.
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
@@ -124,7 +124,7 @@ const bulkDeleteSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(500),
 });
 
-// DELETE /api/contacts — bulk-delete the authenticated user's contacts by id.
+// DELETE /api/contacts - bulk-delete the authenticated user's contacts by id.
 export async function DELETE(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();

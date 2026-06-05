@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Scalar — The CRM Your Agents Run",
+    name: "Scalar - The CRM Your Agents Run",
     short_name: "Scalar",
     description: "A research & context CRM operated by AI agents.",
     start_url: "/dashboard",

@@ -1,4 +1,4 @@
-// Shared CRM operations — the single source of truth for entities, contacts,
+// Shared CRM operations - the single source of truth for entities, contacts,
 // email context, search, and enrichment. Every caller (REST routes, the MCP
 // server, the in-app agent) goes through here so behavior and ownership checks
 // stay identical everywhere. All functions are scoped to a userId.

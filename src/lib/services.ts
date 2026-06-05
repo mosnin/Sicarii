@@ -18,13 +18,13 @@ export interface Service {
   startingPrice: string;
 }
 
-// Scalar's capabilities — the things the agents do. Doubles as marketing copy.
+// Scalar's capabilities - the things the agents do. Doubles as marketing copy.
 export const services: Service[] = [
   {
     id: "discover",
     name: "Discover",
     description:
-      "Find the right contacts with built-in tools — enrich by domain, pull leads from a company name, extract emails from a list of sites — and save them straight into your CRM.",
+      "Find the right contacts with built-in tools - enrich by domain, pull leads from a company name, extract emails from a list of sites - and save them straight into your CRM.",
     icon: Radar,
     features: [
       "Enrich companies from a domain",
@@ -38,13 +38,13 @@ export const services: Service[] = [
     id: "enrich",
     name: "Enrich",
     description:
-      "Every contact stays current. Agents fill the gaps — title, company, socials, context — so your database is alive instead of rotting the moment you stop typing.",
+      "Every contact stays current. Agents fill the gaps - title, company, socials, context - so your database is alive instead of rotting the moment you stop typing.",
     icon: Sparkles,
     features: [
       "Automatic field completion",
       "Provider-shaped enrichment data",
       "Re-enrich on demand",
-      "Owned data — it never leaves Scalar",
+      "Owned data - it never leaves Scalar",
     ],
     startingPrice: "Always on",
   },
@@ -52,7 +52,7 @@ export const services: Service[] = [
     id: "agent",
     name: "The built-in agent",
     description:
-      "Chat with an agent that actually has hands. It pulls lists, enriches records, and reads and writes the same CRM you do — it operates, it doesn't just summarize.",
+      "Chat with an agent that actually has hands. It pulls lists, enriches records, and reads and writes the same CRM you do - it operates, it doesn't just summarize.",
     icon: Bot,
     features: [
       "Pull and enrich lists by chat",
@@ -80,7 +80,7 @@ export const services: Service[] = [
     id: "product-context",
     name: "Product context",
     description:
-      "A comprehensive, structured store of what you're selling — readable by every agent, so outreach is informed instead of generic spray.",
+      "A comprehensive, structured store of what you're selling - readable by every agent, so outreach is informed instead of generic spray.",
     icon: BookOpen,
     features: [
       "Agent-consumable knowledge base",
@@ -94,7 +94,7 @@ export const services: Service[] = [
     id: "email",
     name: "Living memory",
     description:
-      "Connect your AgentMail account and every exchange lands on the contact's record — saved as context the agent reuses, so each relationship compounds.",
+      "Connect your AgentMail account and every exchange lands on the contact's record - saved as context the agent reuses, so each relationship compounds.",
     icon: Mails,
     features: [
       "AgentMail-powered threads",

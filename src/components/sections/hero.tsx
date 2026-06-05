@@ -8,7 +8,7 @@ import { DotFlow, type DotFlowProps } from "@/components/ui/dot-flow";
 import { RotatingWord } from "@/components/ui/rotating-word";
 import { ArrowRight } from "lucide-react";
 
-// Compact dot-grid loops for the hero chip — the studio&apos;s signature motif.
+// Compact dot-grid loops for the hero chip - the studio&apos;s signature motif.
 const designing = [
   [24],
   [17, 23, 25, 31],
@@ -70,7 +70,7 @@ export function HeroSection() {
       <motion.div style={{ y: asciiY }} className="absolute inset-0">
         {/* ASCII field: low opacity in light, slightly higher in dark */}
         <AsciiField className="absolute inset-0 h-full w-full opacity-30 dark:opacity-25" cell={14} speed={0.09} gradient />
-        {/* Radial glow tinted primary — reads on both white and dark */}
+        {/* Radial glow tinted primary - reads on both white and dark */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(90,176,232,0.06),transparent_50%)]" />
       </motion.div>
@@ -105,7 +105,7 @@ export function HeroSection() {
 
           <motion.p variants={item} className="max-w-2xl text-lg text-muted-foreground sm:text-xl">
             Discover leads, enrich your database, run email relationships, and
-            read/write every record — on data that never leaves your system, with
+            read/write every record - on data that never leaves your system, with
             deep product context so you sell with understanding.
           </motion.p>
 

@@ -22,7 +22,7 @@ function toDomain(c?: string | null): string | undefined {
 // POST /api/contacts/[id]/match-entity
 // Find (or create) the company this contact works at and link them. Research the
 // company via Exa when we don't already know the domain. Never creates a
-// duplicate entity — matches an existing one by domain (or name) first.
+// duplicate entity - matches an existing one by domain (or name) first.
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

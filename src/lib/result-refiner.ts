@@ -1,4 +1,4 @@
-// AI refinement layer. Raw web/SERP results are noisy — full of directories,
+// AI refinement layer. Raw web/SERP results are noisy - full of directories,
 // listicles, and review aggregators (Yelp, US News, Clutch, …). We pass them
 // through a small fast model to extract the real, individual companies that
 // match the search intent, deduplicated and CRM-ready.
@@ -45,7 +45,7 @@ Below are raw web search results as JSON. Extract ONLY real, individual companie
 Rules:
 - EXCLUDE directories, aggregators, listicles, marketplaces, review sites, job boards, news articles, and encyclopedic pages (e.g. Yelp, Yellow Pages, US News, Clutch, G2, Capterra, Crunchbase list pages, Wikipedia, Reddit, LinkedIn search pages, "top 10 …" articles).
 - Each entry must be a single distinct company. DEDUPLICATE companies that appear more than once (same company, different URL).
-- Use the company's own official website for website/domain — never the aggregator's.
+- Use the company's own official website for website/domain - never the aggregator's.
 - Fill industry, location, phone, and a one-line description only when supported by the text; otherwise leave blank.
 - Return at most ${limit} companies. If nothing qualifies, return an empty list.
 
