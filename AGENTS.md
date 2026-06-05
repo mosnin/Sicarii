@@ -1,5 +1,23 @@
 # AGENTS.md - working rules for this repo
 
+## Enrichment accuracy - never attach the wrong record (hard rule)
+
+Enrichment (LinkedIn, email, phone, firmographics, anything) must ALWAYS attach
+to the correct person/company. It is NEVER acceptable to save data for a
+same-name stranger or a different company. This has caused real bugs and must
+not happen again, ever.
+
+Rules for any enrichment/lookup code:
+- Verify identity before saving: the candidate must match on the person's name
+  AND their company/domain (or title) before it is accepted. Matching on name
+  alone is forbidden (too many same-name people).
+- Prefer NOTHING over a wrong value. If a confident match cannot be verified,
+  return null and tell the user "couldn't find it" - never guess.
+- Provider lookups must be keyed by a strong identifier (work email, company
+  domain), not just a display name.
+- Reference implementation: `exaFindLinkedIn` in `src/lib/exa.ts` requires both a
+  name and company match. Keep that bar for every new enrichment path.
+
 ## Copy - never use em dashes (hard rule)
 
 The application must NEVER use em dashes (the long dash) or en dashes anywhere:

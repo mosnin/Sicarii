@@ -352,23 +352,26 @@ export async function exaFindLinkedIn(
   if (candidates.length === 0) return null;
 
   const nameTokens = name.toLowerCase().split(/\s+/).filter((t) => t.length > 1);
+  const lastName = nameTokens[nameTokens.length - 1];
   const comp = company?.trim().toLowerCase();
   const titleWords = (title ?? "").toLowerCase().split(/\s+/).filter((w) => w.length > 3);
 
-  let best: ExaResult | null = null;
-  let bestScore = -1;
+  let best: { c: ExaResult; companyHit: boolean; nameHit: boolean; score: number } | null = null;
   for (const c of candidates) {
-    const hay = `${c.title ?? ""} ${c.text ?? ""} ${(c.highlights ?? []).join(" ")} ${c.url}`.toLowerCase();
+    const hay = `${c.title ?? ""} ${c.text ?? ""} ${(c.highlights ?? []).join(" ")} ${decodeURIComponent(c.url)}`.toLowerCase();
     const nameHits = nameTokens.filter((t) => hay.includes(t)).length;
-    let score = 0;
-    if (comp && hay.includes(comp)) score += 3; // strongest signal
-    if (titleWords.some((w) => hay.includes(w))) score += 1;
-    if (nameHits >= Math.max(1, nameTokens.length - 1)) score += 1;
-    if (score > bestScore) { bestScore = score; best = c; }
+    // Name must plausibly match: most tokens present AND the surname present.
+    const nameHit = nameHits >= Math.max(1, nameTokens.length - 1) && (!lastName || hay.includes(lastName));
+    const companyHit = !!comp && hay.includes(comp);
+    const score = (companyHit ? 3 : 0) + (titleWords.some((w) => hay.includes(w)) ? 1 : 0) + (nameHit ? 1 : 0);
+    if (!best || score > best.score) best = { c, companyHit, nameHit, score };
   }
+  if (!best) return null;
 
-  // If we know the company, only accept a candidate that actually matches it.
-  if (comp) return bestScore >= 3 ? best!.url : null;
-  // No company context: fall back to the top profile result.
-  return best?.url ?? candidates[0].url;
+  // ACCURACY RULE: when the company is known, only accept a profile that matches
+  // BOTH the person's name AND their company. A wrong profile is never acceptable
+  // (same-name strangers) - return null instead. See AGENTS.md / product.md.
+  if (comp) return best.companyHit && best.nameHit ? best.c.url : null;
+  // No company context: require at least a name match before returning anything.
+  return best.nameHit ? best.c.url : null;
 }
