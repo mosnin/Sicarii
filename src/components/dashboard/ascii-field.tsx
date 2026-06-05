@@ -3,18 +3,44 @@
 import { useEffect, useRef } from "react";
 
 /**
- * The CRM&#39;s signature: a slow, calm field of ASCII characters that flow like
- * something being assembled. Rendered to canvas for performance; honours
- * prefers-reduced-motion (draws a single static frame). Brand green on dark.
+ * The CRM's signature: a field of ASCII characters that flow like something
+ * being assembled. Rendered to canvas for performance; honours
+ * prefers-reduced-motion (draws a single static frame).
+ *
+ * `gradient` paints the characters along a flowing blue→purple gradient
+ * (used on the marketing site); otherwise it uses the baby-blue brand tone.
  */
+const GRADIENT_STOPS: [number, number, number][] = [
+  [90, 176, 232], // baby blue   #5AB0E8
+  [91, 141, 239], // blue        #5B8DEF
+  [124, 119, 240], // indigo     #7C77F0
+  [167, 139, 250], // purple     #A78BFA
+];
+
+function lerpStop(t: number): [number, number, number] {
+  const clamped = ((t % 1) + 1) % 1;
+  const seg = clamped * (GRADIENT_STOPS.length - 1);
+  const i = Math.min(GRADIENT_STOPS.length - 2, Math.floor(seg));
+  const f = seg - i;
+  const a = GRADIENT_STOPS[i];
+  const b = GRADIENT_STOPS[i + 1];
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * f),
+    Math.round(a[1] + (b[1] - a[1]) * f),
+    Math.round(a[2] + (b[2] - a[2]) * f),
+  ];
+}
+
 export function AsciiField({
   className,
   speed = 0.05,
   cell = 12,
+  gradient = false,
 }: {
   className?: string;
   speed?: number;
   cell?: number;
+  gradient?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -59,9 +85,15 @@ export function AsciiField({
           const ch = ramp[idx];
           if (ch === " ") continue;
           const a = 0.06 + v * 0.5;
-          // Brand green tones: bright highlight → lighter green; base → primary green
-          ctx.fillStyle =
-            v > 0.86 ? `rgba(143,204,242,${a.toFixed(3)})` : `rgba(90,176,232,${a.toFixed(3)})`;
+          if (gradient) {
+            // Flowing blue→purple gradient: hue follows x position + time, so
+            // the colour drifts across the field as it animates.
+            const [r, g, b] = lerpStop(x / Math.max(1, cols) + (y / Math.max(1, rows)) * 0.25 + t * 0.03);
+            ctx.fillStyle = `rgba(${r},${g},${b},${a.toFixed(3)})`;
+          } else {
+            ctx.fillStyle =
+              v > 0.86 ? `rgba(143,204,242,${a.toFixed(3)})` : `rgba(90,176,232,${a.toFixed(3)})`;
+          }
           ctx.fillText(ch, x * cw, y * cell);
         }
       }
@@ -88,7 +120,7 @@ export function AsciiField({
     if (!reduce) {
       const loop = (ts: number) => {
         raf = requestAnimationFrame(loop);
-        if (ts - last < 55) return; // ~18 fps, deliberately calm
+        if (ts - last < 33) return; // ~30 fps — alive but easy
         last = ts;
         t += speed;
         draw();
@@ -100,7 +132,7 @@ export function AsciiField({
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [speed, cell]);
+  }, [speed, cell, gradient]);
 
   return <canvas ref={ref} className={className} aria-hidden="true" />;
 }

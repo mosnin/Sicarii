@@ -247,7 +247,7 @@ export function Header() {
             transition={{ duration: 0.3 }}
           >
             <div className="absolute inset-0 bg-background/97 backdrop-blur-xl dark:bg-charcoal-dark/95" />
-            <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.04] dark:opacity-30" cell={14} />
+            <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12] dark:opacity-30" cell={14} speed={0.09} gradient />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(90,176,232,0.18),transparent_60%)]" />
 
             <motion.div
