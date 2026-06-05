@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Sparkles, Trash2, UserPlus, ChevronDown, Check, RefreshCw, Globe, FileSearch } from "lucide-react";
+import { Trash2, ChevronDown, Check, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -147,7 +147,6 @@ export function EntityActions({
           disabled={reporting || busy}
           title="Full research report: offerings, market, news, intent, decision makers"
         >
-          <FileSearch className="mr-1 h-4 w-4" />
           {reporting ? "Researching…" : "Deep report"}
         </Button>
         <Button
@@ -157,7 +156,6 @@ export function EntityActions({
           disabled={analyzing || busy}
           title="Deep-analyze the website for context, logo, and people"
         >
-          <Globe className="mr-1 h-4 w-4" />
           {analyzing ? "Analyzing…" : "Analyze site"}
         </Button>
         <Button
@@ -167,7 +165,6 @@ export function EntityActions({
           disabled={spawning || busy}
           title="Research decision makers and add the ones you don't have"
         >
-          <UserPlus className="mr-1 h-4 w-4" />
           {spawning ? "Researching…" : "Spawn contacts"}
         </Button>
 
@@ -180,7 +177,6 @@ export function EntityActions({
             disabled={busy || !hasDomain}
             title={hasDomain ? "Enrich this company" : "Add a domain to enrich"}
           >
-            <Sparkles className="mr-1 h-4 w-4" />
             Enrich
             <ChevronDown className={cn("ml-1 h-3.5 w-3.5 transition-transform", menuOpen && "rotate-180")} />
           </Button>

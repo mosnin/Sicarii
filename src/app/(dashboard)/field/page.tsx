@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Loader2, Plus, Wand2, Trash2, ArrowLeft } from "lucide-react";
+import { Loader2, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloatIn } from "@/components/ui/float-in";
@@ -124,10 +124,10 @@ function SegmentsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => setMode(mode === "prompt" ? "none" : "prompt")} variant={mode === "prompt" ? "glow" : "default"}>
-          <Wand2 className="mr-1.5 h-4 w-4" /> Build from prompt
+          Build from prompt
         </Button>
         <Button size="sm" variant="outline" onClick={() => setMode(mode === "manual" ? "none" : "manual")}>
-          <Plus className="mr-1.5 h-4 w-4" /> New segment
+          New segment
         </Button>
         {msg && <span className="text-xs text-muted-foreground">{msg}</span>}
       </div>
@@ -229,7 +229,7 @@ function PipelinesPanel() {
       <div className="flex gap-2">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="New pipeline name" className="max-w-xs" />
         <Button size="sm" onClick={create} disabled={creating || !name.trim()}>
-          {creating ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Plus className="mr-1.5 h-4 w-4" />} Create
+          {creating ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Create
         </Button>
       </div>
       {loading ? null : items.length === 0 ? (
