@@ -52,6 +52,13 @@ async function call(action: string, payload: Record<string, unknown>) {
       "Synthoz rejected the API key. Double-check the exact SYNTHOZ_API_KEY value on the deployment (no extra spaces, your real key — not the example from the docs)."
     );
   }
+  // Each Synthoz product meters separately — a tool can report "not enough
+  // credits" even when the key is valid and other tools work.
+  if (/not enough credit|insufficient credit|out of credit|no credits?\b|credit limit/.test(flat)) {
+    throw new Error(
+      `Synthoz: not enough credits for this tool (${action}). This product draws from a separate Synthoz credit pool than enrichment — top up or enable it in your Synthoz account.`
+    );
+  }
 
   if (!res.ok) {
     throw new Error(

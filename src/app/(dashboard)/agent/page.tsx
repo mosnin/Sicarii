@@ -346,7 +346,7 @@ export default function AgentPage() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-9rem)] flex-col overflow-hidden">
+    <div className="flex h-[calc(100dvh-11rem)] flex-col overflow-hidden lg:h-[calc(100dvh-15rem)]">
       {/* ------------------------------------------------------------------ */}
       {/* Conversation area                                                    */}
       {/* ------------------------------------------------------------------ */}
@@ -357,7 +357,7 @@ export default function AgentPage() {
         {/* Subtle radial accent top-right */}
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed inset-0 z-0"
+          className="pointer-events-none absolute inset-0 z-0"
           style={{
             background:
               "radial-gradient(ellipse 60% 40% at 80% 10%, rgba(90,176,232,0.06) 0%, transparent 70%)",
@@ -368,7 +368,7 @@ export default function AgentPage() {
           {/* Empty state */}
           <AnimatePresence mode="wait">
             {messages.length === 0 && !busy && (
-              <div className="flex min-h-[calc(100vh-18rem)] items-center justify-center">
+              <div className="flex min-h-[50dvh] items-center justify-center">
                 <EmptyState onSuggestion={handleSuggestion} />
               </div>
             )}
@@ -432,7 +432,7 @@ export default function AgentPage() {
       <motion.div
         animate={navOpen ? { opacity: 0, y: 24, pointerEvents: "none" } : { opacity: 1, y: 0, pointerEvents: "auto" }}
         transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-        className="relative z-20 mx-auto w-full max-w-2xl px-4 pb-4 pt-2"
+        className="relative z-20 mx-auto w-full max-w-2xl shrink-0 px-4 pb-4 pt-2"
       >
         <motion.div
           initial={{ opacity: 0, y: 12 }}
