@@ -83,7 +83,6 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("POST /api/discover", e);
-    const msg = e instanceof Error ? e.message : "Discovery failed.";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
