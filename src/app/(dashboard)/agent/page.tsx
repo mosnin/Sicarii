@@ -303,16 +303,6 @@ export default function AgentPage() {
         ref={scrollRef}
         className="relative flex-1 overflow-y-auto"
       >
-        {/* Subtle radial accent top-right */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 60% 40% at 80% 10%, rgba(90,176,232,0.06) 0%, transparent 70%)",
-          }}
-        />
-
         <div className="relative z-10 mx-auto w-full max-w-2xl px-4 py-6">
           {/* Empty state */}
           <AnimatePresence mode="wait">
