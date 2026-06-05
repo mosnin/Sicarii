@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Sparkles, Trash2, UserPlus, ChevronDown, Check, RefreshCw, Globe } from "lucide-react";
+import { Sparkles, Trash2, UserPlus, ChevronDown, Check, RefreshCw, Globe, FileSearch } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ export function EntityActions({
   const [busy, setBusy] = useState(false);
   const [spawning, setSpawning] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<Aspect | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
@@ -79,6 +80,31 @@ export function EntityActions({
     }
   }
 
+  // Deep report: OpenAI agent assembles offerings, target market, news, intent
+  // signals, and decision makers (verified + added) from analyze + web search.
+  async function deepReport() {
+    setReporting(true);
+    setMsg("Researching the company, this can take up to a minute…");
+    try {
+      const res = await fetch(`/api/entities/${entityId}/deep-report`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setMsg(
+          data.created > 0
+            ? `Report ready, added ${data.created} decision maker${data.created === 1 ? "" : "s"}.`
+            : "Report ready."
+        );
+        router.refresh();
+      } else {
+        setMsg(data.error || "Couldn't generate the report.");
+      }
+    } catch {
+      setMsg("Network error.");
+    } finally {
+      setReporting(false);
+    }
+  }
+
   async function spawnContacts() {
     setSpawning(true);
     setMsg(null);
@@ -114,6 +140,16 @@ export function EntityActions({
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
+        <Button
+          variant="glow"
+          size="sm"
+          onClick={deepReport}
+          disabled={reporting || busy}
+          title="Full research report: offerings, market, news, intent, decision makers"
+        >
+          <FileSearch className="mr-1 h-4 w-4" />
+          {reporting ? "Researching…" : "Deep report"}
+        </Button>
         <Button
           variant="outline"
           size="sm"

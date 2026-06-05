@@ -10,6 +10,8 @@ const updateEntitySchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   domain: z.string().trim().max(255).nullable().optional(),
   website: z.string().trim().max(500).nullable().optional(),
+  phone: z.string().trim().max(50).nullable().optional(),
+  logoUrl: z.string().trim().max(1000).nullable().optional(),
   industry: z.string().trim().max(120).nullable().optional(),
   location: z.string().trim().max(200).nullable().optional(),
   description: z.string().trim().max(10000).nullable().optional(),

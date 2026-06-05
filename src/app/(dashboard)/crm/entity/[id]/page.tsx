@@ -17,6 +17,7 @@ import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { DataView, cleanForView, humanizeKey } from "@/components/dashboard/data-view";
 import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 import { EntityActions } from "./actions";
+import { EntityEditor } from "./editor";
 
 export default async function EntityDetailPage({
   params,
@@ -143,6 +144,19 @@ export default async function EntityDetailPage({
                   <p className="whitespace-pre-wrap text-sm">{entity.notes}</p>
                 </div>
               )}
+              <EntityEditor
+                entityId={entity.id}
+                initial={{
+                  name: entity.name ?? "",
+                  website: entity.website ?? "",
+                  domain: entity.domain ?? "",
+                  phone: entity.phone ?? "",
+                  industry: entity.industry ?? "",
+                  location: entity.location ?? "",
+                  size: entity.size ?? "",
+                  description: entity.description ?? "",
+                }}
+              />
             </CardContent>
           </Card>
         </FloatIn>

@@ -103,3 +103,35 @@ export async function analyzeSite(url: string): Promise<SiteAnalysis> {
     markdown: body.data?.markdown,
   };
 }
+
+export interface FirecrawlSearchResult {
+  url: string;
+  title?: string;
+  description?: string;
+}
+
+// Web search via Firecrawl. Returns top results with title/description.
+export async function firecrawlSearch(query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
+  const res = await fetch(`${BASE}/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key()}` },
+    body: JSON.stringify({ query, limit }),
+  });
+  const text = await res.text();
+  console.log(`[firecrawl] search "${query.slice(0, 60)}" -> ${res.status}`);
+  if (!res.ok) throw new Error(`Firecrawl search failed (${res.status}): ${text.slice(0, 160)}`);
+
+  const body = JSON.parse(text) as {
+    data?: unknown;
+    web?: unknown;
+  };
+  const raw = (Array.isArray(body.data) ? body.data
+    : Array.isArray((body.data as { web?: unknown })?.web) ? (body.data as { web: unknown[] }).web
+    : Array.isArray(body.web) ? body.web
+    : []) as Record<string, unknown>[];
+
+  const s = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  return raw
+    .map((r) => ({ url: s(r.url) ?? "", title: s(r.title), description: s(r.description) ?? s(r.snippet) }))
+    .filter((r) => r.url);
+}
