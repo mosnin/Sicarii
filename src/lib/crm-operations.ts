@@ -5,7 +5,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { enrichCompany, isSynthozConfigured, SynthozQueuedError } from "@/lib/synthoz";
+import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 
 export class OpError extends Error {
   status: number;
@@ -118,28 +118,36 @@ export async function deleteEntity(userId: string, id: string) {
   return { ok: true };
 }
 
-/** Enrich a business via Synthoz using its domain; stores the raw payload. */
+/** Enrich a business via Explorium using its domain; fills empty columns and
+ *  stores firmographics under enrichment. Never persists null. */
 export async function enrichEntity(userId: string, id: string) {
   const entity = await prisma.entity.findUnique({ where: { id } });
   if (!entity || entity.userId !== userId)
     throw new OpError("Entity not found", 404);
   if (!entity.domain) throw new OpError("Entity has no domain to enrich from", 400);
-  if (!isSynthozConfigured())
-    throw new OpError("Synthoz is not configured (SYNTHOZ_API_KEY missing)", 501);
+  if (!isExploriumConfigured())
+    throw new OpError("Enrichment is not configured (EXPLORIUM_API_KEY missing)", 501);
 
-  try {
-    const result = await enrichCompany(entity.domain, { userId });
-    return prisma.entity.update({
-      where: { id },
-      data: { status: "ENRICHED", enrichment: result as Prisma.InputJsonValue },
-    });
-  } catch (e) {
-    if (e instanceof SynthozQueuedError) {
-      // Async enrichment — result arrives via webhook; mark as enriched in-progress.
-      return prisma.entity.update({ where: { id }, data: { status: "ENRICHED" } });
-    }
-    throw e;
+  const enriched = await enrichDomain(entity.domain);
+  if (!enriched) throw new OpError(`No enrichment data found for ${entity.domain}`, 404);
+
+  const { raw, fields } = enriched;
+  const existing =
+    entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
+      ? (entity.enrichment as Record<string, unknown>)
+      : {};
+  const data: Prisma.EntityUncheckedUpdateInput = {
+    status: "ENRICHED",
+    enrichment: { ...existing, firmographics: raw } as Prisma.InputJsonValue,
+  };
+  if (fields) {
+    if (!entity.industry && fields.industry) data.industry = fields.industry;
+    if (!entity.location && fields.address) data.location = fields.address;
+    if (!entity.phone && fields.phone) data.phone = fields.phone;
+    if (!entity.description && fields.description) data.description = fields.description;
+    if (!entity.website && fields.website) data.website = fields.website;
   }
+  return prisma.entity.update({ where: { id }, data });
 }
 
 /* ----------------------------- Contacts ----------------------------- */

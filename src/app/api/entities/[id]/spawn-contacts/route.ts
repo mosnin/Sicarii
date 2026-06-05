@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { exaResearchContacts, isExaConfigured } from "@/lib/exa";
+import { exaResearchContacts, isExaConfigured, isMeaningful } from "@/lib/exa";
 
 // POST /api/entities/[id]/spawn-contacts — deep-research the decision makers at
 // this company via Exa, then create contacts for any the CRM doesn't already
@@ -52,9 +52,11 @@ export async function POST(
     let skipped = 0;
     const seen = new Set<string>();
     for (const p of found) {
-      const email = p.email?.trim().toLowerCase();
       const name = p.name?.trim();
-      const nameKey = name?.toLowerCase();
+      // Hard guard: never create a contact without a real name.
+      if (!isMeaningful(name)) { skipped++; continue; }
+      const email = isMeaningful(p.email) ? p.email.trim().toLowerCase() : undefined;
+      const nameKey = name.toLowerCase();
 
       // Dedup: by email globally, by name on this entity, and within this batch.
       const dupe =
@@ -70,10 +72,10 @@ export async function POST(
         data: {
           userId: user.id,
           entityId: id,
-          name: name || null,
-          email: p.email || null,
-          title: p.title || null,
-          linkedin: p.linkedin || null,
+          name,
+          email: email ?? null,
+          title: isMeaningful(p.title) ? p.title : null,
+          linkedin: isMeaningful(p.linkedin) ? p.linkedin : null,
           company: entity.name,
           website: entity.website || (entity.domain ? `https://${entity.domain}` : null),
           status: "NEW",

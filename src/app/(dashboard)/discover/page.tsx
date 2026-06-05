@@ -734,6 +734,119 @@ function ScheduleMonitorPanel({ query, toolId, onClose }: { query: string; toolI
   );
 }
 
+// ─── CRM picker (select an existing entity/contact to enrich) ────────────────
+
+type PickEntity = { id: string; name?: string | null; domain?: string | null; website?: string | null };
+type PickContact = { id: string; name?: string | null; email?: string | null; company?: string | null; website?: string | null };
+
+function CrmPicker({
+  type,
+  onPick,
+}: {
+  type: "entity" | "contact";
+  onPick: (rec: PickEntity | PickContact) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<(PickEntity | PickContact)[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [q, setQ] = useState("");
+  const [loaded, setLoaded] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(type === "entity" ? "/api/entities" : "/api/contacts");
+      const d = await res.json().catch(() => ({}));
+      setItems(type === "entity" ? d.entities ?? [] : d.contacts ?? []);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+      setLoaded(true);
+    }
+  }, [type]);
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && !loaded) load();
+  };
+
+  const label = (it: PickEntity | PickContact) =>
+    type === "entity"
+      ? (it as PickEntity).name || (it as PickEntity).domain || "Untitled"
+      : (it as PickContact).name || (it as PickContact).email || "Unnamed";
+  const sub = (it: PickEntity | PickContact) =>
+    type === "entity"
+      ? (it as PickEntity).domain ?? ""
+      : [(it as PickContact).company, (it as PickContact).email].filter(Boolean).join(" · ");
+
+  const filtered = items
+    .filter((it) => `${label(it)} ${sub(it)}`.toLowerCase().includes(q.toLowerCase()))
+    .slice(0, 50);
+
+  return (
+    <div className="mb-4">
+      <button
+        type="button"
+        onClick={toggle}
+        className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+      >
+        <Building2 className="h-3.5 w-3.5" />
+        {type === "entity" ? "Select a company from your CRM" : "Select a contact from your CRM"}
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-2 rounded-xl border border-border bg-card p-2">
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={`Search ${type === "entity" ? "companies" : "contacts"}…`}
+                className="mb-2"
+              />
+              <div className="max-h-56 overflow-y-auto">
+                {loading ? (
+                  <p className="px-2 py-3 text-sm text-muted-foreground">Loading…</p>
+                ) : filtered.length === 0 ? (
+                  <p className="px-2 py-3 text-sm text-muted-foreground">
+                    {items.length === 0 ? `No ${type === "entity" ? "companies" : "contacts"} yet.` : "No matches."}
+                  </p>
+                ) : (
+                  filtered.map((it) => (
+                    <button
+                      key={it.id}
+                      type="button"
+                      onClick={() => { onPick(it); setOpen(false); }}
+                      className="flex w-full flex-col items-start rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted"
+                    >
+                      <span className="text-sm text-foreground">{label(it)}</span>
+                      {sub(it) && <span className="text-xs text-muted-foreground">{sub(it)}</span>}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              or enter manually
+              <span className="h-px flex-1 bg-border" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function DiscoverPage() {
@@ -780,6 +893,31 @@ export default function DiscoverPage() {
     stageOrder.indexOf(to) >= stageOrder.indexOf(from) ? 1 : -1;
 
   const canSchedule = active && (active.id === "intent-scan" || active.id === "deep-research" || active.id === "quick-research");
+
+  // Which CRM record (if any) this tool can be pre-filled from.
+  const pickType: "entity" | "contact" | null = active
+    ? active.fields.some((f) => f.key === "firstName")
+      ? "contact"
+      : active.fields.some((f) => f.key === "domain")
+        ? "entity"
+        : null
+    : null;
+
+  const set = (key: string, value?: string) => {
+    if (value) dispatch({ type: "SET_VALUE", key, value });
+  };
+  const fillFromEntity = (e: PickEntity) => {
+    set("domain", e.domain ?? hostOf(e.website));
+    set("companyName", e.name ?? undefined);
+  };
+  const fillFromContact = (c: PickContact) => {
+    const parts = (c.name ?? "").trim().split(/\s+/).filter(Boolean);
+    if (parts[0]) set("firstName", parts[0]);
+    if (parts.length > 1) set("lastName", parts[parts.length - 1]);
+    const emailDomain = c.email?.includes("@") ? c.email.split("@")[1] : undefined;
+    set("domain", hostOf(c.website) ?? emailDomain ?? hostOf(c.company));
+    set("companyName", c.company ?? undefined);
+  };
 
   return (
     <div className="space-y-8">
@@ -890,6 +1028,17 @@ export default function DiscoverPage() {
                   <p className="text-muted-foreground text-sm">{active.body}</p>
                 </div>
               </div>
+
+              {pickType && (
+                <CrmPicker
+                  type={pickType}
+                  onPick={(rec) =>
+                    pickType === "entity"
+                      ? fillFromEntity(rec as PickEntity)
+                      : fillFromContact(rec as PickContact)
+                  }
+                />
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 {active.fields.map((f) => (

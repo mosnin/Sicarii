@@ -48,6 +48,28 @@ export async function getCompanyProfile(domain: string) {
   return enrichBusiness("firmographics", id);
 }
 
+// Enrich a domain into both the raw firmographics payload AND extracted,
+// column-ready fields. Returns null when Explorium has no match for the domain
+// (so callers never persist an empty/null enrichment).
+export async function enrichDomain(domain: string): Promise<{
+  businessId: string;
+  raw: unknown;
+  fields: ReturnType<typeof businessToCompany> | null;
+} | null> {
+  const id = await matchBusiness(domain);
+  if (!id) return null;
+  const raw = await enrichBusiness("firmographics", id);
+  const inner = (raw as { data?: unknown[] } | null)?.data;
+  const rec = Array.isArray(inner) ? inner[0] : raw;
+  const fields =
+    rec && typeof rec === "object" ? businessToCompany(rec as Record<string, unknown>) : null;
+  // Guard: if there's genuinely nothing usable, treat as no data.
+  const hasAnything =
+    raw != null && (Array.isArray(inner) ? inner.length > 0 : Object.keys(raw as object).length > 0);
+  if (!hasAnything) return null;
+  return { businessId: id, raw, fields };
+}
+
 export async function getCompanyFunding(domain: string) {
   const id = await matchBusiness(domain);
   if (!id) return null;

@@ -29,6 +29,15 @@ export async function POST(req: NextRequest) {
     const domain = norm(parsed.data.domain);
     const { key, data, name } = parsed.data;
 
+    // Never attach empty/null data (which would create a junk "null" record).
+    const isEmpty =
+      data == null ||
+      (Array.isArray(data) && data.length === 0) ||
+      (typeof data === "object" && !Array.isArray(data) && Object.keys(data as object).length === 0);
+    if (isEmpty) {
+      return NextResponse.json({ error: "No data to attach for this domain." }, { status: 404 });
+    }
+
     const existing = await prisma.entity.findFirst({
       where: { userId: user.id, domain },
     });

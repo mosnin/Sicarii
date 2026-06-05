@@ -193,6 +193,18 @@ const COMPANY_SCHEMA = {
   required: ["companyName"],
 } as const;
 
+// Guard against junk values the LLM sometimes emits ("null", "Unknown", "N/A",
+// empty) so we never persist meaningless records.
+export function isMeaningful(s?: string | null): s is string {
+  if (!s) return false;
+  const t = s.trim().toLowerCase();
+  return (
+    t.length > 1 &&
+    /[a-z0-9]/i.test(t) &&
+    !["null", "undefined", "n/a", "na", "none", "unknown", "-"].includes(t)
+  );
+}
+
 function hostFromUrl(input?: string): string | undefined {
   if (!input) return undefined;
   try {
@@ -224,15 +236,20 @@ export async function exaFindCompanies(prompt: string, count = 10): Promise<Foun
       try { parsed = JSON.parse(r.summary) as Partial<FoundCompany>; } catch { /* summary wasn't JSON */ }
     }
     const website = parsed.website || r.url;
+    const name = parsed.companyName || r.title || hostFromUrl(website);
+    // Skip results we can't name — never emit "Unknown" companies.
+    if (!isMeaningful(name)) continue;
     out.push({
-      companyName: parsed.companyName || r.title || hostFromUrl(website) || "Unknown",
+      companyName: name,
       industry: parsed.industry,
       address: parsed.address,
       phone: parsed.phone,
       website,
       domain: hostFromUrl(website),
       description: parsed.description || r.text?.slice(0, 300),
-      keyDecisionMakers: Array.isArray(parsed.keyDecisionMakers) ? parsed.keyDecisionMakers : undefined,
+      keyDecisionMakers: Array.isArray(parsed.keyDecisionMakers)
+        ? parsed.keyDecisionMakers.filter((d) => isMeaningful(d?.name))
+        : undefined,
       sourceUrl: r.url,
     });
   }
@@ -294,10 +311,18 @@ export async function exaResearchContacts(
     let parsed: { people?: FoundPerson[] } = {};
     try { parsed = JSON.parse(r.summary) as { people?: FoundPerson[] }; } catch { continue; }
     for (const p of parsed.people ?? []) {
-      const key = p.name?.trim().toLowerCase();
-      if (!key || seen.has(key)) continue;
+      // Skip junk names ("null", "Unknown", …) so we never spawn empty contacts.
+      if (!isMeaningful(p?.name)) continue;
+      const key = p.name.trim().toLowerCase();
+      if (seen.has(key)) continue;
       seen.add(key);
-      people.push({ ...p, sourceUrl: r.url });
+      people.push({
+        name: p.name.trim(),
+        title: isMeaningful(p.title) ? p.title : undefined,
+        email: isMeaningful(p.email) ? p.email : undefined,
+        linkedin: isMeaningful(p.linkedin) ? p.linkedin : undefined,
+        sourceUrl: r.url,
+      });
       if (people.length >= count) return people;
     }
   }
