@@ -4,10 +4,11 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { exaIntentSearch, isMeaningful } from "@/lib/exa";
+import { exaIntentSearch } from "@/lib/exa";
+import { extractAndAddToCrm, type CreatedItem } from "@/lib/radar-extract";
 
 export interface RunItem { title: string; url: string; summary?: string }
-export interface CreatedItem { id: string; kind: "entity"; name: string | null; domain: string | null; url: string | null }
+export type { CreatedItem };
 
 export async function runIntentMonitorOnce(monitor: {
   id: string;
@@ -30,33 +31,15 @@ export async function runIntentMonitorOnce(monitor: {
     }));
 
   let added = 0;
-  const created: CreatedItem[] = [];
+  let created: CreatedItem[] = [];
 
+  // Auto-add extracts the real companies/people mentioned in the results (same
+  // path as the manual "Add to CRM" button), deduped, rather than dumping the
+  // articles/publishers themselves as entities.
   if (monitor.autoAdd) {
-    for (const r of results) {
-      if (!r.url) continue;
-      let domain: string | undefined;
-      try { domain = new URL(r.url).hostname.replace(/^www\./, ""); } catch { /* skip */ }
-      const name = isMeaningful(r.title) ? r.title : domain;
-      if (!isMeaningful(name)) continue;
-      if (domain) {
-        const exists = await prisma.entity.findFirst({ where: { userId: monitor.userId, domain }, select: { id: true } });
-        if (exists) continue;
-      }
-      const entity = await prisma.entity.create({
-        data: {
-          userId: monitor.userId,
-          name,
-          domain,
-          website: r.url,
-          source: "intent-monitor",
-          tags: ["intent"],
-          notes: [r.summary, ...(r.highlights ?? [])].filter(Boolean).join("\n\n") || undefined,
-        },
-      });
-      created.push({ id: entity.id, kind: "entity", name: entity.name, domain: entity.domain, url: entity.website });
-      added++;
-    }
+    const result = await extractAndAddToCrm(monitor.userId, items);
+    added = result.entitiesAdded + result.contactsAdded;
+    created = result.created;
   }
 
   const run = await prisma.monitorRun.create({
