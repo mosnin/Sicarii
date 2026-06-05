@@ -1,4 +1,3 @@
-import { currentUser } from "@clerk/nextjs/server";
 import {
   Card,
   CardContent,
@@ -6,22 +5,22 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
-import { Settings } from "lucide-react";
+import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
+import { getDbUser } from "@/lib/server-user";
+
+export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const user = await currentUser();
+  const user = await getDbUser();
+  const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <FloatIn delay={0}>
-        <h1 className="font-brand flex items-center gap-2 text-2xl sm:text-3xl text-foreground">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-            <Settings className="h-5 w-5 text-primary" />
-          </span>
+        <h1 className="font-brand text-2xl sm:text-3xl text-foreground">
           Settings
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -46,7 +45,7 @@ export default async function SettingsPage() {
               </div>
               <div className="flex items-center justify-between py-3 text-sm">
                 <span className="text-muted-foreground">Email</span>
-                <span className="font-medium">{user?.emailAddresses[0]?.emailAddress}</span>
+                <span className="font-medium">{user?.email}</span>
               </div>
             </div>
           </CardContent>
@@ -68,10 +67,7 @@ export default async function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="secondary">Coming next</Badge>
-              Email connection lands in an upcoming cycle.
-            </div>
+            <AgentMailKeyForm initialLast4={agentMailLast4} />
           </CardContent>
         </Card>
       </FloatIn>
