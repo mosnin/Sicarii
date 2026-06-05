@@ -274,10 +274,13 @@ function CrmBrowser<T extends { id: string }>({
           <Input
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(0); if (smart) setSmart(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter") runSmart(); }}
             placeholder={searchPlaceholder}
-            className="pl-9"
+            className="pl-9 pr-9"
           />
-          {query && (
+          {smartLoading ? (
+            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+          ) : query ? (
             <button
               type="button"
               aria-label="Clear search"
@@ -286,7 +289,7 @@ function CrmBrowser<T extends { id: string }>({
             >
               <X className="h-4 w-4" />
             </button>
-          )}
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2">
@@ -294,7 +297,6 @@ function CrmBrowser<T extends { id: string }>({
             <Button
               variant="outline"
               size="sm"
-              className="rounded-lg"
               onClick={() => setFilterOpen((o) => !o)}
             >
               Filter
@@ -340,16 +342,6 @@ function CrmBrowser<T extends { id: string }>({
                     })}
 
                     <div className="my-1.5 h-px bg-border" />
-                    <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">AI ranking</p>
-                    <button
-                      type="button"
-                      onClick={runSmart}
-                      disabled={smartLoading}
-                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
-                    >
-                      <span>Smart match {!smart && <span className="text-xs opacity-50">needs a search</span>}</span>
-                      {smartLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : smart ? <span className="text-xs font-medium text-primary">On</span> : null}
-                    </button>
                     <button
                       type="button"
                       onClick={runFit}
@@ -503,7 +495,7 @@ export function ContactRows({ contacts }: { contacts: CrmContact[] }) {
       noun="contact"
       deleteEndpoint="/api/contacts"
       enrichEndpoint="/api/contacts/bulk-enrich"
-      searchPlaceholder="Search or describe who you're looking for…"
+      searchPlaceholder="Smart search, describe who you want, then Enter…"
       searchText={(c) => [c.name, c.email, c.title, c.entity?.name, statusLabel(c.status)].filter(Boolean).join(" ")}
       sortOptions={sortOptions}
       hrefFor={(c) => `/crm/${c.id}`}
@@ -547,7 +539,7 @@ export function EntityRows({ entities }: { entities: CrmEntity[] }) {
       noun="company"
       deleteEndpoint="/api/entities"
       enrichEndpoint="/api/entities/bulk-enrich"
-      searchPlaceholder="Search or describe the companies you want…"
+      searchPlaceholder="Smart search, describe the companies you want, then Enter…"
       searchText={(e) => [e.name, e.industry, e.domain, statusLabel(e.status)].filter(Boolean).join(" ")}
       sortOptions={sortOptions}
       hrefFor={(e) => `/crm/entity/${e.id}`}

@@ -142,7 +142,7 @@ function SegmentsPanel() {
               <textarea
                 value={goal} onChange={(e) => setGoal(e.target.value)} rows={3}
                 placeholder="e.g. Series A fintech founders in NYC who'd want automated lead intelligence"
-                className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full resize-y rounded-2xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <div className="flex items-center gap-2">
                 <label className="text-xs text-muted-foreground">How many</label>
@@ -302,14 +302,14 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
                 <label className="text-[11px] text-muted-foreground">
                   Stage
                   <select value={e.stage} onChange={(ev) => patch(e.id, { stage: ev.target.value })}
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm">
+                    className="mt-1 w-full rounded-full border border-border bg-background px-3 py-1.5 text-sm">
                     {STAGES.map((s) => <option key={s} value={s}>{stageLabel[s]}</option>)}
                   </select>
                 </label>
                 <label className="text-[11px] text-muted-foreground">
                   Conversation
                   <select value={e.conversationStatus} onChange={(ev) => patch(e.id, { conversationStatus: ev.target.value })}
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm">
+                    className="mt-1 w-full rounded-full border border-border bg-background px-3 py-1.5 text-sm">
                     {CONVO.map((c) => <option key={c} value={c}>{c.replace("_", " ").toLowerCase()}</option>)}
                   </select>
                 </label>
