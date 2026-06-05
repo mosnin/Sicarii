@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogoMark } from "@/components/brand/logo-mark";
+import Image from "next/image";
 
 const footerLinks = {
   build: [
@@ -31,7 +31,13 @@ export function Footer() {
             {/* Brand */}
             <div className="col-span-2 space-y-4 md:col-span-1">
               <Link href="/" className="flex items-center gap-2">
-                <LogoMark className="text-lg" />
+                <Image
+                  src="/logo.svg"
+                  alt="Scalar"
+                  width={30}
+                  height={30}
+                  className="rounded-full"
+                />
                 <span className="font-brand text-lg font-bold text-foreground">Scalar</span>
               </Link>
               <p className="max-w-xs text-sm text-muted-foreground">
