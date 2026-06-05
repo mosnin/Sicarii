@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { FloatIn } from "@/components/ui/float-in";
 
 const FIELDS = [
   { name: "name", label: "Name", type: "text" },
@@ -81,78 +82,82 @@ export default function NewContactPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <Link
-        href="/crm"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to CRM
-      </Link>
+      <FloatIn delay={0}>
+        <Link
+          href="/crm"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to CRM
+        </Link>
+      </FloatIn>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add a contact</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {FIELDS.map((f) => (
-                <div key={f.name} className="space-y-1.5">
-                  <label
-                    htmlFor={f.name}
-                    className="text-sm font-medium text-muted-foreground"
-                  >
-                    {f.label}
-                  </label>
-                  <Input id={f.name} name={f.name} type={f.type} />
-                </div>
-              ))}
-            </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="entityId"
-                className="text-sm font-medium text-muted-foreground"
-              >
-                Entity (business)
-              </label>
-              <select
-                id="entityId"
-                name="entityId"
-                value={entityId}
-                onChange={(e) => setEntityId(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">Solo (no entity)</option>
-                {entities.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                  </option>
+      <FloatIn delay={0.06}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-brand text-xl">Add a contact</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {FIELDS.map((f) => (
+                  <div key={f.name} className="space-y-1.5">
+                    <label
+                      htmlFor={f.name}
+                      className="text-sm font-medium text-muted-foreground"
+                    >
+                      {f.label}
+                    </label>
+                    <Input id={f.name} name={f.name} type={f.type} />
+                  </div>
                 ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="notes"
-                className="text-sm font-medium text-muted-foreground"
-              >
-                Notes
-              </label>
-              <Textarea id="notes" name="notes" rows={3} />
-            </div>
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="entityId"
+                  className="text-sm font-medium text-muted-foreground"
+                >
+                  Entity (business)
+                </label>
+                <select
+                  id="entityId"
+                  name="entityId"
+                  value={entityId}
+                  onChange={(e) => setEntityId(e.target.value)}
+                  className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Solo (no entity)</option>
+                  {entities.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="notes"
+                  className="text-sm font-medium text-muted-foreground"
+                >
+                  Notes
+                </label>
+                <Textarea id="notes" name="notes" rows={3} />
+              </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" asChild>
-                <Link href="/crm">Cancel</Link>
-              </Button>
-              <Button type="submit" variant="glow" disabled={busy}>
-                {busy ? "Saving…" : "Save contact"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" asChild>
+                  <Link href="/crm">Cancel</Link>
+                </Button>
+                <Button type="submit" variant="glow" disabled={busy}>
+                  {busy ? "Saving…" : "Save contact"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </FloatIn>
     </div>
   );
 }
