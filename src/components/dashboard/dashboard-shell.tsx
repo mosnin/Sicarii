@@ -52,6 +52,7 @@ import {
   Home,
   Radar,
   Users,
+  Crosshair,
   BookOpen,
   LayoutGrid,
   X,
@@ -90,6 +91,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/dashboard", icon: Home },
   { label: "Discover", href: "/discover", icon: Radar },
   { label: "CRM", href: "/crm", icon: Users },
+  { label: "Field", href: "/field", icon: Crosshair },
   { label: "Scalar", href: "/agent", icon: ScalarLogoIcon },
   { label: "Context", href: "/product-context", icon: BookOpen },
   { label: "Settings", href: "/settings", icon: Settings },
@@ -135,6 +137,12 @@ const LAUNCHPAD_TILES: Tile[] = [
     href: "/product-context",
     description:
       "Ground your agents in your product - positioning, ICP, and message fit.",
+  },
+  {
+    label: "Field",
+    href: "/field",
+    description:
+      "Customer segments + agentic pipelines. Build a segment from a prompt, then work the deals.",
   },
   {
     label: "Skills",

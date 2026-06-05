@@ -14,6 +14,7 @@ import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { ContactActions } from "./actions";
 import { ContactEnrich } from "./enrich";
 import { CrmAvatar } from "@/components/dashboard/crm-avatar";
+import { EnrichmentStatusCard, contactTier } from "@/components/dashboard/enrichment-status";
 import { ContactAgentMail } from "./agentmail";
 import { MatchEntity } from "./match-entity";
 
@@ -107,7 +108,8 @@ export default async function ContactDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Details */}
-        <FloatIn delay={0.1} className="lg:col-span-1">
+        <FloatIn delay={0.1} className="lg:col-span-1 space-y-6">
+          <EnrichmentStatusCard tier={contactTier(contact)} />
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Details</CardTitle>

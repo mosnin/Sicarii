@@ -13,25 +13,32 @@ export const maxDuration = 60;
 
 const MODEL = process.env.OPENAI_REPORT_MODEL ?? "gpt-5-mini";
 
+// NOTE: OpenAI strict structured outputs reject optional() properties. Use
+// nullable() (required key, value may be null) for anything that can be absent.
 const reportSchema = z.object({
   summary: z.string().describe("2-4 sentence overview of the company"),
   coreOfferings: z.array(z.string()).describe("Main products or services"),
   targetMarket: z.string().describe("Who they sell to"),
   recentNews: z.array(z.object({
     title: z.string(),
-    url: z.string().optional(),
-    date: z.string().optional(),
+    url: z.string().nullable(),
+    date: z.string().nullable(),
   })),
   intentSignals: z.array(z.object({
     signal: z.string().describe("A buying-intent signal: hiring, funding, expansion, launch, etc."),
-    source: z.string().optional(),
+    source: z.string().nullable(),
   })),
   keyDecisionMakers: z.array(z.object({
     name: z.string(),
-    title: z.string().optional(),
-    email: z.string().optional(),
-    linkedin: z.string().optional(),
+    title: z.string().nullable(),
+    email: z.string().nullable(),
+    linkedin: z.string().nullable(),
   })),
+  icpFit: z.object({
+    isIcp: z.boolean().describe("Is this company a fit for our ICP?"),
+    score: z.number().describe("0-100 how well they fit our ideal customer profile"),
+    reasoning: z.string().describe("One sentence on why they are / aren't a fit"),
+  }),
 });
 
 function host(input?: string | null): string | undefined {
@@ -97,6 +104,11 @@ export async function POST(
       model: openai(MODEL),
       schema: reportSchema,
       prompt: `You are Scalar's research agent. Assemble ONE coherent intelligence report on this company for a CRM. Do NOT repeat or overlap information we already have, keep each section distinct, and only include facts supported by the sources below. Cite URLs in news/intent sources where possible.
+
+Our product / ideal customer profile (judge icpFit against this):
+"""
+${(user.productContext ?? "Not provided - infer a reasonable B2B ICP.").slice(0, 3000)}
+"""
 
 Company: ${entity.name}
 Website: ${site ?? "unknown"}

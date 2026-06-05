@@ -118,7 +118,15 @@ async function refineOrRaw(userId: string, query: string, raw: unknown): Promise
     if (refined.length === 0) return raw;
     return companyListResult(
       userId,
-      refined.map((c) => ({ ...c, companyName: c.name, address: c.location }))
+      refined.map((c) => ({
+        companyName: c.name,
+        website: c.website ?? undefined,
+        domain: c.domain ?? undefined,
+        industry: c.industry ?? undefined,
+        address: c.location ?? undefined,
+        phone: c.phone ?? undefined,
+        description: c.description ?? undefined,
+      }))
     );
   } catch (e) {
     console.error("[discover] refiner failed, returning raw results", e);

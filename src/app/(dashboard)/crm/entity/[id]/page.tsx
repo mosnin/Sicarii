@@ -16,6 +16,7 @@ import { entityStatusBadgeVariant, entityStatusLabel } from "@/lib/entity-status
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { DataView, cleanForView, humanizeKey } from "@/components/dashboard/data-view";
 import { CrmAvatar } from "@/components/dashboard/crm-avatar";
+import { EnrichmentStatusCard, entityTier } from "@/components/dashboard/enrichment-status";
 import { EntityActions } from "./actions";
 import { EntityEditor } from "./editor";
 
@@ -60,6 +61,10 @@ export default async function EntityDetailPage({
     ? Object.entries(enrichment).filter(([, v]) => v != null)
     : [];
 
+  // ICP verdict from the deep report, if it has run.
+  const deepReport = enrichment?.deepReport as { icpFit?: { isIcp: boolean; score: number; reasoning: string } } | undefined;
+  const icp = deepReport?.icpFit;
+
   return (
     <div className="space-y-6">
       <FloatIn delay={0}>
@@ -98,7 +103,19 @@ export default async function EntityDetailPage({
       </FloatIn>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <FloatIn delay={0.1} className="lg:col-span-1">
+        <FloatIn delay={0.1} className="lg:col-span-1 space-y-6">
+          <EnrichmentStatusCard tier={entityTier(entity.status, entity.enrichment)} />
+          {icp && (
+            <div className={`rounded-2xl border p-4 shadow-sm ${icp.isIcp ? "border-green-500/30 bg-green-500/5" : "border-border bg-card"}`}>
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">ICP fit</p>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${icp.isIcp ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                  {icp.isIcp ? `ICP match · ${icp.score}` : `Not ICP · ${icp.score}`}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">{icp.reasoning}</p>
+            </div>
+          )}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Details</CardTitle>

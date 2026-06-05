@@ -13,14 +13,15 @@ export function isRefinerConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY);
 }
 
+// OpenAI strict structured outputs reject optional() - use nullable().
 const refinedCompany = z.object({
   name: z.string().describe("Official company name"),
-  website: z.string().optional().describe("The company's own official website URL"),
-  domain: z.string().optional().describe("Bare domain, e.g. acme.com"),
-  industry: z.string().optional(),
-  location: z.string().optional().describe("City, state, or full address if known"),
-  phone: z.string().optional(),
-  description: z.string().optional().describe("One sentence on what they do"),
+  website: z.string().nullable().describe("The company's own official website URL"),
+  domain: z.string().nullable().describe("Bare domain, e.g. acme.com"),
+  industry: z.string().nullable(),
+  location: z.string().nullable().describe("City, state, or full address if known"),
+  phone: z.string().nullable(),
+  description: z.string().nullable().describe("One sentence on what they do"),
 });
 
 const refinedSchema = z.object({

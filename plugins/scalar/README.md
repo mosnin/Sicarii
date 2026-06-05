@@ -49,12 +49,23 @@ server. The skills appear under the `/scalar:` namespace.
 
 ## Authentication (required for the MCP server)
 
-The Scalar MCP server needs your Scalar account auth. The plugin ships the server
-URL only, not credentials. On first use, Claude Code runs the MCP server's auth
-flow (`/mcp` lists servers and lets you authenticate). If your Scalar setup uses
-an API key, create one in Scalar Settings and authenticate the `scalar` server
-with it. Until you authenticate, the skills still load but MCP tool calls will be
-unauthorized.
+Scalar's MCP server supports two auth methods on the same URL:
+
+1. OAuth (for clients that do the browser flow, e.g. Claude's custom connector).
+   You sign in to Scalar to authorize; no key needed.
+2. API key as a Bearer token (for key-based / headless agents like openclaw,
+   Hermes, and this plugin's default config).
+
+This plugin's manifest passes `Authorization: Bearer ${SCALAR_API_KEY}`. Create a
+key in Scalar Settings -> API keys, then export it before launching Claude Code:
+
+```
+export SCALAR_API_KEY=scl_your_key_here
+```
+
+If you'd rather use OAuth, remove the `headers` block from the plugin's
+`mcpServers` config and authenticate via `/mcp`. Until authenticated, the skills
+still load but MCP tool calls will be unauthorized.
 
 ## Notes
 

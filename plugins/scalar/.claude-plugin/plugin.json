@@ -15,7 +15,10 @@
   "mcpServers": {
     "scalar": {
       "type": "http",
-      "url": "https://www.tryscalar.xyz/api/mcp/mcp"
+      "url": "https://www.tryscalar.xyz/api/mcp/mcp",
+      "headers": {
+        "Authorization": "Bearer ${SCALAR_API_KEY}"
+      }
     }
   }
 }
