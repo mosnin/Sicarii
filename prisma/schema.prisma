@@ -32,12 +32,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  entities      Entity[]
-  contacts      Contact[]
-  apiKeys       ApiKey[]
-  conversations Conversation[]
-  memoryChunks  MemoryChunk[]
-  synthozJobs   SynthozJob[]
+  entities         Entity[]
+  contacts         Contact[]
+  apiKeys          ApiKey[]
+  conversations    Conversation[]
+  memoryChunks     MemoryChunk[]
+  synthozJobs      SynthozJob[]
+  intentMonitors   IntentMonitor[]
+  researchSchedules ResearchSchedule[]
 
   @@map("users")
 }
@@ -246,4 +248,50 @@ model ContactEmail {
 enum Emaildirection {
   INBOUND
   OUTBOUND
+}
+
+// Recurring Exa intent monitor — runs on a schedule, delivers results via webhook.
+// Results are attributed to userId and saved as entities tagged "intent".
+model IntentMonitor {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  query        String    @db.Text
+  frequency    String    @default("daily") // "daily" | "weekly"
+  exaMonitorId String? // Exa's remote monitor ID (set after createExaMonitor succeeds)
+  active       Boolean   @default(true)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([active, nextRunAt])
+  @@map("intent_monitors")
+}
+
+// Scheduled deep research (Linkup or Exa) on a topic, contact, or entity.
+// When targetType+targetId are set, research is merged into that record's notes.
+// When null, top sources are saved as new entities.
+model ResearchSchedule {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  query      String    @db.Text
+  provider   String    @default("linkup") // "linkup" | "exa"
+  depth      String    @default("deep")   // "standard" | "deep"
+  frequency  String    @default("daily")  // "hourly" | "daily" | "weekly"
+  targetType String? // "contact" | "entity" | null (saves as new records)
+  targetId   String?
+  active     Boolean   @default(true)
+  lastRunAt  DateTime?
+  nextRunAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([active, nextRunAt])
+  @@map("research_schedules")
 }
