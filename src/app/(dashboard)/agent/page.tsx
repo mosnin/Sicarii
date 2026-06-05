@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScalarAvatar } from "@/components/dashboard/scalar-avatar";
 import { ThinkingIndicator } from "@/components/dashboard/thinking-indicator";
+import { useMobileNav } from "@/components/dashboard/dashboard-shell";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -319,6 +320,10 @@ export default function AgentPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Minimise the composer while the mobile nav panel is open so they don't
+  // overlap on small screens.
+  const { navOpen } = useMobileNav();
+
   const { messages, sendMessage, status, stop, error } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/agent",
@@ -432,9 +437,13 @@ export default function AgentPage() {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Composer — pinned at bottom                                          */}
+      {/* Composer — pinned at bottom; collapses while mobile nav is open     */}
       {/* ------------------------------------------------------------------ */}
-      <div className="relative z-20 mx-auto w-full max-w-2xl px-4 pb-4 pt-2">
+      <motion.div
+        animate={navOpen ? { opacity: 0, y: 24, pointerEvents: "none" } : { opacity: 1, y: 0, pointerEvents: "auto" }}
+        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+        className="relative z-20 mx-auto w-full max-w-2xl px-4 pb-4 pt-2"
+      >
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -495,7 +504,7 @@ export default function AgentPage() {
         <p className="mt-1.5 text-center text-[11px] text-muted-foreground/60">
           Scalar can make mistakes. Verify important information.
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

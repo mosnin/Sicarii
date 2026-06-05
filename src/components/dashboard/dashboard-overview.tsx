@@ -160,9 +160,9 @@ export function DashboardOverview({
     >
       {/* ── HERO card (tall, full width) ─────────────────────────────────── */}
       <BentoCard hoverLift={false} className="min-h-[340px] lg:min-h-[380px]">
-        {/* ASCII field — clearly visible behind the greeting */}
+        {/* ASCII field — reduced opacity on light mode to preserve text contrast */}
         <AsciiField
-          className="absolute inset-0 h-full w-full opacity-[0.28]"
+          className="absolute inset-0 h-full w-full opacity-[0.10] dark:opacity-[0.28]"
           cell={13}
         />
 
@@ -197,7 +197,17 @@ export function DashboardOverview({
           }}
         />
 
-        <div className="relative z-10 flex h-full flex-col justify-between p-8 sm:p-10">
+        {/* Subtle scrim behind the greeting text — boosts contrast on light mode */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 dark:hidden"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 70% at 20% 60%, rgba(255,255,255,0.55) 0%, transparent 70%)",
+          }}
+        />
+
+        <div className="relative z-10 flex h-full flex-col justify-between p-6 sm:p-8 lg:p-10">
           {/* Eyebrow */}
           <p className="font-brand text-xs uppercase tracking-[0.3em] text-primary">
             SCALAR // RESEARCH
