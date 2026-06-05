@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// POST /api/webhooks/exa — receives Exa Monitor result payloads.
+// POST /api/webhooks/exa - receives Exa Monitor result payloads.
 // Each monitor was created with a specific userId stored in IntentMonitor.
 // We match by exaMonitorId → userId and save new results as entities.
 export async function POST(req: NextRequest) {

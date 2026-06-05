@@ -1,4 +1,4 @@
-// Exa AI search client — neural search, deep research, and monitors.
+// Exa AI search client - neural search, deep research, and monitors.
 // Base: https://api.exa.ai  Auth: x-api-key header
 // Used for intent scanning (who is looking for a product like yours).
 
@@ -237,7 +237,7 @@ export async function exaFindCompanies(prompt: string, count = 10): Promise<Foun
     }
     const website = parsed.website || r.url;
     const name = parsed.companyName || r.title || hostFromUrl(website);
-    // Skip results we can't name — never emit "Unknown" companies.
+    // Skip results we can't name - never emit "Unknown" companies.
     if (!isMeaningful(name)) continue;
     out.push({
       companyName: name,

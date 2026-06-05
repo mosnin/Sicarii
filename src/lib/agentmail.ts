@@ -1,4 +1,4 @@
-// AgentMail client — per-user key (User.agentMailApiKey). Used to surface email
+// AgentMail client - per-user key (User.agentMailApiKey). Used to surface email
 // threads with a contact on their CRM page. Best-effort: response shapes vary,
 // so we match a contact by their email appearing anywhere in a thread.
 // Docs: https://docs.agentmail.to  Base: https://api.agentmail.to/v0

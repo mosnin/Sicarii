@@ -26,7 +26,7 @@ export default function ServicesPage() {
             </h1>
             <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
               From concept to deployment, we build digital solutions that drive results.
-              Pick the service that fits your needs — we handle the rest.
+              Pick the service that fits your needs - we handle the rest.
             </p>
           </div>
         </section>

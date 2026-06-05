@@ -74,7 +74,7 @@ export function ApiKeysManager() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Agent access — API keys</CardTitle>
+        <CardTitle>Agent access - API keys</CardTitle>
         <CardDescription>
           Connect agents (OpenClaw, Hermes, Claude Cowork) to your CRM over MCP.
           Point them at <code className="text-foreground">{mcpUrl}</code> with an
@@ -85,7 +85,7 @@ export function ApiKeysManager() {
         {created && (
           <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
             <p className="text-sm font-medium">
-              Copy your key now — you won&apos;t see it again.
+              Copy your key now - you won&apos;t see it again.
             </p>
             <div className="mt-2 flex items-center gap-2">
               <code className="flex-1 truncate rounded bg-background px-3 py-2 text-sm">

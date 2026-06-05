@@ -14,7 +14,7 @@ const select = {
   createdAt: true,
 } as const;
 
-// GET /api/keys — list the user's API keys (never returns the secret).
+// GET /api/keys - list the user's API keys (never returns the secret).
 export async function GET() {
   try {
     const user = await getAuthenticatedUser();
@@ -33,7 +33,7 @@ export async function GET() {
 
 const createSchema = z.object({ name: z.string().trim().min(1).max(80) });
 
-// POST /api/keys — mint a key. The plaintext is returned exactly once.
+// POST /api/keys - mint a key. The plaintext is returned exactly once.
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();

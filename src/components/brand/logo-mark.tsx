@@ -2,7 +2,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * The Scalar logo: the λ mark. Blue on light backgrounds, white on dark —
+ * The Scalar logo: the λ mark. Blue on light backgrounds, white on dark -
  * two raster variants swapped by the active theme (class-based dark mode).
  * Size comes from `className` (set height + width, e.g. "h-7 w-7"); the images
  * are square so width and height should match.

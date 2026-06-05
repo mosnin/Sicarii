@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/research-schedules — list all schedules for the current user.
+// GET /api/research-schedules - list all schedules for the current user.
 export async function GET() {
   try {
     const user = await getAuthenticatedUser();
@@ -18,7 +18,7 @@ export async function GET() {
   }
 }
 
-// POST /api/research-schedules — create a new scheduled research job.
+// POST /api/research-schedules - create a new scheduled research job.
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE /api/research-schedules?id=xxx — delete a research schedule.
+// DELETE /api/research-schedules?id=xxx - delete a research schedule.
 export async function DELETE(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();

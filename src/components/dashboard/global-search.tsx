@@ -36,7 +36,7 @@ export function GlobalSearch() {
         setEntities(data.entities ?? []);
         setContacts(data.contacts ?? []);
       } catch {
-        /* aborted or failed — ignore */
+        /* aborted or failed - ignore */
       } finally {
         setLoading(false);
       }

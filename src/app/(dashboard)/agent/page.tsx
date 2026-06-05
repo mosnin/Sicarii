@@ -38,7 +38,7 @@ const SUGGESTIONS = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// ToolChip — an inline chip for tool-call parts
+// ToolChip - an inline chip for tool-call parts
 // ---------------------------------------------------------------------------
 
 function ToolChip({ name, done }: { name: string; done: boolean }) {
@@ -61,7 +61,7 @@ function ToolChip({ name, done }: { name: string; done: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// BlinkingCaret — appears at end of a streaming assistant message
+// BlinkingCaret - appears at end of a streaming assistant message
 // ---------------------------------------------------------------------------
 
 function BlinkingCaret({ streaming }: { streaming: boolean }) {
@@ -164,7 +164,7 @@ function MessageBubble({
 }
 
 // ---------------------------------------------------------------------------
-// EmptyState — centered welcome when no messages yet
+// EmptyState - centered welcome when no messages yet
 // ---------------------------------------------------------------------------
 
 function EmptyState({
@@ -217,7 +217,7 @@ function EmptyState({
         </h2>
         <p className="max-w-xs text-sm text-muted-foreground">
           I search the web, enrich your contacts, and write straight into your
-          CRM — ask me anything.
+          CRM - ask me anything.
         </p>
       </div>
 
@@ -241,7 +241,7 @@ function EmptyState({
 }
 
 // ---------------------------------------------------------------------------
-// GrowingTextarea — auto-growing textarea that respects a max height
+// GrowingTextarea - auto-growing textarea that respects a max height
 // ---------------------------------------------------------------------------
 
 function GrowingTextarea({
@@ -390,7 +390,7 @@ export default function AgentPage() {
               );
             })}
 
-            {/* Thinking indicator — shown while waiting for first tokens */}
+            {/* Thinking indicator - shown while waiting for first tokens */}
             <AnimatePresence>
               {isSubmitted && (
                 <motion.div
@@ -427,7 +427,7 @@ export default function AgentPage() {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Composer — pinned at bottom; collapses while mobile nav is open     */}
+      {/* Composer - pinned at bottom; collapses while mobile nav is open     */}
       {/* ------------------------------------------------------------------ */}
       <motion.div
         animate={navOpen ? { opacity: 0, y: 24, pointerEvents: "none" } : { opacity: 1, y: 0, pointerEvents: "auto" }}
@@ -453,7 +453,7 @@ export default function AgentPage() {
           />
 
           <div className="flex shrink-0 items-center gap-1.5 pb-0.5">
-            {/* Stop button — visible while busy */}
+            {/* Stop button - visible while busy */}
             <AnimatePresence>
               {busy && (
                 <motion.div

@@ -14,7 +14,7 @@ export function ServicesSection() {
             Four disciplines. <span className="text-gradient-orange">One CRM.</span>
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Scalar&apos;s agents discover, enrich, connect, and remember — on data that never
+            Scalar&apos;s agents discover, enrich, connect, and remember - on data that never
             leaves your system, with deep product context so they sell with understanding.
           </p>
         </div>

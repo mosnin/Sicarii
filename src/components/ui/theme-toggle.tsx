@@ -8,7 +8,7 @@ export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Canonical next-themes hydration guard — render nothing until mounted.
+  // Canonical next-themes hydration guard - render nothing until mounted.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
   if (!mounted) return <div className="h-9 w-9" />;

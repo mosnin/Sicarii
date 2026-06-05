@@ -34,7 +34,7 @@ function isEmpty(data: unknown): boolean {
 }
 
 // POST /api/entities/[id]/enrich  body: { type?: Aspect }  (default firmographics)
-// Each aspect merges independently under enrichment[type] — enriching one aspect
+// Each aspect merges independently under enrichment[type] - enriching one aspect
 // NEVER blocks enriching others. Fills empty columns where the data allows.
 export async function POST(
   req: NextRequest,

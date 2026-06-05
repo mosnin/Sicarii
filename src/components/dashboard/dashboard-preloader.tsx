@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 
-// Scalar taglines — one picked at random each mount.
+// Scalar taglines - one picked at random each mount.
 const TAGLINES = [
   "Your agents are already working.",
   "Research, enriched.",
@@ -38,7 +38,7 @@ export function DashboardPreloader({ name }: { name: string }) {
     return () => clearTimeout(t);
   }, [show, reduce]);
 
-  // Pick a random tagline once — lazy initializer avoids impure render calls.
+  // Pick a random tagline once - lazy initializer avoids impure render calls.
   const [tagline] = useState<string>(() => TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
 
   const words = tagline.split(" ");
@@ -54,7 +54,7 @@ export function DashboardPreloader({ name }: { name: string }) {
           exit={{ opacity: 0, filter: "blur(14px)", scale: 1.04 }}
           transition={{ duration: 0.5, ease: easeOut }}
         >
-          {/* ASCII field — more visible: opacity-25 in light, opacity-20 in dark */}
+          {/* ASCII field - more visible: opacity-25 in light, opacity-20 in dark */}
           <AsciiField
             className="absolute inset-0 h-full w-full opacity-25"
             cell={14}
@@ -70,7 +70,7 @@ export function DashboardPreloader({ name }: { name: string }) {
             }}
           />
 
-          {/* Full-screen shimmer sweep — moves diagonally across the whole overlay once */}
+          {/* Full-screen shimmer sweep - moves diagonally across the whole overlay once */}
           {!reduce && (
             <motion.div
               aria-hidden="true"
@@ -104,7 +104,7 @@ export function DashboardPreloader({ name }: { name: string }) {
               Good to see you{name ? `, ${name}` : ""}
             </motion.p>
 
-            {/* Tagline — word-by-word blur→clear stagger */}
+            {/* Tagline - word-by-word blur→clear stagger */}
             <motion.h1
               className="font-brand relative mt-4 max-w-3xl text-3xl text-foreground sm:text-5xl lg:text-6xl"
               initial="hidden"

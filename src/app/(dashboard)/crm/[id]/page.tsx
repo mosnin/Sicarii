@@ -130,7 +130,7 @@ export default async function ContactDetailPage({
                 ))}
               {fields.every((f) => !f.value) && (
                 <p className="text-sm text-muted-foreground">
-                  No details yet — enrich this contact to fill them in.
+                  No details yet - enrich this contact to fill them in.
                 </p>
               )}
               <ContactEnrich
@@ -161,7 +161,7 @@ export default async function ContactDetailPage({
           </Card>
         </FloatIn>
 
-        {/* Email — AgentMail threads + saved context */}
+        {/* Email - AgentMail threads + saved context */}
         <FloatIn delay={0.14} className="lg:col-span-2 space-y-6">
           <ContactAgentMail contactId={contact.id} />
           <Card>

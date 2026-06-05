@@ -15,7 +15,7 @@ export function isBrightDataConfigured() {
   return Boolean(process.env.BRIGHT_DATA_API_KEY?.trim());
 }
 
-// Zone names — configure in Bright Data dashboard, override via env vars.
+// Zone names - configure in Bright Data dashboard, override via env vars.
 const UNLOCKER_ZONE = () => process.env.BRIGHT_DATA_UNLOCKER_ZONE ?? "web_unlocker1";
 const SERP_ZONE = () => process.env.BRIGHT_DATA_SERP_ZONE ?? "serp_api";
 
@@ -44,7 +44,7 @@ export async function scrapeUrl(url: string): Promise<string> {
   });
 }
 
-// Google SERP — structured search results as JSON.
+// Google SERP - structured search results as JSON.
 export async function googleSerp(query: string, country = "us"): Promise<unknown> {
   const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&gl=${country}`;
   const text = await bdRequest({

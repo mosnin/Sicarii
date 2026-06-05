@@ -99,7 +99,7 @@ const CATEGORIES: Category[] = [
         id: "web-search",
         icon: Search,
         title: "Web search",
-        body: "Search the web with Tavily — fast, clean results with source links.",
+        body: "Search the web with Tavily - fast, clean results with source links.",
         saveAs: "link",
         badge: "Default",
         fields: [
@@ -216,7 +216,7 @@ const CATEGORIES: Category[] = [
         id: "find-people",
         icon: UserSearch,
         title: "Find people at company",
-        body: "Explorium prospect search — filter by title, department, or seniority.",
+        body: "Explorium prospect search - filter by title, department, or seniority.",
         saveAs: "contact",
         fields: [
           { key: "domain", label: "Company domain", placeholder: "acme.com" },
@@ -229,7 +229,7 @@ const CATEGORIES: Category[] = [
         id: "find-email",
         icon: Mail,
         title: "Find work email",
-        body: "Pipe0's 50-provider waterfall — give a name and domain, get a verified email.",
+        body: "Pipe0's 50-provider waterfall - give a name and domain, get a verified email.",
         saveAs: "contact",
         fields: [
           { key: "firstName", label: "First name", placeholder: "Jane" },
@@ -290,7 +290,7 @@ const CATEGORIES: Category[] = [
         id: "intent-scan",
         icon: Radar,
         title: "Intent scanner",
-        body: "Exa neural search — find companies and people actively looking for a product like yours.",
+        body: "Exa neural search - find companies and people actively looking for a product like yours.",
         saveAs: "entity",
         badge: "Exa",
         fields: [
@@ -321,7 +321,7 @@ const CATEGORIES: Category[] = [
         id: "deep-research",
         icon: BookOpen,
         title: "Deep research",
-        body: "Linkup exhaustive research — get a sourced answer on any topic, person, or company.",
+        body: "Linkup exhaustive research - get a sourced answer on any topic, person, or company.",
         saveAs: "link",
         badge: "Linkup",
         fields: [
@@ -332,7 +332,7 @@ const CATEGORIES: Category[] = [
         id: "quick-research",
         icon: Search,
         title: "Quick research",
-        body: "Fast Linkup search — standard depth, good for recent news or overview.",
+        body: "Fast Linkup search - standard depth, good for recent news or overview.",
         saveAs: "link",
         fields: [
           { key: "query", label: "Search query", placeholder: "Latest funding news at OpenAI" },
@@ -363,12 +363,12 @@ function hostOf(url?: string | null): string | undefined {
 function normalizeRecords(result: unknown): { records: Record<string, unknown>[]; rawText?: string } {
   if (result == null) return { records: [] };
 
-  // Enrichment envelope: { __subject, __data } — keep intact for EnrichmentResult.
+  // Enrichment envelope: { __subject, __data } - keep intact for EnrichmentResult.
   if (isObj(result) && "__subject" in result) {
     return { records: [result] };
   }
 
-  // Company list: { companies: [...] } — addable prospect grid.
+  // Company list: { companies: [...] } - addable prospect grid.
   if (isObj(result) && Array.isArray(result.companies)) {
     return { records: (result.companies as unknown[]).filter(isObj) };
   }
@@ -705,7 +705,7 @@ function ScheduleMonitorPanel({ query, toolId, onClose }: { query: string; toolI
 
       {done ? (
         <p className="text-sm text-primary flex items-center gap-1.5">
-          <Check className="h-4 w-4" /> Scheduled — results will appear in your CRM automatically.
+          <Check className="h-4 w-4" /> Scheduled - results will appear in your CRM automatically.
         </p>
       ) : (
         <div className="space-y-3">
@@ -875,7 +875,7 @@ export default function DiscoverPage() {
       const { records: recs, rawText: rt } = normalizeRecords(data.result);
       dispatch({ type: "SUCCESS", records: recs, rawText: rt });
     } catch {
-      dispatch({ type: "FAIL", error: "Network error — please try again." });
+      dispatch({ type: "FAIL", error: "Network error - please try again." });
     }
   }, [active, values]);
 
@@ -1228,7 +1228,7 @@ export default function DiscoverPage() {
 // Renders arbitrary provider data in the app's design instead of raw JSON.
 
 function DataView({ value }: { value: unknown }) {
-  if (value == null || value === "") return <span className="text-muted-foreground">—</span>;
+  if (value == null || value === "") return <span className="text-muted-foreground">-</span>;
 
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     const s = String(value);
@@ -1243,7 +1243,7 @@ function DataView({ value }: { value: unknown }) {
   }
 
   if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="text-muted-foreground">—</span>;
+    if (value.length === 0) return <span className="text-muted-foreground">-</span>;
     const allScalar = value.every((v) => v === null || typeof v !== "object");
     if (allScalar) {
       return (
@@ -1271,7 +1271,7 @@ function DataView({ value }: { value: unknown }) {
     const entries = Object.entries(value).filter(
       ([, v]) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0)
     );
-    if (entries.length === 0) return <span className="text-muted-foreground">—</span>;
+    if (entries.length === 0) return <span className="text-muted-foreground">-</span>;
     return (
       <div className="space-y-2">
         {entries.map(([k, v]) => (

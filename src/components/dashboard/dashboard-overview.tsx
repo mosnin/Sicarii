@@ -159,13 +159,13 @@ export function DashboardOverview({
     >
       {/* ── HERO card (tall, full width) ─────────────────────────────────── */}
       <BentoCard hoverLift={false} className="min-h-[340px] lg:min-h-[380px]">
-        {/* ASCII field — reduced opacity on light mode to preserve text contrast */}
+        {/* ASCII field - reduced opacity on light mode to preserve text contrast */}
         <AsciiField
           className="absolute inset-0 h-full w-full opacity-[0.18] dark:opacity-[0.30]"
           cell={13}
         />
 
-        {/* Blue radial accent — bottom-right */}
+        {/* Blue radial accent - bottom-right */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
@@ -196,7 +196,7 @@ export function DashboardOverview({
           }}
         />
 
-        {/* Subtle scrim behind the greeting text — boosts contrast on light mode */}
+        {/* Subtle scrim behind the greeting text - boosts contrast on light mode */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 dark:hidden"
@@ -230,7 +230,7 @@ export function DashboardOverview({
                 variants={cardVariants}
                 className="mt-3 max-w-md text-base text-muted-foreground"
               >
-                Your research platform — contacts discovered, enriched, and in conversation.
+                Your research platform - contacts discovered, enriched, and in conversation.
               </motion.p>
 
               {/* Global search */}
@@ -291,7 +291,7 @@ export function DashboardOverview({
           delay={2}
         />
 
-        {/* Agent accent card — spans 1 col on lg (rightmost in this row) */}
+        {/* Agent accent card - spans 1 col on lg (rightmost in this row) */}
         <motion.div variants={cardVariants} className="h-full">
           <Link href="/agent" className="group block h-full">
             <motion.div
@@ -352,7 +352,7 @@ export function DashboardOverview({
 
       {/* ── Bottom row: explore + activity ────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Quick-explore card — spans 2 cols */}
+        {/* Quick-explore card - spans 2 cols */}
         <motion.div variants={cardVariants} className="lg:col-span-2">
           <motion.div
             whileHover={{ y: -3, transition: { duration: 0.25, ease: "easeOut" } }}
@@ -412,7 +412,7 @@ export function DashboardOverview({
           </motion.div>
         </motion.div>
 
-        {/* Activity / empty state card — spans 1 col */}
+        {/* Activity / empty state card - spans 1 col */}
         <motion.div variants={cardVariants}>
           <motion.div
             whileHover={{ y: -3, transition: { duration: 0.25, ease: "easeOut" } }}
@@ -460,7 +460,7 @@ export function DashboardOverview({
                 </Link>
               </div>
             ) : (
-              /* Has data — show a mini pipeline summary */
+              /* Has data - show a mini pipeline summary */
               <div className="px-6 pb-8">
                 {[
                   { label: "Total contacts", value: totalContacts, color: "bg-primary" },

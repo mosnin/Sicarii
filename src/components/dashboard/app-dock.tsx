@@ -42,11 +42,11 @@ const dockItems: DockItem[] = [
 type Tile = { label: string; href: string; description: string; highlight?: boolean };
 
 const launchpadTiles: Tile[] = [
-  { label: "Dashboard", href: "/dashboard", description: "Your CRM at a glance — pipeline health, recent activity, and agent status." },
-  { label: "Discover", href: "/discover", description: "AI-powered lead discovery — find the right people before they find you." },
-  { label: "CRM", href: "/crm", description: "Your contact and entity database — enriched, organised, and always current." },
-  { label: "Agent", href: "/agent", description: "Talk to your agent — search, enrich, and orchestrate your pipeline in plain language.", highlight: true },
-  { label: "Product Context", href: "/product-context", description: "Ground your agents in your product — positioning, ICP, and message fit." },
+  { label: "Dashboard", href: "/dashboard", description: "Your CRM at a glance - pipeline health, recent activity, and agent status." },
+  { label: "Discover", href: "/discover", description: "AI-powered lead discovery - find the right people before they find you." },
+  { label: "CRM", href: "/crm", description: "Your contact and entity database - enriched, organised, and always current." },
+  { label: "Agent", href: "/agent", description: "Talk to your agent - search, enrich, and orchestrate your pipeline in plain language.", highlight: true },
+  { label: "Product Context", href: "/product-context", description: "Ground your agents in your product - positioning, ICP, and message fit." },
   { label: "Settings", href: "/settings", description: "Account, API keys, workspace, and integration preferences." },
 ];
 

@@ -117,7 +117,7 @@ export function AgentMailKeyForm({ initialLast4 }: { initialLast4: string | null
             exit={{ opacity: 0 }}
             className="text-xs font-medium text-destructive"
           >
-            Couldn&apos;t save the key — try again.
+            Couldn&apos;t save the key - try again.
           </motion.p>
         )}
       </AnimatePresence>

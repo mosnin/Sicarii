@@ -8,14 +8,14 @@ import { SpotlightCard } from "@/components/ui/spotlight-card";
 const testimonials = [
   {
     quote:
-      "We needed AI agents to touch sensitive context without ever silently mutating it. Scalar built the trust gate — read via MCP, every write a reviewable diff, full audit trail and rollback. Exactly the architecture we needed.",
+      "We needed AI agents to touch sensitive context without ever silently mutating it. Scalar built the trust gate - read via MCP, every write a reviewable diff, full audit trail and rollback. Exactly the architecture we needed.",
     name: "Poggle",
     role: "AI governance platform · poggle.xyz",
     rating: 5,
   },
   {
     quote:
-      "They shipped our storefront end-to-end — product pages, subscriptions, a checkout built to convert. It's live, it's fast, and it sells.",
+      "They shipped our storefront end-to-end - product pages, subscriptions, a checkout built to convert. It's live, it's fast, and it sells.",
     name: "NeverAge",
     role: "DTC supplements · neverage.co",
     rating: 5,
@@ -29,7 +29,7 @@ const testimonials = [
   },
   {
     quote:
-      "Across a portfolio of brands, Scalar built the operating infrastructure we run on — brand systems, fulfilment tooling, and architecture that scales with us.",
+      "Across a portfolio of brands, Scalar built the operating infrastructure we run on - brand systems, fulfilment tooling, and architecture that scales with us.",
     name: "Studio Group",
     role: "Multi-brand commerce · tryscalar.xyz",
     rating: 5,

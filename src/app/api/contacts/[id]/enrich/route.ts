@@ -150,6 +150,6 @@ export async function POST(
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("POST /api/contacts/[id]/enrich", e);
-    return NextResponse.json({ error: "Enrichment failed — please try again." }, { status: 502 });
+    return NextResponse.json({ error: "Enrichment failed - please try again." }, { status: 502 });
   }
 }

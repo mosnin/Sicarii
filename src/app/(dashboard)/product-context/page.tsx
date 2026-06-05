@@ -15,7 +15,7 @@ export default async function ProductContextPage() {
           Product Context
         </h1>
         <p className="text-muted-foreground mt-1">
-          A store of what you&apos;re selling — read by Scalar before every action, so
+          A store of what you&apos;re selling - read by Scalar before every action, so
           outreach is informed instead of generic.
         </p>
       </FloatIn>
@@ -24,7 +24,7 @@ export default async function ProductContextPage() {
       <FloatIn delay={0.06}>
         <div className="grid gap-4 sm:grid-cols-3">
           {[
-            { label: "Agent-consumable", body: "Scalar reads this before it acts — discovering, enriching, and writing." },
+            { label: "Agent-consumable", body: "Scalar reads this before it acts - discovering, enriching, and writing." },
             { label: "Single source of truth", body: "One canonical store of your positioning, ICP, and message fit." },
             { label: "Informed outreach", body: "Agents sell with understanding, not generic copy." },
           ].map((item, i) => (

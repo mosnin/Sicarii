@@ -36,7 +36,7 @@ export function Footer() {
               </Link>
               <p className="max-w-xs text-sm text-muted-foreground">
                 The CRM your agents run. Discover leads, enrich your database, and
-                run email relationships — on data that never leaves your system.
+                run email relationships - on data that never leaves your system.
               </p>
             </div>
 

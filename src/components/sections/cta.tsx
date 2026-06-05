@@ -15,7 +15,7 @@ export function CTASection() {
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
             Connect your product context, point your agents at Scalar, and start building
-            relationships that compound — on data that stays yours.
+            relationships that compound - on data that stays yours.
           </p>
           <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link

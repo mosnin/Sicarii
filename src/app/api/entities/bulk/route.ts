@@ -28,7 +28,7 @@ function normDomain(d?: string): string | undefined {
   return d?.trim().toLowerCase().replace(/^www\./, "") || undefined;
 }
 
-// POST /api/entities/bulk — create many entities at once, skipping any that
+// POST /api/entities/bulk - create many entities at once, skipping any that
 // already exist in the CRM (matched by domain) or are duplicated in the batch.
 export async function POST(req: NextRequest) {
   try {

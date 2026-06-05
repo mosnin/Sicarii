@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/discover/recent — last 20 contacts + entities that arrived via
+// GET /api/discover/recent - last 20 contacts + entities that arrived via
 // Synthoz (webhook or direct discover), plus pending/resolved job counts.
 export async function GET() {
   try {

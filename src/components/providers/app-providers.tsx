@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 // Token-driven element classes adapt to light/dark automatically (they resolve
 // against the .dark class on <html>). The color *variables* below can't, so we
-// swap them per resolved theme — otherwise the Clerk widget keeps dark text on
+// swap them per resolved theme - otherwise the Clerk widget keeps dark text on
 // the light theme (the login page bug).
 const elements = {
   card: "bg-card border border-border shadow-2xl rounded-2xl",

@@ -63,7 +63,7 @@ export function GradientCard({
       style={{
         transformStyle: "preserve-3d",
         backgroundColor: "#0d0e12",
-        // Soft downward glow with negative spread — no ring/halo edge.
+        // Soft downward glow with negative spread - no ring/halo edge.
         boxShadow: "0 24px 70px -30px rgba(90,176,232,0.30)",
       }}
       initial={{ y: 0 }}

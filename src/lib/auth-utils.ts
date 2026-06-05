@@ -20,7 +20,7 @@ export async function getAuthenticatedUser(): Promise<DbUser> {
   const existing = await prisma.user.findUnique({ where: { clerkId } });
   if (existing) return existing;
 
-  // No row yet (webhook hasn't synced) — create it from the Clerk profile.
+  // No row yet (webhook hasn't synced) - create it from the Clerk profile.
   const clerk = await currentUser();
   const email = clerk?.emailAddresses?.[0]?.emailAddress ?? "";
   return prisma.user.upsert({

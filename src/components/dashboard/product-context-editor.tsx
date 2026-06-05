@@ -68,7 +68,7 @@ export function ProductContextEditor({ initial }: { initial: string }) {
         />
         <div className="mt-4 flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            Scalar reads this before every action — saved to your workspace.
+            Scalar reads this before every action - saved to your workspace.
           </p>
           <div className="flex items-center gap-2">
             <AnimatePresence mode="wait">

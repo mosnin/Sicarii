@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * A subtle spotlight card: a soft green glow tracks the cursor on hover, with a
- * gentle lift and a top hairline. Quieter than GradientCard — for secondary
+ * gentle lift and a top hairline. Quieter than GradientCard - for secondary
  * marketing cards.
  */
 export function SpotlightCard({

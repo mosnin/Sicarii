@@ -33,7 +33,7 @@ export function EntityActions({
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState<string | null>(null);
 
-  // Enrich a single aspect; additive — running one never blocks the others.
+  // Enrich a single aspect; additive - running one never blocks the others.
   async function enrich(type: Aspect) {
     setRunning(type);
     setMsg(null);
@@ -103,7 +103,7 @@ export function EntityActions({
           {spawning ? "Researching…" : "Spawn contacts"}
         </Button>
 
-        {/* Enrich dropdown — run any aspect, any number of times */}
+        {/* Enrich dropdown - run any aspect, any number of times */}
         <div className="relative">
           <Button
             variant="glow"

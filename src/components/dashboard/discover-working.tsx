@@ -17,7 +17,7 @@ const WORDS = [
 const spring = [0.16, 1, 0.3, 1] as const;
 
 /**
- * DiscoverWorking — the premium "Scalar is thinking" loader shown while
+ * DiscoverWorking - the premium "Scalar is thinking" loader shown while
  * /api/discover is in flight. Cycles action words with a blur+rise morph,
  * over a soft ASCII field backdrop. Respects prefers-reduced-motion.
  */
@@ -51,7 +51,7 @@ export function DiscoverWorking() {
         cell={14}
       />
 
-      {/* Radial pulse — baby blue, very subtle */}
+      {/* Radial pulse - baby blue, very subtle */}
       <motion.div
         className="absolute inset-0 rounded-2xl"
         animate={{

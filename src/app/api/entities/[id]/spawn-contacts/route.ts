@@ -4,7 +4,7 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaResearchContacts, isExaConfigured, isMeaningful } from "@/lib/exa";
 
-// POST /api/entities/[id]/spawn-contacts — deep-research the decision makers at
+// POST /api/entities/[id]/spawn-contacts - deep-research the decision makers at
 // this company via Exa, then create contacts for any the CRM doesn't already
 // have (deduplicated by email, and by name within this entity).
 export async function POST(
