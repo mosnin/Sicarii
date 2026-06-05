@@ -13,6 +13,8 @@ import { prisma } from "@/lib/prisma";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { ContactActions } from "./actions";
 import { ContactEnrich } from "./enrich";
+import { ContactAgentMail } from "./agentmail";
+import { MatchEntity } from "./match-entity";
 
 export default async function ContactDetailPage({
   params,
@@ -34,13 +36,29 @@ export default async function ContactDetailPage({
     orderBy: { sentAt: "desc" },
   });
 
-  const fields: { label: string; value: string | null }[] = [
+  const fields: { label: string; value: string | null; href?: string }[] = [
     { label: "Title", value: contact.title },
     { label: "Company", value: contact.company },
-    { label: "Email", value: contact.email },
-    { label: "Phone", value: contact.phone },
-    { label: "Website", value: contact.website },
-    { label: "LinkedIn", value: contact.linkedin },
+    { label: "Email", value: contact.email, href: contact.email ? `mailto:${contact.email}` : undefined },
+    { label: "Phone", value: contact.phone, href: contact.phone ? `tel:${contact.phone}` : undefined },
+    {
+      label: "Website",
+      value: contact.website ? contact.website.replace(/^https?:\/\//, "").replace(/\/$/, "") : null,
+      href: contact.website
+        ? contact.website.startsWith("http")
+          ? contact.website
+          : `https://${contact.website}`
+        : undefined,
+    },
+    {
+      label: "LinkedIn",
+      value: contact.linkedin ? contact.linkedin.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") : null,
+      href: contact.linkedin
+        ? contact.linkedin.startsWith("http")
+          ? contact.linkedin
+          : `https://${contact.linkedin}`
+        : undefined,
+    },
     { label: "Location", value: contact.location },
   ];
 
@@ -96,7 +114,18 @@ export default async function ContactDetailPage({
                 .map((f) => (
                   <div key={f.label} className="text-sm">
                     <p className="text-xs text-muted-foreground">{f.label}</p>
-                    <p className="break-words">{f.value}</p>
+                    {f.href ? (
+                      <a
+                        href={f.href}
+                        target={f.href.startsWith("http") ? "_blank" : undefined}
+                        rel="noopener noreferrer"
+                        className="break-words text-primary underline-offset-4 hover:underline"
+                      >
+                        {f.value}
+                      </a>
+                    ) : (
+                      <p className="break-words">{f.value}</p>
+                    )}
                   </div>
                 ))}
               {fields.every((f) => !f.value) && (
@@ -112,6 +141,7 @@ export default async function ContactDetailPage({
                   !contact.phone ? ("phone" as const) : null,
                 ].filter((f): f is "linkedin" | "email" | "phone" => f !== null)}
               />
+              {!contact.entity && <MatchEntity contactId={contact.id} />}
               {contact.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-2">
                   {contact.tags.map((t) => (
@@ -131,11 +161,12 @@ export default async function ContactDetailPage({
           </Card>
         </FloatIn>
 
-        {/* Email thread store */}
-        <FloatIn delay={0.14} className="lg:col-span-2">
+        {/* Email — AgentMail threads + saved context */}
+        <FloatIn delay={0.14} className="lg:col-span-2 space-y-6">
+          <ContactAgentMail contactId={contact.id} />
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Conversation</CardTitle>
+              <CardTitle className="text-base">Saved context</CardTitle>
             </CardHeader>
             <CardContent>
               {emails.length === 0 ? (

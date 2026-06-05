@@ -95,11 +95,30 @@ async function companyListResult(userId: string, companies: CompanyLike[]) {
   };
 }
 
+// True when a provider returned nothing usable.
+function isEmptyData(data: unknown): boolean {
+  if (data == null) return true;
+  if (Array.isArray(data)) return data.length === 0;
+  if (typeof data === "object") {
+    const inner = (data as { data?: unknown }).data;
+    if (Array.isArray(inner)) return inner.length === 0;
+    return Object.keys(data as object).length === 0;
+  }
+  return false;
+}
+
 // Wrap an enrichment payload with the subject domain so the client can match it
 // to an existing entity (or create one) and attach the data — instead of saving
-// the raw blob as a junk record.
-function enrichmentResult(domain: string | undefined, label: string, data: unknown) {
-  return { __subject: { domain: domain ?? null, label }, __data: data };
+// the raw blob as a junk record. Returns a 404 NextResponse when there's no data
+// (so the UI never shows/saves "null").
+function enrichmentResult(domain: string, label: string, data: unknown) {
+  if (isEmptyData(data)) {
+    throw NextResponse.json(
+      { error: `No ${label.toLowerCase()} found for ${domain}.` },
+      { status: 404 }
+    );
+  }
+  return { __subject: { domain, label }, __data: data };
 }
 
 // POST /api/discover — run a discovery tool and return shaped results.

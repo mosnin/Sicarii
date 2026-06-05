@@ -33,10 +33,16 @@ export default async function EntityDetailPage({
     orderBy: { updatedAt: "desc" },
   });
 
-  const fields: { label: string; value: string | null | undefined }[] = [
+  // Website and domain are the same fact — show one clickable Website row.
+  const websiteUrl = entity.website || (entity.domain ? `https://${entity.domain}` : null);
+  const websiteText = entity.website
+    ? entity.website.replace(/^https?:\/\//, "").replace(/\/$/, "")
+    : entity.domain;
+
+  const fields: { label: string; value: string | null | undefined; href?: string }[] = [
     { label: "Industry", value: entity.industry },
-    { label: "Domain", value: entity.domain },
-    { label: "Website", value: entity.website },
+    { label: "Website", value: websiteText, href: websiteUrl ?? undefined },
+    { label: "Phone", value: entity.phone, href: entity.phone ? `tel:${entity.phone}` : undefined },
     { label: "Location", value: entity.location },
     { label: "Size", value: entity.size },
   ];
@@ -87,7 +93,18 @@ export default async function EntityDetailPage({
                 .map((f) => (
                   <div key={f.label} className="text-sm">
                     <p className="text-xs text-muted-foreground">{f.label}</p>
-                    <p className="break-words">{f.value}</p>
+                    {f.href ? (
+                      <a
+                        href={f.href}
+                        target={f.href.startsWith("http") ? "_blank" : undefined}
+                        rel="noopener noreferrer"
+                        className="break-words text-primary underline-offset-4 hover:underline"
+                      >
+                        {f.value}
+                      </a>
+                    ) : (
+                      <p className="break-words">{f.value}</p>
+                    )}
                   </div>
                 ))}
               {entity.description && (

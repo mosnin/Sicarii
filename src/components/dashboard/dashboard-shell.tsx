@@ -59,7 +59,6 @@ import {
   PanelLeft,
   PanelLeftClose,
   Settings,
-  Menu,
   type LucideIcon,
 } from "lucide-react";
 
@@ -535,175 +534,71 @@ function Sidebar({
   );
 }
 
-// ── MobileLauncher — pill handle + slide-in nav panel (mobile only) ───────────
+// ── MobileBottomNav — persistent bottom tab bar (mobile only) ─────────────────
+// No sidebar on mobile; the sidebar toggle lives only in the desktop dock.
 
-function MobileLauncher({
-  open,
-  onOpen,
-  onClose,
+function MobileBottomNav({
   onOpenLaunchpad,
   launchpadOpen,
 }: {
-  open: boolean;
-  onOpen: () => void;
-  onClose: () => void;
   onOpenLaunchpad: () => void;
   launchpadOpen: boolean;
 }) {
   const pathname = usePathname();
 
-  // Lock body scroll while panel is open
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
   return (
-    <>
-      {/* ── Pill handle — visible on mobile only ── */}
-      <motion.button
-        type="button"
-        onClick={onOpen}
-        aria-label="Open navigation"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        /* hidden on desktop — dock/sidebar handle that */
-        className="fixed bottom-6 left-3 z-50 lg:hidden flex items-center justify-center"
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: open ? 0 : 1, x: open ? -16 : 0, pointerEvents: open ? "none" : "auto" }}
-        transition={{ duration: 0.2 }}
-      >
-        {/* Pill shape */}
-        <span className="flex h-12 w-10 items-center justify-center rounded-full border border-border/60 bg-background/90 shadow-xl shadow-black/10 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/85 dark:shadow-black/40">
-          <Menu className="h-5 w-5 text-foreground" strokeWidth={2} />
-        </span>
-        {/* Active-page indicator dot */}
-        {NAV_ITEMS.some((item) => isActivePath(pathname, item.href)) && (
-          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-        )}
-      </motion.button>
-
-      {/* ── Backdrop ── */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            key="mobile-nav-backdrop"
-            className="fixed inset-0 z-[60] lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
-            style={{ background: "rgba(0,0,0,0.38)" }}
-            onClick={onClose}
-            aria-hidden="true"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Slide-in nav panel ── */}
-      <AnimatePresence>
-        {open && (
-          <motion.nav
-            key="mobile-nav-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation"
-            className="fixed left-0 top-0 z-[70] flex h-full w-72 flex-col bg-background/98 backdrop-blur-2xl shadow-2xl dark:bg-charcoal/98 lg:hidden"
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 32 }}
-          >
-            {/* Header */}
-            <div className="flex h-16 shrink-0 items-center justify-between border-b border-border/40 px-4 dark:border-white/[0.06]">
-              <Link href="/dashboard" onClick={onClose} className="flex items-center gap-2.5">
-                <LogoMark className="h-6 w-6" />
-                <span className="font-brand text-base font-bold text-foreground">Scalar</span>
-              </Link>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close navigation"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Nav items */}
-            <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-4">
-              {NAV_ITEMS.map((item, i) => {
-                const Icon = item.icon;
-                const active = isActivePath(pathname, item.href);
-                return (
-                  <motion.div
-                    key={item.href}
-                    initial={{ opacity: 0, x: -14 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1], delay: i * 0.04 }}
-                  >
-                    <Link
-                      href={item.href}
-                      onClick={onClose}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors",
-                        item.accent
-                          ? "bg-orange/10 text-orange hover:bg-orange/15"
-                          : active
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-                      )}
-                    >
-                      <span className="flex h-5 w-5 shrink-0">
-                        <Icon className="h-full w-full" strokeWidth={item.accent ? 2.4 : active ? 2.2 : 2} />
-                      </span>
-                      <span>{item.label}</span>
-                      {active && !item.accent && (
-                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
-                      )}
-                    </Link>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* Bottom: Apps + theme + user */}
-            <div className="shrink-0 border-t border-border/40 px-2 py-3 dark:border-white/[0.06] flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => { onClose(); onOpenLaunchpad(); }}
-                aria-label="Open apps menu"
-                aria-haspopup="dialog"
-                aria-expanded={launchpadOpen}
+    <nav
+      className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden"
+      aria-label="Primary"
+    >
+      <div className="mx-auto flex max-w-md items-center justify-around gap-0.5 rounded-2xl border border-border/60 bg-background/90 px-1.5 py-1.5 shadow-xl shadow-black/10 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/85 dark:shadow-black/40">
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const active = isActivePath(pathname, item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
+              className="flex flex-1 items-center justify-center py-0.5"
+            >
+              <span
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors w-full",
-                  launchpadOpen
-                    ? "bg-orange/10 text-orange"
-                    : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+                  "flex h-9 w-9 items-center justify-center rounded-xl transition-colors",
+                  item.accent
+                    ? "bg-orange text-white shadow-md shadow-orange/30"
+                    : active
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground"
                 )}
               >
-                <LayoutGrid className="h-5 w-5 shrink-0" />
-                <span>Apps</span>
-              </button>
+                <Icon className="h-5 w-5" strokeWidth={item.accent ? 2.4 : 2} />
+              </span>
+            </Link>
+          );
+        })}
 
-              <div className="flex items-center gap-2 px-3 py-2">
-                <UserButton />
-                <ThemeToggle />
-              </div>
-            </div>
-          </motion.nav>
-        )}
-      </AnimatePresence>
-    </>
+        {/* Apps launcher */}
+        <button
+          type="button"
+          onClick={onOpenLaunchpad}
+          aria-label="Open apps menu"
+          aria-haspopup="dialog"
+          aria-expanded={launchpadOpen}
+          className="flex flex-1 items-center justify-center py-0.5"
+        >
+          <span
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-xl transition-colors",
+              launchpadOpen ? "bg-primary/15 text-primary" : "text-muted-foreground"
+            )}
+          >
+            <LayoutGrid className="h-5 w-5" />
+          </span>
+        </button>
+      </div>
+    </nav>
   );
 }
 
@@ -867,9 +762,6 @@ export function DashboardShell({
   const [launchpadOpen, setLaunchpadOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  // Mobile nav panel state
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
   // Hydration + localStorage read. Canonical next-themes pattern — set state
   // in effect on mount to read browser APIs after SSR.
   useEffect(() => {
@@ -887,11 +779,7 @@ export function DashboardShell({
     const onResize = () => {
       const desktop = window.innerWidth >= 1024;
       setIsDesktop(desktop);
-      if (!desktop) {
-        setMode("dock");
-      } else {
-        setMobileNavOpen(false);
-      }
+      if (!desktop) setMode("dock");
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -909,8 +797,6 @@ export function DashboardShell({
   const closeSidebar = useCallback(() => setNavMode("dock"), [setNavMode]);
   const openLaunchpad = useCallback(() => setLaunchpadOpen(true), []);
   const closeLaunchpad = useCallback(() => setLaunchpadOpen(false), []);
-  const openMobileNav = useCallback(() => setMobileNavOpen(true), []);
-  const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
 
   const isSidebar = mode === "sidebar" && isDesktop && hydrated;
 
@@ -922,7 +808,7 @@ export function DashboardShell({
     : INSET_SPRING;
 
   return (
-    <MobileNavContext.Provider value={{ navOpen: mobileNavOpen }}>
+    <MobileNavContext.Provider value={{ navOpen: false }}>
       <LayoutGroup>
         <div className="min-h-screen bg-background dark:bg-charcoal-dark">
           {/* ── Floating top header ── */}
@@ -986,14 +872,8 @@ export function DashboardShell({
             )}
           </AnimatePresence>
 
-          {/* ── Mobile launcher (pill + slide panel) — mobile only ── */}
-          <MobileLauncher
-            open={mobileNavOpen}
-            onOpen={openMobileNav}
-            onClose={closeMobileNav}
-            onOpenLaunchpad={openLaunchpad}
-            launchpadOpen={launchpadOpen}
-          />
+          {/* ── Mobile bottom nav — mobile only ── */}
+          <MobileBottomNav onOpenLaunchpad={openLaunchpad} launchpadOpen={launchpadOpen} />
 
           {/* ── Launchpad overlay ── */}
           <Launchpad open={launchpadOpen} onClose={closeLaunchpad} />

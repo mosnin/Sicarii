@@ -7,9 +7,15 @@ import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
 
 type Field = "linkedin" | "email" | "phone";
 
-// Deep-search a provider response object for the first string under a matching key.
+const FREEMAIL = new Set([
+  "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com",
+  "aol.com", "proton.me", "protonmail.com", "live.com", "msn.com",
+]);
+
+// Deep-search a provider response for the first plaintext string under a key
+// matching one of `keys` (skipping hashed fields).
 function pick(value: unknown, keys: string[], depth = 0): string | undefined {
-  if (depth > 5 || value == null) return undefined;
+  if (depth > 6 || value == null) return undefined;
   if (Array.isArray(value)) {
     for (const v of value) {
       const f = pick(v, keys, depth + 1);
@@ -19,6 +25,7 @@ function pick(value: unknown, keys: string[], depth = 0): string | undefined {
   }
   if (typeof value === "object") {
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (/hash/i.test(k)) continue;
       if (typeof v === "string" && v.trim() && keys.some((key) => k.toLowerCase().includes(key))) {
         return v.trim();
       }
@@ -38,21 +45,17 @@ function splitName(name?: string | null): { first?: string; last?: string } {
   return { first: parts[0], last: parts[parts.length - 1] };
 }
 
-function domainFrom(...candidates: (string | null | undefined)[]): string | undefined {
-  for (const c of candidates) {
-    if (!c) continue;
-    try {
-      return new URL(c.startsWith("http") ? c : `https://${c}`).hostname.replace(/^www\./, "");
-    } catch {
-      if (/^[\w-]+\.[\w.-]+$/.test(c.trim())) return c.trim().toLowerCase().replace(/^www\./, "");
-    }
+function toDomain(c?: string | null): string | undefined {
+  if (!c) return undefined;
+  try {
+    return new URL(c.startsWith("http") ? c : `https://${c}`).hostname.replace(/^www\./, "");
+  } catch {
+    if (/^[\w-]+\.[\w.-]+$/.test(c.trim())) return c.trim().toLowerCase().replace(/^www\./, "");
+    return undefined;
   }
-  return undefined;
 }
 
 // POST /api/contacts/[id]/enrich  body: { field: "linkedin" | "email" | "phone" }
-// Fills a single missing field using the most appropriate provider. Returns the
-// updated contact. No-ops (with a message) if the field is already populated.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -87,31 +90,48 @@ export async function POST(
 
     if (field === "linkedin") {
       if (!isExaConfigured()) {
-        return NextResponse.json({ error: "Exa is not configured." }, { status: 501 });
+        return NextResponse.json({ error: "Exa is not configured (EXA_API_KEY missing)." }, { status: 501 });
       }
       if (!contact.name) {
-        return NextResponse.json({ error: "Contact needs a name to find a LinkedIn profile." }, { status: 400 });
+        return NextResponse.json({ error: "Add a name first to find a LinkedIn profile." }, { status: 400 });
       }
-      value = await exaFindLinkedIn(contact.name, contact.company ?? contact.entity?.name ?? undefined);
+      const url = await exaFindLinkedIn(contact.name, contact.company ?? contact.entity?.name ?? undefined);
+      // Only accept an actual LinkedIn profile URL.
+      value = url && /linkedin\.com\/(in|company)\//i.test(url) ? url : null;
     } else {
-      // email / phone via Pipe0
       if (!isPipe0Configured()) {
-        return NextResponse.json({ error: "Pipe0 is not configured." }, { status: 501 });
+        return NextResponse.json({ error: "Pipe0 is not configured (PIPE0_API_KEY missing)." }, { status: 501 });
       }
       const { first, last } = splitName(contact.name);
-      const domain = domainFrom(contact.website, contact.entity?.website, contact.entity?.domain, contact.company);
-      if (!first || !last || !domain) {
+      // Prefer a corporate domain; ignore freemail addresses for the company domain.
+      const emailDomain = contact.email?.includes("@") ? contact.email.split("@")[1]?.toLowerCase() : undefined;
+      const domain =
+        toDomain(contact.website) ||
+        toDomain(contact.entity?.website) ||
+        toDomain(contact.entity?.domain) ||
+        (emailDomain && !FREEMAIL.has(emailDomain) ? emailDomain : undefined) ||
+        toDomain(contact.company);
+
+      if (!first || !last) {
+        return NextResponse.json({ error: "Add the contact's full name to enrich contact info." }, { status: 400 });
+      }
+      if (!domain) {
         return NextResponse.json(
-          { error: "Need the contact's full name and a company domain to enrich contact info." },
+          { error: "Couldn't determine a company domain. Add a website or assign this contact to a company first." },
           { status: 400 }
         );
       }
+
       const records = field === "email"
         ? await findWorkEmail(first, last, domain, contact.company ?? undefined)
         : await findMobile(first, last, domain, contact.company ?? undefined);
-      value = field === "email"
-        ? pick(records, ["email"]) ?? null
-        : pick(records, ["mobile", "phone", "number"]) ?? null;
+
+      if (field === "email") {
+        const e = pick(records, ["email"]);
+        value = e && e.includes("@") ? e : null;
+      } else {
+        value = pick(records, ["mobile", "phone", "number", "tel"]) ?? null;
+      }
     }
 
     if (!value) {
@@ -130,6 +150,6 @@ export async function POST(
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("POST /api/contacts/[id]/enrich", e);
-    return NextResponse.json({ error: "Enrichment failed" }, { status: 500 });
+    return NextResponse.json({ error: "Enrichment failed — please try again." }, { status: 502 });
   }
 }
