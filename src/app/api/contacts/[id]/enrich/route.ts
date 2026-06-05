@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
+import { getPeopleAtCompany, isExploriumConfigured } from "@/lib/explorium";
 
 type Field = "linkedin" | "email" | "phone";
 
@@ -70,6 +71,27 @@ function sameCompany(a?: string, b?: string): boolean {
   return x === y || x.endsWith(`.${y}`) || y.endsWith(`.${x}`) || registrable(x) === registrable(y);
 }
 
+// Strict person-identity match. Enrichment must NEVER attach a same-company
+// stranger's contact info: we only accept an Explorium prospect whose first AND
+// last name match the contact we're enriching.
+function nameMatches(p: { first_name?: string; last_name?: string; full_name?: string }, first: string, last: string): boolean {
+  const f = first.toLowerCase();
+  const l = last.toLowerCase();
+  const pf = (p.first_name ?? "").toLowerCase();
+  const pl = (p.last_name ?? "").toLowerCase();
+  if (pf && pl) return pf === f && pl === l;
+  const full = (p.full_name ?? "").toLowerCase();
+  return Boolean(full) && full.includes(f) && full.includes(l);
+}
+
+// Fallback finder: pull the people at the company domain and return the one who
+// is verifiably this same person (name match), or null. Used when the primary
+// tool comes up empty, so a single failed provider isn't the end of the road.
+async function exploriumPerson(domain: string, first: string, last: string) {
+  const people = await getPeopleAtCompany(domain, { limit: 25, hasEmail: false });
+  return people.find((p) => nameMatches(p, first, last)) ?? null;
+}
+
 // POST /api/contacts/[id]/enrich  body: { field: "linkedin" | "email" | "phone" }
 export async function POST(
   req: NextRequest,
@@ -102,24 +124,42 @@ export async function POST(
     }
 
     let value: string | null = null;
+    // Which provider actually filled the field (handy for debugging/telemetry).
+    let via: string | undefined;
 
     if (field === "linkedin") {
-      if (!isExaConfigured()) {
-        return NextResponse.json({ error: "Exa is not configured (EXA_API_KEY missing)." }, { status: 501 });
+      const { first, last } = splitName(contact.name);
+      const linkedinDomain =
+        toDomain(contact.website) || toDomain(contact.entity?.website) || toDomain(contact.entity?.domain);
+
+      if (!isExaConfigured() && !isExploriumConfigured()) {
+        return NextResponse.json({ error: "No LinkedIn finder configured (set EXA_API_KEY or EXPLORIUM_API_KEY)." }, { status: 501 });
       }
       if (!contact.name) {
         return NextResponse.json({ error: "Add a name first to find a LinkedIn profile." }, { status: 400 });
       }
-      const url = await exaFindLinkedIn(contact.name, {
-        company: contact.company ?? contact.entity?.name ?? undefined,
-        title: contact.title ?? undefined,
-        location: contact.location ?? undefined,
-      });
-      // Only accept an actual LinkedIn profile URL.
-      value = url && /linkedin\.com\/(in|company)\//i.test(url) ? url : null;
+
+      // 1) Exa search by name + company/title.
+      if (isExaConfigured()) {
+        try {
+          const url = await exaFindLinkedIn(contact.name, {
+            company: contact.company ?? contact.entity?.name ?? undefined,
+            title: contact.title ?? undefined,
+            location: contact.location ?? undefined,
+          });
+          if (url && /linkedin\.com\/(in|company)\//i.test(url)) { value = url; via = "exa"; }
+        } catch (e) { console.warn("[enrich] exa linkedin failed", e); }
+      }
+      // 2) Fallback: the company's people directory, matched to this exact person.
+      if (!value && isExploriumConfigured() && first && last && linkedinDomain) {
+        try {
+          const person = await exploriumPerson(linkedinDomain, first, last);
+          if (person?.linkedin && /linkedin\.com\/(in|company)\//i.test(person.linkedin)) { value = person.linkedin; via = "explorium"; }
+        } catch (e) { console.warn("[enrich] explorium linkedin failed", e); }
+      }
     } else {
-      if (!isPipe0Configured()) {
-        return NextResponse.json({ error: "Pipe0 is not configured (PIPE0_API_KEY missing)." }, { status: 501 });
+      if (!isPipe0Configured() && !isExploriumConfigured()) {
+        return NextResponse.json({ error: "No contact-info finder configured (set PIPE0_API_KEY or EXPLORIUM_API_KEY)." }, { status: 501 });
       }
       const { first, last } = splitName(contact.name);
       // The company domain must come from a STRONG source (the contact's own
@@ -142,18 +182,36 @@ export async function POST(
         );
       }
 
-      const records = field === "email"
-        ? await findWorkEmail(first, last, domain, contact.company ?? undefined)
-        : await findMobile(first, last, domain, contact.company ?? undefined);
-
       if (field === "email") {
-        const e = pick(records, ["email"]);
-        // FORCE company fit: the email must be at the company's domain, else reject.
-        value = e && e.includes("@") && sameCompany(e.split("@")[1], domain) ? e : null;
+        // 1) Pipe0, then 2) Explorium - each forced to company-fit before accepting.
+        if (isPipe0Configured()) {
+          try {
+            const e = pick(await findWorkEmail(first, last, domain, contact.company ?? undefined), ["email"]);
+            if (e && e.includes("@") && sameCompany(e.split("@")[1], domain)) { value = e; via = "pipe0"; }
+          } catch (e) { console.warn("[enrich] pipe0 email failed", e); }
+        }
+        if (!value && isExploriumConfigured()) {
+          try {
+            const person = await exploriumPerson(domain, first, last);
+            const e = person?.email;
+            if (e && e.includes("@") && sameCompany(e.split("@")[1], domain)) { value = e; via = "explorium"; }
+          } catch (e) { console.warn("[enrich] explorium email failed", e); }
+        }
       } else {
-        // Phone is gated on a verified company domain + name match above; Pipe0
-        // resolves by name+domain so the number is company-scoped.
-        value = pick(records, ["mobile", "phone", "number", "tel"]) ?? null;
+        // Phone: gated on verified company domain + name match, so the number is
+        // company-scoped to this exact person. 1) Pipe0, then 2) Explorium.
+        if (isPipe0Configured()) {
+          try {
+            const p = pick(await findMobile(first, last, domain, contact.company ?? undefined), ["mobile", "phone", "number", "tel"]);
+            if (p) { value = p; via = "pipe0"; }
+          } catch (e) { console.warn("[enrich] pipe0 phone failed", e); }
+        }
+        if (!value && isExploriumConfigured()) {
+          try {
+            const person = await exploriumPerson(domain, first, last);
+            if (person?.phone) { value = person.phone; via = "explorium"; }
+          } catch (e) { console.warn("[enrich] explorium phone failed", e); }
+        }
       }
     }
 
@@ -169,7 +227,7 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ contact: updated });
+    return NextResponse.json({ contact: updated, via });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("POST /api/contacts/[id]/enrich", e);
