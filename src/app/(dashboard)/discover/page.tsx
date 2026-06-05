@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useCallback, useEffect, useRef } from "react";
+import { useReducer, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   motion,
@@ -18,6 +18,8 @@ import {
   AlertCircle,
   RefreshCw,
   ChevronDown,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -235,12 +237,124 @@ const slideVariants = {
   exit: (dir: number) => ({ opacity: 0, y: dir * -10 }),
 };
 
+// ─── recent results panel ─────────────────────────────────────────────────────
+
+type RecentItem = {
+  id: string;
+  kind: "contact" | "entity";
+  name?: string | null;
+  email?: string | null;
+  company?: string | null;
+  title?: string | null;
+  domain?: string | null;
+  location?: string | null;
+  source: string;
+  createdAt: string;
+};
+
+function RecentResults({ pollWhilePending }: { pollWhilePending: boolean }) {
+  const [items, setItems] = useState<RecentItem[]>([]);
+  const [pending, setPending] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/discover/recent");
+      const data = await res.json().catch(() => ({}));
+      if (data.results) setItems(data.results);
+      if (typeof data.pendingJobs === "number") setPending(data.pendingJobs);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Poll every 8s while jobs are pending so results appear without a refresh.
+  useEffect(() => {
+    if (!pollWhilePending && pending === 0) return;
+    const id = setInterval(load, 8000);
+    return () => clearInterval(id);
+  }, [load, pending, pollWhilePending]);
+
+  if (loading) return null;
+  if (items.length === 0 && pending === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="space-y-3"
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="font-brand text-base text-foreground">Recent results</h2>
+        {pending > 0 && (
+          <motion.span
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+          >
+            <Clock className="h-3 w-3" />
+            {pending} pending
+          </motion.span>
+        )}
+      </div>
+
+      <div className="divide-y divide-border rounded-2xl border border-border bg-card overflow-hidden">
+        {items.map((item) => {
+          const label = item.name ?? item.company ?? item.domain ?? item.email ?? "Unnamed";
+          const sub = item.kind === "contact"
+            ? [item.title, item.company].filter(Boolean).join(" · ")
+            : item.domain ?? item.location ?? "";
+          const href = item.kind === "contact" ? `/crm/contacts/${item.id}` : `/crm/entities/${item.id}`;
+          const isWebhook = item.source === "synthoz-webhook";
+
+          return (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/40 transition-colors"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {item.kind}
+                  </span>
+                  {isWebhook && (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                      webhook
+                    </span>
+                  )}
+                </div>
+                <p className="font-brand truncate text-sm text-foreground">{label}</p>
+                {sub && <p className="text-xs text-muted-foreground truncate">{sub}</p>}
+              </div>
+              <Link
+                href={href}
+                className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function DiscoverPage() {
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const reduce = useReducedMotion();
   const { stage, active, values, records, error } = state;
+  const hasQueued = stage === "queued";
 
   const run = useCallback(async () => {
     if (!active) return;
@@ -316,25 +430,28 @@ export default function DiscoverPage() {
             animate="animate"
             exit="exit"
             transition={{ duration: 0.32, ease: SPRING }}
-            className="grid gap-4 sm:grid-cols-2"
+            className="space-y-8"
           >
-            {TOOLS.map((t, i) => (
-              <FloatIn key={t.id} delay={i * 0.06}>
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: "OPEN_TOOL", tool: t })}
-                  className="block w-full text-left"
-                >
-                  <SpotlightCard className="h-full p-6">
-                    <h3 className="font-brand text-lg">{t.title}</h3>
-                    <p className="text-muted-foreground mt-1 text-sm">{t.body}</p>
-                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-orange">
-                      Run tool
-                    </span>
-                  </SpotlightCard>
-                </button>
-              </FloatIn>
-            ))}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {TOOLS.map((t, i) => (
+                <FloatIn key={t.id} delay={i * 0.06}>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: "OPEN_TOOL", tool: t })}
+                    className="block w-full text-left"
+                  >
+                    <SpotlightCard className="h-full p-6">
+                      <h3 className="font-brand text-lg">{t.title}</h3>
+                      <p className="text-muted-foreground mt-1 text-sm">{t.body}</p>
+                      <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
+                        Run tool
+                      </span>
+                    </SpotlightCard>
+                  </button>
+                </FloatIn>
+              ))}
+            </div>
+            <RecentResults pollWhilePending={hasQueued} />
           </motion.div>
         )}
 
