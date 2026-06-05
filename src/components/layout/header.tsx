@@ -5,14 +5,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { UserButton, useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { RainbowButton } from "@/components/ui/rainbow-button";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "motion/react";
+import { AsciiField } from "@/components/dashboard/ascii-field";
 import {
   Menu,
   X,
   Globe,
   ShoppingCart,
-  TrendingUp,
   Bot,
   Server,
   ChevronDown,
@@ -36,11 +36,10 @@ interface MegaMenuItem {
 }
 
 const servicesItems: MegaMenuItem[] = [
-  { label: "Web Applications", href: "/services#web-application", icon: Globe, description: "Custom web apps built to scale" },
-  { label: "Ecommerce Stores", href: "/services#ecommerce-store", icon: ShoppingCart, description: "High-converting online stores" },
-  { label: "Funnels", href: "/services#funnels", icon: TrendingUp, description: "Sales funnels that convert" },
-  { label: "AI Automation", href: "/services#ai-automation", icon: Bot, description: "Automate with AI workflows" },
-  { label: "Open Claw Deployment", href: "/services#open-claw-deployment", icon: Server, description: "Deploy & manage Open Claw" },
+  { label: "Software", href: "/services#software", icon: Globe, description: "Web apps, SaaS & internal tools" },
+  { label: "Commerce", href: "/services#commerce", icon: ShoppingCart, description: "Storefronts & commerce systems" },
+  { label: "AI", href: "/services#ai", icon: Bot, description: "AI-native software & agents" },
+  { label: "Infrastructure", href: "/services#infrastructure", icon: Server, description: "Cloud, deployment & architecture" },
 ];
 
 const companyItems: MegaMenuItem[] = [
@@ -62,6 +61,12 @@ const navGroups = [
   { label: "Company", items: companyItems },
   { label: "Resources", items: resourceItems },
 ];
+
+// Staggered blur-up for the full-screen mobile menu items.
+const menuItemVariants = {
+  hidden: { opacity: 0, y: 16, filter: "blur(6px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const } },
+};
 
 function MegaMenuDropdown({
   items,
@@ -91,7 +96,7 @@ function MegaMenuDropdown({
   return (
     <div
       ref={ref}
-      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[520px] rounded-2xl border border-border bg-card/95 backdrop-blur-xl p-3 shadow-2xl animate-fade-in z-50"
+      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[520px] rounded-3xl border border-white/10 bg-charcoal/95 ring-1 ring-inset ring-white/5 backdrop-blur-2xl p-3 shadow-2xl shadow-black/50 animate-fade-in z-50"
     >
       <div className="grid grid-cols-2 gap-1">
         {items.map((item) => {
@@ -103,9 +108,7 @@ function MegaMenuDropdown({
               onClick={onClose}
               className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-muted group"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange/10 group-hover:bg-orange/20 transition-colors">
-                <Icon className="h-4 w-4 text-orange" />
-              </div>
+              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-orange" />
               <div>
                 <p className="text-sm font-medium">{item.label}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
@@ -119,9 +122,8 @@ function MegaMenuDropdown({
 }
 
 export function Header() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false); // full-screen menu
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const { isSignedIn } = useAuth();
 
   // Prevent body scroll when mobile sidebar is open
@@ -140,18 +142,18 @@ export function Header() {
     <>
       {/* Pill-style floating header */}
       <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-5xl">
-        <div className="rounded-2xl border border-border/50 bg-background/80 backdrop-blur-xl shadow-lg shadow-black/10">
-          <div className="flex h-14 items-center justify-between px-4 sm:px-5">
+        <div className="rounded-full border border-white/10 bg-charcoal/80 shadow-2xl shadow-black/40 ring-1 ring-inset ring-white/5 backdrop-blur-2xl">
+          <div className="flex h-14 items-center justify-between pl-4 pr-3 sm:pl-5 sm:pr-3">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
               <Image
                 src="/logo.svg"
                 alt="Scalar"
-                width={32}
-                height={32}
-                className="rounded-md"
+                width={30}
+                height={30}
+                className="rounded-full"
               />
-              <span className="text-base font-bold text-foreground hidden sm:inline">
+              <span className="font-brand text-base font-bold text-foreground hidden sm:inline">
                 Scalar
               </span>
             </Link>
@@ -194,14 +196,18 @@ export function Header() {
               <div className="hidden items-center gap-2 lg:flex">
                 {!isSignedIn ? (
                   <>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href="/sign-in">Sign In</Link>
-                    </Button>
-                    <RainbowButton className="h-9 px-5 text-sm rounded-lg" asChild>
-                      <Link href="/sign-up">
-                        Get Started
-                      </Link>
-                    </RainbowButton>
+                    <Link
+                      href="/sign-in"
+                      className="rounded-full px-3.5 py-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/sign-up"
+                      className="rounded-full bg-orange px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-orange/25 transition-all hover:bg-orange-dark hover:shadow-orange/40"
+                    >
+                      Get Started
+                    </Link>
                   </>
                 ) : (
                   <>
@@ -228,124 +234,115 @@ export function Header() {
         </div>
       </header>
 
-      {/* Full-page mobile sidebar */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-[100] lg:hidden">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
-            onClick={() => setMobileOpen(false)}
-          />
+      {/* Full-screen ASCII mobile menu */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            className="fixed inset-0 z-[100] lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="absolute inset-0 bg-charcoal-dark/95 backdrop-blur-xl" />
+            <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-30" cell={14} />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(30,77,43,0.18),transparent_60%)]" />
 
-          {/* Sidebar panel */}
-          <div className="absolute inset-y-0 right-0 w-full max-w-sm bg-background border-l border-border shadow-2xl animate-slide-in-right flex flex-col">
-            {/* Sidebar header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <Link
-                href="/"
-                className="flex items-center gap-2"
-                onClick={() => setMobileOpen(false)}
-              >
-                <Image
-                  src="/logo.svg"
-                  alt="Scalar"
-                  width={28}
-                  height={28}
-                  className="rounded-md"
-                />
-                <span className="font-bold">Scalar</span>
-              </Link>
-              <button
-                className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors cursor-pointer"
-                onClick={() => setMobileOpen(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
+            <motion.div
+              className="relative flex h-full flex-col overflow-y-auto"
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Top */}
+              <div className="flex items-center justify-between px-5 pt-6">
+                <Link href="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
+                  <Image
+                    src="/logo.svg"
+                    alt="Scalar"
+                    width={30}
+                    height={30}
+                    className="rounded-full"
+                  />
+                  <span className="font-brand font-bold text-white">Scalar</span>
+                </Link>
+                <button
+                  aria-label="Close menu"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white transition-colors hover:bg-white/10"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
-            {/* Sidebar nav */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <nav className="space-y-1">
+              {/* Nav — big typographic groups, staggered in */}
+              <motion.nav
+                className="flex-1 space-y-9 px-5 py-10"
+                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.045, delayChildren: 0.12 } } }}
+                initial="hidden"
+                animate="show"
+              >
                 {navGroups.map((group) => (
-                  <div key={group.label} className="mb-2">
-                    <button
-                      onClick={() =>
-                        setExpandedGroup(
-                          expandedGroup === group.label ? null : group.label
-                        )
-                      }
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold hover:bg-muted transition-colors cursor-pointer"
+                  <div key={group.label}>
+                    <motion.p
+                      variants={menuItemVariants}
+                      className="text-xs uppercase tracking-[0.3em] text-orange/80"
                     >
                       {group.label}
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4 text-muted-foreground transition-transform",
-                          expandedGroup === group.label && "rotate-180"
-                        )}
-                      />
-                    </button>
-                    {expandedGroup === group.label && (
-                      <div className="mt-1 ml-2 space-y-0.5">
-                        {group.items.map((item) => {
-                          const Icon = item.icon;
-                          return (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-muted"
-                              onClick={() => setMobileOpen(false)}
-                            >
-                              <Icon className="h-4 w-4 text-orange" />
-                              <div>
-                                <p className="font-medium text-foreground">{item.label}</p>
-                                <p className="text-xs text-muted-foreground">{item.description}</p>
-                              </div>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
+                    </motion.p>
+                    <div className="mt-3 space-y-1.5">
+                      {group.items.map((item) => (
+                        <motion.div key={item.href} variants={menuItemVariants}>
+                          <Link
+                            href={item.href}
+                            onClick={() => setMobileOpen(false)}
+                            className="block font-brand text-3xl leading-tight text-white/90 transition-colors hover:text-orange"
+                          >
+                            {item.label}
+                          </Link>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
                 ))}
-              </nav>
-            </div>
+              </motion.nav>
 
-            {/* Sidebar footer */}
-            <div className="p-4 border-t border-border space-y-2">
-              {!isSignedIn ? (
-                <>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    asChild
-                  >
-                    <Link href="/sign-in" onClick={() => setMobileOpen(false)}>
+              {/* Footer CTA */}
+              <div className="space-y-3 border-t border-white/10 px-5 pb-8 pt-5">
+                {!isSignedIn ? (
+                  <>
+                    <Link
+                      href="/sign-up"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex h-12 w-full items-center justify-center gap-1.5 rounded-full bg-orange text-sm font-semibold text-white transition-colors hover:bg-orange-dark"
+                    >
+                      Get Started
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link
+                      href="/sign-in"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex h-12 w-full items-center justify-center rounded-full border border-white/15 text-sm font-medium text-white/80 transition-colors hover:text-white"
+                    >
                       Sign In
                     </Link>
-                  </Button>
-                  <RainbowButton
-                    className="w-full h-11 rounded-xl text-sm"
+                  </>
+                ) : (
+                  <Link
+                    href="/dashboard"
                     onClick={() => setMobileOpen(false)}
-                    asChild
+                    className="flex h-12 w-full items-center justify-center gap-1.5 rounded-full bg-orange text-sm font-semibold text-white transition-colors hover:bg-orange-dark"
                   >
-                    <Link href="/sign-up">
-                      Get Started
-                      <ArrowRight className="ml-1 h-4 w-4" />
-                    </Link>
-                  </RainbowButton>
-                </>
-              ) : (
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
-                    <LayoutDashboard className="mr-1 h-4 w-4" />
+                    <LayoutDashboard className="h-4 w-4" />
                     Dashboard
                   </Link>
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

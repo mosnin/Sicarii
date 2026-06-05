@@ -1,75 +1,88 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Star } from "lucide-react";
+import Link from "next/link";
+import { Star, ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const testimonials = [
   {
-    quote: "Scalar delivered our ecommerce platform in 3 weeks and our conversion rate tripled. The real-time tracker was a game-changer — I always knew exactly where my project stood.",
-    name: "Sarah Mitchell",
-    role: "Founder, Maison Noir",
+    quote:
+      "We needed AI agents to touch sensitive context without ever silently mutating it. Scalar built the trust gate — read via MCP, every write a reviewable diff, full audit trail and rollback. Exactly the architecture we needed.",
+    name: "Poggle",
+    role: "AI governance platform · poggle.xyz",
     rating: 5,
   },
   {
-    quote: "Best agency experience I've ever had. No back-and-forth emails, no mystery timelines. Everything was right there in the dashboard. Our SaaS app launched on time and on budget.",
-    name: "David Chen",
-    role: "CTO, DataPulse",
+    quote:
+      "They shipped our storefront end-to-end — product pages, subscriptions, a checkout built to convert. It's live, it's fast, and it sells.",
+    name: "NeverAge",
+    role: "DTC supplements · neverage.co",
     rating: 5,
   },
   {
-    quote: "The AI automation system they built saves us 20+ hours per week. Their team really understood our workflow and built exactly what we needed.",
-    name: "Maria Gonzalez",
-    role: "Operations Lead, HelpStream",
+    quote:
+      "Our online ordering looks as good as the cookies taste. Scalar turned a storefront into something people actually want to check out from.",
+    name: "Two Cookies NYC",
+    role: "NYC bakery · twocookiesnyc.com",
     rating: 5,
   },
   {
-    quote: "We needed a sales funnel fast and Scalar delivered. The 450% ROI on our ad spend speaks for itself. Already planning our next project with them.",
-    name: "James Okafor",
-    role: "CEO, GrowthForge",
+    quote:
+      "Across a portfolio of brands, Scalar built the operating infrastructure we run on — brand systems, fulfilment tooling, and architecture that scales with us.",
+    name: "Studio Group",
+    role: "Multi-brand commerce · tryscalar.xyz",
     rating: 5,
   },
 ];
 
 export function TestimonialsSection() {
   return (
-    <section className="py-24 sm:py-32 bg-charcoal-dark/30">
+    <section className="bg-charcoal-dark py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center mb-16">
-          <Badge variant="orange" className="mb-4">Testimonials</Badge>
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-            What our clients{" "}
-            <span className="text-gradient-orange">say</span>
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-xs uppercase tracking-[0.25em] text-orange/80">Clients</p>
+          <h2 className="font-brand mt-3 text-3xl text-white sm:text-4xl lg:text-5xl">
+            Builders they <span className="text-gradient-orange">trust</span>
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Don&apos;t just take our word for it.
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-2">
           {testimonials.map((testimonial, index) => (
             <motion.div
               key={testimonial.name}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-              className="rounded-xl border border-border bg-card p-6 sm:p-8"
+              transition={{ duration: 0.4, delay: index * 0.08 }}
+              className="h-full"
             >
-              <div className="flex gap-1 mb-4">
-                {Array.from({ length: testimonial.rating }).map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-orange text-orange" />
-                ))}
-              </div>
-              <blockquote className="text-sm leading-relaxed text-muted-foreground">
-                &ldquo;{testimonial.quote}&rdquo;
-              </blockquote>
-              <div className="mt-4 pt-4 border-t border-border">
-                <p className="text-sm font-semibold">{testimonial.name}</p>
-                <p className="text-xs text-muted-foreground">{testimonial.role}</p>
-              </div>
+              <SpotlightCard className="h-full p-6 sm:p-8">
+                <div className="mb-4 flex gap-1">
+                  {Array.from({ length: testimonial.rating }).map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-orange text-orange" />
+                  ))}
+                </div>
+                <blockquote className="text-base leading-relaxed text-white/80">
+                  &ldquo;{testimonial.quote}&rdquo;
+                </blockquote>
+                <div className="mt-5 border-t border-white/10 pt-4">
+                  <p className="text-sm font-semibold text-white">{testimonial.name}</p>
+                  <p className="text-xs text-white/50">{testimonial.role}</p>
+                </div>
+              </SpotlightCard>
             </motion.div>
           ))}
+        </div>
+
+        <div className="mt-12 text-center">
+          <Link
+            href="/portfolio"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-white/80 transition-colors hover:text-orange"
+          >
+            See the work
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </section>
