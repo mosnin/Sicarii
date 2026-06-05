@@ -28,8 +28,11 @@ function contactText(c: {
   ].filter(Boolean).join(" - ").slice(0, 800);
 }
 
-// Eligible = enriched AND not yet contacted AND not already in a pipeline.
-const ELIGIBLE_STATUS = "ENRICHED" as const;
+// Eligible = a prospect not yet being worked: status NEW or ENRICHED. Anyone
+// already contacted/replied/qualified/won/lost or archived is excluded, as is
+// anyone already in a pipeline. (Discovered + spawned contacts arrive as NEW,
+// so requiring ENRICHED here would leave every fresh segment empty.)
+const ELIGIBLE_STATUSES = ["NEW", "ENRICHED"] as const;
 
 export async function buildSegmentMatches(
   userId: string,
@@ -47,7 +50,7 @@ export async function buildSegmentMatches(
   const candidates = await prisma.contact.findMany({
     where: {
       userId,
-      status: ELIGIBLE_STATUS, // enriched, and ENRICHED means not yet contacted
+      status: { in: [...ELIGIBLE_STATUSES] },
       ...(excludeIds.size ? { id: { notIn: [...excludeIds] } } : {}),
     },
     orderBy: { updatedAt: "desc" },

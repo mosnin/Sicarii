@@ -74,6 +74,8 @@ function SegmentsPanel() {
   const [quantity, setQuantity] = useState("20");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
+  const [sort, setSort] = useState<"recent" | "name" | "size">("recent");
 
   const load = useCallback(async () => {
     const d = await fetch("/api/segments").then((r) => r.json()).catch(() => ({}));
@@ -120,6 +122,15 @@ function SegmentsPanel() {
     if (res.ok) setMsg(`Started a pipeline from "${seg.name}". Switch to Pipelines to work it.`);
   }
 
+  const q = filter.trim().toLowerCase();
+  const visible = items
+    .filter((s) => !q || s.name.toLowerCase().includes(q) || (s.goal ?? "").toLowerCase().includes(q))
+    .sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name);
+      if (sort === "size") return b._count.members - a._count.members;
+      return 0; // "recent" keeps the API order (newest first)
+    });
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -137,7 +148,7 @@ function SegmentsPanel() {
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
             <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
               <p className="text-sm text-muted-foreground">
-                Describe who you want. Scalar matches your closest <span className="text-foreground">enriched, not-yet-contacted</span> prospects.
+                Describe who you want. Scalar matches your closest <span className="text-foreground">not-yet-worked</span> prospects.
               </p>
               <textarea
                 value={goal} onChange={(e) => setGoal(e.target.value)} rows={3}
@@ -164,14 +175,38 @@ function SegmentsPanel() {
         )}
       </AnimatePresence>
 
+      {!loading && items.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter segments…"
+            className="h-9 max-w-xs flex-1"
+          />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as "recent" | "name" | "size")}
+            className="h-9 rounded-full border border-border bg-background px-3 text-sm text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="recent">Newest</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="size">Most prospects</option>
+          </select>
+        </div>
+      )}
+
       {loading ? null : items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
           <p className="font-brand text-base">No segments yet</p>
           <p className="mt-1 text-sm text-muted-foreground">Build one from a prompt to target your best prospects.</p>
         </div>
+      ) : visible.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
+          <p className="text-sm text-muted-foreground">No segments match &ldquo;{filter}&rdquo;.</p>
+        </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {items.map((s) => (
+          {visible.map((s) => (
             <div key={s.id} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -345,8 +380,8 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
       {loading ? null : entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">No one in this pipeline yet. It is seeded from the assigned segment on creation.</p>
       ) : (
-        // Kanban: a column per stage.
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        // Kanban: a column per stage. Snap-scrolls horizontally with a thin bar.
+        <div className="thin-scroll flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 pr-4">
           {STAGES.map((stage) => {
             const col = entries.filter((e) => e.stage === stage);
             return (
@@ -356,7 +391,7 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
                 onDragLeave={() => setOverStage((s) => (s === stage ? null : s))}
                 onDrop={() => drop(stage)}
                 className={cn(
-                  "flex w-72 shrink-0 flex-col rounded-2xl border bg-muted/30 p-2 transition-colors",
+                  "flex w-72 shrink-0 snap-start flex-col rounded-2xl border bg-muted/30 p-2 transition-colors",
                   overStage === stage ? "border-primary/50 bg-primary/5" : "border-border"
                 )}
               >
