@@ -80,8 +80,7 @@ export async function exaIntentSearch(
   const body: Record<string, unknown> = {
     query,
     numResults: opts.numResults ?? 10,
-    type: "neural",
-    useAutoprompt: true,
+    type: "auto",
     ...(opts.category ? { category: opts.category } : {}),
     ...(opts.startPublishedDate ? { startPublishedDate: opts.startPublishedDate } : {}),
     ...(opts.endPublishedDate ? { endPublishedDate: opts.endPublishedDate } : {}),
@@ -329,12 +328,50 @@ export async function exaResearchContacts(
   return people;
 }
 
-// Find a single person's LinkedIn profile URL.
-export async function exaFindLinkedIn(name: string, company?: string): Promise<string | null> {
-  const results = await exaIntentSearch(
-    `LinkedIn profile of ${name}${company ? ` at ${company}` : ""}`,
-    { numResults: 5, category: "linkedin profile" }
-  );
-  const hit = results.find((r) => /linkedin\.com\/in\//i.test(r.url));
-  return hit?.url ?? results[0]?.url ?? null;
+// Find a single person's LinkedIn profile URL, verified against their company/
+// title so a same-name stranger is not returned. When the company is known we
+// REQUIRE it to appear in the candidate, and return null otherwise (accuracy
+// over coverage) - a wrong profile is worse than none.
+export async function exaFindLinkedIn(
+  name: string,
+  opts: { company?: string; title?: string; location?: string } = {}
+): Promise<string | null> {
+  const { company, title, location } = opts;
+  const query = [`"${name}"`, title, company, location, "LinkedIn profile"]
+    .filter(Boolean)
+    .join(" ");
+
+  const results = await exaIntentSearch(query, {
+    numResults: 10,
+    category: "linkedin profile",
+    includeText: true,
+    includeHighlights: true,
+  });
+
+  const candidates = results.filter((r) => /linkedin\.com\/in\//i.test(r.url));
+  if (candidates.length === 0) return null;
+
+  const nameTokens = name.toLowerCase().split(/\s+/).filter((t) => t.length > 1);
+  const lastName = nameTokens[nameTokens.length - 1];
+  const comp = company?.trim().toLowerCase();
+  const titleWords = (title ?? "").toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+
+  let best: { c: ExaResult; companyHit: boolean; nameHit: boolean; score: number } | null = null;
+  for (const c of candidates) {
+    const hay = `${c.title ?? ""} ${c.text ?? ""} ${(c.highlights ?? []).join(" ")} ${decodeURIComponent(c.url)}`.toLowerCase();
+    const nameHits = nameTokens.filter((t) => hay.includes(t)).length;
+    // Name must plausibly match: most tokens present AND the surname present.
+    const nameHit = nameHits >= Math.max(1, nameTokens.length - 1) && (!lastName || hay.includes(lastName));
+    const companyHit = !!comp && hay.includes(comp);
+    const score = (companyHit ? 3 : 0) + (titleWords.some((w) => hay.includes(w)) ? 1 : 0) + (nameHit ? 1 : 0);
+    if (!best || score > best.score) best = { c, companyHit, nameHit, score };
+  }
+  if (!best) return null;
+
+  // ACCURACY RULE: when the company is known, only accept a profile that matches
+  // BOTH the person's name AND their company. A wrong profile is never acceptable
+  // (same-name strangers) - return null instead. See AGENTS.md / product.md.
+  if (comp) return best.companyHit && best.nameHit ? best.c.url : null;
+  // No company context: require at least a name match before returning anything.
+  return best.nameHit ? best.c.url : null;
 }

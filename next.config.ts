@@ -10,7 +10,8 @@ const cspHeader = [
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.tryscalar.xyz https://*.clerk.accounts.dev https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://blogger.googleusercontent.com https://img.clerk.com https://utfs.io",
+  // Allow any https image so scraped company logos / contact photos can render.
+  "img-src 'self' data: blob: https:",
   "font-src 'self'",
   "connect-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://checkout.creem.io",
   "frame-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com",
@@ -23,6 +24,15 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "img.clerk.com" },
       { protocol: "https", hostname: "utfs.io" },
     ],
+  },
+  // Standard discovery paths -> our metadata handlers (RFC 8414 / RFC 9728).
+  async rewrites() {
+    return [
+      { source: "/.well-known/oauth-authorization-server", destination: "/api/oauth/metadata/authorization-server" },
+      { source: "/.well-known/oauth-authorization-server/:path*", destination: "/api/oauth/metadata/authorization-server" },
+      { source: "/.well-known/oauth-protected-resource", destination: "/api/oauth/metadata/protected-resource" },
+      { source: "/.well-known/oauth-protected-resource/:path*", destination: "/api/oauth/metadata/protected-resource" },
+    ];
   },
   async headers() {
     return [

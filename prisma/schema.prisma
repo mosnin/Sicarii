@@ -7,64 +7,43 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider   = "postgresql"
   // Read the Supabase Vercel integration's auto-injected vars directly so no
   // manual env control is needed. POSTGRES_PRISMA_URL = pooled (pgbouncer),
   // POSTGRES_URL_NON_POOLING = direct connection (migrations / db push).
-  url       = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING")
+  url        = env("POSTGRES_PRISMA_URL")
+  directUrl  = env("POSTGRES_URL_NON_POOLING")
   // pgvector powers the agent's token-efficient recall (memory_chunks.embedding).
   extensions = [vector]
 }
 
 model User {
-  id        String   @id @default(uuid())
-  clerkId   String   @unique
-  email     String
-  firstName String?
-  lastName  String?
-  imageUrl  String?
-  role      String   @default("member")
+  id              String   @id @default(uuid())
+  clerkId         String   @unique
+  email           String
+  firstName       String?
+  lastName        String?
+  imageUrl        String?
+  role            String   @default("member")
   // Operator-authored context the agent reads (what you're selling) + a
   // connected AgentMail key for email. Both are per-user settings.
-  productContext  String? @db.Text
+  productContext  String?  @db.Text
   agentMailApiKey String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Outbound webhook: where Scalar POSTs results when a scheduled task (intent
+  // monitor / research schedule) completes, so the user's agent can be woken up.
+  taskWebhookUrl  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  entities         Entity[]
-  contacts         Contact[]
-  apiKeys          ApiKey[]
-  conversations    Conversation[]
-  memoryChunks     MemoryChunk[]
-  synthozJobs      SynthozJob[]
-  intentMonitors   IntentMonitor[]
+  entities          Entity[]
+  contacts          Contact[]
+  apiKeys           ApiKey[]
+  conversations     Conversation[]
+  memoryChunks      MemoryChunk[]
+  intentMonitors    IntentMonitor[]
   researchSchedules ResearchSchedule[]
 
   @@map("users")
-}
-
-// Correlation record for Synthoz's ASYNC results. Synthoz is one developer
-// account (one API key, one set of outgoing webhooks), but many Scalar users
-// trigger searches. When a user fires an async Synthoz call we stamp a pending
-// job keyed by what was searched (domain / company); when the result POSTs back
-// to /api/webhooks/synthoz — carrying no user identity — we match it to the most
-// recent pending job for that key and attribute the record to that user.
-model SynthozJob {
-  id         String    @id @default(uuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action     String // "enrich-company" | "convert-company-names" | "extract-emails-from-urls" | "find-emails-first-last"
-  domainKey  String? // normalized domain searched (host only, no scheme/www)
-  companyKey String? // normalized company name searched (lowercased)
-  status     String    @default("pending") // "pending" | "resolved"
-  createdAt  DateTime  @default(now())
-  resolvedAt DateTime?
-
-  @@index([userId])
-  @@index([status, domainKey])
-  @@index([status, companyKey])
-  @@map("synthoz_jobs")
 }
 
 // A chat with the Scalar agent. A fresh one is created on each page load; long-term
@@ -128,31 +107,36 @@ model ApiKey {
   @@map("api_keys")
 }
 
-// A business in the CRM. Discovered (e.g. via Tavily), enriched (via Synthoz by
-// domain), and operated on by agents. Has many contacts.
+// A business in the CRM. Discovered (e.g. via Tavily), enriched (via Explorium
+// by domain), and operated on by agents. Has many contacts.
 model Entity {
-  id        String  @id @default(uuid())
-  userId    String // owner (the Scalar account)
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String // owner (the Scalar account)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name        String
   domain      String?
   website     String?
+  logoUrl     String?
   phone       String?
   industry    String?
   location    String?
+  // Geocoded coordinates for the map view (from `location`, via Nominatim).
+  lat         Float?
+  lng         Float?
+  geocodedAt  DateTime?
   description String? @db.Text
   size        String?
 
-  status    EntityStatus @default(NEW)
-  source    String? // "agent:tavily", "manual", "agent", etc.
-  tags      String[]     @default([])
-  notes     String?      @db.Text
+  status EntityStatus @default(NEW)
+  source String? // "agent:tavily", "manual", "agent", etc.
+  tags   String[]     @default([])
+  notes  String?      @db.Text
 
-  // Enrichment payload (Synthoz-shaped JSON the agent can read/extend).
+  // Enrichment payload (provider-shaped JSON the agent can read/extend).
   enrichment Json?
 
-  contacts  Contact[]
+  contacts Contact[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -168,36 +152,53 @@ enum EntityStatus {
   ARCHIVED
 }
 
+// Shared geocode cache. Keyed by a normalized address string so the same city
+// or address is only ever sent to Nominatim once (1 req/sec policy), making
+// repeated lookups instant. A row with null lat/lng is a remembered "no hit".
+model GeocodeCache {
+  id          String   @id @default(uuid())
+  query       String   @unique
+  lat         Float?
+  lng         Float?
+  displayName String?
+  createdAt   DateTime @default(now())
+
+  @@map("geocode_cache")
+}
+
 // A person/company in the CRM. Agents discover, enrich, and operate on these.
 model Contact {
-  id        String  @id @default(uuid())
-  userId    String // owner (the Scalar account this contact belongs to)
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String // owner (the Scalar account this contact belongs to)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Optional parent business. A contact is assigned to an entity or stands solo.
-  entityId  String?
-  entity    Entity? @relation(fields: [entityId], references: [id], onDelete: SetNull)
+  entityId String?
+  entity   Entity? @relation(fields: [entityId], references: [id], onDelete: SetNull)
 
   // Core
-  name      String?
-  email     String?
-  phone     String?
-  company   String?
-  title     String?
-  website   String?
-  linkedin  String?
-  location  String?
+  name     String?
+  email    String?
+  phone    String?
+  company  String?
+  title    String?
+  website  String?
+  linkedin String?
+  location String?
+  imageUrl String?
 
   // Pipeline
-  status    ContactStatus @default(NEW)
-  source    String? // how it was found: "discover:domain", "manual", "import", etc.
-  tags      String[]      @default([])
-  notes     String?
+  status ContactStatus @default(NEW)
+  source String? // how it was found: "discover:domain", "manual", "import", etc.
+  tags   String[]      @default([])
+  notes  String?
 
   // Enrichment payload (provider-shaped JSON the agent can read/extend)
   enrichment Json?
 
-  emails    ContactEmail[]
+  emails          ContactEmail[]
+  segments        ContactSegment[]
+  pipelineEntries PipelineEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -230,16 +231,16 @@ model ContactEmail {
   agentMailMessageId String?
   agentMailThreadId  String?
 
-  direction Emaildirection
-  fromAddr  String?
-  toAddr    String?
-  subject   String?
-  body      String?        @db.Text
+  direction      Emaildirection
+  fromAddr       String?
+  toAddr         String?
+  subject        String?
+  body           String?        @db.Text
   // Whether the agent flagged this message as durable context.
-  savedAsContext Boolean   @default(false)
+  savedAsContext Boolean        @default(false)
 
   sentAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([contactId])
   @@index([agentMailThreadId])
@@ -259,17 +260,39 @@ model IntentMonitor {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
   query        String    @db.Text
-  frequency    String    @default("daily") // "daily" | "weekly"
+  frequency    String    @default("daily") // "daily" | "weekly" | "hourly"
   exaMonitorId String? // Exa's remote monitor ID (set after createExaMonitor succeeds)
   active       Boolean   @default(true)
+  // When true, runs auto-add new records to the CRM. When false, runs are stored
+  // for review and the user/agent can "Add to CRM" later.
+  autoAdd      Boolean   @default(true)
   lastRunAt    DateTime?
   nextRunAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  runs MonitorRun[]
+
   @@index([userId])
   @@index([active, nextRunAt])
   @@map("intent_monitors")
+}
+
+// A single execution of an intent monitor: what it pulled, and how much was added.
+model MonitorRun {
+  id        String        @id @default(uuid())
+  userId    String
+  monitorId String
+  monitor   IntentMonitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  items     Json? // the pulled results [{ title, url, summary }]
+  found     Int           @default(0)
+  added     Int           @default(0)
+  addedToCrm Boolean      @default(false) // whether results were ingested
+  createdAt DateTime      @default(now())
+
+  @@index([monitorId])
+  @@index([userId])
+  @@map("monitor_runs")
 }
 
 // Scheduled deep research (Linkup or Exa) on a topic, contact, or entity.
@@ -282,8 +305,8 @@ model ResearchSchedule {
   name       String
   query      String    @db.Text
   provider   String    @default("linkup") // "linkup" | "exa"
-  depth      String    @default("deep")   // "standard" | "deep"
-  frequency  String    @default("daily")  // "hourly" | "daily" | "weekly"
+  depth      String    @default("deep") // "standard" | "deep"
+  frequency  String    @default("daily") // "hourly" | "daily" | "weekly"
   targetType String? // "contact" | "entity" | null (saves as new records)
   targetId   String?
   active     Boolean   @default(true)
@@ -295,4 +318,90 @@ model ResearchSchedule {
   @@index([userId])
   @@index([active, nextRunAt])
   @@map("research_schedules")
+}
+
+// ── Field: customer segments + agentic pipelines ────────────────────────────
+
+// A customer segment: a named set of target contacts, built manually or from a
+// prompt (OpenAI + vector match). userId is a plain scalar for scoping.
+model Segment {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  goal      String?  @db.Text // the prompt/intent used to build it
+  source    String? // "manual" | "prompt"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members ContactSegment[]
+
+  @@index([userId])
+  @@map("segments")
+}
+
+model ContactSegment {
+  id        String   @id @default(uuid())
+  segmentId String
+  segment   Segment  @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  score     Float? // vector match score 0-1
+  createdAt DateTime @default(now())
+
+  @@unique([segmentId, contactId])
+  @@index([contactId])
+  @@map("contact_segments")
+}
+
+// A pipeline: agentic deal flow. Contacts enter as PipelineEntry rows that track
+// stage, deal score, and conversation status so agents don't loop forever.
+model Pipeline {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  goal      String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries PipelineEntry[]
+
+  @@index([userId])
+  @@map("pipelines")
+}
+
+enum PipelineStage {
+  NEW
+  ENRICHED
+  PROSPECTING
+  ENGAGING
+  REPLYING
+  WON
+  LOST
+}
+
+enum ConversationStatus {
+  OPEN
+  AWAITING_REPLY
+  STALLED
+  CLOSED
+}
+
+model PipelineEntry {
+  id                 String             @id @default(uuid())
+  userId             String
+  pipelineId         String
+  pipeline           Pipeline           @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  contactId          String
+  contact            Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  stage              PipelineStage      @default(NEW)
+  dealScore          Int? // 1-100 likelihood the deal closes
+  conversationStatus ConversationStatus @default(OPEN)
+  lastActivityAt     DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@unique([pipelineId, contactId])
+  @@index([userId])
+  @@index([contactId])
+  @@map("pipeline_entries")
 }

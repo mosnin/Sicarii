@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Sparkles, Trash2, UserPlus, ChevronDown, Check, RefreshCw } from "lucide-react";
+import { Trash2, ChevronDown, Check, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,10 +28,33 @@ export function EntityActions({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [spawning, setSpawning] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<Aspect | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState<string | null>(null);
+
+  // Deep website analysis (Firecrawl): company context + logo + people found.
+  async function analyzeSite() {
+    setAnalyzing(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/entities/${entityId}/analyze-site`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const bits = [];
+        if (data.logo) bits.push("logo");
+        if (data.created > 0) bits.push(`${data.created} contact${data.created === 1 ? "" : "s"}`);
+        setMsg(bits.length ? `Analyzed site, added ${bits.join(" + ")}.` : "Analyzed site, context updated.");
+        router.refresh();
+      } else {
+        setMsg(data.error || "Couldn't analyze the site.");
+      }
+    } finally {
+      setAnalyzing(false);
+    }
+  }
 
   // Enrich a single aspect; additive - running one never blocks the others.
   async function enrich(type: Aspect) {
@@ -54,6 +77,31 @@ export function EntityActions({
       setMsg("Network error.");
     } finally {
       setRunning(null);
+    }
+  }
+
+  // Deep report: OpenAI agent assembles offerings, target market, news, intent
+  // signals, and decision makers (verified + added) from analyze + web search.
+  async function deepReport() {
+    setReporting(true);
+    setMsg("Researching the company, this can take up to a minute…");
+    try {
+      const res = await fetch(`/api/entities/${entityId}/deep-report`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setMsg(
+          data.created > 0
+            ? `Report ready, added ${data.created} decision maker${data.created === 1 ? "" : "s"}.`
+            : "Report ready."
+        );
+        router.refresh();
+      } else {
+        setMsg(data.error || "Couldn't generate the report.");
+      }
+    } catch {
+      setMsg("Network error.");
+    } finally {
+      setReporting(false);
     }
   }
 
@@ -93,13 +141,30 @@ export function EntityActions({
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
         <Button
+          variant="glow"
+          size="sm"
+          onClick={deepReport}
+          disabled={reporting || busy}
+          title="Full research report: offerings, market, news, intent, decision makers"
+        >
+          {reporting ? "Researching…" : "Deep report"}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={analyzeSite}
+          disabled={analyzing || busy}
+          title="Deep-analyze the website for context, logo, and people"
+        >
+          {analyzing ? "Analyzing…" : "Analyze site"}
+        </Button>
+        <Button
           variant="outline"
           size="sm"
           onClick={spawnContacts}
           disabled={spawning || busy}
           title="Research decision makers and add the ones you don't have"
         >
-          <UserPlus className="mr-1 h-4 w-4" />
           {spawning ? "Researching…" : "Spawn contacts"}
         </Button>
 
@@ -112,7 +177,6 @@ export function EntityActions({
             disabled={busy || !hasDomain}
             title={hasDomain ? "Enrich this company" : "Add a domain to enrich"}
           >
-            <Sparkles className="mr-1 h-4 w-4" />
             Enrich
             <ChevronDown className={cn("ml-1 h-3.5 w-3.5 transition-transform", menuOpen && "rotate-180")} />
           </Button>

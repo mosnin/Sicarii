@@ -87,6 +87,10 @@ Deep context and all decisions are indexed in `@docs/README.md`.
   named **Scalar** and uses the logo as its avatar/nav icon.
 - **Copy hard rule:** NEVER use em dashes or en dashes anywhere (UI, code,
   comments, docs, commits). Use commas, periods, colons, or a plain hyphen `-`.
+- **Enrichment accuracy hard rule:** enrichment must NEVER attach data for the
+  wrong person/company (no same-name strangers). Verify name AND company/domain
+  before saving; prefer null + "couldn't find it" over a wrong value. Details in
+  `AGENTS.md` and `docs/foundation/product.md`.
 - **Design & agent rules - read before any UI work:** `DESIGN.md` (the durable
   design system) and `AGENTS.md`. Two hard rules: **no decorative icons** (never
   an icon-in-a-tinted-box badge), and **this is NOT vanilla Next.js** - Next 16

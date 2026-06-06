@@ -265,3 +265,23 @@ h1,
 .animate-slideUp {
   animation: slideUp 200ms ease-out;
 }
+
+/* Thin, subtle scrollbar for horizontal panels (e.g. the Field kanban). */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 9999px;
+}
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-muted-foreground);
+}

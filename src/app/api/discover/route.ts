@@ -32,6 +32,7 @@ import {
 } from "@/lib/exa";
 import { linkupSearch, linkupDeepResearch, isLinkupConfigured } from "@/lib/linkup";
 import { refineToCompanies, isRefinerConfigured } from "@/lib/result-refiner";
+import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
 
 function notConfigured(provider: string) {
   return NextResponse.json(
@@ -117,7 +118,15 @@ async function refineOrRaw(userId: string, query: string, raw: unknown): Promise
     if (refined.length === 0) return raw;
     return companyListResult(
       userId,
-      refined.map((c) => ({ ...c, companyName: c.name, address: c.location }))
+      refined.map((c) => ({
+        companyName: c.name,
+        website: c.website ?? undefined,
+        domain: c.domain ?? undefined,
+        industry: c.industry ?? undefined,
+        address: c.location ?? undefined,
+        phone: c.phone ?? undefined,
+        description: c.description ?? undefined,
+      }))
     );
   } catch (e) {
     console.error("[discover] refiner failed, returning raw results", e);
@@ -221,6 +230,28 @@ export async function POST(req: NextRequest) {
         const url = body.url?.trim();
         if (!url) return NextResponse.json({ error: "Enter a URL to extract." }, { status: 400 });
         result = await tavilyExtract([url]);
+        break;
+      }
+
+      case "analyze-site": {
+        if (!isFirecrawlConfigured()) return notConfigured("Firecrawl");
+        const url = body.url?.trim();
+        if (!url) return NextResponse.json({ error: "Enter a company website URL." }, { status: 400 });
+        const a = await analyzeSite(url);
+        const site = url.startsWith("http") ? url : `https://${url}`;
+        const company = host(site);
+        // Return the people found as addable contacts.
+        result = a.contacts
+          .filter((c) => c.name && c.name.trim().length > 1)
+          .map((c) => ({
+            name: c.name,
+            title: c.title,
+            email: c.email,
+            linkedin: c.linkedin,
+            imageUrl: c.photo,
+            company,
+            website: site,
+          }));
         break;
       }
 

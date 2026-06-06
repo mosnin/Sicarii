@@ -14,7 +14,11 @@ import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 import { entityStatusBadgeVariant, entityStatusLabel } from "@/lib/entity-status";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
+import { DataView, cleanForView, humanizeKey } from "@/components/dashboard/data-view";
+import { CrmAvatar } from "@/components/dashboard/crm-avatar";
+import { EnrichmentStatusCard, entityTier } from "@/components/dashboard/enrichment-status";
 import { EntityActions } from "./actions";
+import { EntityEditor } from "./editor";
 
 export default async function EntityDetailPage({
   params,
@@ -47,6 +51,20 @@ export default async function EntityDetailPage({
     { label: "Size", value: entity.size },
   ];
 
+  // Enrichment payloads attached by the Enrich dropdown (firmographics, tech
+  // stack, funding, ...), keyed by aspect. Rendered below so they're visible.
+  const enrichment =
+    entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
+      ? (entity.enrichment as Record<string, unknown>)
+      : null;
+  const enrichmentEntries = enrichment
+    ? Object.entries(enrichment).filter(([, v]) => v != null)
+    : [];
+
+  // ICP verdict from the deep report, if it has run.
+  const deepReport = enrichment?.deepReport as { icpFit?: { isIcp: boolean; score: number; reasoning: string } } | undefined;
+  const icp = deepReport?.icpFit;
+
   return (
     <div className="space-y-6">
       <FloatIn delay={0}>
@@ -61,18 +79,21 @@ export default async function EntityDetailPage({
 
       <FloatIn delay={0.06}>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="font-brand text-2xl sm:text-3xl text-foreground">{entity.name}</h1>
-              <Badge variant={entityStatusBadgeVariant(entity.status)}>
-                {entityStatusLabel(entity.status)}
-              </Badge>
+          <div className="flex items-start gap-3">
+            <CrmAvatar src={entity.logoUrl} label={entity.name} shape="square" size={44} className="mt-0.5" />
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="font-brand text-2xl sm:text-3xl text-foreground">{entity.name}</h1>
+                <Badge variant={entityStatusBadgeVariant(entity.status)}>
+                  {entityStatusLabel(entity.status)}
+                </Badge>
+              </div>
+              {entity.source && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Source: {entity.source}
+                </p>
+              )}
             </div>
-            {entity.source && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                Source: {entity.source}
-              </p>
-            )}
           </div>
           <EntityActions
             entityId={entity.id}
@@ -82,7 +103,19 @@ export default async function EntityDetailPage({
       </FloatIn>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <FloatIn delay={0.1} className="lg:col-span-1">
+        <FloatIn delay={0.1} className="lg:col-span-1 space-y-6">
+          <EnrichmentStatusCard tier={entityTier(entity.status, entity.enrichment)} />
+          {icp && (
+            <div className={`rounded-2xl border p-4 shadow-sm ${icp.isIcp ? "border-green-500/30 bg-green-500/5" : "border-border bg-card"}`}>
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">ICP fit</p>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${icp.isIcp ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                  {icp.isIcp ? `ICP match · ${icp.score}` : `Not ICP · ${icp.score}`}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">{icp.reasoning}</p>
+            </div>
+          )}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Details</CardTitle>
@@ -128,6 +161,19 @@ export default async function EntityDetailPage({
                   <p className="whitespace-pre-wrap text-sm">{entity.notes}</p>
                 </div>
               )}
+              <EntityEditor
+                entityId={entity.id}
+                initial={{
+                  name: entity.name ?? "",
+                  website: entity.website ?? "",
+                  domain: entity.domain ?? "",
+                  phone: entity.phone ?? "",
+                  industry: entity.industry ?? "",
+                  location: entity.location ?? "",
+                  size: entity.size ?? "",
+                  description: entity.description ?? "",
+                }}
+              />
             </CardContent>
           </Card>
         </FloatIn>
@@ -179,6 +225,29 @@ export default async function EntityDetailPage({
           </Card>
         </FloatIn>
       </div>
+
+      {/* Enrichment payloads (tech stack, funding, firmographics, ...) */}
+      {enrichmentEntries.length > 0 && (
+        <FloatIn delay={0.18}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Enrichment</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {enrichmentEntries.map(([key, val]) => (
+                <details key={key} className="group" open>
+                  <summary className="flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-foreground">
+                    {humanizeKey(key)}
+                  </summary>
+                  <div className="mt-3 max-h-96 overflow-auto rounded-xl border border-border bg-muted/30 p-4">
+                    <DataView value={cleanForView(val)} />
+                  </div>
+                </details>
+              ))}
+            </CardContent>
+          </Card>
+        </FloatIn>
+      )}
     </div>
   );
 }

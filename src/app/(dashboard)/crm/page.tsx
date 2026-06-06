@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { FloatIn } from "@/components/ui/float-in";
 import { ContactRows } from "@/components/dashboard/crm-rows";
 import { EntityRows } from "@/components/dashboard/crm-rows";
+import { CrmHeaderMenu } from "@/components/dashboard/crm-header-menu";
 import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 
@@ -64,6 +65,7 @@ export default async function CrmPage({
               {tab === "entities" ? "Add entity" : "Add contact"}
             </Link>
           </Button>
+          {tab === "entities" && <CrmHeaderMenu />}
         </div>
       </FloatIn>
 
@@ -151,6 +153,7 @@ async function ContactsList({ userId }: { userId: string }) {
     email: c.email,
     title: c.title,
     status: c.status,
+    imageUrl: c.imageUrl,
     updatedAt: c.updatedAt.toISOString(),
     entity: c.entity ?? null,
   }));
@@ -193,6 +196,8 @@ async function EntitiesList({ userId }: { userId: string }) {
     status: e.status,
     industry: e.industry,
     domain: e.domain,
+    location: e.location,
+    logoUrl: e.logoUrl,
     updatedAt: e.updatedAt.toISOString(),
     _count: e._count,
   }));

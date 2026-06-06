@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "scalar-marketplace",
+  "owner": {
+    "name": "Scalar"
+  },
+  "description": "Scalar plugins for Claude Code: skills and the Scalar MCP server for the CRM your agents run.",
+  "plugins": [
+    {
+      "name": "scalar",
+      "source": "./plugins/scalar",
+      "description": "Scalar, the CRM your agents run. Skills for discovery, enrichment, CRM hygiene, and intent monitors, plus the Scalar remote MCP server.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Scalar"
+      },
+      "homepage": "https://www.tryscalar.xyz",
+      "keywords": ["crm", "leads", "enrichment", "mcp", "agents", "scalar"],
+      "category": "productivity"
+    }
+  ]
+}

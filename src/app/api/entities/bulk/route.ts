@@ -1,9 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { geocodeCached } from "@/lib/geocode";
+
+export const maxDuration = 60;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const entitySchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -67,9 +72,10 @@ export async function POST(req: NextRequest) {
     });
 
     let created = 0;
+    const toGeocode: { id: string; location: string }[] = [];
     for (const e of toCreate) {
       const { enrichment, tags, ...rest } = e;
-      await prisma.entity.create({
+      const entity = await prisma.entity.create({
         data: {
           ...rest,
           domain: normDomain(e.domain),
@@ -79,6 +85,29 @@ export async function POST(req: NextRequest) {
         },
       });
       created++;
+      if (entity.location) toGeocode.push({ id: entity.id, location: entity.location });
+    }
+
+    // Geocode the new entities in the background so they're already on the map
+    // by the time the user opens it. Cache hits are instant; only real Nominatim
+    // calls are throttled. Anything left over is caught by the map's backfill.
+    if (toGeocode.length) {
+      after(async () => {
+        for (const e of toGeocode.slice(0, 40)) {
+          try {
+            const { result, cached } = await geocodeCached(e.location);
+            await prisma.entity.update({
+              where: { id: e.id },
+              data: result
+                ? { lat: result.lat, lng: result.lng, geocodedAt: new Date() }
+                : { geocodedAt: new Date() },
+            });
+            if (!cached) await sleep(1100);
+          } catch {
+            /* leave it for the map backfill loop */
+          }
+        }
+      });
     }
 
     return NextResponse.json({

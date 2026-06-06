@@ -12,7 +12,7 @@ export function ThinkingIndicator() {
 
   return (
     <div className="flex items-start gap-3 py-1">
-      <ScalarAvatar />
+      <ScalarAvatar active />
       <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm border border-border bg-card px-4 py-3">
         {[0, 1, 2].map((i) => (
           <motion.span

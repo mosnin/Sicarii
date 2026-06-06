@@ -130,6 +130,15 @@ high-stakes actions (e.g. sending email). Trust by construction, not by lockdown
 expensive operations (discovery, enrichment, agent runs) - so price tracks value
 and provider cost.
 
+## Enrichment accuracy (non-negotiable)
+
+Enrichment must ALWAYS attach to the correct person or company. Returning data
+for a same-name stranger or a different company is never acceptable and is
+treated as a critical bug. Every enrichment/lookup path must verify identity
+(name AND company/domain, or a strong key like work email) before saving, and
+must prefer returning nothing ("couldn't find it") over a wrong value. Accuracy
+beats coverage, always.
+
 ## Data posture
 
 **A single source of truth you control.** Enrichment flows *in* from providers;
