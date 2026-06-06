@@ -383,13 +383,15 @@ export function DashboardOverview({
 
               <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {[
-                  { label: "Discover", href: "/discover", body: "Find contacts" },
-                  { label: "Radar", href: "/radar", body: "Scheduled scans" },
-                  { label: "CRM", href: "/crm", body: "Your database" },
-                  { label: "Field", href: "/field", body: "Segments + deals" },
-                  { label: "Scalar", href: "/agent", body: "AI assistant" },
-                  { label: "Context", href: "/product-context", body: "Your product" },
-                  { label: "Skills", href: "/skills", body: "Agent playbooks" },
+                  // Focused on the one flow: discover -> enrich into your CRM ->
+                  // your agent works it, grounded in your product context. The
+                  // secondary surfaces (Radar, Field, Skills) are intentionally
+                  // not surfaced here yet; their routes still exist and are
+                  // reachable directly until the core moment is proven and felt.
+                  { label: "Discover", href: "/discover", body: "Find + enrich the right people" },
+                  { label: "CRM", href: "/crm", body: "Records you can trust" },
+                  { label: "Scalar", href: "/agent", body: "Your agent runs the pipeline" },
+                  { label: "Context", href: "/product-context", body: "Ground your agent in your product" },
                 ].map((item) => {
                   return (
                     <motion.div
