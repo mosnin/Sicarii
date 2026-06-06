@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
-import { createExaMonitor, deleteExaMonitor, isExaConfigured } from "@/lib/exa";
+import { createExaMonitor, deleteExaMonitor, isExaConfigured, exaWebhookToken } from "@/lib/exa";
 
 // GET /api/intent-monitors - list all monitors for the current user.
 export async function GET() {
@@ -48,9 +48,13 @@ export async function POST(req: NextRequest) {
     else nextRunAt.setDate(nextRunAt.getDate() + 1);
 
     // Register with Exa Monitors for webhook delivery on top of Inngest polling.
+    // The webhook URL carries a secret token so the receiver can reject any call
+    // that isn't a monitor we registered (the callback writes into the CRM).
     let exaMonitorId: string | undefined;
     try {
-      const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://tryscalar.xyz"}/api/webhooks/exa`;
+      const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://tryscalar.xyz";
+      const token = exaWebhookToken();
+      const webhookUrl = `${base}/api/webhooks/exa${token ? `?t=${token}` : ""}`;
       const exaMon = await createExaMonitor({
         query: body.query,
         webhookUrl,

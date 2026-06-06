@@ -2,7 +2,37 @@
 // Base: https://api.exa.ai  Auth: x-api-key header
 // Used for intent scanning (who is looking for a product like yours).
 
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 const BASE = "https://api.exa.ai";
+
+// ── Webhook authentication ──────────────────────────────────────────────────
+// The Exa Monitor callback (/api/webhooks/exa) writes records into a user's CRM
+// based only on the monitor_id in the body, so it MUST verify the caller. We
+// control both ends - monitor creation registers the webhook URL with this token
+// as ?t=, and the receiver requires it - so a forged/abusive request that lacks
+// the token is rejected before it can touch the CRM.
+//
+// The token is derived from a server secret (HMAC), so it needs no extra config
+// and is stable across redeploys; set EXA_WEBHOOK_SECRET to override/rotate it.
+// Returns null only when no server secret exists at all (misconfiguration), in
+// which case the receiver fails closed.
+export function exaWebhookToken(): string | null {
+  const explicit = process.env.EXA_WEBHOOK_SECRET?.trim();
+  if (explicit) return explicit;
+  const base = (process.env.MCP_OAUTH_SECRET || process.env.CLERK_SECRET_KEY)?.trim();
+  if (!base) return null;
+  return createHmac("sha256", base).update("exa-webhook-v1").digest("hex");
+}
+
+// Constant-time check of a provided webhook token against the expected one.
+export function exaWebhookTokenValid(provided: string | null | undefined): boolean {
+  const expected = exaWebhookToken();
+  if (!expected || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 function key() {
   const k = process.env.EXA_API_KEY?.trim();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { extractAndAddToCrm, type ExtractItem } from "@/lib/radar-extract";
+import { exaWebhookTokenValid } from "@/lib/exa";
 
 // POST /api/webhooks/exa - receives Exa Monitor result payloads.
 // Each monitor was created with a specific userId stored in IntentMonitor.
@@ -9,8 +10,20 @@ import { extractAndAddToCrm, type ExtractItem } from "@/lib/radar-extract";
 // the monitor is set to auto-add) extract the REAL companies/people mentioned in
 // the results. We never dump the article pages / publishers themselves as
 // entities, and the same shared extractor dedupes against the CRM.
+//
+// This endpoint writes into a user's CRM, so it is gated by a secret token that
+// we registered into the monitor's webhook URL (?t=). Any call without the valid
+// token is rejected here, before the body is trusted. Monitors created before
+// this token existed simply fall through to the Inngest polling path.
 export async function POST(req: NextRequest) {
   try {
+    // Authenticate the caller before doing anything with the payload.
+    const token = req.nextUrl.searchParams.get("t");
+    if (!exaWebhookTokenValid(token)) {
+      console.warn("[exa-webhook] rejected: missing or invalid token");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await req.json().catch(() => null)) as {
       monitor_id?: string;
       results?: { id?: string; url?: string; title?: string; highlights?: string[]; summary?: string }[];
