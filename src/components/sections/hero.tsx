@@ -8,7 +8,7 @@ import { DotFlow, type DotFlowProps } from "@/components/ui/dot-flow";
 import { RotatingWord } from "@/components/ui/rotating-word";
 import { ArrowRight } from "lucide-react";
 
-// Compact dot-grid loops for the hero chip - the studio&apos;s signature motif.
+// Compact dot-grid loops for the hero chip - the live work the agent does.
 const designing = [
   [24],
   [17, 23, 25, 31],
@@ -86,27 +86,27 @@ export function HeroSection() {
           className="flex flex-col items-center gap-7"
         >
           <motion.p variants={item} className="text-xs uppercase tracking-[0.3em] text-orange/80">
-            Scalar // The CRM your agents run
+            For anyone running AI agents
           </motion.p>
 
           <motion.h1
             variants={item}
             className="font-brand text-4xl leading-[1.05] tracking-tight text-foreground sm:text-6xl lg:text-7xl"
           >
-            <span className="block">Bespoke</span>
+            <span className="block">The CRM your</span>
             <span className="block">
+              agents{" "}
               <RotatingWord
-                words={["outreach", "enrichment", "discovery", "memory"]}
+                words={["run", "enrich", "discover", "remember"]}
                 className="text-gradient-orange"
               />
             </span>
-            <span className="block">built for the AI age</span>
           </motion.h1>
 
           <motion.p variants={item} className="max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Discover leads, enrich your database, run email relationships, and
-            read/write every record - on data that never leaves your system, with
-            deep product context so you sell with understanding.
+            Point your agent at Scalar over MCP and it just works: discovering
+            leads, enriching every record, tracking deals, keeping email in
+            context. Structured, deduped, and yours.
           </motion.p>
 
           <motion.div variants={item} className="mt-1 flex flex-col items-center gap-4 sm:flex-row">
@@ -114,14 +114,14 @@ export function HeroSection() {
               href="/sign-up"
               className="inline-flex items-center gap-2 rounded-full bg-orange px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-orange/25 transition-all hover:bg-orange-dark hover:shadow-orange/40 hover:-translate-y-0.5"
             >
-              Get Started
+              Get started free
               <ArrowRight className="h-5 w-5" />
             </Link>
             <Link
-              href="/services"
+              href="/#how-it-works"
               className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-base font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
             >
-              See what we build
+              See how it works
             </Link>
           </motion.div>
 

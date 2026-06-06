@@ -3,10 +3,10 @@
 import { motion } from "motion/react";
 
 const stats = [
-  { value: "4", label: "Agent disciplines" },
-  { value: "Owned", label: "Your data, always" },
-  { value: "Real-time", label: "Agent activity" },
-  { value: "<24h", label: "Response time" },
+  { value: "MCP", label: "Bring your own agent" },
+  { value: "1", label: "Source of truth, deduped" },
+  { value: "0", label: "Null or junk records" },
+  { value: "Yours", label: "Owned, never resold" },
 ];
 
 export function StatsBand() {

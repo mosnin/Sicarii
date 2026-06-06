@@ -3,10 +3,12 @@ import { Footer } from "@/components/layout/footer";
 import { ScrollProgress } from "@/components/ui/scroll-progress";
 import { HeroSection } from "@/components/sections/hero";
 import { AgentCrowdSection } from "@/components/sections/agent-crowd";
+import { ProblemSection } from "@/components/sections/problem";
 import { StatsBand } from "@/components/sections/stats-band";
 import { ServicesSection } from "@/components/sections/services";
+import { ShowcaseSection } from "@/components/sections/showcase";
 import { HowItWorksSection } from "@/components/sections/how-it-works";
-import { TestimonialsSection } from "@/components/sections/testimonials";
+import { WhyScalarSection } from "@/components/sections/why-scalar";
 import { AboutSection } from "@/components/sections/about";
 import { CTASection } from "@/components/sections/cta";
 
@@ -18,10 +20,12 @@ export default function Home() {
       <main className="flex-1">
         <HeroSection />
         <AgentCrowdSection />
+        <ProblemSection />
         <StatsBand />
         <ServicesSection />
+        <ShowcaseSection />
         <HowItWorksSection />
-        <TestimonialsSection />
+        <WhyScalarSection />
         <AboutSection />
         <CTASection />
       </main>
