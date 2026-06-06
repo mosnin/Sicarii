@@ -39,7 +39,7 @@ export async function GET(
     const entity = await getOwnedEntity(id, user.id);
     if (!entity) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const contacts = await prisma.contact.findMany({
-      where: { entityId: id },
+      where: { entityId: id, userId: user.id },
       orderBy: { updatedAt: "desc" },
     });
     return NextResponse.json({ entity, contacts });

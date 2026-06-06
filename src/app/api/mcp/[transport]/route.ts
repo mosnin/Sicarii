@@ -122,7 +122,7 @@ const handler = createMcpHandler(
 
     server.tool(
       "enrich_entity",
-      "Enrich a business via Synthoz using its domain (pulls company data + contacts). Stores the result on the entity.",
+      "Enrich a business via Explorium using its domain (pulls company data + firmographics). Stores the result on the entity.",
       { id: z.string() },
       async ({ id }, extra) => run(() => enrichEntity(userIdFrom(extra), id)),
     );

@@ -68,10 +68,6 @@ async function exec(fn: () => Promise<unknown>) {
     return await fn();
   } catch (e) {
     if (e instanceof OpError) return { error: e.message };
-    // Async Synthoz tool - not an error, result incoming via webhook.
-    if (e instanceof Error && e.name === "SynthozQueuedError") {
-      return { queued: true, message: "Request queued - result will appear in the CRM via webhook." };
-    }
     console.error("agent tool error", e);
     return { error: "Internal error" };
   }
@@ -193,7 +189,7 @@ export async function POST(req: Request) {
     }),
     enrich_entity: tool({
       description:
-        "Enrich a business via Synthoz using its domain (company data + contacts).",
+        "Enrich a business via Explorium using its domain (company data + firmographics).",
       inputSchema: z.object({ id: z.string() }),
       execute: ({ id }) => exec(() => enrichEntity(userId, id)),
     }),
