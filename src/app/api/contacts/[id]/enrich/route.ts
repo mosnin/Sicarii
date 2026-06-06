@@ -13,6 +13,11 @@ const FREEMAIL = new Set([
   "aol.com", "proton.me", "protonmail.com", "live.com", "msn.com",
 ]);
 
+// A single, well-formed address (exactly one @, a dotted domain). Rejects junk
+// like "john@example@acme.com" that a loose includes("@") check would accept.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isEmail = (s?: string | null): s is string => Boolean(s) && EMAIL_RE.test(s!.trim());
+
 // Deep-search a provider response for the first plaintext string under a key
 // matching one of `keys` (skipping hashed fields).
 function pick(value: unknown, keys: string[], depth = 0): string | undefined {
@@ -187,14 +192,14 @@ export async function POST(
         if (isPipe0Configured()) {
           try {
             const e = pick(await findWorkEmail(first, last, domain, contact.company ?? undefined), ["email"]);
-            if (e && e.includes("@") && sameCompany(e.split("@")[1], domain)) { value = e; via = "pipe0"; }
+            if (isEmail(e) && sameCompany(e.split("@")[1], domain)) { value = e; via = "pipe0"; }
           } catch (e) { console.warn("[enrich] pipe0 email failed", e); }
         }
         if (!value && isExploriumConfigured()) {
           try {
             const person = await exploriumPerson(domain, first, last);
             const e = person?.email;
-            if (e && e.includes("@") && sameCompany(e.split("@")[1], domain)) { value = e; via = "explorium"; }
+            if (isEmail(e) && sameCompany(e.split("@")[1], domain)) { value = e; via = "explorium"; }
           } catch (e) { console.warn("[enrich] explorium email failed", e); }
         }
       } else {
