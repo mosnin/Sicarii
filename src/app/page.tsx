@@ -4,6 +4,7 @@ import { ScrollProgress } from "@/components/ui/scroll-progress";
 import { HeroSection } from "@/components/sections/hero";
 import { AgentCrowdSection } from "@/components/sections/agent-crowd";
 import { ProblemSection } from "@/components/sections/problem";
+import { IntelligenceSection } from "@/components/sections/intelligence";
 import { StatsBand } from "@/components/sections/stats-band";
 import { ServicesSection } from "@/components/sections/services";
 import { ShowcaseSection } from "@/components/sections/showcase";
@@ -21,6 +22,7 @@ export default function Home() {
         <HeroSection />
         <AgentCrowdSection />
         <ProblemSection />
+        <IntelligenceSection />
         <StatsBand />
         <ServicesSection />
         <ShowcaseSection />

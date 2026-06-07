@@ -37,7 +37,7 @@ const shipping = [
 const heroItems: DotFlowProps["items"] = [
   { title: "Discovering", frames: designing, repeatCount: 2, duration: 160 },
   { title: "Enriching", frames: building, repeatCount: 2, duration: 130 },
-  { title: "Connecting", frames: shipping, repeatCount: 2, duration: 150 },
+  { title: "Sensing intent", frames: shipping, repeatCount: 2, duration: 150 },
 ];
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
@@ -86,27 +86,28 @@ export function HeroSection() {
           className="flex flex-col items-center gap-7"
         >
           <motion.p variants={item} className="text-xs uppercase tracking-[0.3em] text-orange/80">
-            For anyone running AI agents
+            The CRM your agents run
           </motion.p>
 
           <motion.h1
             variants={item}
             className="font-brand text-4xl leading-[1.05] tracking-tight text-foreground sm:text-6xl lg:text-7xl"
           >
-            <span className="block">The CRM your</span>
             <span className="block">
-              agents{" "}
               <RotatingWord
-                words={["run", "enrich", "discover", "remember"]}
+                words={["Lead", "Company", "People", "Intent"]}
                 className="text-gradient-orange"
-              />
+              />{" "}
+              intelligence
             </span>
+            <span className="block">at agent speed</span>
           </motion.h1>
 
           <motion.p variants={item} className="max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Point your agent at Scalar over MCP and it just works: discovering
-            leads, enriching every record, tracking deals, keeping email in
-            context. Structured, deduped, and yours.
+            Point your agent at a name, a domain, or a prompt. It finds the right
+            companies and people, surfaces who is in-market right now, and pulls
+            deep enrichment - firmographics, tech stack, funding, news - in
+            seconds. It all lands structured, deduped, and yours.
           </motion.p>
 
           <motion.div variants={item} className="mt-1 flex flex-col items-center gap-4 sm:flex-row">
