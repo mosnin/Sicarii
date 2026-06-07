@@ -15,7 +15,7 @@ const dimensions = [
   { label: "Web traffic", body: "Growth and momentum, read at a glance." },
   { label: "Recent news", body: "The triggers worth a first line." },
   { label: "Decision-makers", body: "The right people, with verified email and mobile." },
-  { label: "Buying intent", body: "Who is actively looking for what you sell, right now.", accent: true },
+  { label: "Buying intent", body: "Who is actively looking for what you sell, right now." },
   { label: "Deep research", body: "Sourced answers to the questions that actually close." },
 ];
 
@@ -49,11 +49,6 @@ export function IntelligenceSection() {
               <SpotlightCard className="h-full p-6">
                 <h3 className="font-brand text-lg text-foreground">{d.label}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{d.body}</p>
-                {d.accent && (
-                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-orange">
-                    The signal nobody surfaces this fast
-                  </p>
-                )}
               </SpotlightCard>
             </motion.div>
           ))}

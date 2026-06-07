@@ -97,9 +97,9 @@ export function HeroSection() {
               <RotatingWord
                 words={["Lead", "Company", "People", "Intent"]}
                 className="text-gradient-orange"
-              />{" "}
-              intelligence
+              />
             </span>
+            <span className="block">intelligence</span>
             <span className="block">at agent speed</span>
           </motion.h1>
 
