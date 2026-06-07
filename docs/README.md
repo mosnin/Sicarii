@@ -36,6 +36,12 @@
 | `engineering/` | Architecture, systems, interfaces, trade-offs | The engineer + the producer |
 | `operations/` | Production, economics, go-to-market, metrics | The producer + the banker |
 
+## Audits
+
+| Doc | What it covers |
+|---|---|
+| [`engineering/repo-audit-2026-06-06.md`](engineering/repo-audit-2026-06-06.md) | Security + ops + PR-process audit of `main` and PRs #1–#18 |
+
 ---
 
 **Maintenance:** update docs in the same breath as the change; one fact, one home;

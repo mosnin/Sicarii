@@ -15,8 +15,14 @@ export function isPipe0Configured() {
 }
 
 async function runPipe(pipeId: string, input: Record<string, string>, config?: Record<string, unknown>) {
-  const body: Record<string, unknown> = { pipe_id: pipeId, input };
-  if (config) body.config = config;
+  // Pipe0's /pipes/run/sync is a batch API: it runs a LIST of pipes over a LIST
+  // of input records. We run one pipe over one record, so both are single-item
+  // arrays. (Sending pipe_id + an input object 422s: "expected array ... at
+  // pipes / at input".)
+  const body = {
+    pipes: [{ id: pipeId, ...(config ? { config } : {}) }],
+    input: [input],
+  };
 
   const res = await fetch(`${BASE}/pipes/run/sync`, {
     method: "POST",
@@ -29,9 +35,15 @@ async function runPipe(pipeId: string, input: Record<string, string>, config?: R
   const text = await res.text();
   console.log(`[pipe0] ${pipeId} → ${res.status}: ${text.slice(0, 400)}`);
   if (!res.ok) throw new Error(`Pipe0 ${pipeId} failed (${res.status}): ${text.slice(0, 200)}`);
-  const data = JSON.parse(text) as { status?: string; records?: Record<string, unknown>; errors?: unknown[] };
+  const data = JSON.parse(text) as {
+    status?: string;
+    records?: unknown;
+    results?: unknown;
+    errors?: unknown[];
+  };
   if (data.status === "failed") throw new Error(`Pipe0 ${pipeId} failed: ${JSON.stringify(data.errors ?? []).slice(0, 200)}`);
-  return data.records ?? data;
+  // Return whatever holds the enriched rows; the caller deep-searches it.
+  return data.records ?? data.results ?? data;
 }
 
 // Work email - waterfall across 50+ providers

@@ -135,6 +135,8 @@ interface DashboardOverviewProps {
   totalCompanies: number;
   enriched: number;
   inConversation: number;
+  radarActive?: number;
+  radarSignals?: number;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -145,6 +147,8 @@ export function DashboardOverview({
   totalCompanies,
   enriched,
   inConversation,
+  radarActive = 0,
+  radarSignals = 0,
 }: DashboardOverviewProps) {
   const reduce = useReducedMotion();
 
@@ -383,13 +387,15 @@ export function DashboardOverview({
 
               <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {[
-                  { label: "Discover", href: "/discover", body: "Find contacts" },
-                  { label: "Radar", href: "/radar", body: "Scheduled scans" },
-                  { label: "CRM", href: "/crm", body: "Your database" },
-                  { label: "Field", href: "/field", body: "Segments + deals" },
-                  { label: "Scalar", href: "/agent", body: "AI assistant" },
-                  { label: "Context", href: "/product-context", body: "Your product" },
-                  { label: "Skills", href: "/skills", body: "Agent playbooks" },
+                  // Focused on the one flow: discover -> enrich into your CRM ->
+                  // your agent works it, grounded in your product context. The
+                  // secondary surfaces (Radar, Field, Skills) are intentionally
+                  // not surfaced here yet; their routes still exist and are
+                  // reachable directly until the core moment is proven and felt.
+                  { label: "Discover", href: "/discover", body: "Find + enrich the right people" },
+                  { label: "CRM", href: "/crm", body: "Records you can trust" },
+                  { label: "Scalar", href: "/agent", body: "Your agent runs the pipeline" },
+                  { label: "Context", href: "/product-context", body: "Ground your agent in your product" },
                 ].map((item) => {
                   return (
                     <motion.div
@@ -411,6 +417,28 @@ export function DashboardOverview({
                   );
                 })}
               </div>
+
+              {/* Radar lives here as a pulse, not a button: a secondary surface
+                  shown on the dashboard (never the dock) as living state. */}
+              <Link
+                href="/radar"
+                className="group mt-6 flex items-center justify-between gap-3 border-t border-border/60 pt-4"
+              >
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  <span className="font-brand uppercase tracking-[0.2em] text-primary">Radar</span>
+                  {radarActive > 0 || radarSignals > 0 ? (
+                    <span>
+                      {radarActive} {radarActive === 1 ? "scan" : "scans"} active
+                      {radarSignals > 0
+                        ? ` · ${radarSignals} new ${radarSignals === 1 ? "signal" : "signals"} this week`
+                        : ""}
+                    </span>
+                  ) : (
+                    <span>Set up a scan to watch for new prospects while you sleep</span>
+                  )}
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-100" />
+              </Link>
             </div>
           </motion.div>
         </motion.div>

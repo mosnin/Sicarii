@@ -117,7 +117,13 @@ export function AsciiField({
     ro.observe(canvas);
     resize();
 
-    if (!reduce) {
+    // Only animate while the canvas is actually on screen. The marketing page
+    // mounts many fields at once (hero, the band, CTA, showcase, one per card);
+    // running every loop simultaneously is what makes it lag. Pause the offscreen
+    // ones (they keep their last static frame) and resume on scroll into view.
+    // Also pause when the tab is hidden.
+    const startLoop = () => {
+      if (raf || reduce) return;
       const loop = (ts: number) => {
         raf = requestAnimationFrame(loop);
         if (ts - last < 33) return; // ~30 fps - alive but easy
@@ -126,11 +132,35 @@ export function AsciiField({
         draw();
       };
       raf = requestAnimationFrame(loop);
-    }
+    };
+    const stopLoop = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    let onScreen = false;
+    const update = () => {
+      if (onScreen && !document.hidden) startLoop();
+      else stopLoop();
+    };
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        onScreen = entries[0]?.isIntersecting ?? false;
+        update();
+      },
+      { rootMargin: "120px" },
+    );
+    io.observe(canvas);
+
+    const onVisibility = () => update();
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
-      cancelAnimationFrame(raf);
+      stopLoop();
       ro.disconnect();
+      io.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [speed, cell, gradient]);
 

@@ -8,6 +8,24 @@ export function isFirecrawlConfigured(): boolean {
   return Boolean(process.env.FIRECRAWL_API_KEY?.trim());
 }
 
+// A company logo we can TRUST: keyed off the verified domain, so it is always
+// the company's own mark and can never be a scraped blog image or a property
+// photo the model happened to grab (the accuracy rule, applied to images).
+// Clearbit returns a real logo for the domain and 404s when there is none, so
+// CrmAvatar falls back to the initial. Prefer no logo over a wrong logo.
+export function companyLogoUrl(domainOrUrl?: string | null): string | undefined {
+  if (!domainOrUrl) return undefined;
+  let host: string;
+  try {
+    host = new URL(domainOrUrl.startsWith("http") ? domainOrUrl : `https://${domainOrUrl}`).hostname;
+  } catch {
+    return undefined;
+  }
+  host = host.replace(/^www\./, "").toLowerCase();
+  if (!host.includes(".")) return undefined;
+  return `https://logo.clearbit.com/${host}`;
+}
+
 function key() {
   const k = process.env.FIRECRAWL_API_KEY?.trim();
   if (!k) throw new Error("FIRECRAWL_API_KEY is not set");
@@ -40,7 +58,8 @@ const ANALYSIS_SCHEMA = {
     industry: { type: "string" },
     location: { type: "string", description: "HQ or main location" },
     phone: { type: "string", description: "Main contact phone number" },
-    logoUrl: { type: "string", description: "Absolute URL of the company's logo image" },
+    // logo intentionally NOT extracted here - a scraped page image is unreliable
+    // (blog heroes, property photos). The logo is derived from the domain below.
     services: { type: "array", items: { type: "string" } },
     contacts: {
       type: "array",
@@ -74,7 +93,7 @@ export async function analyzeSite(url: string): Promise<SiteAnalysis> {
         {
           type: "json",
           prompt:
-            "Analyze this company's website. Extract a concise company description, industry, HQ location, main phone number, the company logo image URL, key services, and any named team members or decision makers with their title, email, LinkedIn URL, and photo image URL if shown.",
+            "Analyze this company's website. Extract a concise company description, industry, HQ location, main phone number, key services, and any named team members or decision makers with their title, email, LinkedIn URL, and photo image URL if shown.",
           schema: ANALYSIS_SCHEMA,
         },
       ],
@@ -97,7 +116,8 @@ export async function analyzeSite(url: string): Promise<SiteAnalysis> {
     industry: s(json.industry),
     location: s(json.location),
     phone: s(json.phone),
-    logoUrl: s((json as { logoUrl?: string }).logoUrl),
+    // Domain-derived, never the scraped page image. Correct by construction.
+    logoUrl: companyLogoUrl(target),
     services: Array.isArray(json.services) ? (json.services as string[]) : undefined,
     contacts,
     markdown: body.data?.markdown,

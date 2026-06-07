@@ -13,12 +13,12 @@ import {
   Menu,
   X,
   Globe,
-  ShoppingCart,
+  Sparkles,
   Bot,
   Server,
   ChevronDown,
   CreditCard,
-  FolderKanban,
+  Layers,
   Users,
   Phone,
   HelpCircle,
@@ -36,29 +36,29 @@ interface MegaMenuItem {
   description: string;
 }
 
-const servicesItems: MegaMenuItem[] = [
-  { label: "Software", href: "/services#software", icon: Globe, description: "Web apps, SaaS & internal tools" },
-  { label: "Commerce", href: "/services#commerce", icon: ShoppingCart, description: "Storefronts & commerce systems" },
-  { label: "AI", href: "/services#ai", icon: Bot, description: "AI-native software & agents" },
-  { label: "Infrastructure", href: "/services#infrastructure", icon: Server, description: "Cloud, deployment & architecture" },
+const productItems: MegaMenuItem[] = [
+  { label: "Discover", href: "/#capabilities", icon: Globe, description: "Find and enrich the right companies and people" },
+  { label: "Enrich", href: "/#capabilities", icon: Sparkles, description: "Fill every gap: firmographics, email, phone, more" },
+  { label: "The agent", href: "/#capabilities", icon: Bot, description: "Chat that discovers, enriches, and writes your CRM" },
+  { label: "Connect over MCP", href: "/#capabilities", icon: Server, description: "Bring OpenClaw, Hermes, or Claude to your CRM" },
 ];
 
 const companyItems: MegaMenuItem[] = [
-  { label: "About Us", href: "/about", icon: Users, description: "Our mission and values" },
-  { label: "Portfolio", href: "/portfolio", icon: FolderKanban, description: "See our past work" },
-  { label: "Pricing", href: "/pricing", icon: CreditCard, description: "Transparent pricing plans" },
+  { label: "About", href: "/about", icon: Users, description: "Our mission and how we think" },
+  { label: "Why Scalar", href: "/#why", icon: Layers, description: "Structure, UI, intelligence, agent-native" },
+  { label: "Pricing", href: "/pricing", icon: CreditCard, description: "A seat plus usage credits" },
   { label: "Contact", href: "/contact", icon: Phone, description: "Get in touch with us" },
 ];
 
 const resourceItems: MegaMenuItem[] = [
+  { label: "How it works", href: "/#how-it-works", icon: Briefcase, description: "Connect your agent, it just works" },
   { label: "FAQ", href: "/faq", icon: HelpCircle, description: "Common questions answered" },
-  { label: "How It Works", href: "/#how-it-works", icon: Briefcase, description: "Our process explained" },
   { label: "Privacy Policy", href: "/privacy", icon: Shield, description: "How we handle your data" },
   { label: "Terms of Service", href: "/terms", icon: FileText, description: "Service agreement" },
 ];
 
 const navGroups = [
-  { label: "Services", items: servicesItems },
+  { label: "Product", items: productItems },
   { label: "Company", items: companyItems },
   { label: "Resources", items: resourceItems },
 ];
