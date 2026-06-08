@@ -6,6 +6,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
+import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 
 export class OpError extends Error {
   status: number;
@@ -148,6 +149,55 @@ export async function enrichEntity(userId: string, id: string) {
     if (!entity.website && fields.website) data.website = fields.website;
   }
   return prisma.entity.update({ where: { id }, data });
+}
+
+/** Discover CRM-ready companies from a prompt via Exa deep research, dedupe by
+ *  domain (then name) against the CRM and within the batch, and add the new
+ *  ones as entities. Accuracy first: unnamed/aggregator results are dropped
+ *  upstream, and we never create a duplicate. This is the prospecting entry
+ *  point (vs search_web, which only returns raw web results). */
+export async function findCompanies(
+  userId: string,
+  input: { query: string; count?: number }
+) {
+  if (!isExaConfigured())
+    throw new OpError("Discovery is not configured (EXA_API_KEY missing)", 501);
+  const count = Math.min(Math.max(input.count ?? 10, 1), 25);
+  const found = await exaFindCompanies(input.query, count);
+
+  const existing = await prisma.entity.findMany({
+    where: { userId },
+    select: { domain: true, name: true },
+  });
+  const norm = (d?: string | null) => d?.toLowerCase().replace(/^www\./, "").trim() || undefined;
+  const seenDomains = new Set(existing.map((e) => norm(e.domain)).filter(Boolean) as string[]);
+  const seenNames = new Set(existing.map((e) => e.name.trim().toLowerCase()));
+
+  const created: { id: string; name: string; domain: string | null }[] = [];
+  let skipped = 0;
+  for (const c of found) {
+    const domain = norm(c.domain);
+    const nameKey = c.companyName.trim().toLowerCase();
+    if ((domain && seenDomains.has(domain)) || seenNames.has(nameKey)) {
+      skipped++;
+      continue;
+    }
+    const entity = await createEntity(userId, {
+      name: c.companyName,
+      domain: c.domain ?? null,
+      website: c.website ?? null,
+      phone: c.phone ?? null,
+      industry: c.industry ?? null,
+      location: c.address ?? null,
+      description: c.description ?? null,
+      source: "agent:exa",
+      status: "NEW",
+    });
+    if (domain) seenDomains.add(domain);
+    seenNames.add(nameKey);
+    created.push({ id: entity.id, name: entity.name, domain: entity.domain });
+  }
+  return { query: input.query, added: created.length, skipped, created };
 }
 
 /* ----------------------------- Contacts ----------------------------- */
