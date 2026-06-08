@@ -1,3 +1,4 @@
+export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -35,7 +36,7 @@ export async function POST(
     const user = await getAuthenticatedUser();
     const { id } = await params;
 
-    const rate = checkRateLimit(`analyze-site:${user.id}`, 8, 60_000);
+    const rate = await checkRateLimit(`analyze-site:${user.id}`, 8, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
     const entity = await prisma.entity.findUnique({ where: { id } });

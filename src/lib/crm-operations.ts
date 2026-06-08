@@ -129,17 +129,23 @@ export async function enrichEntity(userId: string, id: string) {
   if (!isExploriumConfigured())
     throw new OpError("Enrichment is not configured (EXPLORIUM_API_KEY missing)", 501);
 
+  // Idempotency: don't re-charge Explorium if firmographics are already present
+  // (an agent re-calling enrich_entity on the same id otherwise pays every time).
+  const already =
+    entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
+      ? (entity.enrichment as Record<string, unknown>)
+      : {};
+  if (already.firmographics) {
+    return entity;
+  }
+
   const enriched = await enrichDomain(entity.domain);
   if (!enriched) throw new OpError(`No enrichment data found for ${entity.domain}`, 404);
 
   const { raw, fields } = enriched;
-  const existing =
-    entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
-      ? (entity.enrichment as Record<string, unknown>)
-      : {};
   const data: Prisma.EntityUncheckedUpdateInput = {
     status: "ENRICHED",
-    enrichment: { ...existing, firmographics: raw } as Prisma.InputJsonValue,
+    enrichment: { ...already, firmographics: raw } as Prisma.InputJsonValue,
   };
   if (fields) {
     if (!entity.industry && fields.industry) data.industry = fields.industry;

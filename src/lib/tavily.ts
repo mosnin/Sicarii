@@ -1,4 +1,5 @@
 // Tavily web-search client. Used by the MCP `search_web` tool and the in-app
+import { fetchWithTimeout } from "@/lib/http";
 // agent to discover businesses ("nail salons in Miami"). Gated by TAVILY_API_KEY.
 
 export class TavilyNotConfiguredError extends Error {
@@ -29,7 +30,7 @@ export async function tavilySearch(
   query: string,
   opts: { maxResults?: number } = {}
 ): Promise<TavilyResult[]> {
-  const res = await fetch("https://api.tavily.com/search", {
+  const res = await fetchWithTimeout("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -54,7 +55,7 @@ export interface TavilyExtractResult {
 }
 
 export async function tavilyExtract(urls: string[]): Promise<TavilyExtractResult[]> {
-  const res = await fetch("https://api.tavily.com/extract", {
+  const res = await fetchWithTimeout("https://api.tavily.com/extract", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ api_key: apiKey(), urls }),
@@ -76,7 +77,7 @@ export async function tavilyCrawl(
   url: string,
   opts: { maxDepth?: number; limit?: number } = {}
 ): Promise<TavilyCrawlResult> {
-  const res = await fetch("https://api.tavily.com/crawl", {
+  const res = await fetchWithTimeout("https://api.tavily.com/crawl", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

@@ -1,3 +1,4 @@
+export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
@@ -13,7 +14,7 @@ const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
-    const rate = checkRateLimit(`entities:bulk-enrich:${user.id}`, 5, 60_000);
+    const rate = await checkRateLimit(`entities:bulk-enrich:${user.id}`, 5, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     if (!isExploriumConfigured()) {
       return NextResponse.json({ error: "Explorium is not configured." }, { status: 501 });

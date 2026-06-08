@@ -1,3 +1,4 @@
+export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
@@ -153,7 +154,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
 
-    const rate = checkRateLimit(`discover:${user.id}`, 30, 60_000);
+    const rate = await checkRateLimit(`discover:${user.id}`, 30, 60_000);
     if (!rate.success) {
       return NextResponse.json({ error: "Too many requests - slow down a moment." }, { status: 429 });
     }

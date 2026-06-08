@@ -23,7 +23,7 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
-    const rate = checkRateLimit(`find-here:${user.id}`, 6, 60_000);
+    const rate = await checkRateLimit(`find-here:${user.id}`, 6, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     if (!isExaConfigured()) return NextResponse.json({ error: "EXA_API_KEY is not configured." }, { status: 501 });
 

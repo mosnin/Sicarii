@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { signClientId } from "@/lib/oauth";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +17,7 @@ function clientIp(req: Request): string {
 export async function POST(req: Request) {
   // Public, unauthenticated DCR endpoint - cap registrations per IP so it can't
   // be used to spam client registrations.
-  if (!checkRateLimit(`oauth-register:${clientIp(req)}`, 20, 60 * 60_000).success) {
+  if (!(await checkRateLimit(`oauth-register:${clientIp(req)}`, 20, 60 * 60_000)).success) {
     return Response.json({ error: "rate_limited" }, { status: 429, headers: cors });
   }
 
@@ -30,7 +30,13 @@ export async function POST(req: Request) {
     scope?: string;
   };
 
-  const clientId = `mcp_${randomUUID().replace(/-/g, "")}`;
+  // The client_id is a SIGNED token embedding the registered redirect_uris, so
+  // /authorize can verify a redirect_uri belongs to this client before ever
+  // redirecting to it (no client table needed).
+  const redirectUris = Array.isArray(body.redirect_uris)
+    ? body.redirect_uris.filter((u): u is string => typeof u === "string").slice(0, 10)
+    : [];
+  const clientId = await signClientId(redirectUris);
 
   return Response.json(
     {
@@ -39,7 +45,7 @@ export async function POST(req: Request) {
       token_endpoint_auth_method: "none",
       grant_types: body.grant_types ?? ["authorization_code", "refresh_token"],
       response_types: body.response_types ?? ["code"],
-      redirect_uris: body.redirect_uris ?? [],
+      redirect_uris: redirectUris,
       client_name: body.client_name,
       scope: body.scope ?? "mcp",
     },

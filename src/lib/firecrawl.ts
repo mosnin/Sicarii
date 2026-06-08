@@ -1,4 +1,5 @@
 // Firecrawl client for deep website analysis: pull company context and find
+import { fetchWithTimeout } from "@/lib/http";
 // people/contacts from a company's own site.
 // Base: https://api.firecrawl.dev/v2  Auth: Authorization: Bearer fc-KEY
 
@@ -82,7 +83,7 @@ const ANALYSIS_SCHEMA = {
 // structured extraction yields, plus markdown for context.
 export async function analyzeSite(url: string): Promise<SiteAnalysis> {
   const target = url.startsWith("http") ? url : `https://${url}`;
-  const res = await fetch(`${BASE}/scrape`, {
+  const res = await fetchWithTimeout(`${BASE}/scrape`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key()}` },
     body: JSON.stringify({
@@ -132,7 +133,7 @@ export interface FirecrawlSearchResult {
 
 // Web search via Firecrawl. Returns top results with title/description.
 export async function firecrawlSearch(query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
-  const res = await fetch(`${BASE}/search`, {
+  const res = await fetchWithTimeout(`${BASE}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key()}` },
     body: JSON.stringify({ query, limit }),

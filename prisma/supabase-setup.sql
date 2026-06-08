@@ -213,8 +213,11 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 4. (Optional) Vector similarity index for faster recall as memory grows.
---    Build it AFTER you have some rows. Lists ~= sqrt(row_count).
+-- 4. Vector similarity index for memory recall. WITHOUT this, every agent turn
+--    does a full sequential scan of the user's memory_chunks and degrades
+--    linearly as data grows. `prisma db push` does NOT create this (it is raw
+--    pgvector SQL, not in schema.prisma), so RUN IT ON SUPABASE once you have
+--    rows. Lists ~= sqrt(row_count); rebuild as the table grows.
 -- ─────────────────────────────────────────────────────────────────────────────
--- CREATE INDEX IF NOT EXISTS "memory_chunks_embedding_idx"
---   ON "memory_chunks" USING ivfflat ("embedding" vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX IF NOT EXISTS "memory_chunks_embedding_idx"
+  ON "memory_chunks" USING ivfflat ("embedding" vector_cosine_ops) WITH (lists = 100);

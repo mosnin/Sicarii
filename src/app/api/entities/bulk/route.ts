@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
 
-    const rate = checkRateLimit(`entities:bulk:${user.id}`, 10, 60_000);
+    const rate = await checkRateLimit(`entities:bulk:${user.id}`, 10, 60_000);
     if (!rate.success) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }

@@ -1,4 +1,5 @@
 // Exa AI search client - neural search, deep research, and monitors.
+import { fetchWithTimeout } from "@/lib/http";
 // Base: https://api.exa.ai  Auth: x-api-key header
 // Used for intent scanning (who is looking for a product like yours).
 
@@ -45,7 +46,7 @@ export function isExaConfigured() {
 }
 
 async function exaPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithTimeout(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": key() },
     body: JSON.stringify(body),
@@ -57,7 +58,7 @@ async function exaPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function exaDel(path: string): Promise<void> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithTimeout(`${BASE}${path}`, {
     method: "DELETE",
     headers: { "x-api-key": key() },
   });
@@ -170,7 +171,7 @@ export async function createExaMonitor(opts: {
 }
 
 export async function listExaMonitors(): Promise<ExaMonitor[]> {
-  const res = await fetch(`${BASE}/monitors`, { headers: { "x-api-key": key() } });
+  const res = await fetchWithTimeout(`${BASE}/monitors`, { headers: { "x-api-key": key() } });
   const text = await res.text();
   if (!res.ok) throw new Error(`Exa list monitors failed (${res.status}): ${text.slice(0, 200)}`);
   type ListRes = { monitors?: ExaMonitor[]; data?: ExaMonitor[] };

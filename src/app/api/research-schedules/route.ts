@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "name and query are required" }, { status: 400 });
     }
 
-    const rate = checkRateLimit(`research-schedule:create:${user.id}`, 20, 60_000);
+    const rate = await checkRateLimit(`research-schedule:create:${user.id}`, 20, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
     // A target must belong to the caller - never let a schedule reference another

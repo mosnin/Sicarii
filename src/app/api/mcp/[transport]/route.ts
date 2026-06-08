@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { authenticateApiKey, bearerFromRequest } from "@/lib/api-auth";
 import { userIdFromAccessToken } from "@/lib/oauth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   OpError,
   listEntities,
@@ -21,6 +22,7 @@ import {
   searchCrm,
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
+import { enrichContactField } from "@/lib/contact-enrich";
 import {
   listSegments,
   getSegment,
@@ -65,6 +67,28 @@ async function run(fn: () => Promise<unknown>): Promise<ToolResult> {
   }
 }
 
+// Like run(), but adds a per-user rate limit for tools that hit paid providers
+// or fan out writes - external agents hold long-lived keys, so an uncapped paid
+// tool is unbounded spend. Durable when Upstash is configured. Passes the
+// authenticated userId into the body.
+async function gated(
+  extra: { authInfo?: AuthInfo },
+  bucket: string,
+  limit: number,
+  fn: (userId: string) => Promise<unknown>,
+): Promise<ToolResult> {
+  try {
+    const userId = userIdFrom(extra);
+    const rate = await checkRateLimit(`mcp:${bucket}:${userId}`, limit, 60_000);
+    if (!rate.success) return fail("Rate limit reached for this tool. Please wait a moment and try again.");
+    return ok(await fn(userId));
+  } catch (e) {
+    if (e instanceof OpError) return fail(e.message);
+    console.error("MCP tool error", e);
+    return fail("Internal error");
+  }
+}
+
 const handler = createMcpHandler(
   (server) => {
     /* -------------------------- Entities -------------------------- */
@@ -98,8 +122,8 @@ const handler = createMcpHandler(
         tags: z.array(z.string()).optional(),
       },
       async (args, extra) =>
-        run(() =>
-          createEntity(userIdFrom(extra), { ...args, source: "agent" }),
+        gated(extra, "create", 120, (userId) =>
+          createEntity(userId, { ...args, source: "agent" }),
         ),
     );
 
@@ -128,7 +152,7 @@ const handler = createMcpHandler(
       "Enrich a business via Explorium using its domain (pulls company data + firmographics). Stores the result on the entity.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-      async ({ id }, extra) => run(() => enrichEntity(userIdFrom(extra), id)),
+      async ({ id }, extra) => gated(extra, "enrich", 20, (userId) => enrichEntity(userId, id)),
     );
 
     server.tool(
@@ -175,8 +199,8 @@ const handler = createMcpHandler(
         entityId: z.string().optional(),
       },
       async (args, extra) =>
-        run(() =>
-          createContact(userIdFrom(extra), { ...args, source: "agent" }),
+        gated(extra, "create", 120, (userId) =>
+          createContact(userId, { ...args, source: "agent" }),
         ),
     );
 
@@ -218,6 +242,15 @@ const handler = createMcpHandler(
       async ({ id }, extra) => run(() => deleteContact(userIdFrom(extra), id)),
     );
 
+    server.tool(
+      "enrich_contact",
+      "Find and save a contact's missing LinkedIn, work email, or phone. Verified against the contact's name AND company so a same-name stranger is never attached (accuracy over coverage); needs the contact linked to a company or to have a website/work email so the company domain is known. Pass the contact id and which field to enrich.",
+      { id: z.string(), field: z.enum(["linkedin", "email", "phone"]) },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ id, field }, extra) =>
+        gated(extra, "enrich", 20, (userId) => enrichContactField(userId, id, field)),
+    );
+
     /* ------------------------ Email context ----------------------- */
     server.tool(
       "save_email_context",
@@ -256,12 +289,12 @@ const handler = createMcpHandler(
         query: z.string(),
         maxResults: z.number().int().min(1).max(20).optional(),
       },
-      async ({ query, maxResults }, extra) => {
-        userIdFrom(extra); // ensure authenticated
-        if (!isTavilyConfigured())
-          return fail("Web search is not configured (TAVILY_API_KEY missing).");
-        return run(() => tavilySearch(query, { maxResults }));
-      },
+      async ({ query, maxResults }, extra) =>
+        gated(extra, "search_web", 30, () => {
+          if (!isTavilyConfigured())
+            throw new OpError("Web search is not configured (TAVILY_API_KEY missing).", 501);
+          return tavilySearch(query, { maxResults });
+        }),
     );
 
     server.tool(
@@ -270,7 +303,7 @@ const handler = createMcpHandler(
       { query: z.string(), count: z.number().int().min(1).max(25).optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ query, count }, extra) =>
-        run(() => findCompanies(userIdFrom(extra), { query, count })),
+        gated(extra, "find_companies", 10, (userId) => findCompanies(userId, { query, count })),
     );
 
     /* -------------------------- Segments -------------------------- */

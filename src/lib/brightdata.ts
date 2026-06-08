@@ -1,4 +1,5 @@
 // Bright Data scraping client.
+import { fetchWithTimeout } from "@/lib/http";
 // Base: https://api.brightdata.com/request  Auth: Authorization: Bearer KEY
 // Requires BRIGHT_DATA_API_KEY + zone names set up in Bright Data control panel.
 // Default zone names can be overridden via env vars.
@@ -20,7 +21,7 @@ const UNLOCKER_ZONE = () => process.env.BRIGHT_DATA_UNLOCKER_ZONE ?? "web_unlock
 const SERP_ZONE = () => process.env.BRIGHT_DATA_SERP_ZONE ?? "serp_api";
 
 async function bdRequest(body: Record<string, unknown>): Promise<string> {
-  const res = await fetch(BASE, {
+  const res = await fetchWithTimeout(BASE, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

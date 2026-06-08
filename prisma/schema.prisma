@@ -143,6 +143,8 @@ model Entity {
 
   @@index([userId])
   @@index([userId, status])
+  @@index([userId, updatedAt])
+  @@index([userId, createdAt])
   @@map("entities")
 }
 
@@ -206,6 +208,8 @@ model Contact {
   @@index([userId])
   @@index([userId, status])
   @@index([entityId])
+  @@index([userId, updatedAt])
+  @@index([userId, createdAt])
   @@map("contacts")
 }
 
@@ -275,6 +279,7 @@ model IntentMonitor {
 
   @@index([userId])
   @@index([active, nextRunAt])
+  @@index([exaMonitorId])
   @@map("intent_monitors")
 }
 

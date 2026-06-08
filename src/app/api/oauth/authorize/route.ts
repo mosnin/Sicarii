@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { getPublicOrigin } from "mcp-handler";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
-import { signAuthCode } from "@/lib/oauth";
+import { signAuthCode, clientRedirectUris } from "@/lib/oauth";
 
 function isValidUrl(u: string): boolean {
   try { new URL(u); return true; } catch { return false; }
@@ -25,6 +25,20 @@ export async function GET(req: Request) {
   if (!redirectUri || !isValidUrl(redirectUri)) {
     return new Response("Invalid redirect_uri", { status: 400 });
   }
+
+  // SECURITY: the redirect_uri must exactly match one registered to this signed
+  // client_id, verified BEFORE we ever redirect (or send a code) to it. Without
+  // this, any signed-in user clicking a crafted link would ship a live auth code
+  // to an attacker-controlled URL (open redirect -> code phishing -> MCP token).
+  // Note: this 400s plainly rather than redirecting, so the bad URL is never hit.
+  const registered = await clientRedirectUris(clientId);
+  if (!registered || !registered.includes(redirectUri)) {
+    return new Response(
+      "Unregistered redirect_uri for this client_id. Register the client (DCR) with this exact redirect_uri first.",
+      { status: 400 },
+    );
+  }
+
   const fail = (code: string, desc?: string) => {
     const u = new URL(redirectUri);
     u.searchParams.set("error", code);

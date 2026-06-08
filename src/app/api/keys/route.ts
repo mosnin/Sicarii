@@ -38,7 +38,7 @@ const createSchema = z.object({ name: z.string().trim().min(1).max(80) });
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
-    const rate = checkRateLimit(`keys:create:${user.id}`, 10, 60 * 60_000);
+    const rate = await checkRateLimit(`keys:create:${user.id}`, 10, 60 * 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many keys created. Try again later." }, { status: 429 });
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {

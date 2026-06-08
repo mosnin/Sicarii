@@ -47,7 +47,9 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
           },
-          { key: "X-XSS-Protection", value: "1; mode=block" },
+          // Modern guidance is to disable the legacy XSS auditor (it could
+          // introduce vulnerabilities); rely on CSP instead.
+          { key: "X-XSS-Protection", value: "0" },
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
