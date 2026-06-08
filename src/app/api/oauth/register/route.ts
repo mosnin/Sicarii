@@ -17,7 +17,7 @@ function clientIp(req: Request): string {
 export async function POST(req: Request) {
   // Public, unauthenticated DCR endpoint - cap registrations per IP so it can't
   // be used to spam client registrations.
-  if (!checkRateLimit(`oauth-register:${clientIp(req)}`, 20, 60 * 60_000).success) {
+  if (!(await checkRateLimit(`oauth-register:${clientIp(req)}`, 20, 60 * 60_000)).success) {
     return Response.json({ error: "rate_limited" }, { status: 429, headers: cors });
   }
 

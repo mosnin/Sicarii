@@ -15,7 +15,7 @@ export async function POST(
     const user = await getAuthenticatedUser();
     const { id } = await params;
 
-    const rate = checkRateLimit(`spawn-contacts:${user.id}`, 10, 60_000);
+    const rate = await checkRateLimit(`spawn-contacts:${user.id}`, 10, 60_000);
     if (!rate.success) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }

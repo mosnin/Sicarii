@@ -67,7 +67,7 @@ export async function POST(
     const user = await getAuthenticatedUser();
     const { id } = await params;
 
-    const rate = checkRateLimit(`deep-report:${user.id}`, 4, 60_000);
+    const rate = await checkRateLimit(`deep-report:${user.id}`, 4, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
     if (!process.env.OPENAI_API_KEY) {

@@ -52,7 +52,7 @@ function sameCompany(a?: string, b?: string): boolean {
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
-    const rate = checkRateLimit(`contacts:bulk-enrich:${user.id}`, 5, 60_000);
+    const rate = await checkRateLimit(`contacts:bulk-enrich:${user.id}`, 5, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
     const parsed = schema.safeParse(await req.json().catch(() => null));

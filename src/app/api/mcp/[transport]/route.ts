@@ -21,6 +21,7 @@ import {
   searchCrm,
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
+import { enrichContactField } from "@/lib/contact-enrich";
 import {
   listSegments,
   getSegment,
@@ -216,6 +217,15 @@ const handler = createMcpHandler(
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) => run(() => deleteContact(userIdFrom(extra), id)),
+    );
+
+    server.tool(
+      "enrich_contact",
+      "Find and save a contact's missing LinkedIn, work email, or phone. Verified against the contact's name AND company so a same-name stranger is never attached (accuracy over coverage); needs the contact linked to a company or to have a website/work email so the company domain is known. Pass the contact id and which field to enrich.",
+      { id: z.string(), field: z.enum(["linkedin", "email", "phone"]) },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ id, field }, extra) =>
+        run(() => enrichContactField(userIdFrom(extra), id, field)),
     );
 
     /* ------------------------ Email context ----------------------- */

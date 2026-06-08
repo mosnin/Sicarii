@@ -95,7 +95,7 @@ export async function POST(req: Request) {
 
   // Each turn fans out to LLM inference + tool calls, so cap turns per user to
   // bound cost-amplification abuse.
-  const rate = checkRateLimit(`agent:${userId}`, 30, 60_000);
+  const rate = await checkRateLimit(`agent:${userId}`, 30, 60_000);
   if (!rate.success) {
     return NextResponse.json({ error: "You're sending messages too fast. Please wait a moment." }, { status: 429 });
   }

@@ -18,7 +18,7 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
-    const rate = checkRateLimit(`segment-build:${user.id}`, 8, 60_000);
+    const rate = await checkRateLimit(`segment-build:${user.id}`, 8, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ error: "Segment building needs OPENAI_API_KEY." }, { status: 501 });

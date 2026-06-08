@@ -13,7 +13,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    const rate = checkRateLimit(`run-add:${user.id}`, 10, 60_000);
+    const rate = await checkRateLimit(`run-add:${user.id}`, 10, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: "Needs OPENAI_API_KEY." }, { status: 501 });
 

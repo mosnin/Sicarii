@@ -12,7 +12,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    const rate = checkRateLimit(`monitor-run:${user.id}`, 10, 60_000);
+    const rate = await checkRateLimit(`monitor-run:${user.id}`, 10, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     if (!isExaConfigured()) return NextResponse.json({ error: "EXA_API_KEY is not configured." }, { status: 501 });
 
