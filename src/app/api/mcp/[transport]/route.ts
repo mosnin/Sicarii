@@ -10,10 +10,13 @@ import {
   createEntity,
   updateEntity,
   enrichEntity,
+  deleteEntity,
+  findCompanies,
   listContacts,
   getContact,
   createContact,
   updateContact,
+  deleteContact,
   saveEmail,
   searchCrm,
 } from "@/lib/crm-operations";
@@ -124,7 +127,16 @@ const handler = createMcpHandler(
       "enrich_entity",
       "Enrich a business via Explorium using its domain (pulls company data + firmographics). Stores the result on the entity.",
       { id: z.string() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ id }, extra) => run(() => enrichEntity(userIdFrom(extra), id)),
+    );
+
+    server.tool(
+      "delete_entity",
+      "Permanently delete a business (entity) from the CRM by id. Its contacts are kept (unlinked from the company). Use to clean up junk or duplicate records.",
+      { id: z.string() },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      async ({ id }, extra) => run(() => deleteEntity(userIdFrom(extra), id)),
     );
 
     /* -------------------------- Contacts -------------------------- */
@@ -198,6 +210,14 @@ const handler = createMcpHandler(
         run(() => updateContact(userIdFrom(extra), id, rest)),
     );
 
+    server.tool(
+      "delete_contact",
+      "Permanently delete a person (contact) from the CRM by id. Use to clean up junk or duplicate records.",
+      { id: z.string() },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      async ({ id }, extra) => run(() => deleteContact(userIdFrom(extra), id)),
+    );
+
     /* ------------------------ Email context ----------------------- */
     server.tool(
       "save_email_context",
@@ -242,6 +262,15 @@ const handler = createMcpHandler(
           return fail("Web search is not configured (TAVILY_API_KEY missing).");
         return run(() => tavilySearch(query, { maxResults }));
       },
+    );
+
+    server.tool(
+      "find_companies",
+      "Discover CRM-ready companies from a prompt (e.g. 'B2B fintech startups in NYC' or 'nail salons in Miami') via Exa deep research, deduped against the CRM by domain then name, and add the new ones as entities. This is the prospecting tool - prefer it over search_web for finding companies to add.",
+      { query: z.string(), count: z.number().int().min(1).max(25).optional() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ query, count }, extra) =>
+        run(() => findCompanies(userIdFrom(extra), { query, count })),
     );
 
     /* -------------------------- Segments -------------------------- */
