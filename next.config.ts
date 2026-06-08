@@ -12,6 +12,8 @@ const cspHeader = [
   "style-src 'self' 'unsafe-inline'",
   // Allow any https image so scraped company logos / contact photos can render.
   "img-src 'self' data: blob: https:",
+  // Manifesto page video is hosted on Cloudinary.
+  "media-src 'self' https://res.cloudinary.com",
   "font-src 'self'",
   "connect-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://checkout.creem.io",
   "frame-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com",
