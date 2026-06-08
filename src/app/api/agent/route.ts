@@ -10,6 +10,7 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   OpError,
   listEntities,
@@ -90,6 +91,13 @@ export async function POST(req: Request) {
       { error: "The agent isn't configured yet - add OPENAI_API_KEY." },
       { status: 503 },
     );
+  }
+
+  // Each turn fans out to LLM inference + tool calls, so cap turns per user to
+  // bound cost-amplification abuse.
+  const rate = checkRateLimit(`agent:${userId}`, 30, 60_000);
+  if (!rate.success) {
+    return NextResponse.json({ error: "You're sending messages too fast. Please wait a moment." }, { status: 429 });
   }
 
   const body = (await req.json().catch(() => null)) as {

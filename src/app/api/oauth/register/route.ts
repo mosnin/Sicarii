@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -6,10 +7,20 @@ const cors = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+function clientIp(req: Request): string {
+  return (req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown").trim();
+}
+
 // OAuth 2.0 Dynamic Client Registration (RFC 7591). We register PKCE public
 // clients statelessly: the client_id is opaque and PKCE secures the exchange,
 // so no client table is needed. Echoes back the client's metadata.
 export async function POST(req: Request) {
+  // Public, unauthenticated DCR endpoint - cap registrations per IP so it can't
+  // be used to spam client registrations.
+  if (!checkRateLimit(`oauth-register:${clientIp(req)}`, 20, 60 * 60_000).success) {
+    return Response.json({ error: "rate_limited" }, { status: 429, headers: cors });
+  }
+
   const body = (await req.json().catch(() => ({}))) as {
     redirect_uris?: string[];
     client_name?: string;

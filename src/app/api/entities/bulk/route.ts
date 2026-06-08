@@ -23,7 +23,10 @@ const entitySchema = z.object({
   source: z.string().trim().max(100).optional(),
   tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
   notes: z.string().trim().max(10000).optional(),
-  enrichment: z.record(z.string(), z.unknown()).optional(),
+  enrichment: z
+    .record(z.string(), z.unknown())
+    .refine((o) => JSON.stringify(o).length <= 100_000, "enrichment payload too large")
+    .optional(),
 });
 
 const bulkSchema = z.object({
