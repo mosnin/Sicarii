@@ -36,6 +36,9 @@ export async function POST(req: NextRequest) {
     if (!body?.name || !body?.query) {
       return NextResponse.json({ error: "name and query are required" }, { status: 400 });
     }
+    if (body.name.length > 200 || body.query.length > 2000) {
+      return NextResponse.json({ error: "name or query is too long" }, { status: 400 });
+    }
 
     const rate = await checkRateLimit(`research-schedule:create:${user.id}`, 20, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });

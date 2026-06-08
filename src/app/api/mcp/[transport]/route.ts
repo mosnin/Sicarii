@@ -119,7 +119,7 @@ const handler = createMcpHandler(
         description: z.string().optional(),
         size: z.string().optional(),
         notes: z.string().optional(),
-        tags: z.array(z.string()).optional(),
+        tags: z.array(z.string().max(50)).max(50).optional(),
       },
       async (args, extra) =>
         gated(extra, "create", 120, (userId) =>
@@ -141,7 +141,7 @@ const handler = createMcpHandler(
         size: z.string().nullable().optional(),
         notes: z.string().nullable().optional(),
         status: z.enum(["NEW", "ENRICHED", "ARCHIVED"]).optional(),
-        tags: z.array(z.string()).optional(),
+        tags: z.array(z.string().max(50)).max(50).optional(),
       },
       async ({ id, ...rest }, extra) =>
         run(() => updateEntity(userIdFrom(extra), id, rest)),
@@ -195,7 +195,7 @@ const handler = createMcpHandler(
         linkedin: z.string().optional(),
         location: z.string().optional(),
         notes: z.string().optional(),
-        tags: z.array(z.string()).optional(),
+        tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().optional(),
       },
       async (args, extra) =>
@@ -227,7 +227,7 @@ const handler = createMcpHandler(
           ])
           .optional(),
         notes: z.string().nullable().optional(),
-        tags: z.array(z.string()).optional(),
+        tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().nullable().optional(),
       },
       async ({ id, ...rest }, extra) =>
@@ -258,10 +258,10 @@ const handler = createMcpHandler(
       {
         contactId: z.string(),
         direction: z.enum(["INBOUND", "OUTBOUND"]),
-        subject: z.string().optional(),
-        body: z.string().optional(),
-        fromAddr: z.string().optional(),
-        toAddr: z.string().optional(),
+        subject: z.string().max(500).optional(),
+        body: z.string().max(100_000).optional(),
+        fromAddr: z.string().max(320).optional(),
+        toAddr: z.string().max(320).optional(),
         savedAsContext: z.boolean().optional(),
       },
       async (args, extra) =>
@@ -324,7 +324,7 @@ const handler = createMcpHandler(
     server.tool(
       "create_segment",
       "Create a customer segment manually, optionally with member contact ids.",
-      { name: z.string(), goal: z.string().optional(), contactIds: z.array(z.string()).optional() },
+      { name: z.string().max(200), goal: z.string().max(2000).optional(), contactIds: z.array(z.string()).max(1000).optional() },
       async (args, extra) => run(() => createSegment(userIdFrom(extra), args)),
     );
 
@@ -360,7 +360,7 @@ const handler = createMcpHandler(
     server.tool(
       "add_to_pipeline",
       "Add contacts (by ids and/or a whole segment) to a pipeline as new entries.",
-      { pipelineId: z.string(), contactIds: z.array(z.string()).optional(), segmentId: z.string().optional() },
+      { pipelineId: z.string(), contactIds: z.array(z.string()).max(1000).optional(), segmentId: z.string().optional() },
       async ({ pipelineId, ...rest }, extra) => run(() => addToPipeline(userIdFrom(extra), pipelineId, rest)),
     );
 
