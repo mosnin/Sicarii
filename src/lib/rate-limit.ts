@@ -82,7 +82,10 @@ export async function checkRateLimit(
   const resetAt = (slot + 1) * windowMs;
   try {
     const count = await redis.incr(bucket);
-    if (count === 1) await redis.expire(bucket, windowSec);
+    // Set the TTL on EVERY request, not just the first. If a prior EXPIRE was
+    // lost (process died / network blip after INCR created the key), the key
+    // would otherwise live forever and lock the bucket at 429 permanently.
+    await redis.expire(bucket, windowSec);
     if (count > limit) return { success: false, remaining: 0, resetAt };
     return { success: true, remaining: limit - count, resetAt };
   } catch {

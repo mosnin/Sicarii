@@ -1,4 +1,5 @@
 // Linkup deep research client.
+import { fetchWithTimeout } from "@/lib/http";
 // Base: https://api.linkup.so/v1  Auth: Authorization: Bearer KEY
 // Standard search is fast; deep search is thorough with sourced answers.
 // Use for scheduled background research on contacts, entities, or any topic.
@@ -31,7 +32,7 @@ async function search(
   depth: "standard" | "deep",
   outputType: "sourcedAnswer" | "searchResults"
 ): Promise<LinkupResult> {
-  const res = await fetch(`${BASE}/search`, {
+  const res = await fetchWithTimeout(`${BASE}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key()}` },
     body: JSON.stringify({ q: query, depth, outputType }),

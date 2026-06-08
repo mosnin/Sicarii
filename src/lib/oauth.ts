@@ -47,6 +47,26 @@ export function signRefreshToken(userId: string, scope?: string) {
   return sign({ sub: userId, typ: "refresh", ...(scope ? { scope } : {}) }, REFRESH_TTL);
 }
 
+// Stateless Dynamic Client Registration: instead of a random client_id we issue
+// a SIGNED client_id that embeds the client's registered redirect_uris. At
+// /authorize we verify the signature and require an exact redirect_uri match
+// before redirecting anything to it - this closes the open-redirect /
+// authorization-code-phishing hole without needing a client table.
+const CLIENT_TTL = 60 * 60 * 24 * 365; // 1y
+export type ClientClaims = JWTPayload & { typ: "client"; redirect_uris: string[] };
+
+export function signClientId(redirectUris: string[]) {
+  return sign({ typ: "client", redirect_uris: redirectUris }, CLIENT_TTL);
+}
+
+/** The redirect_uris bound into a signed client_id, or null if it isn't one. */
+export async function clientRedirectUris(clientId: string): Promise<string[] | null> {
+  if (!clientId) return null;
+  const claims = await verifyToken<ClientClaims>(clientId);
+  if (!claims || claims.typ !== "client" || !Array.isArray(claims.redirect_uris)) return null;
+  return claims.redirect_uris.filter((u): u is string => typeof u === "string");
+}
+
 export async function verifyToken<T extends JWTPayload>(token: string): Promise<T | null> {
   try {
     const { payload } = await jwtVerify(token, secret());

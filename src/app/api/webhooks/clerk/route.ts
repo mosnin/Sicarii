@@ -85,11 +85,26 @@ export async function POST(req: Request) {
     }
 
     if (type === "user.deleted") {
-      await prisma.user
-        .delete({ where: { clerkId: data.id as string } })
-        .catch(() => {
-          /* already gone - ignore */
-        });
+      // Entity/Contact/ApiKey/Conversation/MemoryChunk/IntentMonitor/
+      // ResearchSchedule cascade via FK. Segment + Pipeline use a scalar userId
+      // with NO FK cascade, so they'd orphan (the user's deal data surviving
+      // account deletion). Delete them explicitly; PipelineEntry/ContactSegment
+      // cascade from their parent.
+      const u = await prisma.user.findUnique({
+        where: { clerkId: data.id as string },
+        select: { id: true },
+      });
+      if (u) {
+        await prisma
+          .$transaction([
+            prisma.pipeline.deleteMany({ where: { userId: u.id } }),
+            prisma.segment.deleteMany({ where: { userId: u.id } }),
+            prisma.user.delete({ where: { id: u.id } }),
+          ])
+          .catch(() => {
+            /* already gone - ignore */
+          });
+      }
     }
 
     return NextResponse.json({ received: true });

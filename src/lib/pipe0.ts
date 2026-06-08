@@ -1,4 +1,5 @@
 // Pipe0 enrichment client - 70+ pipes across 50+ data providers.
+import { fetchWithTimeout } from "@/lib/http";
 // Base: https://api.pipe0.com/v1  Auth: Authorization: Bearer KEY
 // All calls use /pipes/run/sync for synchronous results.
 
@@ -24,7 +25,7 @@ async function runPipe(pipeId: string, input: Record<string, string>, config?: R
     input: [input],
   };
 
-  const res = await fetch(`${BASE}/pipes/run/sync`, {
+  const res = await fetchWithTimeout(`${BASE}/pipes/run/sync`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

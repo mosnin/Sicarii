@@ -1,4 +1,5 @@
 // Explorium business & prospect intelligence client.
+import { fetchWithTimeout } from "@/lib/http";
 // Base: https://api.explorium.ai  Auth: api_key header
 // Workflow: match (domain/name → business_id) → enrich or fetch prospects.
 
@@ -15,7 +16,7 @@ export function isExploriumConfigured() {
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithTimeout(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", api_key: key() },
     body: JSON.stringify(body),

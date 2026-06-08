@@ -1,7 +1,9 @@
+export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   enrichDomain,
   getCompanyTechStack,
@@ -43,6 +45,12 @@ export async function POST(
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
+
+    // Each call hits a paid provider (Explorium/Pipe0); cap per user.
+    const rate = await checkRateLimit(`entity-enrich:${user.id}`, 20, 60_000);
+    if (!rate.success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
 
     const body = (await req.json().catch(() => null)) as { type?: Aspect } | null;
     const type: Aspect = body?.type ?? "firmographics";
