@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { geocodeCached } from "@/lib/geocode";
+import { checkCreationBudget } from "@/lib/creation-guard";
 
 export const maxDuration = 60;
 
@@ -22,7 +23,10 @@ const entitySchema = z.object({
   source: z.string().trim().max(100).optional(),
   tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
   notes: z.string().trim().max(10000).optional(),
-  enrichment: z.record(z.string(), z.unknown()).optional(),
+  enrichment: z
+    .record(z.string(), z.unknown())
+    .refine((o) => JSON.stringify(o).length <= 100_000, "enrichment payload too large")
+    .optional(),
 });
 
 const bulkSchema = z.object({
@@ -42,6 +46,16 @@ export async function POST(req: NextRequest) {
     const rate = checkRateLimit(`entities:bulk:${user.id}`, 10, 60_000);
     if (!rate.success) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
+    // Circuit breaker: a generous ceiling that never blocks normal bulk saves
+    // but stops a runaway from accruing tens of thousands of records.
+    const budget = await checkCreationBudget(user.id, { limit: 2000 });
+    if (!budget.ok) {
+      return NextResponse.json(
+        { error: `Import paused: ${budget.recent} records were added in the last ${budget.windowMinutes} minutes. Try again shortly.` },
+        { status: 429 },
+      );
     }
 
     const parsed = bulkSchema.safeParse(await req.json().catch(() => null));

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { prisma } from "@/lib/prisma";
+import { checkCreationBudget } from "@/lib/creation-guard";
 
 const MODEL = process.env.OPENAI_REFINER_MODEL ?? "gpt-5-mini";
 
@@ -68,6 +69,14 @@ export async function extractAndAddToCrm(
   items: ExtractItem[],
 ): Promise<{ entitiesAdded: number; contactsAdded: number; created: CreatedItem[] }> {
   if (!process.env.OPENAI_API_KEY || items.length === 0) {
+    return { entitiesAdded: 0, contactsAdded: 0, created: [] };
+  }
+
+  // Circuit breaker: if this account has already accrued a flood of records in
+  // the recent window, stop auto-ingesting until it cools down.
+  const budget = await checkCreationBudget(userId);
+  if (!budget.ok) {
+    console.warn(`[radar-extract] creation cooldown for user ${userId}: ${budget.recent} in ${budget.windowMinutes}m`);
     return { entitiesAdded: 0, contactsAdded: 0, created: [] };
   }
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { generateApiKey } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const select = {
   id: true,
@@ -37,6 +38,8 @@ const createSchema = z.object({ name: z.string().trim().min(1).max(80) });
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
+    const rate = checkRateLimit(`keys:create:${user.id}`, 10, 60 * 60_000);
+    if (!rate.success) return NextResponse.json({ error: "Too many keys created. Try again later." }, { status: 429 });
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ error: "A name is required" }, { status: 400 });

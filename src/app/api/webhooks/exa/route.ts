@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
     if (!body) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
 
     const monitorId = body.monitor_id;
-    const results = body.results ?? [];
+    // Cap the batch so an oversized payload can't drive unbounded extraction.
+    const results = (body.results ?? []).slice(0, 100);
 
     // Find the monitor to get userId + auto-add setting.
     const monitor = monitorId
