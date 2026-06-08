@@ -113,6 +113,20 @@ async function exploriumPerson(domain: string, first: string, last: string) {
   return people.find((p) => nameMatches(p, first, last)) ?? null;
 }
 
+// Deep-search a provider response for a string value containing `needle`
+// (case-insensitive). Used to confirm a phone result is actually about this
+// person (the response body mentions their surname) before trusting it.
+function deepIncludes(value: unknown, needle: string, depth = 0): boolean {
+  if (depth > 6 || value == null || !needle) return false;
+  const n = needle.toLowerCase();
+  if (typeof value === "string") return value.toLowerCase().includes(n);
+  if (Array.isArray(value)) return value.some((v) => deepIncludes(v, needle, depth + 1));
+  if (typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).some((v) => deepIncludes(v, needle, depth + 1));
+  }
+  return false;
+}
+
 /**
  * Find and save one missing field on a contact. Throws OpError (with an HTTP
  * status) on the various "can't proceed" cases so REST and MCP map identically.
@@ -195,8 +209,13 @@ export async function enrichContactField(
       // Phone: company-scoped to this exact person. Pipe0, then Explorium.
       if (isPipe0Configured()) {
         try {
-          const p = pick(await findMobile(first, last, domain, contact.company ?? undefined), ["mobile", "phone", "number", "tel"]);
-          if (p) { value = p; via = "pipe0"; }
+          const resp = await findMobile(first, last, domain, contact.company ?? undefined);
+          const p = pick(resp, ["mobile", "phone", "number", "tel"]);
+          // ACCURACY RULE: a phone has no domain to anchor it, so only accept it
+          // when the provider's response actually concerns THIS person (its body
+          // echoes the surname). Otherwise we'd risk a switchboard or a different
+          // record's number - prefer null over a wrong phone.
+          if (p && deepIncludes(resp, last)) { value = p; via = "pipe0"; }
         } catch (e) { console.warn("[enrich] pipe0 phone failed", e); }
       }
       if (!value && isExploriumConfigured()) {

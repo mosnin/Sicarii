@@ -20,6 +20,24 @@ function toDomain(c?: string | null): string | undefined {
   }
 }
 
+// Token-overlap check: does a researched company's name actually match the
+// contact's stated company? Strips legal suffixes/punctuation and requires most
+// tokens to overlap. Guards the accuracy rule: never link a same-name stranger.
+function nameMatches(stated: string, candidate: string): boolean {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, " ")
+      .replace(/\b(inc|llc|ltd|limited|corp|corporation|co|company|group|holdings|the)\b/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length > 1);
+  const a = new Set(norm(stated));
+  const b = norm(candidate);
+  if (a.size === 0 || b.length === 0) return false;
+  const hits = b.filter((t) => a.has(t)).length;
+  return hits >= Math.max(1, Math.ceil(b.length * 0.6));
+}
+
 // POST /api/contacts/[id]/match-entity
 // Find (or create) the company this contact works at and link them. Research the
 // company via Exa when we don't already know the domain. Never creates a
@@ -47,31 +65,37 @@ export async function POST(
     }
 
     // Establish what we know about the company.
-    let name = isMeaningful(contact.company) ? contact.company!.trim() : undefined;
+    const name = isMeaningful(contact.company) ? contact.company!.trim() : undefined;
     let website: string | undefined =
       contact.website && contact.website.startsWith("http") ? contact.website : undefined;
     const emailDomain = contact.email?.includes("@")
       ? contact.email.split("@")[1]?.toLowerCase()
       : undefined;
+    // Domain must come from a STRONG source only (the contact's own website or a
+    // corporate work-email domain) - never guessed from the free-text company
+    // name, which would violate the accuracy rule downstream.
     let domain =
       toDomain(contact.website) ||
-      (emailDomain && !FREEMAIL.has(emailDomain) ? emailDomain : undefined) ||
-      toDomain(name);
+      (emailDomain && !FREEMAIL.has(emailDomain) ? emailDomain : undefined);
     let industry: string | undefined;
     let location: string | undefined;
     let phone: string | undefined;
 
-    // Research the company when we still don't have a domain.
+    // Research the company when we still don't have a domain. ACCURACY RULE: only
+    // adopt a researched company whose name actually matches the contact's stated
+    // company - a search for "Acme" must not link them to a different "Acme".
     if (!domain && name && isExaConfigured()) {
       const found = await exaFindCompanies(`${name} company official website`, 3);
-      const best = found.find((c) => c.domain) ?? found[0];
+      const best =
+        found.find((c) => c.domain && nameMatches(name!, c.companyName)) ??
+        found.find((c) => nameMatches(name!, c.companyName));
       if (best) {
         domain = best.domain;
         website = website ?? best.website;
-        name = isMeaningful(best.companyName) ? best.companyName : name;
         industry = best.industry;
         location = best.address;
         phone = best.phone;
+        // Keep the contact's stated company name; do not overwrite with the match.
       }
     }
 

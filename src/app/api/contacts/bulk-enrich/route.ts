@@ -30,6 +30,17 @@ function pick(value: unknown, keys: string[], depth = 0): string | undefined {
   return undefined;
 }
 
+// True if any string value in `value` contains `needle` (case-insensitive) -
+// used to confirm a phone result actually concerns this person.
+function deepIncludes(value: unknown, needle: string, depth = 0): boolean {
+  if (depth > 6 || value == null || !needle) return false;
+  const n = needle.toLowerCase();
+  if (typeof value === "string") return value.toLowerCase().includes(n);
+  if (Array.isArray(value)) return value.some((v) => deepIncludes(v, needle, depth + 1));
+  if (typeof value === "object") return Object.values(value as Record<string, unknown>).some((v) => deepIncludes(v, needle, depth + 1));
+  return false;
+}
+
 function toDomain(c?: string | null): string | undefined {
   if (!c) return undefined;
   try { return new URL(c.startsWith("http") ? c : `https://${c}`).hostname.replace(/^www\./, ""); }
@@ -95,8 +106,10 @@ export async function POST(req: NextRequest) {
           if (e && e.includes("@") && sameCompany(e.split("@")[1], domain)) update.email = e;
         }
         if (!c.phone && pipe0On && first && last && domain) {
-          const p = pick(await findMobile(first, last, domain, c.company ?? undefined), ["mobile", "phone", "number"]);
-          if (p) update.phone = p;
+          const resp = await findMobile(first, last, domain, c.company ?? undefined);
+          const p = pick(resp, ["mobile", "phone", "number"]);
+          // Accuracy: only trust the phone if the response is about this person.
+          if (p && deepIncludes(resp, last)) update.phone = p;
         }
       } catch (e) {
         console.error(`[bulk-enrich] contact ${c.id} failed`, e);
