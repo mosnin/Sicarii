@@ -10,6 +10,7 @@ const footerLinks = {
   ],
   studio: [
     { label: "About Us", href: "/about" },
+    { label: "Manifesto", href: "/manifesto" },
     { label: "Portfolio", href: "/portfolio" },
     { label: "Pricing", href: "/pricing" },
     { label: "Contact", href: "/contact" },
