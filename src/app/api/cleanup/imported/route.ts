@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => null)) as { sources?: unknown } | null;
     const sources =
       Array.isArray(body?.sources) && body!.sources.every((s) => typeof s === "string") && body!.sources.length
-        ? (body!.sources as string[])
+        ? (body!.sources as string[]).filter((s) => s.length <= 100).slice(0, 50)
         : DEFAULT_SOURCES;
 
     const [contacts, entities] = await prisma.$transaction([

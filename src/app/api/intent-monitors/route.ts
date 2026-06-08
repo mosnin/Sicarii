@@ -35,7 +35,10 @@ export async function POST(req: NextRequest) {
     if (!body?.query) {
       return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
-    const name = body.name?.trim() || body.query.slice(0, 60);
+    if (body.query.length > 2000 || (body.name && body.name.length > 200)) {
+      return NextResponse.json({ error: "query or name is too long" }, { status: 400 });
+    }
+    const name = (body.name?.trim() || body.query.slice(0, 60)).slice(0, 200);
 
     if (!isExaConfigured()) {
       return NextResponse.json({ error: "EXA_API_KEY is not configured" }, { status: 501 });
