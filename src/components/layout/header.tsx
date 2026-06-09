@@ -23,6 +23,7 @@ import {
   Phone,
   HelpCircle,
   Shield,
+  Lock,
   FileText,
   Briefcase,
   ArrowRight,
@@ -53,6 +54,7 @@ const companyItems: MegaMenuItem[] = [
 const resourceItems: MegaMenuItem[] = [
   { label: "How it works", href: "/#how-it-works", icon: Briefcase, description: "Connect your agent, it just works" },
   { label: "FAQ", href: "/faq", icon: HelpCircle, description: "Common questions answered" },
+  { label: "Security", href: "/security", icon: Lock, description: "How your data stays yours" },
   { label: "Privacy Policy", href: "/privacy", icon: Shield, description: "How we handle your data" },
   { label: "Terms of Service", href: "/terms", icon: FileText, description: "Service agreement" },
 ];

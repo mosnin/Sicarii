@@ -10,13 +10,18 @@ const footerLinks = {
   ],
   company: [
     { label: "About", href: "/about" },
+    { label: "Security", href: "/security" },
     { label: "Contact", href: "/contact" },
     { label: "FAQ", href: "/faq" },
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
-    { label: "Sign In", href: "/sign-in" },
+    { label: "Acceptable Use", href: "/acceptable-use" },
+    { label: "Cookie Policy", href: "/cookies" },
+    { label: "Subprocessors", href: "/subprocessors" },
+    { label: "DPA", href: "/dpa" },
+    { label: "Refund Policy", href: "/refund-policy" },
   ],
 };
 
