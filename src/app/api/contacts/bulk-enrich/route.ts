@@ -7,7 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
 import { OpError } from "@/lib/crm-operations";
-import { spendCredits, type CreditAction } from "@/lib/credits";
+import { spendCredits, hasCredits, type CreditAction } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
 
@@ -85,6 +85,9 @@ export async function POST(req: NextRequest) {
     let outOfCredits = false;
     for (const c of contacts) {
       if (outOfCredits) break;
+      // Block before any paid provider call once the balance can't cover even
+      // the cheapest field (so a zero-credit user gets no free records).
+      if (!(await hasCredits(user.id, "linkedin"))) { outOfCredits = true; break; }
       const update: Record<string, string> = {};
       const parts = (c.name ?? "").trim().split(/\s+/).filter(Boolean);
       const first = parts[0];

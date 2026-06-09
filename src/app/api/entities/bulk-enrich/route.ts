@@ -7,7 +7,7 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { OpError } from "@/lib/crm-operations";
-import { spendCredits } from "@/lib/credits";
+import { spendCredits, hasCredits } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
 
@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
     let outOfCredits = false;
     for (const entity of entities) {
       if (!entity.domain) { skipped++; continue; }
+      // Block before the paid Explorium call once out of credits.
+      if (!(await hasCredits(user.id, "company_aspect"))) { outOfCredits = true; break; }
       try {
         const result = await enrichDomain(entity.domain);
         if (!result) { skipped++; continue; }

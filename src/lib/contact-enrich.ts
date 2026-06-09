@@ -10,7 +10,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
-import { spendCredits } from "@/lib/credits";
+import { spendCredits, ensureCredits } from "@/lib/credits";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
 import { getPeopleAtCompany, isExploriumConfigured } from "@/lib/explorium";
@@ -143,6 +143,10 @@ export async function enrichContactField(
   });
   if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
   if (contact[field]) return { contact, message: `${field} already set.` };
+
+  // Gate before any paid provider call (a found value debits the same action
+  // after success; an out-of-credits user is blocked here, not after the spend).
+  await ensureCredits(userId, field);
 
   let value: string | null = null;
   let via: string | undefined;
