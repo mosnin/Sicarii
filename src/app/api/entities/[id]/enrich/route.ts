@@ -13,7 +13,7 @@ import {
 } from "@/lib/explorium";
 import { getCompanyOverview, getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
 import { OpError } from "@/lib/crm-operations";
-import { spendCredits } from "@/lib/credits";
+import { spendCredits, ensureCredits } from "@/lib/credits";
 
 type Aspect = "firmographics" | "tech-stack" | "funding" | "traffic" | "overview" | "news";
 
@@ -76,6 +76,9 @@ export async function POST(
     if (!usesExplorium && !isPipe0Configured()) {
       return NextResponse.json({ error: "Pipe0 is not configured (PIPE0_API_KEY missing)." }, { status: 501 });
     }
+
+    // Gate before the paid provider call; the debit on success happens below.
+    await ensureCredits(user.id, "company_aspect");
 
     // Column fills only apply to firmographics (which extracts fields).
     const data: Prisma.EntityUncheckedUpdateInput = { status: "ENRICHED" };

@@ -42,6 +42,32 @@ export type CreditAction = keyof typeof CREDIT_COSTS;
 
 const RESET_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+/**
+ * Pre-flight gate: throw OpError 402 BEFORE doing paid work when the balance
+ * can't cover the action. Call this at the top of a metered path so an
+ * out-of-credits user is blocked before any provider cost is incurred and
+ * before any data is saved (otherwise they would get the result for free and
+ * only see a 402 after the fact). The real debit still happens via spendCredits
+ * only on success, so a genuine miss is never charged.
+ */
+export async function hasCredits(userId: string, action: CreditAction): Promise<boolean> {
+  await maybeReset(userId);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { creditsRemaining: true },
+  });
+  return Boolean(user) && user!.creditsRemaining >= CREDIT_COSTS[action];
+}
+
+export async function ensureCredits(userId: string, action: CreditAction): Promise<void> {
+  if (!(await hasCredits(userId, action))) {
+    throw new OpError(
+      "Out of credits. Upgrade your plan or wait for your monthly reset.",
+      402,
+    );
+  }
+}
+
 // Refill the meter when the monthly window has lapsed (or was never started).
 // Not perfectly race-proof across concurrent requests, but the worst case is
 // two refills to the same allotment, which is idempotent in effect.

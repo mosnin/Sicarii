@@ -7,7 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
 import { OpError } from "@/lib/crm-operations";
-import { spendCredits } from "@/lib/credits";
+import { spendCredits, ensureCredits } from "@/lib/credits";
 
 function host(input?: string | null): string | undefined {
   if (!input) return undefined;
@@ -50,6 +50,9 @@ export async function POST(
     if (!isFirecrawlConfigured()) {
       return NextResponse.json({ error: "Firecrawl is not configured (FIRECRAWL_API_KEY missing)." }, { status: 501 });
     }
+
+    // Gate before the paid Firecrawl call; the debit on success is below.
+    await ensureCredits(user.id, "analyze_site");
 
     const analysis = await analyzeSite(url);
 

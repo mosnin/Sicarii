@@ -7,7 +7,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
-import { spendCredits } from "@/lib/credits";
+import { spendCredits, ensureCredits } from "@/lib/credits";
 
 export class OpError extends Error {
   status: number;
@@ -140,6 +140,9 @@ export async function enrichEntity(userId: string, id: string) {
     return entity;
   }
 
+  // Gate before the paid Explorium call; debit only on a hit below.
+  await ensureCredits(userId, "company_aspect");
+
   const enriched = await enrichDomain(entity.domain);
   if (!enriched) throw new OpError(`No enrichment data found for ${entity.domain}`, 404);
 
@@ -173,6 +176,8 @@ export async function findCompanies(
 ) {
   if (!isExaConfigured())
     throw new OpError("Discovery is not configured (EXA_API_KEY missing)", 501);
+  // Gate before the paid Exa call; debit below only when it returns companies.
+  await ensureCredits(userId, "find_companies");
   const count = Math.min(Math.max(input.count ?? 10, 1), 25);
   const found = await exaFindCompanies(input.query, count);
 

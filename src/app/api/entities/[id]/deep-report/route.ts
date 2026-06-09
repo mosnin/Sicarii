@@ -9,7 +9,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, firecrawlSearch, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
 import { OpError } from "@/lib/crm-operations";
-import { spendCredits } from "@/lib/credits";
+import { spendCredits, ensureCredits } from "@/lib/credits";
 
 export const maxDuration = 60;
 
@@ -86,6 +86,9 @@ export async function POST(
     if (!entity || entity.userId !== user.id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+
+    // Gate before the paid Firecrawl + LLM work; the debit on success is below.
+    await ensureCredits(user.id, "deep_report");
 
     const site = entity.website || (entity.domain ? `https://${entity.domain}` : null);
     const entityDomain = host(entity.website) ?? entity.domain ?? undefined;

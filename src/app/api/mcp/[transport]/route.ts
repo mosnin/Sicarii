@@ -23,7 +23,7 @@ import {
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { enrichContactField } from "@/lib/contact-enrich";
-import { spendCredits } from "@/lib/credits";
+import { spendCredits, ensureCredits } from "@/lib/credits";
 import {
   listSegments,
   getSegment,
@@ -294,6 +294,7 @@ const handler = createMcpHandler(
         gated(extra, "search_web", 30, async (userId) => {
           if (!isTavilyConfigured())
             throw new OpError("Web search is not configured (TAVILY_API_KEY missing).", 501);
+          await ensureCredits(userId, "web_search");
           const results = await tavilySearch(query, { maxResults });
           // Debit only after the search succeeded. (enrich/find tools debit
           // inside the shared ops layer - never double-charge here.)

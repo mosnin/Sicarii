@@ -44,6 +44,7 @@
 | [`engineering/mcp-audit-2026-06-08.md`](engineering/mcp-audit-2026-06-08.md) | MCP connection audit: connectivity/protocol + tool coverage for external agents |
 | [`engineering/scale-audit-2026-06-08.md`](engineering/scale-audit-2026-06-08.md) | Full scale-readiness audit (7 parallel auditors): fixes shipped + items owed before scale |
 | [`engineering/claims-audit-2026-06-09.md`](engineering/claims-audit-2026-06-09.md) | Claims-vs-delivery audit: every public claim reconciled against the code; P0 integrity gaps |
+| [`engineering/claims-audit-2026-06-09b.md`](engineering/claims-audit-2026-06-09b.md) | Claims re-audit after the fix pass: integrity gaps closed; metering ordering bug found + fixed |
 
 ---
 
