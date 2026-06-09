@@ -145,6 +145,9 @@ export async function enrichContactField(
 
   let value: string | null = null;
   let via: string | undefined;
+  // Tracks whether a provider actually errored (rate-limited / out of credits /
+  // down) vs simply returned no data, so we can tell the user the difference.
+  let providerError = false;
 
   if (field === "linkedin") {
     const { first, last } = splitName(contact.name);
@@ -164,13 +167,13 @@ export async function enrichContactField(
           location: contact.location ?? undefined,
         });
         if (url && /linkedin\.com\/(in|company)\//i.test(url)) { value = url; via = "exa"; }
-      } catch (e) { console.warn("[enrich] exa linkedin failed", e); }
+      } catch (e) { console.warn("[enrich] exa linkedin failed", e); providerError = true; }
     }
     if (!value && isExploriumConfigured() && first && last && linkedinDomain) {
       try {
         const person = await exploriumPerson(linkedinDomain, first, last);
         if (person?.linkedin && /linkedin\.com\/(in|company)\//i.test(person.linkedin)) { value = person.linkedin; via = "explorium"; }
-      } catch (e) { console.warn("[enrich] explorium linkedin failed", e); }
+      } catch (e) { console.warn("[enrich] explorium linkedin failed", e); providerError = true; }
     }
   } else {
     if (!isPipe0Configured() && !isExploriumConfigured())
@@ -196,14 +199,14 @@ export async function enrichContactField(
         try {
           const e = pick(await findWorkEmail(first, last, domain, contact.company ?? undefined), ["email"]);
           if (isEmail(e) && sameCompany(e.split("@")[1], domain)) { value = e; via = "pipe0"; }
-        } catch (e) { console.warn("[enrich] pipe0 email failed", e); }
+        } catch (e) { console.warn("[enrich] pipe0 email failed", e); providerError = true; }
       }
       if (!value && isExploriumConfigured()) {
         try {
           const person = await exploriumPerson(domain, first, last);
           const e = person?.email;
           if (isEmail(e) && sameCompany(e.split("@")[1], domain)) { value = e; via = "explorium"; }
-        } catch (e) { console.warn("[enrich] explorium email failed", e); }
+        } catch (e) { console.warn("[enrich] explorium email failed", e); providerError = true; }
       }
     } else {
       // Phone: company-scoped to this exact person. Pipe0, then Explorium.
@@ -213,21 +216,30 @@ export async function enrichContactField(
           const p = pick(resp, ["mobile", "phone", "number", "tel"]);
           // ACCURACY RULE: a phone has no domain to anchor it, so only accept it
           // when the provider's response actually concerns THIS person (its body
-          // echoes the surname). Otherwise we'd risk a switchboard or a different
-          // record's number - prefer null over a wrong phone.
-          if (p && deepIncludes(resp, last)) { value = p; via = "pipe0"; }
-        } catch (e) { console.warn("[enrich] pipe0 phone failed", e); }
+          // echoes their first or last name). Otherwise prefer null over a wrong
+          // number. (Pipe0's people:mobile is keyed on name+domain, so a valid
+          // result echoes the input - this just guards a stray record.)
+          if (p && (deepIncludes(resp, last) || deepIncludes(resp, first))) { value = p; via = "pipe0"; }
+        } catch (e) { console.warn("[enrich] pipe0 phone failed", e); providerError = true; }
       }
       if (!value && isExploriumConfigured()) {
         try {
           const person = await exploriumPerson(domain, first, last);
           if (person?.phone) { value = person.phone; via = "explorium"; }
-        } catch (e) { console.warn("[enrich] explorium phone failed", e); }
+        } catch (e) { console.warn("[enrich] explorium phone failed", e); providerError = true; }
       }
     }
   }
 
-  if (!value) throw new OpError(`Couldn't find a ${field} for this contact.`, 404);
+  if (!value) {
+    if (providerError) {
+      throw new OpError(
+        `Couldn't complete ${field} enrichment - a provider is unavailable (rate-limited or out of credits). Try again shortly.`,
+        502,
+      );
+    }
+    throw new OpError(`Couldn't find a ${field} for this contact.`, 404);
+  }
 
   const updated = await prisma.contact.update({
     where: { id: contactId },
