@@ -17,13 +17,18 @@ import { prisma } from "@/lib/prisma";
 
 type Tab = "contacts" | "entities";
 
+// Server-side page size for both lists.
+const PAGE = 500;
+
 export default async function CrmPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, page: pageParam } = await searchParams;
   const tab: Tab = tabParam === "entities" ? "entities" : "contacts";
+  const parsedPage = Number.parseInt(pageParam ?? "1", 10);
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const user = await getDbUser();
 
   if (!user) {
@@ -85,11 +90,51 @@ export default async function CrmPage({
 
       <FloatIn delay={0.1}>
         {tab === "contacts" ? (
-          <ContactsList userId={user.id} />
+          <ContactsList userId={user.id} page={page} />
         ) : (
-          <EntitiesList userId={user.id} />
+          <EntitiesList userId={user.id} page={page} />
         )}
       </FloatIn>
+
+      <Pager
+        tab={tab}
+        page={page}
+        count={tab === "contacts" ? contactCount : entityCount}
+      />
+    </div>
+  );
+}
+
+// Minimal pager, only shown once a list outgrows a single page.
+function Pager({ tab, page, count }: { tab: Tab; page: number; count: number }) {
+  if (count <= PAGE) return null;
+  const totalPages = Math.ceil(count / PAGE);
+
+  return (
+    <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+      <span>
+        Page {page} of {totalPages}
+      </span>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link
+            href={`/crm?tab=${tab}&page=${Math.max(1, page - 1)}`}
+            aria-disabled={page <= 1}
+            className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+          >
+            Previous
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link
+            href={`/crm?tab=${tab}&page=${Math.min(totalPages, page + 1)}`}
+            aria-disabled={page >= totalPages}
+            className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+          >
+            Next
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
@@ -118,12 +163,13 @@ function TabLink({
   );
 }
 
-async function ContactsList({ userId }: { userId: string }) {
+async function ContactsList({ userId, page }: { userId: string; page: number }) {
   const contacts = await prisma.contact.findMany({
     where: { userId },
     orderBy: { updatedAt: "desc" },
     include: { entity: { select: { id: true, name: true } } },
-    take: 500,
+    skip: (page - 1) * PAGE,
+    take: PAGE,
   });
 
   if (contacts.length === 0) {
@@ -161,12 +207,13 @@ async function ContactsList({ userId }: { userId: string }) {
   return <ContactRows contacts={rows} />;
 }
 
-async function EntitiesList({ userId }: { userId: string }) {
+async function EntitiesList({ userId, page }: { userId: string; page: number }) {
   const entities = await prisma.entity.findMany({
     where: { userId },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { contacts: true } } },
-    take: 500,
+    skip: (page - 1) * PAGE,
+    take: PAGE,
   });
 
   if (entities.length === 0) {

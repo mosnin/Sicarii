@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { createExaMonitor, deleteExaMonitor, isExaConfigured, exaWebhookToken } from "@/lib/exa";
+import { planFor } from "@/lib/credits";
 
 // GET /api/intent-monitors - list all monitors for the current user.
 export async function GET() {
@@ -42,6 +43,16 @@ export async function POST(req: NextRequest) {
 
     if (!isExaConfigured()) {
       return NextResponse.json({ error: "EXA_API_KEY is not configured" }, { status: 501 });
+    }
+
+    // Plan limit: scheduled monitors are a paid-plan feature with a per-plan cap.
+    const allowed = planFor(user.plan).monitors;
+    const existingCount = await prisma.intentMonitor.count({ where: { userId: user.id } });
+    if (existingCount >= allowed) {
+      return NextResponse.json(
+        { error: `Your plan allows ${allowed} scheduled monitor${allowed === 1 ? "" : "s"}.` },
+        { status: 402 },
+      );
     }
 
     // First scheduled run: next hour/day/week depending on frequency.

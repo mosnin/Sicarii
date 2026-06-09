@@ -8,6 +8,8 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, firecrawlSearch, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
+import { OpError } from "@/lib/crm-operations";
+import { spendCredits } from "@/lib/credits";
 
 export const maxDuration = 60;
 
@@ -174,9 +176,15 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
       created++;
     }
 
+    // Debit only after the report was built and stored - a failed run is free.
+    await spendCredits(user.id, "deep_report", { ref: id });
+
     return NextResponse.json({ ok: true, created, report });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
     console.error("POST /api/entities/[id]/deep-report", e);
     return NextResponse.json({ error: "Deep report failed" }, { status: 502 });
   }

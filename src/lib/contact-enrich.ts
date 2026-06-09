@@ -10,6 +10,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
+import { spendCredits } from "@/lib/credits";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
 import { getPeopleAtCompany, isExploriumConfigured } from "@/lib/explorium";
@@ -248,6 +249,10 @@ export async function enrichContactField(
       ...(contact.status === "NEW" ? { status: "ENRICHED" } : {}),
     },
   });
+
+  // Debit only on a hit (the not-found paths above throw before this point);
+  // a miss never costs credits.
+  await spendCredits(userId, field, { ref: contactId });
 
   return { contact: updated, via, value };
 }
