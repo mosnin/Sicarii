@@ -43,6 +43,7 @@
 | [`engineering/repo-audit-2026-06-06.md`](engineering/repo-audit-2026-06-06.md) | Security + ops + PR-process audit of `main` and PRs #1–#18 |
 | [`engineering/mcp-audit-2026-06-08.md`](engineering/mcp-audit-2026-06-08.md) | MCP connection audit: connectivity/protocol + tool coverage for external agents |
 | [`engineering/scale-audit-2026-06-08.md`](engineering/scale-audit-2026-06-08.md) | Full scale-readiness audit (7 parallel auditors): fixes shipped + items owed before scale |
+| [`engineering/claims-audit-2026-06-09.md`](engineering/claims-audit-2026-06-09.md) | Claims-vs-delivery audit: every public claim reconciled against the code; P0 integrity gaps |
 
 ---
 
