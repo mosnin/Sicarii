@@ -8,6 +8,7 @@ import { linkupDeepResearch, linkupSearch, isLinkupConfigured } from "@/lib/link
 import { notifyTaskWebhook } from "@/lib/notify";
 import { runIntentMonitorOnce } from "@/lib/radar-run";
 import { checkCreationBudget } from "@/lib/creation-guard";
+import { spendCredits } from "@/lib/credits";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -103,6 +104,10 @@ export const runResearchSchedules = inngest.createFunction(
         const useLinkup = schedule.provider === "linkup" && isLinkupConfigured();
         const useExa = schedule.provider === "exa" && isExaConfigured();
         if (!useLinkup && !useExa) continue;
+
+        // Each run consumes a deep-research call; debit before running. Out of
+        // credits = skip this cycle gracefully (logged by the catch below).
+        await spendCredits(schedule.userId, "deep_research", { ref: schedule.id });
 
         let answer: string | undefined;
         let sources: { url: string; title?: string; snippet?: string }[] = [];

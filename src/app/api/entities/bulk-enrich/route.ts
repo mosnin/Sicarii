@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
+import { OpError } from "@/lib/crm-operations";
+import { spendCredits } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
 
@@ -29,11 +31,19 @@ export async function POST(req: NextRequest) {
 
     let enriched = 0;
     let skipped = 0;
+    let outOfCredits = false;
     for (const entity of entities) {
       if (!entity.domain) { skipped++; continue; }
       try {
         const result = await enrichDomain(entity.domain);
         if (!result) { skipped++; continue; }
+        // Debit only on a hit; out of credits stops the batch cleanly.
+        try {
+          await spendCredits(user.id, "company_aspect", { ref: entity.id });
+        } catch (err) {
+          if (err instanceof OpError && err.status === 402) { outOfCredits = true; break; }
+          throw err;
+        }
         const existing =
           entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
             ? (entity.enrichment as Record<string, unknown>)
@@ -58,7 +68,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ enriched, skipped });
+    if (outOfCredits && enriched === 0) {
+      return NextResponse.json(
+        { error: "Out of credits. Upgrade your plan or wait for your monthly reset." },
+        { status: 402 },
+      );
+    }
+    return NextResponse.json({ enriched, skipped, outOfCredits });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("POST /api/entities/bulk-enrich", e);

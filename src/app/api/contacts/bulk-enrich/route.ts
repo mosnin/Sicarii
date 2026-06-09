@@ -6,6 +6,8 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
+import { OpError } from "@/lib/crm-operations";
+import { spendCredits, type CreditAction } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
 
@@ -80,7 +82,9 @@ export async function POST(req: NextRequest) {
 
     let enriched = 0;
     let fieldsFilled = 0;
+    let outOfCredits = false;
     for (const c of contacts) {
+      if (outOfCredits) break;
       const update: Record<string, string> = {};
       const parts = (c.name ?? "").trim().split(/\s+/).filter(Boolean);
       const first = parts[0];
@@ -124,10 +128,26 @@ export async function POST(req: NextRequest) {
         });
         enriched++;
         fieldsFilled += keys.length;
+        // Debit per field actually found (a miss costs nothing); out of
+        // credits stops the batch cleanly.
+        for (const key of keys) {
+          try {
+            await spendCredits(user.id, key as CreditAction, { ref: c.id });
+          } catch (err) {
+            if (err instanceof OpError && err.status === 402) { outOfCredits = true; break; }
+            throw err;
+          }
+        }
       }
     }
 
-    return NextResponse.json({ enriched, fieldsFilled, total: contacts.length });
+    if (outOfCredits && enriched === 0) {
+      return NextResponse.json(
+        { error: "Out of credits. Upgrade your plan or wait for your monthly reset." },
+        { status: 402 },
+      );
+    }
+    return NextResponse.json({ enriched, fieldsFilled, total: contacts.length, outOfCredits });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("POST /api/contacts/bulk-enrich", e);

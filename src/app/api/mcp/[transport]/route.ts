@@ -23,6 +23,7 @@ import {
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { enrichContactField } from "@/lib/contact-enrich";
+import { spendCredits } from "@/lib/credits";
 import {
   listSegments,
   getSegment,
@@ -290,10 +291,14 @@ const handler = createMcpHandler(
         maxResults: z.number().int().min(1).max(20).optional(),
       },
       async ({ query, maxResults }, extra) =>
-        gated(extra, "search_web", 30, () => {
+        gated(extra, "search_web", 30, async (userId) => {
           if (!isTavilyConfigured())
             throw new OpError("Web search is not configured (TAVILY_API_KEY missing).", 501);
-          return tavilySearch(query, { maxResults });
+          const results = await tavilySearch(query, { maxResults });
+          // Debit only after the search succeeded. (enrich/find tools debit
+          // inside the shared ops layer - never double-charge here.)
+          await spendCredits(userId, "web_search");
+          return results;
         }),
     );
 
