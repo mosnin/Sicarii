@@ -67,7 +67,7 @@ export default function TermsPage() {
 
               <div>
                 <h2 className="text-lg font-semibold text-foreground">10. Contact</h2>
-                <p>For questions about these terms, contact us at hello@scalar.agency.</p>
+                <p>For questions about these terms, contact us at hello@tryscalar.xyz.</p>
               </div>
             </div>
           </div>

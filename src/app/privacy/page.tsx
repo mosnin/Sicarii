@@ -47,12 +47,12 @@ export default function PrivacyPage() {
 
               <div>
                 <h2 className="text-lg font-semibold text-foreground">6. Your Rights</h2>
-                <p>You have the right to access, correct, or delete your personal data. You may also request a copy of your data or opt out of non-essential communications. Contact us at hello@scalar.agency for any privacy-related requests.</p>
+                <p>You have the right to access, correct, or delete your personal data. You may also request a copy of your data or opt out of non-essential communications. Contact us at hello@tryscalar.xyz for any privacy-related requests.</p>
               </div>
 
               <div>
                 <h2 className="text-lg font-semibold text-foreground">7. Contact</h2>
-                <p>For questions about this privacy policy, contact us at hello@scalar.agency.</p>
+                <p>For questions about this privacy policy, contact us at hello@tryscalar.xyz.</p>
               </div>
             </div>
           </div>
