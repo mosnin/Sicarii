@@ -16,12 +16,11 @@ export function isPipe0Configured() {
 }
 
 async function runPipe(pipeId: string, input: Record<string, string>, config?: Record<string, unknown>) {
-  // Pipe0's /pipes/run/sync is a batch API: it runs a LIST of pipes over a LIST
-  // of input records. We run one pipe over one record, so both are single-item
-  // arrays. (Sending pipe_id + an input object 422s: "expected array ... at
-  // pipes / at input".)
+  // Pipe0's /pipes/run/sync is a batch API: a LIST of pipes over a LIST of input
+  // records. Each pipe element is keyed by `pipe_id` (NOT `id` - that 422s with
+  // "Invalid input at pipes[0].pipe_id"). We run one pipe over one record.
   const body = {
-    pipes: [{ id: pipeId, ...(config ? { config } : {}) }],
+    pipes: [{ pipe_id: pipeId, ...(config ? { config } : {}) }],
     input: [input],
   };
 

@@ -108,8 +108,9 @@ export async function POST(req: NextRequest) {
         if (!c.phone && pipe0On && first && last && domain) {
           const resp = await findMobile(first, last, domain, c.company ?? undefined);
           const p = pick(resp, ["mobile", "phone", "number"]);
-          // Accuracy: only trust the phone if the response is about this person.
-          if (p && deepIncludes(resp, last)) update.phone = p;
+          // Accuracy: only trust the phone if the response is about this person
+          // (echoes their first or last name).
+          if (p && (deepIncludes(resp, last) || deepIncludes(resp, first))) update.phone = p;
         }
       } catch (e) {
         console.error(`[bulk-enrich] contact ${c.id} failed`, e);
