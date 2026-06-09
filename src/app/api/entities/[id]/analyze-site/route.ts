@@ -6,6 +6,8 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
+import { OpError } from "@/lib/crm-operations";
+import { spendCredits } from "@/lib/credits";
 
 function host(input?: string | null): string | undefined {
   if (!input) return undefined;
@@ -114,9 +116,15 @@ export async function POST(
       created++;
     }
 
+    // Debit only after the analysis succeeded and was stored - a miss is free.
+    await spendCredits(user.id, "analyze_site", { ref: id });
+
     return NextResponse.json({ ok: true, created, skipped, logo: Boolean(data.logoUrl) });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
     console.error("POST /api/entities/[id]/analyze-site", e);
     return NextResponse.json({ error: "Website analysis failed" }, { status: 502 });
   }

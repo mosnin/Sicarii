@@ -12,6 +12,8 @@ import {
   isExploriumConfigured,
 } from "@/lib/explorium";
 import { getCompanyOverview, getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
+import { OpError } from "@/lib/crm-operations";
+import { spendCredits } from "@/lib/credits";
 
 type Aspect = "firmographics" | "tech-stack" | "funding" | "traffic" | "overview" | "news";
 
@@ -127,9 +129,16 @@ export async function POST(
     data.enrichment = { ...existing, [storeKey]: payload } as Prisma.InputJsonValue;
 
     const updated = await prisma.entity.update({ where: { id }, data });
+
+    // Debit only after a non-empty payload was stored - a miss costs nothing.
+    await spendCredits(user.id, "company_aspect", { ref: id });
+
     return NextResponse.json({ entity: updated, enriched: type });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
     console.error("POST /api/entities/[id]/enrich", e);
     return NextResponse.json({ error: "Enrichment failed" }, { status: 502 });
   }

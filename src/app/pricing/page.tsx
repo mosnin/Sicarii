@@ -34,7 +34,7 @@ const plans: Plan[] = [
     blurb: "Kick the tires. Feel your CRM fill itself, once.",
     features: [
       "1 seat",
-      "MCP read access + the built-in agent",
+      "Full MCP + the built-in agent",
       "All discovery & enrichment tools",
       "Community support",
     ],
@@ -55,7 +55,7 @@ const plans: Plan[] = [
       "Email support",
     ],
     cta: "Get Starter",
-    href: "/sign-up",
+    href: "/sign-up?plan=starter",
   },
   {
     name: "Pro",
@@ -70,7 +70,7 @@ const plans: Plan[] = [
       "Priority support",
     ],
     cta: "Get Pro",
-    href: "/sign-up",
+    href: "/sign-up?plan=pro",
     popular: true,
   },
   {
@@ -87,7 +87,7 @@ const plans: Plan[] = [
       "Priority support",
     ],
     cta: "Get Business",
-    href: "/sign-up",
+    href: "/sign-up?plan=business",
   },
 ];
 

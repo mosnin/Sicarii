@@ -11,13 +11,21 @@ import { ApiKeysManager } from "./api-keys";
 import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
+import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
 import { getDbUser } from "@/lib/server-user";
+import { getBilling } from "@/lib/credits";
 
 export const dynamic = "force-dynamic";
+
+const PAID_PLANS = ["starter", "pro", "business"];
 
 export default async function SettingsPage() {
   const user = await getDbUser();
   const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
+  const billing = user ? await getBilling(user.id) : null;
+  const planLabel = billing
+    ? billing.plan.charAt(0).toUpperCase() + billing.plan.slice(1)
+    : null;
 
   const h = await headers();
   const host = h.get("host") ?? "www.tryscalar.xyz";
@@ -56,6 +64,54 @@ export default async function SettingsPage() {
                 <span className="font-medium">{user?.email}</span>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </FloatIn>
+
+      {/* Billing */}
+      <FloatIn delay={0.11}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Billing</CardTitle>
+            <CardDescription>
+              Your plan and credit meter. Credits are spent only when an agent
+              pulls real data from the outside world; CRM reads and writes are
+              free, and a miss is never charged.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="divide-y divide-border">
+              <div className="flex items-center justify-between py-3 text-sm">
+                <span className="text-muted-foreground">Plan</span>
+                <span className="font-medium">{planLabel ?? "Free"}</span>
+              </div>
+              <div className="flex items-center justify-between py-3 text-sm">
+                <span className="text-muted-foreground">Credits remaining</span>
+                <span className="font-medium text-primary">
+                  {billing ? billing.creditsRemaining.toLocaleString() : "0"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-3 text-sm">
+                <span className="text-muted-foreground">Resets</span>
+                <span className="font-medium">
+                  {billing?.creditsResetAt
+                    ? new Date(billing.creditsResetAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "On your first metered action"}
+                </span>
+              </div>
+            </div>
+            {billing && !PAID_PLANS.includes(billing.plan) && (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Upgrade for a bigger monthly allotment and scheduled monitors.
+                </p>
+                <BillingUpgrade />
+              </div>
+            )}
           </CardContent>
         </Card>
       </FloatIn>

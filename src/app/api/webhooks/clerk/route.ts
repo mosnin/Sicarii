@@ -74,6 +74,11 @@ export async function POST(req: Request) {
           firstName: data.first_name as string | undefined,
           lastName: data.last_name as string | undefined,
           imageUrl: data.image_url as string | undefined,
+          // New signups start on the free plan with its monthly allotment.
+          // Never set these in the update branch: existing users keep their
+          // plan and meter (the schema default "beta" covers pre-billing rows).
+          plan: "free",
+          creditsRemaining: 200,
         },
         update: {
           email: primaryEmail,

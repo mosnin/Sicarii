@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
+import { spendCredits } from "@/lib/credits";
 
 export class OpError extends Error {
   status: number;
@@ -142,6 +143,10 @@ export async function enrichEntity(userId: string, id: string) {
   const enriched = await enrichDomain(entity.domain);
   if (!enriched) throw new OpError(`No enrichment data found for ${entity.domain}`, 404);
 
+  // Debit only on a hit (the not-found path above throws first), and never on
+  // the idempotent short-circuit when firmographics already exist.
+  await spendCredits(userId, "company_aspect", { ref: id });
+
   const { raw, fields } = enriched;
   const data: Prisma.EntityUncheckedUpdateInput = {
     status: "ENRICHED",
@@ -170,6 +175,12 @@ export async function findCompanies(
     throw new OpError("Discovery is not configured (EXA_API_KEY missing)", 501);
   const count = Math.min(Math.max(input.count ?? 10, 1), 25);
   const found = await exaFindCompanies(input.query, count);
+
+  // Debit only when the discovery actually returned companies - a dry query
+  // costs nothing.
+  if (found.length > 0) {
+    await spendCredits(userId, "find_companies");
+  }
 
   const existing = await prisma.entity.findMany({
     where: { userId },
