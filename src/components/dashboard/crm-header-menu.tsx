@@ -3,15 +3,21 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MoreVertical, Map, Trash2, Loader2 } from "lucide-react";
+import { MoreVertical, Map, Download, Trash2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
-// Three-dots menu on the CRM entities tab. Hosts the optional Map view and a
-// one-tap cleanup for auto-imported (Synthoz webhook) junk records.
+// Three-dots menu on the CRM entities tab. Hosts the optional Map view, CSV
+// exports, and a one-tap cleanup for auto-imported (Synthoz webhook) junk records.
 export function CrmHeaderMenu() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
+
+  // Navigating to the export endpoint downloads the CSV attachment in place.
+  function exportCsv(href: string) {
+    setOpen(false);
+    window.location.href = href;
+  }
 
   async function cleanup() {
     if (
@@ -69,6 +75,22 @@ export function CrmHeaderMenu() {
                 <Map className="h-4 w-4 text-muted-foreground" />
                 Map view
               </Link>
+              <button
+                type="button"
+                onClick={() => exportCsv("/api/contacts/export")}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+              >
+                <Download className="h-4 w-4 text-muted-foreground" />
+                Export contacts (CSV)
+              </button>
+              <button
+                type="button"
+                onClick={() => exportCsv("/api/entities/export")}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+              >
+                <Download className="h-4 w-4 text-muted-foreground" />
+                Export companies (CSV)
+              </button>
               <button
                 type="button"
                 onClick={cleanup}
