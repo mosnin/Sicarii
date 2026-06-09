@@ -1,34 +1,38 @@
 # The Heading
 
 > The one thing to push right now. Surfaced first by the Ratchet hook each
-> session. Keep it to a glance; update it on every RECORD. (Volatile — the *aim*.)
+> session. Keep it to a glance; update it on every RECORD. (Volatile - the *aim*.)
 
-**Binding constraint right now:** _Everything is built and **build-verified**, but
-nothing has been **observed running**. The whole product (agent, MCP, enrich,
-vector memory) is gated on keys + a live DB the founder controls. The product
-can't be *felt* — or trusted — until it runs once, end to end, on the deploy._
+**Binding constraint right now:** _The product is correct, honest, billable, and
+hardened (audits 2026-06-06 -> 09; PRs #19-#29) - and still **unfelt**. Nothing
+has been observed running end to end, and the product has zero choreographed
+moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
 
-**Next task — light it up (verification + the last data wires):**
+**The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
 
-| # | Task | Leverage | InfoValue | Cost | why it's next |
-|---|------|----------|-----------|------|---------------|
-| ① | **Set keys on Vercel + `pnpm db:push`** (enable pgvector on Supabase). Keys: Clerk, Supabase `DATABASE_URL`/`DIRECT_URL`, `OPENAI_API_KEY`, `TAVILY_API_KEY`, `SYNTHOZ_API_KEY`. | H | H | L | unblocks every observed rung |
-| ② | **Observe the spark** — run "find nail salons in Miami" → push → enrich, live. Falsify or confirm the agent feels like quiet leverage. | H | H | L | the 5-second test (founder) |
-| ③ | **Synthoz response → Contacts** parsing — needs one real payload to map enrichment into contact rows. | M | H | M | makes enrich populate the CRM |
-| ④ | **AgentMail** wiring (Settings key + threads on the contact page). | M | M | M | conversation context for cold email |
-| ⑤ | **MCP runtime handshake** — connect a real MCP client with an API key, call a tool. | M | H | L | proves the agent-access surface |
+| # | Phase | Owner | Status |
+|---|-------|-------|--------|
+| 0 | **Reality Gate**: fund Explorium/Pipe0, set Upstash, run pgvector index, then run discover -> enrich -> news LIVE and record whether it feels like quiet leverage | **Founder** | BLOCKING |
+| 1 | **Moment 1 - The First Run**: one sentence -> the CRM builds itself, live, in 60s | agents (Wave A) | ready to build |
+| 2 | **Moment 2 - The Pulse**: "While you were away, your agent added 14 companies..." | agents (Wave A) | ready to build |
+| 3 | **Moment 3 - Visible Trust**: provenance on every enriched field + the honest blank | agents (Wave B) | after Wave A |
+| 4 | **Moment 4 - The Handshake**: /connect page that listens and flips green on the first agent write (+ first live OAuth observation) | agents (Wave B) | after Wave A |
+| 5 | **Gate out**: founder runs all four moments as one journey; subtraction holds; RECORD | Founder | last |
 
-**Riskiest assumption under test now:** _That fresh-context + vector-recall feels as
-capable as full history, AND that pgvector `db push` + the v6 streaming loop work on
-the real deploy. Cheapest falsifier: ① + ② once keys land._
+**Riskiest assumption under test:** _that the enrichment loop, observed live,
+feels like quiet leverage. If it works but feels flat, we fix the loop before
+choreographing it - chrome on a flat loop is the unforgivable spend._
 
-**WIP on the critical path:** _none — awaiting founder (keys + db push)._
+**Standing debts (unchanged, founder-side):** Creem products + keys (checkout
+goes live) · `/terms` needs a real SaaS ToS · prisma migrate deploy · DB unique
+constraints (dedupe first) · Explorium top-up (currently 403ing in prod).
 
-**DONE this session:** Ritual installed · scaffolding imported · full rebrand to
-**Scalar** · IA restructured · Prisma-on-Supabase · CRM = Entities + Contacts ·
-Synthoz client + enrich · **secure MCP server (12 tools) + per-user API keys** ·
-**Scalar agent at `/agent`** (OpenAI, 13 tools, fresh-context + pgvector recall) ·
-merged to `main` (PR #1) · all build-verified (tsc + eslint + next build green) ·
-Gate Cards 0001–0005.
+**Hard rule this cycle:** no new surfaces, providers, or tools. Moments, not
+features. Radar/Field/Map/Skills stay demoted.
 
-<!-- Founder Call: the Alignment ranking encodes taste. Founder confirms true north. -->
+**DONE recent cycles:** rebrand + product marketing site (intelligence-first) ·
+manifesto · 26-tool MCP server + OAuth (DCR/PKCE, redirect-validated) · billing
+meter + Creem scaffolding + pricing w/ launch sale · CSV export + pagination ·
+honest FAQ/About, agency pages deleted · 33 tests · five audits recorded ·
+enrichment accuracy holes closed · Pipe0/logo/news fixed · creation guard +
+rate limiting (durable w/ Upstash) · claims integrity restored (PRs #19-#29).
