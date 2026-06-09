@@ -2,24 +2,21 @@ import Link from "next/link";
 import { LogoMark } from "@/components/brand/logo-mark";
 
 const footerLinks = {
-  build: [
-    { label: "Software", href: "/services#software" },
-    { label: "Commerce", href: "/services#commerce" },
-    { label: "AI", href: "/services#ai" },
-    { label: "Infrastructure", href: "/services#infrastructure" },
-  ],
-  studio: [
-    { label: "About Us", href: "/about" },
-    { label: "Manifesto", href: "/manifesto" },
-    { label: "Portfolio", href: "/portfolio" },
+  product: [
+    { label: "Capabilities", href: "/#capabilities" },
+    { label: "Intelligence", href: "/#intelligence" },
     { label: "Pricing", href: "/pricing" },
+    { label: "Manifesto", href: "/manifesto" },
+  ],
+  company: [
+    { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
     { label: "FAQ", href: "/faq" },
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
-    { label: "Client Login", href: "/sign-in" },
+    { label: "Sign In", href: "/sign-in" },
   ],
 };
 
@@ -42,9 +39,9 @@ export function Footer() {
             </div>
 
             <div>
-              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Build</h4>
+              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Product</h4>
               <ul className="space-y-2.5">
-                {footerLinks.build.map((link) => (
+                {footerLinks.product.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
@@ -58,9 +55,9 @@ export function Footer() {
             </div>
 
             <div>
-              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Studio</h4>
+              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Company</h4>
               <ul className="space-y-2.5">
-                {footerLinks.studio.map((link) => (
+                {footerLinks.company.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}

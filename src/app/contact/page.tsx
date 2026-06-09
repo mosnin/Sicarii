@@ -177,7 +177,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold">Email</h3>
-                      <p className="text-sm text-muted-foreground mt-1">hello@scalar.agency</p>
+                      <p className="text-sm text-muted-foreground mt-1">hello@tryscalar.xyz</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -204,7 +204,7 @@ export default function ContactPage() {
                     <div>
                       <h3 className="font-semibold">Location</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Remote-first agency serving clients worldwide.
+                        Remote-first team. Scalar works wherever your agents do.
                       </p>
                     </div>
                   </CardContent>

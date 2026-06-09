@@ -6,46 +6,38 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Zap, Shield, Users, Eye, Target, Heart } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 
-const values = [
-  {
-    icon: Eye,
-    title: "Transparency",
-    description: "You see every step of the build process. No black boxes, no mystery timelines. Real-time visibility from day one.",
-  },
-  {
-    icon: Zap,
-    title: "Speed Without Shortcuts",
-    description: "We deliver fast because we have battle-tested processes - not because we cut corners. Quality is non-negotiable.",
-  },
-  {
-    icon: Target,
-    title: "Results-Driven",
-    description: "Every decision we make is geared toward your business outcomes. Beautiful design means nothing without conversions.",
-  },
-  {
-    icon: Shield,
-    title: "Reliability",
-    description: "We stand behind our work with post-launch support and a structured revision process. We're here for the long haul.",
-  },
-  {
-    icon: Heart,
-    title: "Partnership",
-    description: "We're not just vendors - we're invested in your success. Direct communication, honest feedback, and genuine care.",
-  },
-  {
-    icon: Users,
-    title: "Client-First",
-    description: "Your needs drive every project. We listen carefully, ask the right questions, and build exactly what you envision.",
-  },
-];
+const easeOut = [0.16, 1, 0.3, 1] as const;
 
-const timeline = [
-  { year: "Founded", event: "Started with a mission to make professional digital services accessible to businesses of all sizes." },
-  { year: "Growing", event: "Expanded our team and service offerings to cover web apps, ecommerce, funnels, AI, and infrastructure." },
-  { year: "Today", event: "Serving clients worldwide with a transparent, phase-based approach that puts you in control." },
+// The story, told straight: why Scalar exists. No invented history, no client
+// counts, no team-size theater. Three beats and the principle that anchors them.
+const story = [
+  {
+    eyebrow: "The problem",
+    title: "Agents are brilliant at doing. Terrible at remembering.",
+    body: [
+      "An agent researches a company, drafts the outreach, finds the right person, and then forgets all of it. The output lands in scattered markdown files and loose notes: no schema, no dedup, no interface, no consistency.",
+      "So it re-researches the same company twice. It contradicts itself. And you can't browse, query, or trust any of the work it already did. Agents without a real database are goldfish with PhDs.",
+    ],
+  },
+  {
+    eyebrow: "The answer",
+    title: "Give the work a structured home.",
+    body: [
+      "Scalar is the place agent work lands and stays consistent: typed companies, contacts, deals, and emails in a real database, deduped and validated on the way in.",
+      "And it comes with a real UI, so you can see, trust, edit, and navigate everything your agent did. Structure for the machine, an interface for the human, intelligence built into both.",
+    ],
+  },
+  {
+    eyebrow: "Agent-first",
+    title: "Built for agents to operate, over MCP.",
+    body: [
+      "Scalar was built agent-first from day one. A secure MCP surface and per-user API keys mean your agent, whether that's Claude, OpenClaw, Hermes, or the built-in one, operates the CRM directly: discovering leads, enriching records, tracking deals, running email.",
+      "Agents and humans go through the same operations layer, so there is never drift between what the agent does and what you see.",
+    ],
+  },
 ];
 
 export default function AboutPage() {
@@ -56,139 +48,101 @@ export default function AboutPage() {
         {/* Hero */}
         <section className="relative py-24 sm:py-32 overflow-hidden">
           <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90, 176, 232,0.12),transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
-            <Badge variant="orange" className="mb-4">About Us</Badge>
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Building digital solutions{" "}
-              <span className="text-gradient-orange">with purpose</span>
+            <Badge variant="orange" className="mb-4">About</Badge>
+            <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+              The CRM your{" "}
+              <span className="text-gradient-orange">agents run</span>
             </h1>
             <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Scalar exists to bridge the gap between ambitious businesses
-              and the digital tools they need to grow. We believe every client
-              deserves transparency, quality, and speed.
+              Scalar exists because agent work deserves a better home than a
+              folder of markdown files. This is the why.
             </p>
           </div>
         </section>
 
-        {/* Mission */}
-        <section className="py-20 sm:py-28">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
-              <div>
-                <h2 className="text-3xl font-bold sm:text-4xl">Our Mission</h2>
-                <p className="mt-4 text-lg text-muted-foreground">
-                  We created Scalar because we saw too many businesses getting burned by
-                  opaque agencies - missed deadlines, unclear pricing, and zero visibility
-                  into what was actually happening with their project.
-                </p>
-                <p className="mt-4 text-muted-foreground">
-                  Our platform changes that. From the moment you select a service to the
-                  day we launch, you have a real-time dashboard showing exactly where your
-                  project stands. You can upload files, request revisions, and message our
-                  team directly - all in one place.
-                </p>
-                <p className="mt-4 text-muted-foreground">
-                  We believe the best client relationships are built on trust, and trust
-                  starts with transparency.
-                </p>
-              </div>
-              <div className="flex justify-center">
-                <div className="relative">
-                  <div className="rounded-2xl border border-border bg-card p-8 max-w-sm">
-                    <LogoMark className="mx-auto block h-20 w-20" />
-                    <h3 className="text-xl font-bold text-center mt-6">Scalar</h3>
-                    <p className="text-sm text-muted-foreground text-center mt-2">
-                      Strength through clarity. Excellence through transparency.
-                    </p>
-                  </div>
-                  <div className="absolute -inset-4 rounded-3xl bg-orange/5 -z-10" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Values */}
-        <section className="py-20 sm:py-28 bg-muted/30 dark:bg-charcoal-dark/30">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <Badge variant="orange" className="mb-4">Our Values</Badge>
-              <h2 className="text-3xl font-bold sm:text-4xl">What drives us</h2>
-            </div>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {values.map((value, index) => {
-                const Icon = value.icon;
-                return (
-                  <motion.div
-                    key={value.title}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: index * 0.08 }}
-                    className="rounded-xl border border-border bg-card p-6"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange/10 mb-4">
-                      <Icon className="h-5 w-5 text-orange" />
-                    </div>
-                    <h3 className="font-semibold text-lg">{value.title}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">{value.description}</p>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* Timeline */}
+        {/* Story */}
         <section className="py-20 sm:py-28">
           <div className="mx-auto max-w-3xl px-4">
-            <h2 className="text-3xl font-bold text-center mb-12">Our Journey</h2>
-            <div className="space-y-8">
-              {timeline.map((item, index) => (
+            <div className="space-y-20">
+              {story.map((section, index) => (
                 <motion.div
-                  key={item.year}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  key={section.eyebrow}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="flex gap-6"
+                  transition={{ duration: 0.5, delay: index * 0.05, ease: easeOut }}
                 >
-                  <div className="flex flex-col items-center">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange text-white text-xs font-bold">
-                      {index + 1}
-                    </div>
-                    {index < timeline.length - 1 && (
-                      <div className="w-0.5 flex-1 bg-border mt-2" />
-                    )}
-                  </div>
-                  <div className="pb-8">
-                    <p className="font-semibold text-orange">{item.year}</p>
-                    <p className="mt-1 text-muted-foreground">{item.event}</p>
-                  </div>
+                  <p className="text-xs uppercase tracking-[0.25em] text-orange/80">
+                    {section.eyebrow}
+                  </p>
+                  <h2 className="font-brand mt-3 text-2xl text-foreground sm:text-3xl">
+                    {section.title}
+                  </h2>
+                  {section.body.map((paragraph) => (
+                    <p key={paragraph.slice(0, 32)} className="mt-4 text-muted-foreground leading-relaxed">
+                      {paragraph}
+                    </p>
+                  ))}
                 </motion.div>
               ))}
             </div>
           </div>
         </section>
 
+        {/* The principle */}
+        <section className="py-20 sm:py-28 bg-muted/30 dark:bg-charcoal-dark/30">
+          <div className="mx-auto max-w-3xl px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, ease: easeOut }}
+              className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 sm:p-12 text-center"
+            >
+              <LogoMark className="mx-auto h-10 w-10" />
+              <p className="mt-6 text-xs uppercase tracking-[0.25em] text-orange/80">
+                The principle
+              </p>
+              <h2 className="font-brand mt-3 text-2xl text-foreground sm:text-3xl">
+                A wrong answer is worse than{" "}
+                <span className="text-gradient-orange">no answer</span>
+              </h2>
+              <p className="mt-4 text-muted-foreground leading-relaxed">
+                Enrichment must attach to the right person at the right company,
+                verified, every time. If Scalar can&apos;t confirm a match, it
+                returns nothing rather than a guess, and a miss is never charged.
+                Accuracy beats coverage. That rule is the soul of the product:
+                a CRM you can trust is the only kind worth having.
+              </p>
+              <Button variant="outline" className="mt-8" asChild>
+                <Link href="/manifesto">
+                  Read the manifesto <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </motion.div>
+          </div>
+        </section>
+
         {/* CTA */}
-        <section className="py-24 sm:py-32 bg-muted/30 dark:bg-charcoal-dark/30">
+        <section className="py-24 sm:py-32">
           <div className="mx-auto max-w-3xl px-4 text-center">
-            <h2 className="text-3xl font-bold sm:text-4xl">
-              Let&apos;s build something great together
+            <h2 className="font-brand text-3xl text-foreground sm:text-4xl">
+              Connect your agent. It just works.
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Ready to start your next project? We&apos;d love to hear from you.
+              Point your agent at Scalar over MCP, or use the built-in one, and
+              watch your CRM fill itself.
             </p>
             <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
               <Button variant="glow" size="lg" asChild>
-                <Link href="/contact">
-                  Get in Touch <ArrowRight className="ml-1 h-5 w-5" />
+                <Link href="/sign-up">
+                  Get Started <ArrowRight className="ml-1 h-5 w-5" />
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link href="/services">View Services</Link>
+                <Link href="/pricing">See Pricing</Link>
               </Button>
             </div>
           </div>
