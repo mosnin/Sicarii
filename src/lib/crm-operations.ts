@@ -9,6 +9,7 @@ import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 import { googleMapsLeads, scrapeSiteContacts, apifyGoogleSearch, isApifyConfigured } from "@/lib/apify";
 import { spendCredits, ensureCredits } from "@/lib/credits";
+import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 
 export class OpError extends Error {
   status: number;
@@ -163,7 +164,31 @@ export async function enrichEntity(userId: string, id: string) {
     if (!entity.description && fields.description) data.description = fields.description;
     if (!entity.website && fields.website) data.website = fields.website;
   }
-  return prisma.entity.update({ where: { id }, data });
+  const updated = await prisma.entity.update({ where: { id }, data });
+
+  // Record provenance for the firmographics blob and any columns filled.
+  const provenanceRows: ProvenanceInput[] = [
+    { recordType: "entity", recordId: id, field: "firmographics", source: "explorium",
+      confidence: CONFIDENCE.explorium },
+  ];
+  if (fields) {
+    const colMap: Record<string, string | null | undefined> = {
+      industry: fields.industry,
+      location: fields.address,
+      phone: fields.phone,
+      description: fields.description,
+      website: fields.website,
+    };
+    for (const [col, val] of Object.entries(colMap)) {
+      if (val) {
+        provenanceRows.push({ recordType: "entity", recordId: id, field: col,
+          source: "explorium", confidence: CONFIDENCE.explorium, value: val });
+      }
+    }
+  }
+  await recordProvenanceBulk(provenanceRows);
+
+  return updated;
 }
 
 /** Discover CRM-ready companies from a prompt via Exa deep research, dedupe by

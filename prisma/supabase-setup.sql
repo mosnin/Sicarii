@@ -212,6 +212,32 @@ DO $$ BEGIN
     FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+-- field_provenance - Moment 3 (Visible Trust): one row per enriched field,
+-- recording who supplied it, confidence, value snapshot, and freshness.
+CREATE TABLE IF NOT EXISTS "field_provenance" (
+  "id"            TEXT NOT NULL,
+  "recordType"    TEXT NOT NULL,
+  "recordId"      TEXT NOT NULL,
+  "field"         TEXT NOT NULL,
+  "source"        TEXT NOT NULL,
+  "confidence"    INTEGER NOT NULL DEFAULT 80,
+  "valueSnapshot" TEXT,
+  "retrievedAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "verifiedAt"    TIMESTAMP(3),
+  "stale"         BOOLEAN NOT NULL DEFAULT false,
+  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"     TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "field_provenance_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "field_provenance_recordType_recordId_field_key"
+  ON "field_provenance" ("recordType", "recordId", "field");
+CREATE INDEX IF NOT EXISTS "field_provenance_recordType_recordId_idx"
+  ON "field_provenance" ("recordType", "recordId");
+CREATE INDEX IF NOT EXISTS "field_provenance_retrievedAt_idx"
+  ON "field_provenance" ("retrievedAt");
+CREATE INDEX IF NOT EXISTS "field_provenance_stale_idx"
+  ON "field_provenance" ("stale");
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 4. Vector similarity index for memory recall. WITHOUT this, every agent turn
 --    does a full sequential scan of the user's memory_chunks and degrades
