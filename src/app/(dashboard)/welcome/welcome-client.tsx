@@ -6,6 +6,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { FloatIn } from "@/components/ui/float-in";
@@ -16,6 +17,13 @@ import type { WelcomeEvent, WelcomeCompanyRow } from "@/lib/welcome-orchestrator
 // --------------------------------------------------------------------------
 
 type Phase = "idle" | "running" | "done";
+
+// One-tap example prompts so the first run never starts from a blank page.
+const EXAMPLES = [
+  { label: "Series A SaaS, US", value: "Series A SaaS startups with 20 to 100 employees in the US that use Salesforce" },
+  { label: "Fintech hiring SDRs", value: "Series B fintech companies hiring SDRs" },
+  { label: "AI infra startups", value: "AI infrastructure startups that raised funding in the last year" },
+];
 
 // --------------------------------------------------------------------------
 // Main component
@@ -198,6 +206,23 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
                 disabled={phase === "running"}
                 maxLength={500}
               />
+
+              {/* One-tap examples to remove the blank-page friction */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="self-center text-xs text-muted-foreground">Try:</span>
+                {EXAMPLES.map((ex) => (
+                  <button
+                    key={ex.label}
+                    type="button"
+                    onClick={() => setIcp(ex.value)}
+                    disabled={phase === "running"}
+                    className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:opacity-50"
+                  >
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="mt-4 flex items-center justify-between gap-4">
                 <button
                   type="button"
@@ -312,7 +337,16 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
             <Button size="lg" onClick={goToDashboard}>
               See your CRM
             </Button>
+            <Link
+              href="/integrations"
+              className="inline-flex h-11 items-center justify-center rounded-full border border-border px-6 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            >
+              Connect your agent
+            </Link>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Next: connect an agent over MCP and it keeps your database growing.
+          </p>
         </motion.div>
       )}
     </div>

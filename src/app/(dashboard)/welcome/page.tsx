@@ -8,6 +8,7 @@
 import { redirect } from "next/navigation";
 import { getDbUser } from "@/lib/server-user";
 import { hasCompletedFirstRun } from "@/lib/welcome-orchestrator";
+import { AsciiField } from "@/components/dashboard/ascii-field";
 import { WelcomeClient } from "./welcome-client";
 
 export const dynamic = "force-dynamic";
@@ -26,5 +27,14 @@ export default async function WelcomePage() {
     redirect("/dashboard");
   }
 
-  return <WelcomeClient firstName={user.firstName ?? undefined} />;
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Brand backdrop, matching the marketing surfaces. */}
+      <AsciiField className="pointer-events-none fixed inset-0 h-full w-full opacity-[0.10] dark:opacity-25" cell={14} speed={0.07} gradient />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.12),transparent_55%)]" />
+      <div className="relative z-10">
+        <WelcomeClient firstName={user.firstName ?? undefined} />
+      </div>
+    </div>
+  );
 }
