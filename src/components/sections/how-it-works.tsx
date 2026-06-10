@@ -31,7 +31,7 @@ export function HowItWorksSection() {
     <section id="how-it-works" className="relative scroll-mt-24 bg-muted/40 py-24 dark:bg-charcoal-dark sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-orange/80">How it works</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-primary">How it works</p>
           <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             From a name to a <span className="text-gradient-orange">record you trust</span>
           </h2>
@@ -51,7 +51,7 @@ export function HowItWorksSection() {
               className="h-full"
             >
               <SpotlightCard className="h-full p-6">
-                <span className="font-brand text-3xl text-orange tabular-nums">
+                <span className="font-brand text-3xl text-primary tabular-nums">
                   0{index + 1}
                 </span>
                 <h3 className="font-brand mt-3 text-xl text-foreground">{step.title}</h3>
