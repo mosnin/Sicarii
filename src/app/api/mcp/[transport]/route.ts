@@ -4,6 +4,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { authenticateApiKey, bearerFromRequest } from "@/lib/api-auth";
 import { userIdFromAccessToken } from "@/lib/oauth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { topUpHint } from "@/lib/x402";
 import {
   OpError,
   listEntities,
@@ -60,12 +61,23 @@ function userIdFrom(extra: { authInfo?: AuthInfo }): string {
   return id;
 }
 
+// Turn an OpError into a tool message, appending the x402 top-up pointer when
+// the failure is "out of credits" (402) and agent payments are configured, so a
+// connected agent can pay its own way and retry instead of stalling.
+function opErrorMessage(e: OpError): string {
+  if (e.status === 402) {
+    const hint = topUpHint();
+    if (hint) return `${e.message} ${hint}`;
+  }
+  return e.message;
+}
+
 // Wrap a tool body so OpErrors become clean tool errors instead of 500s.
 async function run(fn: () => Promise<unknown>): Promise<ToolResult> {
   try {
     return ok(await fn());
   } catch (e) {
-    if (e instanceof OpError) return fail(e.message);
+    if (e instanceof OpError) return fail(opErrorMessage(e));
     console.error("MCP tool error", e);
     return fail("Internal error");
   }
@@ -87,7 +99,7 @@ async function gated(
     if (!rate.success) return fail("Rate limit reached for this tool. Please wait a moment and try again.");
     return ok(await fn(userId));
   } catch (e) {
-    if (e instanceof OpError) return fail(e.message);
+    if (e instanceof OpError) return fail(opErrorMessage(e));
     console.error("MCP tool error", e);
     return fail("Internal error");
   }

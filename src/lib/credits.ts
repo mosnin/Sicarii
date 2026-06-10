@@ -139,6 +139,107 @@ export async function spendCredits(
   }
 }
 
+// Monthly list price (USD) for each paid plan. The single source of truth for
+// what a plan costs, used by the x402 subscribe path (Creem mirrors these in
+// its own product config). Kept next to PLANS so price and allotment move
+// together.
+export const PLAN_USD = {
+  starter: 39,
+  pro: 129,
+  business: 99,
+} as const;
+
+export type PaidPlanName = keyof typeof PLAN_USD;
+
+/**
+ * Has this exact payment ref already been credited? Returns the balance it left
+ * behind, or null if never seen. Used to make paid top-ups idempotent against a
+ * client that retries after a settlement already went through.
+ */
+export async function alreadyCredited(
+  userId: string,
+  ref: string,
+): Promise<number | null> {
+  const row = await prisma.creditLedger.findFirst({
+    where: { userId, ref },
+    select: { balanceAfter: true },
+  });
+  return row ? row.balanceAfter : null;
+}
+
+/**
+ * Add credits from a paid top-up (money in, the inverse of spendCredits). The
+ * ledger write is awaited and reliable here, not best-effort: it is the
+ * idempotency record. If `ref` was already credited, this is a no-op that
+ * returns the existing balance, so a retried payment never double-credits.
+ */
+export async function addCredits(
+  userId: string,
+  credits: number,
+  opts: { action: string; ref?: string },
+): Promise<number> {
+  if (!Number.isInteger(credits) || credits <= 0) {
+    throw new OpError("credits must be a positive integer", 400);
+  }
+  if (opts.ref) {
+    const prior = await alreadyCredited(userId, opts.ref);
+    if (prior !== null) return prior;
+  }
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { creditsRemaining: { increment: credits } },
+    select: { creditsRemaining: true },
+  });
+  await prisma.creditLedger.create({
+    data: {
+      userId,
+      delta: credits,
+      balanceAfter: updated.creditsRemaining,
+      action: opts.action,
+      ref: opts.ref,
+    },
+  });
+  return updated.creditsRemaining;
+}
+
+/**
+ * Apply a paid plan: set the plan, refill to its allotment, and start a fresh
+ * 30-day window. Mirrors the Creem upgrade path, for the x402 subscribe route
+ * (USDC is not recurring, so this grants a 30-day pass the agent re-pays).
+ * Idempotent on `ref` so a retried payment does not refill twice.
+ */
+export async function applyPlan(
+  userId: string,
+  plan: PaidPlanName,
+  opts: { ref?: string } = {},
+): Promise<void> {
+  if (opts.ref) {
+    const seen = await prisma.creditLedger.findFirst({
+      where: { userId, ref: opts.ref },
+      select: { id: true },
+    });
+    if (seen) return;
+  }
+  const credits = PLANS[plan].credits;
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      plan,
+      creditsRemaining: credits,
+      creditsResetAt: new Date(Date.now() + RESET_INTERVAL_MS),
+    },
+  });
+  await prisma.creditLedger.create({
+    data: {
+      userId,
+      delta: credits,
+      balanceAfter: credits,
+      action: `plan_${plan}`,
+      ref: opts.ref,
+    },
+  });
+}
+
 /** Current plan + meter state for the billing UI (applies a due reset first). */
 export async function getBilling(userId: string): Promise<{
   plan: string;

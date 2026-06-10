@@ -17,6 +17,7 @@
     "@ai-sdk/openai": "^3.0.67",
     "@ai-sdk/react": "^3.0.198",
     "@clerk/nextjs": "^7.0.6",
+    "@coinbase/x402": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.20.0",
     "@prisma/client": "^6.2.1",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -52,6 +53,8 @@
     "svix": "^1.89.0",
     "tailwind-merge": "^3.5.0",
     "uploadthing": "^7.7.4",
+    "x402": "^1.2.0",
+    "x402-next": "^1.2.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
