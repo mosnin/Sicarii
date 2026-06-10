@@ -137,7 +137,7 @@ export default function PricingPage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
           <div className="relative z-10 mx-auto max-w-3xl px-4 text-center">
             {SALE && (
-              <Badge variant="orange" className="mb-4">Launch sale: 50% off</Badge>
+              <Badge variant="primary" className="mb-4">Launch sale: 50% off</Badge>
             )}
             <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               Pricing that scales with{" "}

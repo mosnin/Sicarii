@@ -18,8 +18,12 @@ const badgeVariants = cva(
           "border-transparent bg-success/10 text-success",
         warning:
           "border-transparent bg-warning/10 text-warning",
+        primary:
+          "border-transparent bg-primary/10 text-primary",
+        // Legacy alias, kept pointing at the primary tokens so older call sites
+        // still render the brand baby blue. Prefer variant="primary" in new code.
         orange:
-          "border-transparent bg-orange/10 text-orange",
+          "border-transparent bg-primary/10 text-primary",
       },
     },
     defaultVariants: {

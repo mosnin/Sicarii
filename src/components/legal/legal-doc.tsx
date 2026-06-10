@@ -40,7 +40,7 @@ export function LegalDoc({
           <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.10),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
-            <Badge variant="orange" className="mb-4">{badge}</Badge>
+            <Badge variant="primary" className="mb-4">{badge}</Badge>
             <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl">
               {title}
             </h1>
@@ -68,7 +68,7 @@ export function LegalDoc({
                     <ul className="mt-3 space-y-2">
                       {section.bullets.map((bullet, j) => (
                         <li key={j} className="flex gap-3">
-                          <span className="mt-2 h-px w-3 shrink-0 bg-orange/60" />
+                          <span className="mt-2 h-px w-3 shrink-0 bg-primary/60" />
                           <span>{bullet}</span>
                         </li>
                       ))}
@@ -80,7 +80,7 @@ export function LegalDoc({
 
             {related && related.length > 0 && (
               <div className="mt-14 border-t border-border pt-8">
-                <p className="text-xs uppercase tracking-[0.25em] text-orange/80">Related</p>
+                <p className="text-xs uppercase tracking-[0.25em] text-primary">Related</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {related.map((item) => (
                     <Link
@@ -97,7 +97,7 @@ export function LegalDoc({
 
             <p className="mt-12 text-sm text-muted-foreground">
               Questions about this document? Email{" "}
-              <a href="mailto:hello@tryscalar.xyz" className="text-orange hover:text-orange-dark">
+              <a href="mailto:hello@tryscalar.xyz" className="text-primary hover:text-primary/80">
                 hello@tryscalar.xyz
               </a>
               .
@@ -119,14 +119,14 @@ export function L({ href, children }: { href: string; children: ReactNode }) {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-orange hover:text-orange-dark"
+        className="text-primary hover:text-primary/80"
       >
         {children}
       </a>
     );
   }
   return (
-    <Link href={href} className="text-orange hover:text-orange-dark">
+    <Link href={href} className="text-primary hover:text-primary/80">
       {children}
     </Link>
   );

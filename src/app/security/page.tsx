@@ -56,7 +56,7 @@ export default function SecurityPage() {
           <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
-            <Badge variant="orange" className="mb-4">Security &amp; Trust</Badge>
+            <Badge variant="primary" className="mb-4">Security &amp; Trust</Badge>
             <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               Your data, <span className="text-gradient-orange">yours alone</span>
             </h1>
@@ -79,7 +79,7 @@ export default function SecurityPage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.05, ease: easeOut }}
                 >
-                  <p className="text-xs uppercase tracking-[0.25em] text-orange/80">
+                  <p className="text-xs uppercase tracking-[0.25em] text-primary">
                     {pillar.eyebrow}
                   </p>
                   <h2 className="font-brand mt-3 text-2xl text-foreground sm:text-3xl">
@@ -103,7 +103,7 @@ export default function SecurityPage() {
               className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 sm:p-12"
             >
               <LogoMark className="h-10 w-10" />
-              <p className="mt-6 text-xs uppercase tracking-[0.25em] text-orange/80">
+              <p className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
                 The practices
               </p>
               <h2 className="font-brand mt-3 text-2xl text-foreground sm:text-3xl">
@@ -112,14 +112,14 @@ export default function SecurityPage() {
               <ul className="mt-8 space-y-4">
                 {practices.map((item) => (
                   <li key={item} className="flex gap-3 text-muted-foreground">
-                    <span className="mt-2.5 h-px w-4 shrink-0 bg-orange/60" />
+                    <span className="mt-2.5 h-px w-4 shrink-0 bg-primary/60" />
                     <span className="leading-relaxed">{item}</span>
                   </li>
                 ))}
               </ul>
               <p className="mt-8 text-sm text-muted-foreground">
                 Found a vulnerability? Report it to{" "}
-                <a href="mailto:hello@tryscalar.xyz" className="text-orange hover:text-orange-dark">
+                <a href="mailto:hello@tryscalar.xyz" className="text-primary hover:text-primary/80">
                   hello@tryscalar.xyz
                 </a>{" "}
                 and we will respond quickly.
