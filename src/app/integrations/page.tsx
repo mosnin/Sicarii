@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
+import { ConnectionDemo } from "@/components/marketing/connection-demo";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
@@ -85,6 +86,25 @@ export default function IntegrationsPage() {
               >
                 How your data stays yours
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Interactive connection demo */}
+        <section className="py-16 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs uppercase tracking-[0.25em] text-primary">Connect</p>
+              <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
+                Paste the config, <span className="text-gradient-orange">watch it connect</span>
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                A per-user key scopes an agent to your data and nothing else. Drop
+                the endpoint into your MCP client and the typed tools appear.
+              </p>
+            </div>
+            <div className="mt-12">
+              <ConnectionDemo />
             </div>
           </div>
         </section>
