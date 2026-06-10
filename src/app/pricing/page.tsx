@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Check, ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { UsageEstimator } from "@/components/marketing/usage-estimator";
 
 // Launch sale: list price is 2x the live price, struck through. Set SALE=false
 // to end it (prices then show at their live value with no strike-through).
@@ -170,7 +171,7 @@ export default function PricingPage() {
                   >
                     {plan.popular && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge variant="default" className="bg-orange text-white">Most popular</Badge>
+                        <Badge variant="default" className="bg-primary text-primary-foreground">Most popular</Badge>
                       </div>
                     )}
                     <CardHeader className="text-center">
@@ -226,7 +227,7 @@ export default function PricingPage() {
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-orange/80">How credits work</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-primary">How credits work</p>
               <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
                 You only pay for the <span className="text-gradient-orange">heavy lifting</span>
               </h2>
@@ -255,6 +256,25 @@ export default function PricingPage() {
               Run out? Top up anytime, or your plan resets monthly. You are only
               charged when a lookup actually returns data, never for a miss.
             </p>
+          </div>
+        </section>
+
+        {/* Interactive usage estimator */}
+        <section className="pb-24 sm:pb-28">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs uppercase tracking-[0.25em] text-primary">Estimate</p>
+              <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
+                Size it to <span className="text-gradient-orange">your month</span>
+              </h2>
+              <p className="mt-4 text-muted-foreground">
+                Drag the sliders for the work your agents do. We will add up the
+                credits and point you at the plan that fits.
+              </p>
+            </div>
+            <div className="mt-12">
+              <UsageEstimator />
+            </div>
           </div>
         </section>
       </main>
