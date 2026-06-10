@@ -34,7 +34,7 @@ export function ServicesSection() {
                 description={service.description}
                 meta={service.startingPrice}
                 href="/sign-up"
-                cta="Get Started"
+                cta="Get started"
               />
             </motion.div>
           ))}

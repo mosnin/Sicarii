@@ -22,7 +22,7 @@ export function CTASection() {
               href="/sign-up"
               className="inline-flex items-center gap-2 rounded-full bg-orange px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-orange/25 transition-all hover:bg-orange-dark hover:shadow-orange/40"
             >
-              Get Started
+              Get started
               <ArrowRight className="h-5 w-5" />
             </Link>
             <Link

@@ -3,10 +3,10 @@
 import { motion } from "motion/react";
 
 const stats = [
-  { value: "MCP", label: "Bring your own agent" },
-  { value: "1", label: "Source of truth, deduped" },
-  { value: "0", label: "Null or junk records" },
-  { value: "Yours", label: "Owned, never resold" },
+  { value: "MCP", label: "Bring your own agent, or use ours" },
+  { value: "1", label: "Source of truth, deduped on the way in" },
+  { value: "0", label: "Wrong-person matches: accuracy over coverage" },
+  { value: "Yours", label: "Owned, exportable, never resold or trained" },
 ];
 
 export function StatsBand() {

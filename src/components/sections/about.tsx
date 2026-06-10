@@ -48,7 +48,7 @@ export function AboutSection() {
               href="/sign-up"
               className="mt-8 inline-flex items-center gap-2 rounded-full bg-orange px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-dark"
             >
-              Get Started
+              Get started
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

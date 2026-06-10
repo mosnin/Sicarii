@@ -41,7 +41,7 @@ const productItems: MegaMenuItem[] = [
   { label: "Discover", href: "/#capabilities", icon: Globe, description: "Find and enrich the right companies and people" },
   { label: "Enrich", href: "/#capabilities", icon: Sparkles, description: "Fill every gap: firmographics, email, phone, more" },
   { label: "The agent", href: "/#capabilities", icon: Bot, description: "Chat that discovers, enriches, and writes your CRM" },
-  { label: "Connect over MCP", href: "/#capabilities", icon: Server, description: "Bring OpenClaw, Hermes, or Claude to your CRM" },
+  { label: "Connect over MCP", href: "/integrations", icon: Server, description: "Bring OpenClaw, Hermes, or Claude to your CRM" },
 ];
 
 const companyItems: MegaMenuItem[] = [
@@ -204,7 +204,7 @@ export function Header() {
                       href="/sign-up"
                       className="rounded-full bg-orange px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-orange/25 transition-all hover:bg-orange-dark hover:shadow-orange/40"
                     >
-                      Get Started
+                      Get started
                     </Link>
                   </>
                 ) : (
@@ -312,7 +312,7 @@ export function Header() {
                       onClick={() => setMobileOpen(false)}
                       className="flex h-12 w-full items-center justify-center gap-1.5 rounded-full bg-orange text-sm font-semibold text-white transition-colors hover:bg-orange-dark"
                     >
-                      Get Started
+                      Get started
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                     <Link

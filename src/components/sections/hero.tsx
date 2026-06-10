@@ -105,9 +105,8 @@ export function HeroSection() {
 
           <motion.p variants={item} className="max-w-2xl text-lg text-muted-foreground sm:text-xl">
             Point your agent at a name, a domain, or a prompt. It finds the right
-            companies and people, surfaces who is in-market right now, and pulls
-            deep enrichment - firmographics, tech stack, funding, news - in
-            seconds. It all lands structured, deduped, and yours.
+            companies and people, surfaces who is in-market, and enriches every
+            record. It all lands structured, deduped, and yours.
           </motion.p>
 
           <motion.div variants={item} className="mt-1 flex flex-col items-center gap-4 sm:flex-row">
@@ -115,7 +114,7 @@ export function HeroSection() {
               href="/sign-up"
               className="inline-flex items-center gap-2 rounded-full bg-orange px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-orange/25 transition-all hover:bg-orange-dark hover:shadow-orange/40 hover:-translate-y-0.5"
             >
-              Get started free
+              Get started
               <ArrowRight className="h-5 w-5" />
             </Link>
             <Link
