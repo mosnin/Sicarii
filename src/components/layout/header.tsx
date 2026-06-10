@@ -58,8 +58,8 @@ const groups: NavGroup[] = [
       eyebrow: "The thesis",
       title: "The CRM your agents run",
       body: "Lead intelligence and deal tracking that stays consistent while agents do the work.",
-      href: "/#showcase",
-      cta: "Watch it build itself",
+      href: "/#capabilities",
+      cta: "See it work",
     },
   },
   {

@@ -3,9 +3,8 @@ import { Footer } from "@/components/layout/footer";
 import { ScrollProgress } from "@/components/ui/scroll-progress";
 import { HeroSection } from "@/components/sections/hero";
 import { ProblemSection } from "@/components/sections/problem";
-import { ShowcaseSection } from "@/components/sections/showcase";
+import { CapabilitiesSection } from "@/components/sections/capabilities";
 import { IntelligenceSection } from "@/components/sections/intelligence";
-import { ServicesSection } from "@/components/sections/services";
 import { HowItWorksSection } from "@/components/sections/how-it-works";
 import { WhyScalarSection } from "@/components/sections/why-scalar";
 import { AboutSection } from "@/components/sections/about";
@@ -19,9 +18,8 @@ export default function Home() {
       <main className="flex-1">
         <HeroSection />
         <ProblemSection />
-        <ShowcaseSection />
+        <CapabilitiesSection />
         <IntelligenceSection />
-        <ServicesSection />
         <HowItWorksSection />
         <WhyScalarSection />
         <AboutSection />
