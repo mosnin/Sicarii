@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { AsciiField } from "@/components/dashboard/ascii-field";
-import { Send, Loader2, CheckCircle } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
+import { Send, Loader2 } from "lucide-react";
+
+const EASE = [0.16, 1, 0.3, 1] as const;
 
 const topics = [
   { value: "", label: "What's this about?" },
@@ -22,6 +25,7 @@ const topics = [
 ];
 
 export default function ContactPage() {
+  const reduce = useReducedMotion();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -70,13 +74,26 @@ export default function ContactPage() {
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-5">
               {/* Form */}
-              <div className="lg:col-span-3">
+              <motion.div
+                initial={reduce ? false : { opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: EASE }}
+                className="lg:col-span-3"
+              >
                 <Card>
                   <CardContent className="p-6 sm:p-8">
                     {submitted ? (
-                      <div className="py-12 text-center">
-                        <CheckCircle className="mx-auto mb-4 h-12 w-12 text-success" />
-                        <h3 className="font-brand text-xl text-foreground">Message sent</h3>
+                      <motion.div
+                        initial={reduce ? false : { opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, ease: EASE }}
+                        className="py-12 text-center"
+                      >
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-medium text-success">
+                          <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                          Sent
+                        </span>
+                        <h3 className="font-brand mt-4 text-xl text-foreground">Message sent</h3>
                         <p className="mt-2 text-muted-foreground">
                           Thanks for reaching out. We will reply within a day.
                         </p>
@@ -90,7 +107,7 @@ export default function ContactPage() {
                         >
                           Send another message
                         </Button>
-                      </div>
+                      </motion.div>
                     ) : (
                       <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -175,10 +192,15 @@ export default function ContactPage() {
                     )}
                   </CardContent>
                 </Card>
-              </div>
+              </motion.div>
 
               {/* Info: clean text rows, no icon-in-box badges */}
-              <div className="space-y-8 lg:col-span-2">
+              <motion.div
+                initial={reduce ? false : { opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1, ease: EASE }}
+                className="space-y-8 lg:col-span-2"
+              >
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-primary">Email</p>
                   <a
@@ -212,7 +234,7 @@ export default function ContactPage() {
                     <Link href="/sign-up">Get started</Link>
                   </Button>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </section>
