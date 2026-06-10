@@ -5,7 +5,6 @@ import { HeroSection } from "@/components/sections/hero";
 import { ProblemSection } from "@/components/sections/problem";
 import { ShowcaseSection } from "@/components/sections/showcase";
 import { IntelligenceSection } from "@/components/sections/intelligence";
-import { StatsBand } from "@/components/sections/stats-band";
 import { ServicesSection } from "@/components/sections/services";
 import { HowItWorksSection } from "@/components/sections/how-it-works";
 import { WhyScalarSection } from "@/components/sections/why-scalar";
@@ -22,7 +21,6 @@ export default function Home() {
         <ProblemSection />
         <ShowcaseSection />
         <IntelligenceSection />
-        <StatsBand />
         <ServicesSection />
         <HowItWorksSection />
         <WhyScalarSection />

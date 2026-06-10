@@ -22,7 +22,7 @@ const steps = [
   {
     title: "Operate",
     description:
-      "Run outreach through AgentMail, replay context on every reply, and watch every agent action in the audit log. Trust by design.",
+      "Email relationships run through AgentMail, context replays on every reply, and every agent action lands in the audit log. Trust by design.",
   },
 ];
 
@@ -33,7 +33,7 @@ export function HowItWorksSection() {
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs uppercase tracking-[0.25em] text-orange/80">How it works</p>
           <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
-            From first contact to <span className="text-gradient-orange">closed deal</span>
+            From a name to a <span className="text-gradient-orange">record you trust</span>
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
             A calm, transparent process that keeps you in control the whole way through.
