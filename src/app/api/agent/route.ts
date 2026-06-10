@@ -18,6 +18,9 @@ import {
   createEntity,
   updateEntity,
   enrichEntity,
+  discoverLocalLeads,
+  extractSiteContacts,
+  searchGoogle,
   listContacts,
   getContact,
   createContact,
@@ -41,6 +44,11 @@ How you work:
 - To find leads, use search_web (e.g. "nail salons in Miami"), summarize what you
   found, then ASK before pushing them into the CRM. On confirmation, use
   create_entity for each business.
+- For LOCAL businesses, prefer maps_leads (query plus a location) - it pulls them
+  from Google Maps with phone and address and adds them straight to the CRM. Use
+  extract_contact_details to pull emails/phones off a company site, and
+  google_search for general web results. These spend credits, so confirm intent
+  before large runs.
 - Enrich a business with enrich_entity.
 - Read/write the CRM with the list/get/create/update tools. Always work from real
   data - call tools rather than guessing.
@@ -166,6 +174,32 @@ export async function POST(req: Request) {
           return { error: "Web search isn't configured (TAVILY_API_KEY missing)." };
         return exec(() => tavilySearch(query, { maxResults }));
       },
+    }),
+    maps_leads: tool({
+      description:
+        "Discover local businesses on Google Maps (Apify) and add the new ones to the CRM as entities, deduped by domain then name. The tool for local lead gen, e.g. query 'dentists', location 'Austin, TX'. Costs 15 credits per run that returns leads.",
+      inputSchema: z.object({
+        query: z.string(),
+        location: z.string().optional(),
+        count: z.number().int().min(1).max(20).optional(),
+      }),
+      execute: ({ query, location, count }) =>
+        exec(() => discoverLocalLeads(userId, { query, location, count })),
+    }),
+    extract_contact_details: tool({
+      description:
+        "Extract a company site's public contact details (emails, phones, socials) via Apify, tied to the site host. Returns the data to review and save selectively with create_contact; does not auto-create contacts. Costs 8 credits when details are found.",
+      inputSchema: z.object({ url: z.string() }),
+      execute: ({ url }) => exec(() => extractSiteContacts(userId, url)),
+    }),
+    google_search: tool({
+      description:
+        "Run a Google web search via Apify for organic results. For finding and adding companies, prefer maps_leads. Costs 4 credits per search that returns results.",
+      inputSchema: z.object({
+        query: z.string(),
+        limit: z.number().int().min(1).max(20).optional(),
+      }),
+      execute: ({ query, limit }) => exec(() => searchGoogle(userId, { query, limit })),
     }),
     search_crm: tool({
       description: "Search across entities and contacts in the CRM.",
