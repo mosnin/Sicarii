@@ -13,11 +13,17 @@ moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
 | # | Phase | Owner | Status |
 |---|-------|-------|--------|
 | 0 | **Reality Gate**: fund Explorium/Pipe0, set Upstash, run pgvector index, then run discover -> enrich -> news LIVE and record whether it feels like quiet leverage | **Founder** | BLOCKING |
-| 1 | **Moment 1 - The First Run**: one sentence -> the CRM builds itself, live, in 60s | agents (Wave A) | ready to build |
+| 1 | **Moment 1 - The First Run**: one sentence -> the CRM builds itself, live, in 60s | agents (Wave A) | SHIPPED (code): `/welcome` + streaming orchestrator, honest sample-degradation until Phase 0. Live observation owed. |
 | 2 | **Moment 2 - The Pulse**: "While you were away, your agent added 14 companies..." | agents (Wave A) | ready to build |
-| 3 | **Moment 3 - Visible Trust**: provenance on every enriched field + the honest blank | agents (Wave B) | after Wave A |
+| 3 | **Moment 3 - Visible Trust**: provenance on every enriched field + the honest blank | agents (Wave B) | SHIPPED (code): `FieldProvenance` + `via Explorium, 3d ago` + re-verify endpoint. |
 | 4 | **Moment 4 - The Handshake**: /connect page that listens and flips green on the first agent write (+ first live OAuth observation) | agents (Wave B) | after Wave A |
 | 5 | **Gate out**: founder runs all four moments as one journey; subtraction holds; RECORD | Founder | last |
+
+**Parallel cycle shipped: 0007 - x402 agent payments** (`0007-x402-agent-payments.md`).
+The CRM your agents run now lets the agents pay for it: USDC top-ups
+(`/api/x402/topup`) and 30-day plan purchase (`/api/x402/subscribe`) over HTTP
+402, env-gated to 501 until the treasury wallet + CDP keys are set. One live
+mainnet settlement is owed to reality (the x402 sibling of Phase 0).
 
 **Riskiest assumption under test:** _that the enrichment loop, observed live,
 feels like quiet leverage. If it works but feels flat, we fix the loop before

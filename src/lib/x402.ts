@@ -13,7 +13,9 @@
 // the public facilitator and test USDC, so nothing moves real money until the
 // founder sets X402_NETWORK=base and the CDP keys.
 
-import { useFacilitator } from "x402/verify";
+// Imported under a non-"use" alias: useFacilitator is an x402 factory, not a
+// React hook, and the react-hooks lint rule keys off the name prefix.
+import { useFacilitator as createFacilitatorClient } from "x402/verify";
 import {
   PaymentPayloadSchema,
   settleResponseHeader,
@@ -143,7 +145,7 @@ export async function verifyPayment(
   payload: PaymentPayload,
   requirements: PaymentRequirements,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const { verify } = useFacilitator(await facilitatorConfig());
+  const { verify } = createFacilitatorClient(await facilitatorConfig());
   const res = await verify(payload, requirements);
   return res.isValid ? { ok: true } : { ok: false, reason: res.invalidReason ?? "invalid_payment" };
 }
@@ -156,7 +158,7 @@ export async function settlePayment(
   | { ok: true; transaction: string; responseHeader: string }
   | { ok: false; reason: string }
 > {
-  const { settle } = useFacilitator(await facilitatorConfig());
+  const { settle } = createFacilitatorClient(await facilitatorConfig());
   const res = await settle(payload, requirements);
   if (!res.success) return { ok: false, reason: res.errorReason ?? "settle_failed" };
   return {
