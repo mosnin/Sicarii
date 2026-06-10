@@ -1,8 +1,10 @@
+import { redirect } from "next/navigation";
 import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { DashboardPreloader } from "@/components/dashboard/dashboard-preloader";
+import { hasCompletedFirstRun } from "@/lib/welcome-orchestrator";
 
 // New radar signals over the last 7 days. Kept out of the component body so the
 // time window (Date.now) isn't an impure call during render.
@@ -17,6 +19,15 @@ async function recentRadarSignals(userId: string): Promise<number> {
 
 export default async function DashboardPage() {
   const user = await getDbUser();
+
+  // New users with no ICP and no data land on /welcome for the first-run
+  // performance. Check is fast (two small queries) and skipped if not needed.
+  if (user) {
+    const done = await hasCompletedFirstRun(user.id);
+    if (!done) {
+      redirect("/welcome");
+    }
+  }
 
   const [totalContacts, totalCompanies, enriched, inConversation, radarActive] = user
     ? await Promise.all([
