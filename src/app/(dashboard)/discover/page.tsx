@@ -31,6 +31,7 @@ import {
   BookOpen,
   ScanSearch,
   CalendarClock,
+  MapPin,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -148,12 +149,46 @@ const CATEGORIES: Category[] = [
           { key: "url", label: "Company website", placeholder: "https://acme.com" },
         ],
       },
+      {
+        id: "apify-serp",
+        icon: Globe,
+        title: "Google search",
+        body: "Pull organic Google results via Apify and refine them into companies.",
+        saveAs: "link",
+        badge: "Apify",
+        fields: [
+          { key: "query", label: "Query", placeholder: "boutique marketing agencies in Chicago" },
+        ],
+      },
     ],
   },
   {
     id: "company",
     label: "Company intelligence",
     tools: [
+      {
+        id: "maps-leads",
+        icon: MapPin,
+        title: "Local business leads",
+        body: "Find local businesses on Google Maps via Apify - name, website, phone, and address, straight into your CRM.",
+        saveAs: "entity",
+        badge: "Apify",
+        fields: [
+          { key: "query", label: "What to find", placeholder: "dentists" },
+          { key: "location", label: "Location", placeholder: "Austin, TX" },
+          {
+            key: "numResults",
+            label: "How many",
+            placeholder: "12",
+            type: "select",
+            options: [
+              { value: "5", label: "5" },
+              { value: "12", label: "12" },
+              { value: "20", label: "20" },
+            ],
+          },
+        ],
+      },
       {
         id: "search-companies",
         icon: Building2,
@@ -223,6 +258,17 @@ const CATEGORIES: Category[] = [
     id: "people",
     label: "People & contacts",
     tools: [
+      {
+        id: "contact-info",
+        icon: Mail,
+        title: "Extract contact details",
+        body: "Apify scrapes a company site for emails, phones, and socials, deduped and saved as contacts.",
+        saveAs: "contact",
+        badge: "Apify",
+        fields: [
+          { key: "url", label: "Company website", placeholder: "https://acme.com" },
+        ],
+      },
       {
         id: "find-people",
         icon: UserSearch,
