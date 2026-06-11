@@ -12,11 +12,12 @@ const cspHeader = [
   "style-src 'self' 'unsafe-inline'",
   // Allow any https image so scraped company logos / contact photos can render.
   "img-src 'self' data: blob: https:",
-  // Background videos: manifesto on Cloudinary, the homepage hero on CloudFront.
-  "media-src 'self' https://res.cloudinary.com https://d8j0ntlcm91z4.cloudfront.net",
+  // Manifesto page video is hosted on Cloudinary.
+  "media-src 'self' https://res.cloudinary.com",
   "font-src 'self'",
   "connect-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://checkout.creem.io",
-  "frame-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com",
+  // demo.arcade.software hosts the homepage hero product demo embed.
+  "frame-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://demo.arcade.software",
 ].join("; ");
 
 const nextConfig: NextConfig = {
