@@ -1,4 +1,3 @@
-import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ScrollProgress } from "@/components/ui/scroll-progress";
 import { HeroSection } from "@/components/sections/hero";
@@ -14,7 +13,6 @@ export default function Home() {
   return (
     <>
       <ScrollProgress />
-      <Header />
       <main className="flex-1">
         <HeroSection />
         <ProblemSection />
