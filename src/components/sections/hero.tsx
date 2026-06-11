@@ -5,22 +5,14 @@ import Link from "next/link";
 import gsap from "gsap";
 import { Lock } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { LogoMark } from "@/components/brand/logo-mark";
 
 // The homepage hero is a full-viewport cinematic block: a CloudFront video
-// behind a liquid-glass nav, a two-line headline, and a bottom call to action.
-// Faithful to the cinematic spec, with Scalar's wordmark and copy, and
-// positioned `absolute` inside a `relative h-screen` block so the sections
-// below scroll normally instead of being overlapped by fixed elements.
+// behind a two-line headline and a bottom call to action. Navigation is the
+// shared floating Header (rendered by the page), so the nav stays consistent
+// with every other page. Positioned `absolute` inside a `relative h-screen`
+// block so the sections below scroll normally instead of being overlapped.
 const VIDEO_SRC =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260510_060007_60275ce7-030c-4668-a160-8f364ec537d3.mp4";
-
-const NAV_LINKS = [
-  { label: "PRODUCT", href: "/#capabilities" },
-  { label: "INTEGRATIONS", href: "/integrations" },
-  { label: "MANIFESTO", href: "/manifesto" },
-  { label: "CONTACT", href: "/contact" },
-];
 
 export function HeroSection() {
   const reduce = useReducedMotion();
@@ -85,33 +77,6 @@ export function HeroSection() {
       </div>
       {/* Subtle vignette so white text holds on any frame */}
       <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/40 via-transparent to-black/50" />
-
-      {/* Header */}
-      <header className="absolute inset-x-0 top-0 z-50 flex items-center justify-between px-6 py-8 sm:px-10">
-        <Link href="/" className="flex items-center gap-2 text-[17px] font-semibold tracking-tight">
-          <LogoMark className="h-5 w-5" />
-          Scalar
-        </Link>
-
-        <nav className="liquid-glass hidden items-center gap-1 rounded-full px-2 py-2 md:flex">
-          {NAV_LINKS.map((l) => (
-            <Link
-              key={l.label}
-              href={l.href}
-              className="rounded-full px-4 py-1.5 text-[11px] font-medium tracking-[0.12em] text-white/90 transition-colors duration-200 hover:text-white"
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-
-        <Link
-          href="/sign-up"
-          className="liquid-glass rounded-full px-5 py-2.5 text-[11px] font-medium tracking-[0.12em] text-white/90 transition-colors hover:text-white"
-        >
-          GET STARTED
-        </Link>
-      </header>
 
       {/* Headline */}
       <motion.div
