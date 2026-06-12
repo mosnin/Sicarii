@@ -18,34 +18,6 @@ export function SignUpForm() {
 
   return (
     <div className="rounded-3xl border border-border bg-card/80 p-6 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-8 dark:shadow-black/40">
-      <label className="mb-6 flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-background/50 p-4 text-left transition-colors hover:border-orange/40">
-        <span
-          className={cn(
-            "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
-            agreed ? "border-orange bg-orange text-white" : "border-border bg-background"
-          )}
-        >
-          {agreed && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-        </span>
-        <input
-          type="checkbox"
-          className="sr-only"
-          checked={agreed}
-          onChange={(e) => setAgreed(e.target.checked)}
-        />
-        <span className="text-sm leading-relaxed text-muted-foreground">
-          I agree to Scalar&apos;s{" "}
-          <Link href="/terms" className="text-orange hover:text-orange-dark">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy" className="text-orange hover:text-orange-dark">
-            Privacy Policy
-          </Link>
-          .
-        </span>
-      </label>
-
       <div
         className={cn(
           "transition-all duration-300",
@@ -60,11 +32,41 @@ export function SignUpForm() {
         />
       </div>
 
-      {!agreed && (
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Agree to the terms above to create your account.
-        </p>
-      )}
+      <div className="mt-6">
+        {!agreed && (
+          <p className="mb-4 text-center text-xs text-muted-foreground">
+            Agree to the terms below to create your account.
+          </p>
+        )}
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-background/50 p-4 text-left transition-colors hover:border-orange/40">
+          <span
+            className={cn(
+              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+              agreed ? "border-orange bg-orange text-white" : "border-border bg-background"
+            )}
+          >
+            {agreed && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+          </span>
+          <input
+            type="checkbox"
+            className="sr-only"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+          />
+          <span className="text-sm leading-relaxed text-muted-foreground">
+            I agree to Scalar&apos;s{" "}
+            <Link href="/terms" className="text-orange hover:text-orange-dark">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-orange hover:text-orange-dark">
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
+      </div>
     </div>
   );
 }
