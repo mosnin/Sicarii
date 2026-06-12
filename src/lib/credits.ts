@@ -140,8 +140,8 @@ export async function spendCredits(
 }
 
 // Monthly list price (USD) for each paid plan. The single source of truth for
-// what a plan costs, used by the x402 subscribe path (Creem mirrors these in
-// its own product config). Kept next to PLANS so price and allotment move
+// what a plan costs, used by the x402 subscribe path (Stripe mirrors these in
+// its own Price config). Kept next to PLANS so price and allotment move
 // together.
 export const PLAN_USD = {
   starter: 39,
@@ -204,7 +204,7 @@ export async function addCredits(
 
 /**
  * Apply a paid plan: set the plan, refill to its allotment, and start a fresh
- * 30-day window. Mirrors the Creem upgrade path, for the x402 subscribe route
+ * 30-day window. Mirrors the Stripe upgrade path, for the x402 subscribe route
  * (USDC is not recurring, so this grants a 30-day pass the agent re-pays).
  * Idempotent on `ref` so a retried payment does not refill twice.
  */

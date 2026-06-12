@@ -16,7 +16,7 @@ import {
 // Buy a plan over x402. A connected agent pays the monthly price in USDC and the
 // account is set to that plan with a fresh 30-day window. USDC is not recurring,
 // so this is a 30-day pass the agent re-pays; humans paying by card still go
-// through Creem (/api/billing/checkout). Same 402 -> pay -> retry dance as the
+// through Stripe (/api/billing/checkout). Same 402 -> pay -> retry dance as the
 // top-up route.
 
 const PAID_PLANS = Object.keys(PLAN_USD) as PaidPlanName[];

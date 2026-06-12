@@ -40,7 +40,7 @@ const pillars = [
 const practices = [
   "Encryption in transit across the application and APIs.",
   "Authentication handled by Clerk; we never store your password.",
-  "Payments processed by Creem.io; we never store full card numbers.",
+  "Payments processed by Stripe; we never store full card numbers.",
   "Ownership checks on every read and write, in UI, API, and agent paths.",
   "Per-user API keys, revocable, with rate limiting on automated access.",
   "A published list of every subprocessor that touches your data.",

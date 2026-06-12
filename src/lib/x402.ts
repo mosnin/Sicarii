@@ -4,7 +4,7 @@
 // authorization and retries with an X-PAYMENT header, and we verify + settle
 // through a facilitator before granting anything.
 //
-// Env-gated exactly like Creem: without X402_PAY_TO this is "not configured"
+// Env-gated exactly like Stripe: without X402_PAY_TO this is "not configured"
 // and callers return 501. Pricing stays in lockstep with the credit meter
 // (1 credit = $0.01), so paying as you go costs the same as a plan's credits.
 //

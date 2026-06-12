@@ -40,7 +40,7 @@ export default function TermsPage() {
           heading: "Plans, credits, and billing",
           body: [
             "Scalar is priced as a seat plus usage credits, where one credit equals one cent (USD 0.01). Reading and writing your own CRM is free; credits are consumed only when an agent pulls real data from outside providers, such as discovery, enrichment, deep research, or scheduled monitors. Each operation's credit cost is shown in the product.",
-            "Paid plans renew automatically and reset their credit allowance each billing period. Payments are processed by our payment provider, Creem.io; we do not store full card details. You authorize us and Creem.io to charge your payment method for the plan you select and any top-ups you purchase. You can cancel anytime from billing settings, and cancellation takes effect at the end of the current period.",
+            "Paid plans renew automatically and reset their credit allowance each billing period. Payments are processed by our payment provider, Stripe; we do not store full card details. You authorize us and Stripe to charge your payment method for the plan you select and any top-ups you purchase. You can cancel anytime from billing settings, and cancellation takes effect at the end of the current period.",
           ],
           bullets: [
             "A miss is never charged. If a lookup cannot verify a match, it returns nothing and costs no credits.",

@@ -15,7 +15,7 @@ const cspHeader = [
   // Manifesto page video is hosted on Cloudinary.
   "media-src 'self' https://res.cloudinary.com",
   "font-src 'self'",
-  "connect-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://checkout.creem.io",
+  "connect-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com",
   // demo.arcade.software hosts the homepage hero product demo embed.
   "frame-src 'self' https://*.tryscalar.xyz https://*.clerk.dev https://*.clerk.accounts.dev https://challenges.cloudflare.com https://demo.arcade.software",
 ].join("; ");

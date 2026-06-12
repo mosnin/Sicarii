@@ -15,7 +15,7 @@ export default function RefundPolicyPage() {
         <>
           We want pricing to feel as honest as the product. This policy explains
           how subscriptions, credits, and refunds work. It is part of our Terms
-          of Service, and payments are handled by our processor, Creem.io.
+          of Service, and payments are handled by our processor, Stripe.
         </>
       }
       sections={[

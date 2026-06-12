@@ -32,7 +32,7 @@ export default function PrivacyPage() {
           heading: "Data we collect",
           bullets: [
             "Account data: your name, email, and authentication identifiers, handled by Clerk.",
-            "Billing data: your plan, credit usage, and payment records, handled by our payment processor, Creem.io. We do not store full card numbers.",
+            "Billing data: your plan, credit usage, and payment records, handled by our payment processor, Stripe. We do not store full card numbers.",
             "Customer Data: the companies, contacts, deals, emails, notes, and agent memory you create or enrich inside Scalar.",
             "Usage data: logs, device and browser information, and product analytics used to keep the service reliable and secure.",
             "Cookies: a small set of cookies needed to sign you in and run the app, described in our Cookie Policy.",
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
           heading: "How we use your data",
           bullets: [
             "To provide the service: store your CRM, run discovery and enrichment, operate the agent and MCP surface, and sync email.",
-            "To bill you: meter credit usage and process payments through Creem.io.",
+            "To bill you: meter credit usage and process payments through Stripe.",
             "To secure the service: detect abuse, enforce rate limits, and protect accounts.",
             "To support you: respond to requests and send essential service notices.",
             "To improve Scalar: understand aggregate usage. We do not use your Customer Data to train models for other customers.",

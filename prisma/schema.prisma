@@ -35,11 +35,11 @@ model User {
   // Billing: plan + credit meter. Existing users default to "beta" with 10,000
   // credits so nobody is suddenly blocked; new signups are set to "free"/200 by
   // the Clerk webhook at creation time. creditsResetAt is the next monthly
-  // refill; creemCustomerId links to the Creem.io customer once they pay.
+  // refill; stripeCustomerId links to the Stripe customer once they pay.
   plan             String    @default("beta")
   creditsRemaining Int       @default(10000)
   creditsResetAt   DateTime?
-  creemCustomerId  String?
+  stripeCustomerId String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

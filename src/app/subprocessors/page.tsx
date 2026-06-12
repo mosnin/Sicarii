@@ -35,7 +35,7 @@ export default function SubprocessorsPage() {
           heading: "Identity and payments",
           bullets: [
             "Clerk: authentication and account management.",
-            "Creem.io: subscription billing and payment processing.",
+            "Stripe: subscription billing and payment processing.",
           ],
         },
         {
