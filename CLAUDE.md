@@ -71,7 +71,8 @@ Deep context and all decisions are indexed in `@docs/README.md`.
 
 - **Stack:** Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4.
   Auth: **Clerk**. UI: Radix + shadcn-style kit in `src/components/ui`,
-  `lucide-react`, `motion`, `next-themes`. Payments: Creem.io. Uploads: Uploadthing.
+  `lucide-react`, `motion`, `next-themes`. Payments: **Stripe** (cards; migrated
+  off Creem.io 2026-06-12) + x402 USDC for agents. Uploads: Uploadthing.
 - **ORM / DB:** target is **Prisma** ORM on **Supabase** Postgres.
   ⚠️ _The tree still ships the original **Drizzle + Neon** layer (`src/db/`,
   `drizzle.config.ts`). Migration to Prisma is an open cycle - see the Heading._

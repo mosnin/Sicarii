@@ -29,8 +29,11 @@ mainnet settlement is owed to reality (the x402 sibling of Phase 0).
 feels like quiet leverage. If it works but feels flat, we fix the loop before
 choreographing it - chrome on a flat loop is the unforgivable spend._
 
-**Standing debts (unchanged, founder-side):** Creem products + keys (checkout
-goes live) · `/terms` needs a real SaaS ToS · prisma migrate deploy · DB unique
+**Standing debts (founder-side):** Stripe goes live (2026-06-12 migration off
+Creem): create monthly Prices, set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET /
+STRIPE_PRICE_*, register /api/webhooks/stripe (checkout.session.completed,
+invoice.paid, customer.subscription.deleted), run `pnpm prisma db push` ·
+`/terms` needs a real SaaS ToS · prisma migrate deploy · DB unique
 constraints (dedupe first) · Explorium top-up (currently 403ing in prod).
 
 **Hard rule this cycle:** no new surfaces, providers, or tools. Moments, not
