@@ -1,89 +1,100 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { AnimatedGroup } from "@/components/ui/animated-group";
+import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
+import { AsciiField } from "@/components/dashboard/ascii-field";
+import { RotatingWord } from "@/components/ui/rotating-word";
+import { LiveDemo } from "@/components/marketing/live-demo";
+import { ArrowRight } from "lucide-react";
 
-// Homepage hero: a clean, centered statement with a framed product canvas left
-// blank for an arcade.so demo embed. Navigation is the shared Header (rendered
-// by the page) so the nav stays consistent sitewide. Colors come from the
-// design tokens, so this is on the Scalar baby-blue/white palette by default.
-const transitionVariants = {
-  item: {
-    hidden: { opacity: 0, filter: "blur(12px)", y: 12 },
-    visible: {
-      opacity: 1,
-      filter: "blur(0px)",
-      y: 0,
-      transition: { type: "spring", bounce: 0.3, duration: 1.5 },
-    },
-  },
-} as const;
+const EASE = [0.16, 1, 0.3, 1] as const;
 
-const stagger = {
-  container: { visible: { transition: { staggerChildren: 0.05, delayChildren: 0.75 } } },
-  ...transitionVariants,
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+};
+const item = {
+  hidden: { opacity: 0, y: 18, filter: "blur(6px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.6, ease: EASE } },
 };
 
 export function HeroSection() {
+  const ref = useRef<HTMLElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+  // Gentle parallax: the ASCII drifts up as you scroll past. The content does not
+  // fade, so the interactive demo stays usable while it is on screen.
+  const asciiY = useTransform(scrollYProgress, [0, 1], [0, 160]);
+
   return (
-    <section className="overflow-hidden">
-      <div className="relative pt-32 sm:pt-40">
-        {/* Soft radial wash up from the page background */}
-        <div className="absolute inset-0 -z-10 size-full [background:radial-gradient(125%_125%_at_50%_100%,transparent_0%,var(--background)_75%)]" />
+    <section
+      ref={ref}
+      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-4 pb-24 pt-28 sm:px-6 sm:pt-32 lg:px-8"
+    >
+      <motion.div style={reduce ? undefined : { y: asciiY }} className="absolute inset-0">
+        <AsciiField className="absolute inset-0 h-full w-full opacity-30 dark:opacity-25" cell={14} speed={0.09} gradient />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(90,176,232,0.05),transparent_55%)]" />
+        {/* fade the field into the page so the demo below sits on clean ground */}
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-background" />
+      </motion.div>
 
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="mx-auto max-w-3xl text-center">
-            <AnimatedGroup variants={stagger}>
-              <h1 className="font-brand mx-auto mt-8 max-w-2xl text-balance text-5xl font-medium tracking-tight text-foreground md:text-6xl">
-                Lead intelligence at agent speed
-              </h1>
-              <p className="mx-auto mt-8 max-w-2xl text-pretty text-lg text-muted-foreground">
-                Point your agent at a name, a domain, or a prompt. It discovers the
-                right companies, surfaces who is in-market, and enriches every
-                record. Structured, deduped, and wholly yours.
-              </p>
-              <div className="mt-12 flex items-center justify-center gap-2">
-                <div className="rounded-[14px] border border-border bg-foreground/10 p-0.5">
-                  <Button asChild size="lg" className="rounded-xl px-5 text-base">
-                    <Link href="/sign-up">
-                      <span className="text-nowrap">Get started</span>
-                    </Link>
-                  </Button>
-                </div>
-                <Button asChild size="lg" variant="ghost" className="h-[42px] rounded-xl px-5 text-base">
-                  <Link href="/#capabilities">
-                    <span className="text-nowrap">See it work</span>
-                  </Link>
-                </Button>
-              </div>
-            </AnimatedGroup>
-          </div>
-        </div>
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="relative z-10 flex max-w-3xl flex-col items-center gap-6 text-center"
+      >
+        <motion.p variants={item} className="text-xs uppercase tracking-[0.3em] text-primary">
+          The CRM your agents run
+        </motion.p>
 
-        {/* Product canvas: the live arcade.so demo */}
-        <AnimatedGroup variants={stagger}>
-          <div className="relative mt-12 px-2 sm:mt-16 md:mt-20">
-            <div className="relative mx-auto max-w-5xl overflow-hidden rounded-2xl border border-border bg-background p-2 shadow-lg shadow-black/10 ring-1 ring-background sm:p-4">
-              <div className="overflow-hidden rounded-xl border border-border/60">
-                {/* Arcade responsive embed: padding-bottom preserves the demo's
-                    native aspect ratio; the iframe fills it absolutely. */}
-                <div style={{ position: "relative", paddingBottom: "calc(49.26605504587156% + 41px)", height: 0, width: "100%" }}>
-                  <iframe
-                    src="https://demo.arcade.software/yzXGKtd6gmfShw2bUbEA?embed&embed_mobile=inline&embed_desktop=inline&show_copy_link=true"
-                    title="Set Up Automated Market Scans with Radar"
-                    frameBorder="0"
-                    loading="lazy"
-                    allowFullScreen
-                    allow="clipboard-write"
-                    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", colorScheme: "light" }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </AnimatedGroup>
-      </div>
+        <motion.h1
+          variants={item}
+          className="font-brand text-4xl leading-[1.05] tracking-tight text-foreground sm:text-6xl"
+        >
+          <span className="block">
+            <RotatingWord words={["Lead", "Company", "People", "Intent"]} className="text-gradient-orange" />
+          </span>
+          <span className="block">intelligence at agent speed</span>
+        </motion.h1>
+
+        <motion.p variants={item} className="max-w-2xl text-lg text-muted-foreground sm:text-xl">
+          Point your agent at a name, a domain, or a prompt. It finds the right
+          companies and people, surfaces who is in-market, and enriches every
+          record. It all lands structured, deduped, and yours.
+        </motion.p>
+
+        <motion.div variants={item} className="mt-1 flex flex-col items-center gap-4 sm:flex-row">
+          <Link
+            href="/sign-up"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+          >
+            Get started
+            <ArrowRight className="h-5 w-5" />
+          </Link>
+          <Link
+            href="/#how-it-works"
+            className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-base font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+          >
+            See how it works
+          </Link>
+        </motion.div>
+      </motion.div>
+
+      {/* The live, interactive product demo: the CRM building itself. */}
+      <motion.div
+        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40, filter: "blur(8px)" }}
+        animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 0.9, delay: 0.35, ease: EASE }}
+        className="relative z-10 mt-14 w-full"
+      >
+        <LiveDemo />
+      </motion.div>
     </section>
   );
 }
