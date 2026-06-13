@@ -61,29 +61,25 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Product canvas: framed and intentionally blank, ready for an arcade.so demo */}
+        {/* Product canvas: the live arcade.so demo */}
         <AnimatedGroup variants={stagger}>
-          <div className="relative mt-12 overflow-hidden px-2 sm:mt-16 md:mt-20">
-            <div
-              aria-hidden
-              className="absolute inset-0 z-10 bg-gradient-to-b from-transparent from-35% to-background"
-            />
-            <div className="relative mx-auto max-w-5xl overflow-hidden rounded-2xl border border-border bg-background p-4 shadow-lg shadow-black/10 ring-1 ring-background">
-              {/*
-                Arcade.so demo embeds here. When the demo is ready, drop the
-                iframe inside the canvas below, e.g.:
-
-                <iframe
-                  src="https://demo.arcade.software/XXXXXXXX"
-                  title="Scalar product demo"
-                  loading="lazy"
-                  allow="clipboard-write; fullscreen"
-                  className="absolute inset-0 h-full w-full"
-                />
-
-                demo.arcade.software is already allow-listed in the CSP frame-src.
-              */}
-              <div className="relative aspect-[15/8] w-full overflow-hidden rounded-xl border border-border/60 bg-muted/40" />
+          <div className="relative mt-12 px-2 sm:mt-16 md:mt-20">
+            <div className="relative mx-auto max-w-5xl overflow-hidden rounded-2xl border border-border bg-background p-2 shadow-lg shadow-black/10 ring-1 ring-background sm:p-4">
+              <div className="overflow-hidden rounded-xl border border-border/60">
+                {/* Arcade responsive embed: padding-bottom preserves the demo's
+                    native aspect ratio; the iframe fills it absolutely. */}
+                <div style={{ position: "relative", paddingBottom: "calc(49.26605504587156% + 41px)", height: 0, width: "100%" }}>
+                  <iframe
+                    src="https://demo.arcade.software/yzXGKtd6gmfShw2bUbEA?embed&embed_mobile=inline&embed_desktop=inline&show_copy_link=true"
+                    title="Set Up Automated Market Scans with Radar"
+                    frameBorder="0"
+                    loading="lazy"
+                    allowFullScreen
+                    allow="clipboard-write"
+                    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", colorScheme: "light" }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </AnimatedGroup>
