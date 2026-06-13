@@ -29,7 +29,8 @@ const drivers: Driver[] = [
   { id: "research", label: "Deep research runs", unit: "reports", cost: 18, max: 200, step: 5, default: 20 },
 ];
 
-// Plan monthly credit allotments, smallest first. Business is pooled per seat.
+// Plan monthly credit allotments, smallest first. Business is omitted here: it
+// carries fewer credits than Pro (it trades credit volume for more monitors).
 const plans = [
   { name: "Free", credits: 200, href: "/sign-up" },
   { name: "Starter", credits: 3000, href: "/sign-up?plan=starter" },

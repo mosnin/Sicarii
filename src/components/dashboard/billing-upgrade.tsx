@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 const UPGRADES = [
   { plan: "starter", label: "Starter", price: "$39/mo" },
   { plan: "pro", label: "Pro", price: "$129/mo" },
-  { plan: "business", label: "Business", price: "$99/seat/mo" },
+  { plan: "business", label: "Business", price: "$99/mo" },
 ] as const;
 
 export function BillingUpgrade() {

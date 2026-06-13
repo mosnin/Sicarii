@@ -18,7 +18,6 @@ const SALE = true;
 type Plan = {
   name: string;
   price: number; // live monthly price (USD)
-  perSeat?: boolean;
   credits: string;
   blurb: string;
   features: string[];
@@ -77,14 +76,12 @@ const plans: Plan[] = [
   {
     name: "Business",
     price: 99,
-    perSeat: true,
-    credits: "8,000 credits / seat / mo (pooled)",
-    blurb: "For teams operating agents together.",
+    credits: "8,000 credits / mo",
+    blurb: "For running a wall of monitors on autopilot.",
     features: [
-      "3+ seats, pooled credits",
+      "1 seat",
       "Everything in Pro",
       "25 scheduled monitors",
-      "Shared workspace",
       "Priority support",
     ],
     cta: "Get Business",
@@ -119,9 +116,7 @@ function PriceTag({ plan }: { plan: Plan }) {
       )}
       <div className="flex items-baseline gap-1">
         <span className="font-brand text-5xl text-foreground">${plan.price}</span>
-        <span className="text-sm text-muted-foreground">
-          /{plan.perSeat ? "seat/mo" : "mo"}
-        </span>
+        <span className="text-sm text-muted-foreground">/mo</span>
       </div>
     </div>
   );
