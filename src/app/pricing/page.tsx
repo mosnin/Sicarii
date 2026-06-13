@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Check, ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { UsageEstimator } from "@/components/marketing/usage-estimator";
 
 // Launch sale: list price is 2x the live price, struck through. Set SALE=false
 // to end it (prices then show at their live value with no strike-through).
@@ -17,7 +18,6 @@ const SALE = true;
 type Plan = {
   name: string;
   price: number; // live monthly price (USD)
-  perSeat?: boolean;
   credits: string;
   blurb: string;
   features: string[];
@@ -76,14 +76,12 @@ const plans: Plan[] = [
   {
     name: "Business",
     price: 99,
-    perSeat: true,
-    credits: "8,000 credits / seat / mo (pooled)",
-    blurb: "For teams operating agents together.",
+    credits: "8,000 credits / mo",
+    blurb: "For running a wall of monitors on autopilot.",
     features: [
-      "3+ seats, pooled credits",
+      "1 seat",
       "Everything in Pro",
       "25 scheduled monitors",
-      "Shared workspace",
       "Priority support",
     ],
     cta: "Get Business",
@@ -118,9 +116,7 @@ function PriceTag({ plan }: { plan: Plan }) {
       )}
       <div className="flex items-baseline gap-1">
         <span className="font-brand text-5xl text-foreground">${plan.price}</span>
-        <span className="text-sm text-muted-foreground">
-          /{plan.perSeat ? "seat/mo" : "mo"}
-        </span>
+        <span className="text-sm text-muted-foreground">/mo</span>
       </div>
     </div>
   );
@@ -136,7 +132,7 @@ export default function PricingPage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
           <div className="relative z-10 mx-auto max-w-3xl px-4 text-center">
             {SALE && (
-              <Badge variant="orange" className="mb-4">Launch sale: 50% off</Badge>
+              <Badge variant="primary" className="mb-4">Launch sale: 50% off</Badge>
             )}
             <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               Pricing that scales with{" "}
@@ -170,7 +166,7 @@ export default function PricingPage() {
                   >
                     {plan.popular && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge variant="default" className="bg-orange text-white">Most popular</Badge>
+                        <Badge variant="default" className="bg-primary text-primary-foreground">Most popular</Badge>
                       </div>
                     )}
                     <CardHeader className="text-center">
@@ -226,7 +222,7 @@ export default function PricingPage() {
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-orange/80">How credits work</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-primary">How credits work</p>
               <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
                 You only pay for the <span className="text-gradient-orange">heavy lifting</span>
               </h2>
@@ -255,6 +251,25 @@ export default function PricingPage() {
               Run out? Top up anytime, or your plan resets monthly. You are only
               charged when a lookup actually returns data, never for a miss.
             </p>
+          </div>
+        </section>
+
+        {/* Interactive usage estimator */}
+        <section className="pb-24 sm:pb-28">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs uppercase tracking-[0.25em] text-primary">Estimate</p>
+              <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
+                Size it to <span className="text-gradient-orange">your month</span>
+              </h2>
+              <p className="mt-4 text-muted-foreground">
+                Drag the sliders for the work your agents do. We will add up the
+                credits and point you at the plan that fits.
+              </p>
+            </div>
+            <div className="mt-12">
+              <UsageEstimator />
+            </div>
           </div>
         </section>
       </main>

@@ -1,8 +1,11 @@
+import { redirect } from "next/navigation";
 import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { DashboardPreloader } from "@/components/dashboard/dashboard-preloader";
+import { hasCompletedFirstRun } from "@/lib/welcome-orchestrator";
+import { computePulse } from "@/lib/pulse";
 
 // New radar signals over the last 7 days. Kept out of the component body so the
 // time window (Date.now) isn't an impure call during render.
@@ -17,6 +20,15 @@ async function recentRadarSignals(userId: string): Promise<number> {
 
 export default async function DashboardPage() {
   const user = await getDbUser();
+
+  // New users with no ICP and no data land on /welcome for the first-run
+  // performance. Check is fast (two small queries) and skipped if not needed.
+  if (user) {
+    const done = await hasCompletedFirstRun(user.id);
+    if (!done) {
+      redirect("/welcome");
+    }
+  }
 
   const [totalContacts, totalCompanies, enriched, inConversation, radarActive] = user
     ? await Promise.all([
@@ -41,6 +53,21 @@ export default async function DashboardPage() {
   // The living-state number on the dashboard's Radar line.
   const radarSignals = user ? await recentRadarSignals(user.id) : 0;
 
+  // The Pulse: what the agent did since the last dashboard visit. Compute the
+  // delta from the PREVIOUS lastSeenAt, then stamp it forward. Skipped on the
+  // very first visit (lastSeenAt null) so nobody gets their whole history
+  // bragged back at them; computePulse returns null when the window is empty.
+  let pulse = null;
+  if (user) {
+    if (user.lastSeenAt) {
+      pulse = await computePulse(user.id, user.lastSeenAt);
+    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastSeenAt: new Date() },
+    });
+  }
+
   return (
     <>
       <DashboardPreloader name={user?.firstName ?? ""} />
@@ -52,6 +79,7 @@ export default async function DashboardPage() {
         inConversation={inConversation}
         radarActive={radarActive}
         radarSignals={radarSignals}
+        pulse={pulse}
       />
     </>
   );

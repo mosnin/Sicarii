@@ -14,6 +14,7 @@ import { spendCredits, ensureCredits } from "@/lib/credits";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
 import { getPeopleAtCompany, isExploriumConfigured } from "@/lib/explorium";
+import { recordProvenance, CONFIDENCE } from "@/lib/provenance";
 
 export type Field = "linkedin" | "email" | "phone";
 
@@ -257,6 +258,16 @@ export async function enrichContactField(
   // Debit only on a hit (the not-found paths above throw before this point);
   // a miss never costs credits.
   await spendCredits(userId, field, { ref: contactId });
+
+  // Record provenance for the field we just filled (best-effort, never throws).
+  await recordProvenance({
+    recordType: "contact",
+    recordId: contactId,
+    field,
+    source: via ?? "unknown",
+    confidence: CONFIDENCE[(via ?? "") as keyof typeof CONFIDENCE] ?? 80,
+    value,
+  });
 
   return { contact: updated, via, value };
 }

@@ -4,6 +4,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { authenticateApiKey, bearerFromRequest } from "@/lib/api-auth";
 import { userIdFromAccessToken } from "@/lib/oauth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { topUpHint } from "@/lib/x402";
 import {
   OpError,
   listEntities,
@@ -13,6 +14,9 @@ import {
   enrichEntity,
   deleteEntity,
   findCompanies,
+  discoverLocalLeads,
+  extractSiteContacts,
+  searchGoogle,
   listContacts,
   getContact,
   createContact,
@@ -57,12 +61,23 @@ function userIdFrom(extra: { authInfo?: AuthInfo }): string {
   return id;
 }
 
+// Turn an OpError into a tool message, appending the x402 top-up pointer when
+// the failure is "out of credits" (402) and agent payments are configured, so a
+// connected agent can pay its own way and retry instead of stalling.
+function opErrorMessage(e: OpError): string {
+  if (e.status === 402) {
+    const hint = topUpHint();
+    if (hint) return `${e.message} ${hint}`;
+  }
+  return e.message;
+}
+
 // Wrap a tool body so OpErrors become clean tool errors instead of 500s.
 async function run(fn: () => Promise<unknown>): Promise<ToolResult> {
   try {
     return ok(await fn());
   } catch (e) {
-    if (e instanceof OpError) return fail(e.message);
+    if (e instanceof OpError) return fail(opErrorMessage(e));
     console.error("MCP tool error", e);
     return fail("Internal error");
   }
@@ -84,7 +99,7 @@ async function gated(
     if (!rate.success) return fail("Rate limit reached for this tool. Please wait a moment and try again.");
     return ok(await fn(userId));
   } catch (e) {
-    if (e instanceof OpError) return fail(e.message);
+    if (e instanceof OpError) return fail(opErrorMessage(e));
     console.error("MCP tool error", e);
     return fail("Internal error");
   }
@@ -310,6 +325,40 @@ const handler = createMcpHandler(
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ query, count }, extra) =>
         gated(extra, "find_companies", 10, (userId) => findCompanies(userId, { query, count })),
+    );
+
+    server.tool(
+      "maps_leads",
+      "Discover local businesses on Google Maps (via Apify) and add the new ones to the CRM as entities, deduped by domain then name. The tool for local lead gen: query is what to find ('dentists'), location narrows it ('Austin, TX'). Captures name, website, phone, and address. Costs 15 credits per run that returns leads (a dry run is free).",
+      {
+        query: z.string(),
+        location: z.string().optional(),
+        count: z.number().int().min(1).max(20).optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ query, location, count }, extra) =>
+        gated(extra, "maps_leads", 10, (userId) => discoverLocalLeads(userId, { query, location, count })),
+    );
+
+    server.tool(
+      "extract_contact_details",
+      "Extract a company site's public contact details (emails, phones, social links) via Apify, deduped and tied to the site host (a strong, accurate company link). Returns the data for you to review and save selectively with create_contact - it does NOT auto-create contacts, so it never makes junk records from unnamed emails. Costs 8 credits when details are found (nothing on a miss).",
+      { url: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ url }, extra) =>
+        gated(extra, "contact_extract", 20, (userId) => extractSiteContacts(userId, url)),
+    );
+
+    server.tool(
+      "google_search",
+      "Run a Google web search via Apify and get organic results (title, URL, snippet) to turn into entities. For finding AND adding companies in one step, prefer find_companies or maps_leads. Costs 4 credits per search that returns results.",
+      {
+        query: z.string(),
+        limit: z.number().int().min(1).max(20).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ query, limit }, extra) =>
+        gated(extra, "serp_search", 30, (userId) => searchGoogle(userId, { query, limit })),
     );
 
     /* -------------------------- Segments -------------------------- */

@@ -9,15 +9,25 @@ const isPublicRoute = createRouteMatcher([
   "/pricing(.*)",
   "/about(.*)",
   "/contact(.*)",
+  "/integrations(.*)",
   "/manifesto(.*)",
   "/faq(.*)",
+  "/security(.*)",
   "/privacy(.*)",
   "/terms(.*)",
+  "/acceptable-use(.*)",
+  "/cookies(.*)",
+  "/subprocessors(.*)",
+  "/dpa(.*)",
+  "/refund-policy(.*)",
   "/api/webhooks(.*)",
   "/api/inngest(.*)",
   // MCP server + OAuth endpoints do their own auth (Bearer / OAuth / Clerk).
   "/api/mcp(.*)",
   "/api/oauth(.*)",
+  // x402 payment endpoints resolve the user from an API key or Clerk session
+  // themselves, and the payment proof is the X-PAYMENT header.
+  "/api/x402(.*)",
   "/.well-known(.*)",
 ]);
 

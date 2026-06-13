@@ -14,6 +14,7 @@ import {
 import { getCompanyOverview, getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
 import { OpError } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
+import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 
 type Aspect = "firmographics" | "tech-stack" | "funding" | "traffic" | "overview" | "news";
 
@@ -135,6 +136,32 @@ export async function POST(
 
     // Debit only after a non-empty payload was stored - a miss costs nothing.
     await spendCredits(user.id, "company_aspect", { ref: id });
+
+    // Record provenance for column-level fields filled by firmographics.
+    // The enrichment blob itself is tracked under a synthetic field name
+    // matching the storeKey (e.g. "firmographics", "techStack").
+    const provenanceSource = usesExplorium ? "explorium" : "pipe0";
+    const provenanceRows: ProvenanceInput[] = [
+      { recordType: "entity", recordId: id, field: storeKey, source: provenanceSource,
+        confidence: CONFIDENCE[provenanceSource as keyof typeof CONFIDENCE] },
+    ];
+    // Also record individual columns that were filled (only for firmographics).
+    if (type === "firmographics" && data) {
+      const colMap: Record<string, string | undefined> = {
+        industry: typeof data.industry === "string" ? data.industry : undefined,
+        location: typeof data.location === "string" ? data.location : undefined,
+        phone: typeof data.phone === "string" ? data.phone : undefined,
+        description: typeof data.description === "string" ? data.description : undefined,
+        website: typeof data.website === "string" ? data.website : undefined,
+      };
+      for (const [col, val] of Object.entries(colMap)) {
+        if (val) {
+          provenanceRows.push({ recordType: "entity", recordId: id, field: col,
+            source: "explorium", confidence: CONFIDENCE.explorium, value: val });
+        }
+      }
+    }
+    await recordProvenanceBulk(provenanceRows);
 
     return NextResponse.json({ entity: updated, enriched: type });
   } catch (e) {

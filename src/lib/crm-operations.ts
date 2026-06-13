@@ -7,7 +7,9 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
+import { googleMapsLeads, scrapeSiteContacts, apifyGoogleSearch, isApifyConfigured } from "@/lib/apify";
 import { spendCredits, ensureCredits } from "@/lib/credits";
+import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 
 export class OpError extends Error {
   status: number;
@@ -162,7 +164,31 @@ export async function enrichEntity(userId: string, id: string) {
     if (!entity.description && fields.description) data.description = fields.description;
     if (!entity.website && fields.website) data.website = fields.website;
   }
-  return prisma.entity.update({ where: { id }, data });
+  const updated = await prisma.entity.update({ where: { id }, data });
+
+  // Record provenance for the firmographics blob and any columns filled.
+  const provenanceRows: ProvenanceInput[] = [
+    { recordType: "entity", recordId: id, field: "firmographics", source: "explorium",
+      confidence: CONFIDENCE.explorium },
+  ];
+  if (fields) {
+    const colMap: Record<string, string | null | undefined> = {
+      industry: fields.industry,
+      location: fields.address,
+      phone: fields.phone,
+      description: fields.description,
+      website: fields.website,
+    };
+    for (const [col, val] of Object.entries(colMap)) {
+      if (val) {
+        provenanceRows.push({ recordType: "entity", recordId: id, field: col,
+          source: "explorium", confidence: CONFIDENCE.explorium, value: val });
+      }
+    }
+  }
+  await recordProvenanceBulk(provenanceRows);
+
+  return updated;
 }
 
 /** Discover CRM-ready companies from a prompt via Exa deep research, dedupe by
@@ -220,6 +246,86 @@ export async function findCompanies(
     created.push({ id: entity.id, name: entity.name, domain: entity.domain });
   }
   return { query: input.query, added: created.length, skipped, created };
+}
+
+// Discover local businesses via Apify's Google Maps Actor and add the new ones
+// as entities, deduped by domain then name. Same shape/metering as
+// findCompanies; the natural tool for local lead gen (no provider but Apify
+// returns local businesses with phone + address).
+export async function discoverLocalLeads(
+  userId: string,
+  input: { query: string; location?: string; count?: number }
+) {
+  if (!isApifyConfigured())
+    throw new OpError("Local lead discovery is not configured (APIFY_TOKEN missing)", 501);
+  // Gate before the paid Apify run; debit below only when it returns leads.
+  await ensureCredits(userId, "maps_leads");
+  const count = Math.min(Math.max(input.count ?? 12, 1), 20);
+  const found = await googleMapsLeads(input.query, { location: input.location, limit: count });
+
+  if (found.length > 0) {
+    await spendCredits(userId, "maps_leads");
+  }
+
+  const existing = await prisma.entity.findMany({
+    where: { userId },
+    select: { domain: true, name: true },
+  });
+  const norm = (d?: string | null) => d?.toLowerCase().replace(/^www\./, "").trim() || undefined;
+  const seenDomains = new Set(existing.map((e) => norm(e.domain)).filter(Boolean) as string[]);
+  const seenNames = new Set(existing.map((e) => e.name.trim().toLowerCase()));
+
+  const created: { id: string; name: string; domain: string | null }[] = [];
+  let skipped = 0;
+  for (const c of found) {
+    const domain = norm(c.domain);
+    const nameKey = c.companyName.trim().toLowerCase();
+    if ((domain && seenDomains.has(domain)) || seenNames.has(nameKey)) {
+      skipped++;
+      continue;
+    }
+    const entity = await createEntity(userId, {
+      name: c.companyName,
+      domain: c.domain ?? null,
+      website: c.website ?? null,
+      phone: c.phone ?? null,
+      industry: c.industry ?? null,
+      location: c.address ?? null,
+      source: "agent:apify-maps",
+      status: "NEW",
+    });
+    if (domain) seenDomains.add(domain);
+    seenNames.add(nameKey);
+    created.push({ id: entity.id, name: entity.name, domain: entity.domain });
+  }
+  return { query: input.query, location: input.location ?? null, added: created.length, skipped, created };
+}
+
+// Pull a site's public contact details (emails/phones/socials) via Apify. Does
+// NOT auto-create contacts - returns the data so the caller saves selectively
+// (never makes junk records from unnamed emails). Self-metering: 8 credits when
+// details are found, nothing on a miss.
+export async function extractSiteContacts(userId: string, url: string) {
+  if (!isApifyConfigured())
+    throw new OpError("Contact extraction is not configured (APIFY_TOKEN missing)", 501);
+  await ensureCredits(userId, "contact_extract");
+  const contacts = await scrapeSiteContacts(url);
+  if (contacts.length > 0) await spendCredits(userId, "contact_extract");
+  return { url, found: contacts.length, contacts };
+}
+
+// Organic Google results for a query via Apify. Self-metering: 4 credits per
+// search that returns results, nothing on a miss.
+export async function searchGoogle(
+  userId: string,
+  input: { query: string; limit?: number }
+) {
+  if (!isApifyConfigured())
+    throw new OpError("Web search via Apify is not configured (APIFY_TOKEN missing)", 501);
+  await ensureCredits(userId, "serp_search");
+  const results = await apifyGoogleSearch(input.query, input.limit ?? 15);
+  if (results.length > 0) await spendCredits(userId, "serp_search");
+  return { query: input.query, count: results.length, results };
 }
 
 /* ----------------------------- Contacts ----------------------------- */
