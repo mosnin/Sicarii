@@ -2,6 +2,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ScrollProgress } from "@/components/ui/scroll-progress";
 import { HeroSection } from "@/components/sections/hero";
+import { AgentMarquee } from "@/components/sections/agent-marquee";
 import { ProblemSection } from "@/components/sections/problem";
 import { CapabilitiesSection } from "@/components/sections/capabilities";
 import { IntelligenceSection } from "@/components/sections/intelligence";
@@ -17,6 +18,7 @@ export default function Home() {
       <Header />
       <main className="flex-1">
         <HeroSection />
+        <AgentMarquee />
         <ProblemSection />
         <CapabilitiesSection />
         <IntelligenceSection />
