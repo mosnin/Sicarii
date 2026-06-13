@@ -33,10 +33,10 @@ const groups: NavGroup[] = [
   {
     label: "Product",
     links: [
-      { label: "Discover", href: "/#capabilities", description: "Find the right companies and people from a name, a domain, or a prompt." },
-      { label: "Enrich", href: "/#capabilities", description: "Fill every gap: firmographics, verified email, phone, and more." },
-      { label: "Intent signals", href: "/#intelligence", description: "See who is in-market before anyone else reaches out." },
-      { label: "The agent", href: "/#capabilities", description: "Chat that discovers, enriches, and writes to your CRM." },
+      { label: "Discover", href: "/product/discover", description: "Find the right companies and people from a name, a domain, or a prompt." },
+      { label: "Enrich", href: "/product/enrich", description: "Fill every gap: firmographics, verified email, phone, and more." },
+      { label: "Intent signals", href: "/product/signals", description: "See who is in-market before anyone else reaches out." },
+      { label: "The agent", href: "/product/agent", description: "Chat that discovers, enriches, and writes to your CRM." },
     ],
     featured: {
       eyebrow: "New",
@@ -49,7 +49,7 @@ const groups: NavGroup[] = [
   {
     label: "Solutions",
     links: [
-      { label: "Why Scalar", href: "/#why", description: "Structure, UI, and intelligence as one system, not messy files." },
+      { label: "Why Scalar", href: "/product/why", description: "Structure, UI, and intelligence as one system, not messy files." },
       { label: "For agent builders", href: "/integrations", description: "Bring your own agent over MCP and give it a real database." },
       { label: "Data you own", href: "/security", description: "A single source of truth you control, exportable, never resold." },
       { label: "Pricing", href: "/pricing", description: "A seat plus usage credits. Pay for what your agents do." },
@@ -58,14 +58,14 @@ const groups: NavGroup[] = [
       eyebrow: "The thesis",
       title: "The CRM your agents run",
       body: "Lead intelligence and deal tracking that stays consistent while agents do the work.",
-      href: "/#capabilities",
-      cta: "See it work",
+      href: "/product/why",
+      cta: "See why",
     },
   },
   {
     label: "Resources",
     links: [
-      { label: "How it works", href: "/#how-it-works", description: "Connect your agent and it just works, in three steps." },
+      { label: "How it works", href: "/product/how-it-works", description: "Connect your agent and it just works, in three steps." },
       { label: "Integrations", href: "/integrations", description: "OpenClaw, Hermes, Claude, and anything that speaks MCP." },
       { label: "Security and trust", href: "/security", description: "How your data stays isolated, owned, and yours." },
       { label: "FAQ", href: "/faq", description: "The honest answers to the common questions." },
