@@ -3,7 +3,7 @@ import { clerkAppearance } from "@/lib/clerk-appearance";
 
 export default function SignInPage() {
   return (
-    <div className="rounded-3xl border border-border bg-card/80 p-6 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-8 dark:shadow-black/40">
+    <div className="w-full min-w-0 overflow-hidden rounded-3xl border border-border bg-card/80 p-4 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-8 dark:shadow-black/40">
       <SignIn
         forceRedirectUrl="/dashboard"
         signUpUrl="/sign-up"

@@ -24,9 +24,11 @@ export const clerkAppearance: ClerkAppearance = {
     fontFamilyButtons: "var(--font-sans)",
   },
   elements: {
-    rootBox: "w-full",
-    cardBox: "w-full shadow-none border-0",
-    card: "w-full bg-transparent p-0 shadow-none",
+    // min-w-0 lets the widget shrink below its intrinsic width on narrow
+    // phones instead of overflowing its card and being clipped off-screen.
+    rootBox: "w-full min-w-0",
+    cardBox: "w-full min-w-0 shadow-none border-0",
+    card: "w-full min-w-0 bg-transparent p-0 shadow-none",
     header: "mb-2",
     headerTitle: "font-brand text-2xl text-foreground",
     headerSubtitle: "text-muted-foreground",
