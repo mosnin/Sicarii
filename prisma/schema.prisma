@@ -40,6 +40,10 @@ model User {
   creditsRemaining Int       @default(10000)
   creditsResetAt   DateTime?
   stripeCustomerId String?
+  // Stamped on every dashboard load; the prior value is the "while you were
+  // away" window for The Pulse. Null until the first dashboard visit, so a
+  // returning user never sees their whole history bragged back at them.
+  lastSeenAt       DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

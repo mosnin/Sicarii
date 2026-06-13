@@ -14,7 +14,7 @@ moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
 |---|-------|-------|--------|
 | 0 | **Reality Gate**: fund Explorium/Pipe0, set Upstash, run pgvector index, then run discover -> enrich -> news LIVE and record whether it feels like quiet leverage | **Founder** | BLOCKING |
 | 1 | **Moment 1 - The First Run**: one sentence -> the CRM builds itself, live, in 60s | agents (Wave A) | SHIPPED (code): `/welcome` + streaming orchestrator, honest sample-degradation until Phase 0. Live observation owed. |
-| 2 | **Moment 2 - The Pulse**: "While you were away, your agent added 14 companies..." | agents (Wave A) | ready to build |
+| 2 | **Moment 2 - The Pulse**: "While you were away, your agent added 14 companies..." | agents (Wave A) | SHIPPED (code): `User.lastSeenAt` + `computePulse` (agent-added entities, distinct enriched refs from CreditLedger, MonitorRun signals) rendered in the dashboard hero band; never an empty brag. Needs `prisma db push` + live observation. |
 | 3 | **Moment 3 - Visible Trust**: provenance on every enriched field + the honest blank | agents (Wave B) | SHIPPED (code): `FieldProvenance` + `via Explorium, 3d ago` + re-verify endpoint. |
 | 4 | **Moment 4 - The Handshake**: /connect page that listens and flips green on the first agent write (+ first live OAuth observation) | agents (Wave B) | after Wave A |
 | 5 | **Gate out**: founder runs all four moments as one journey; subtraction holds; RECORD | Founder | last |

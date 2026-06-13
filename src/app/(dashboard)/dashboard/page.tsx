@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { DashboardPreloader } from "@/components/dashboard/dashboard-preloader";
 import { hasCompletedFirstRun } from "@/lib/welcome-orchestrator";
+import { computePulse } from "@/lib/pulse";
 
 // New radar signals over the last 7 days. Kept out of the component body so the
 // time window (Date.now) isn't an impure call during render.
@@ -52,6 +53,21 @@ export default async function DashboardPage() {
   // The living-state number on the dashboard's Radar line.
   const radarSignals = user ? await recentRadarSignals(user.id) : 0;
 
+  // The Pulse: what the agent did since the last dashboard visit. Compute the
+  // delta from the PREVIOUS lastSeenAt, then stamp it forward. Skipped on the
+  // very first visit (lastSeenAt null) so nobody gets their whole history
+  // bragged back at them; computePulse returns null when the window is empty.
+  let pulse = null;
+  if (user) {
+    if (user.lastSeenAt) {
+      pulse = await computePulse(user.id, user.lastSeenAt);
+    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastSeenAt: new Date() },
+    });
+  }
+
   return (
     <>
       <DashboardPreloader name={user?.firstName ?? ""} />
@@ -63,6 +79,7 @@ export default async function DashboardPage() {
         inConversation={inConversation}
         radarActive={radarActive}
         radarSignals={radarSignals}
+        pulse={pulse}
       />
     </>
   );
