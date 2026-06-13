@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PLANS, planFor, type PlanName } from "@/lib/credits";
-import { verifyStripeSignature } from "@/lib/stripe";
+import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
 
 // Stripe billing webhook. Verifies the Stripe-Signature header against
 // STRIPE_WEBHOOK_SECRET, then applies plan changes:
 //   - checkout.session.completed   -> upgrade the user, refill credits, store
 //                                      the Stripe customer id
 //   - invoice.paid (cycle renewal) -> refill the meter for the current plan
+//   - customer.subscription.updated-> mid-cycle plan switch (portal/proration)
 //   - customer.subscription.deleted-> drop back to free
 // /api/webhooks(.*) is public in src/proxy.ts; the signature is the auth.
 
@@ -18,6 +19,14 @@ type StripeObject = Record<string, unknown>;
 function customerIdOf(obj: StripeObject): string | undefined {
   const c = obj.customer;
   return typeof c === "string" ? c : undefined;
+}
+
+// The Price id on a subscription's first line item, used to tell which plan a
+// subscription currently sits on after an update.
+function currentPriceId(obj: StripeObject): string | undefined {
+  const items = obj.items as { data?: Array<{ price?: { id?: string } }> } | undefined;
+  const id = items?.data?.[0]?.price?.id;
+  return typeof id === "string" ? id : undefined;
 }
 
 function metaOf(obj: StripeObject): { userId?: string; plan?: string } {
@@ -88,6 +97,54 @@ export async function POST(req: Request) {
             },
           });
         }
+      }
+      return NextResponse.json({ received: true });
+    }
+
+    // Mid-cycle plan switch (e.g. an upgrade/downgrade through Stripe's customer
+    // portal). Only act when the plan actually changed, so unrelated updates
+    // (cancel_at_period_end toggles, payment-method or card changes) never
+    // refill the meter. The proration invoice carries billing_reason
+    // "subscription_update", which the invoice.paid handler ignores, so credit
+    // is granted here exactly once.
+    if (type === "customer.subscription.updated") {
+      const status = typeof obj.status === "string" ? obj.status : "";
+      if (status !== "active" && status !== "trialing") {
+        return NextResponse.json({ received: true });
+      }
+      const newPlan = planForPriceId(currentPriceId(obj));
+      if (!newPlan) return NextResponse.json({ received: true });
+
+      const { userId } = metaOf(obj);
+      const customerId = customerIdOf(obj);
+      const resolvedId =
+        userId ??
+        (customerId
+          ? (
+              await prisma.user.findFirst({
+                where: { stripeCustomerId: customerId },
+                select: { id: true },
+              })
+            )?.id
+          : undefined);
+      if (!resolvedId) {
+        console.warn("[stripe] subscription.updated with no resolvable user");
+        return NextResponse.json({ received: true });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: resolvedId },
+        select: { plan: true },
+      });
+      if (user && user.plan !== newPlan) {
+        await prisma.user.update({
+          where: { id: resolvedId },
+          data: {
+            plan: newPlan,
+            creditsRemaining: PLANS[newPlan].credits,
+            creditsResetAt: new Date(Date.now() + RESET_MS),
+          },
+        });
       }
       return NextResponse.json({ received: true });
     }

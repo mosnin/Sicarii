@@ -19,6 +19,16 @@ export function priceIdFor(plan: PaidPlanName): string | undefined {
   return process.env[`STRIPE_PRICE_${plan.toUpperCase()}`];
 }
 
+/** Reverse of priceIdFor: map a Stripe Price id back to its paid plan, so a
+ *  webhook can tell which plan a subscription switched to. */
+export function planForPriceId(priceId: string | undefined): PaidPlanName | undefined {
+  if (!priceId) return undefined;
+  for (const plan of ["starter", "pro", "business"] as const) {
+    if (priceIdFor(plan) === priceId) return plan;
+  }
+  return undefined;
+}
+
 function encodeForm(params: Record<string, string>): string {
   return Object.entries(params)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
