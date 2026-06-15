@@ -15,6 +15,9 @@ import { cn } from "@/lib/utils";
 import { ScalarAvatar } from "@/components/dashboard/scalar-avatar";
 import { ThinkingIndicator } from "@/components/dashboard/thinking-indicator";
 import { useMobileNav } from "@/components/dashboard/dashboard-shell";
+import { useRouter } from "next/navigation";
+import { ItemCarousel } from "@/components/tool-ui/item-carousel";
+import { safeParseSerializableItemCarousel } from "@/components/tool-ui/item-carousel/schema";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,7 +28,33 @@ type RenderPart = {
   text?: string;
   state?: string;
   toolName?: string;
+  toolCallId?: string;
+  output?: unknown;
 };
+
+// Map a finished tool result to an item-carousel payload, so discovery results
+// render as a browsable strip of companies instead of a bare "done" chip.
+// Returns null for tools that don't produce a company list, or an empty result.
+function toolCarousel(name: string, output: unknown, key: string) {
+  if (name !== "find_companies" && name !== "maps_leads") return null;
+  if (!output || typeof output !== "object") return null;
+  const o = output as {
+    created?: Array<{ id?: string; name?: string; domain?: string | null }>;
+    location?: string;
+  };
+  const items = (Array.isArray(o.created) ? o.created : [])
+    .filter(
+      (c): c is { id: string; name: string; domain?: string | null } =>
+        Boolean(c && typeof c.id === "string" && typeof c.name === "string" && c.name.trim()),
+    )
+    .map((c) => ({ id: c.id, name: c.name, subtitle: c.domain ?? undefined }));
+  if (items.length === 0) return null;
+  const noun = items.length === 1 ? "company" : "companies";
+  const title = o.location
+    ? `${items.length} ${noun} in ${o.location}`
+    : `${items.length} ${noun} added`;
+  return safeParseSerializableItemCarousel({ id: `carousel-${key}`, title, items });
+}
 
 // ---------------------------------------------------------------------------
 // ToolChip - an inline chip for tool-call parts
@@ -84,6 +113,7 @@ function MessageBubble({
 }) {
   const isUser = role === "user";
   const reduce = useReducedMotion();
+  const router = useRouter();
 
   return (
     <motion.div
@@ -140,9 +170,22 @@ function MessageBubble({
               part.toolName ??
               (part.type.startsWith("tool-") ? part.type.slice(5) : "tool");
             const done = part.state === "output-available";
+            const carousel = done
+              ? toolCarousel(name, part.output, part.toolCallId ?? String(i))
+              : null;
             return (
-              <div key={i} className="flex flex-wrap gap-1.5 pl-0.5">
-                <ToolChip name={name} done={done} />
+              <div key={i} className="space-y-2">
+                <div className="flex flex-wrap gap-1.5 pl-0.5">
+                  <ToolChip name={name} done={done} />
+                </div>
+                {carousel ? (
+                  <ItemCarousel
+                    id={carousel.id}
+                    title={carousel.title}
+                    items={carousel.items}
+                    onItemClick={(itemId) => router.push(`/crm/entity/${itemId}`)}
+                  />
+                ) : null}
               </div>
             );
           }
