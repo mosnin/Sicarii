@@ -18,6 +18,9 @@ import { useMobileNav } from "@/components/dashboard/dashboard-shell";
 import { useRouter } from "next/navigation";
 import { ItemCarousel } from "@/components/tool-ui/item-carousel";
 import { safeParseSerializableItemCarousel } from "@/components/tool-ui/item-carousel/schema";
+import { CitationList } from "@/components/tool-ui/citation";
+import type { SerializableCitation } from "@/components/tool-ui/citation";
+import { safeParseSerializableCitation } from "@/components/tool-ui/citation/schema";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,6 +57,45 @@ function toolCarousel(name: string, output: unknown, key: string) {
     ? `${items.length} ${noun} in ${o.location}`
     : `${items.length} ${noun} added`;
   return safeParseSerializableItemCarousel({ id: `carousel-${key}`, title, items });
+}
+
+function hostOf(u: string): string | undefined {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return undefined;
+  }
+}
+
+// Map a web-research tool result to citation sources, so search results render
+// as clickable, attributed citations instead of a bare "done" chip. Handles
+// both search_web (a bare array) and google_search ({ results: [...] }).
+function toolCitations(name: string, output: unknown, key: string): SerializableCitation[] | null {
+  if (name !== "search_web" && name !== "google_search") return null;
+  const rows: unknown[] = Array.isArray(output)
+    ? output
+    : output && typeof output === "object" && Array.isArray((output as { results?: unknown[] }).results)
+      ? (output as { results: unknown[] }).results
+      : [];
+  const citations = rows
+    .map((r, idx): SerializableCitation | null => {
+      if (!r || typeof r !== "object") return null;
+      const o = r as Record<string, unknown>;
+      const href = typeof o.url === "string" ? o.url : typeof o.href === "string" ? o.href : "";
+      const snippet =
+        typeof o.content === "string" ? o.content : typeof o.description === "string" ? o.description : undefined;
+      const title = typeof o.title === "string" && o.title.trim() ? o.title : (hostOf(href) ?? href);
+      return safeParseSerializableCitation({
+        id: `cite-${key}-${idx}`,
+        href,
+        title,
+        snippet: snippet ? snippet.slice(0, 300) : undefined,
+        domain: hostOf(href),
+        type: "webpage",
+      });
+    })
+    .filter((c): c is SerializableCitation => c !== null);
+  return citations.length > 0 ? citations : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,9 +212,9 @@ function MessageBubble({
               part.toolName ??
               (part.type.startsWith("tool-") ? part.type.slice(5) : "tool");
             const done = part.state === "output-available";
-            const carousel = done
-              ? toolCarousel(name, part.output, part.toolCallId ?? String(i))
-              : null;
+            const partKey = part.toolCallId ?? String(i);
+            const carousel = done ? toolCarousel(name, part.output, partKey) : null;
+            const citations = done ? toolCitations(name, part.output, partKey) : null;
             return (
               <div key={i} className="space-y-2">
                 <div className="flex flex-wrap gap-1.5 pl-0.5">
@@ -184,6 +226,13 @@ function MessageBubble({
                     title={carousel.title}
                     items={carousel.items}
                     onItemClick={(itemId) => router.push(`/crm/entity/${itemId}`)}
+                  />
+                ) : null}
+                {citations ? (
+                  <CitationList
+                    id={`citations-${partKey}`}
+                    citations={citations}
+                    onNavigate={(href) => window.open(href, "_blank", "noopener,noreferrer")}
                   />
                 ) : null}
               </div>
