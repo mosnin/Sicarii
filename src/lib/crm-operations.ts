@@ -469,3 +469,125 @@ export async function searchCrm(userId: string, q: string) {
   ]);
   return { entities, contacts };
 }
+
+// ─── Outreach & activity tracking ────────────────────────────────────────────
+
+const ADVANCE_FROM_OUTREACH = new Set(["NEW", "ENRICHED"]);
+
+/** Record an outbound touch on a contact: stamp lastContactedAt, advance status
+ *  (explicit override wins; otherwise bump NEW/ENRICHED -> CONTACTED and never
+ *  downgrade a contact already further along), and log an Activity, atomically.
+ *  This is the memory that lets an agent follow up reliably. */
+export async function logOutreach(
+  userId: string,
+  input: {
+    contactId: string;
+    summary: string;
+    channel?: "email" | "linkedin" | "phone";
+    status?: ContactStatus;
+  }
+) {
+  const existing = await prisma.contact.findUnique({ where: { id: input.contactId } });
+  if (!existing || existing.userId !== userId) throw new OpError("Contact not found", 404);
+
+  const nextStatus =
+    input.status ?? (ADVANCE_FROM_OUTREACH.has(existing.status) ? "CONTACTED" : existing.status);
+
+  const [contact] = await prisma.$transaction([
+    prisma.contact.update({
+      where: { id: input.contactId },
+      data: { status: nextStatus as ContactStatus, lastContactedAt: new Date() },
+    }),
+    prisma.activity.create({
+      data: {
+        userId,
+        contactId: input.contactId,
+        kind: "outreach",
+        body: input.summary,
+        channel: input.channel ?? null,
+      },
+    }),
+  ]);
+  return { id: contact.id, status: contact.status, lastContactedAt: contact.lastContactedAt };
+}
+
+/** Log a timestamped note/call/reply on a contact or company without
+ *  overwriting its notes field. */
+export async function addActivity(
+  userId: string,
+  input: {
+    contactId?: string;
+    entityId?: string;
+    kind: "note" | "call" | "outreach" | "reply" | "status_change";
+    body: string;
+    channel?: string | null;
+  }
+) {
+  if (!input.contactId && !input.entityId)
+    throw new OpError("Provide a contactId or entityId", 400);
+  if (input.contactId) {
+    const c = await prisma.contact.findUnique({ where: { id: input.contactId } });
+    if (!c || c.userId !== userId) throw new OpError("Contact not found", 404);
+  }
+  if (input.entityId) {
+    const e = await prisma.entity.findUnique({ where: { id: input.entityId } });
+    if (!e || e.userId !== userId) throw new OpError("Entity not found", 404);
+  }
+  return prisma.activity.create({
+    data: {
+      userId,
+      contactId: input.contactId ?? null,
+      entityId: input.entityId ?? null,
+      kind: input.kind,
+      body: input.body,
+      channel: input.channel ?? null,
+    },
+  });
+}
+
+/** The activity trail (newest first) for a contact or company. */
+export async function listActivities(
+  userId: string,
+  input: { contactId?: string; entityId?: string; limit?: number }
+) {
+  if (!input.contactId && !input.entityId)
+    throw new OpError("Provide a contactId or entityId", 400);
+  return prisma.activity.findMany({
+    where: {
+      userId,
+      ...(input.contactId ? { contactId: input.contactId } : {}),
+      ...(input.entityId ? { entityId: input.entityId } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: Math.min(Math.max(input.limit ?? 50, 1), 200),
+  });
+}
+
+/** Who needs a follow-up: contacts in a status (default CONTACTED) not touched
+ *  in the last N days (default 7), oldest first. A null lastContactedAt counts
+ *  as due. This is how an autonomous agent finds who to chase next. */
+export async function listDueFollowups(
+  userId: string,
+  input: { status?: ContactStatus; staleDays?: number; limit?: number }
+) {
+  const status = (input.status ?? "CONTACTED") as ContactStatus;
+  const staleDays = input.staleDays ?? 7;
+  const cutoff = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000);
+  return prisma.contact.findMany({
+    where: {
+      userId,
+      status,
+      OR: [{ lastContactedAt: null }, { lastContactedAt: { lt: cutoff } }],
+    },
+    orderBy: { lastContactedAt: { sort: "asc", nulls: "first" } },
+    take: Math.min(Math.max(input.limit ?? 50, 1), 200),
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      company: true,
+      status: true,
+      lastContactedAt: true,
+    },
+  });
+}

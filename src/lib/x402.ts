@@ -121,12 +121,30 @@ export function paymentRequiredBody(
 /** Decode and validate the X-PAYMENT header, or null if absent/malformed. */
 export function readPayment(req: Request): PaymentPayload | null {
   const header = req.headers.get("X-PAYMENT");
+  return header ? decodePaymentHeader(header) : null;
+}
+
+/** Decode a raw base64 X-PAYMENT string (e.g. passed as an MCP tool param) into
+ *  a payment payload, or null if absent/malformed. */
+export function decodePaymentHeader(header: string): PaymentPayload | null {
   if (!header) return null;
   try {
     return PaymentPayloadSchema.parse(JSON.parse(safeBase64Decode(header)));
   } catch {
     return null;
   }
+}
+
+/** Canonical resource URL for an x402-priced action, kept identical to the HTTP
+ *  routes so a payment signed against an MCP quote and one signed against the
+ *  HTTP endpoint are interchangeable: the same on-chain nonce settles either
+ *  way, so a cross-transport replay is caught by alreadyCredited. */
+export function resourceUrl(path: string): string {
+  const base =
+    process.env.X402_RESOURCE_BASE?.replace(/\/$/, "") ||
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+    "https://tryscalar.xyz";
+  return base + path;
 }
 
 /**

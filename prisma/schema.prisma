@@ -55,6 +55,7 @@ model User {
   intentMonitors    IntentMonitor[]
   researchSchedules ResearchSchedule[]
   creditLedger      CreditLedger[]
+  activities        Activity[]
 
   @@map("users")
 }
@@ -166,7 +167,8 @@ model Entity {
   // Enrichment payload (provider-shaped JSON the agent can read/extend).
   enrichment Json?
 
-  contacts Contact[]
+  contacts   Contact[]
+  activities Activity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -224,6 +226,10 @@ model Contact {
   source String? // how it was found: "discover:domain", "manual", "import", etc.
   tags   String[]      @default([])
   notes  String?
+  // Stamped by log_outreach when the agent reaches out; powers the
+  // "who needs a follow-up" query (status is the qualitative state, this the
+  // temporal one - updatedAt is polluted by every edit, so it can't be used).
+  lastContactedAt DateTime?
 
   // Enrichment payload (provider-shaped JSON the agent can read/extend)
   enrichment Json?
@@ -231,16 +237,45 @@ model Contact {
   emails          ContactEmail[]
   segments        ContactSegment[]
   pipelineEntries PipelineEntry[]
+  activities      Activity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([userId, status])
+  @@index([userId, status, lastContactedAt])
   @@index([entityId])
   @@index([userId, updatedAt])
   @@index([userId, createdAt])
   @@map("contacts")
+}
+
+// A timestamped trail of what happened with a contact or company: outreach
+// sent, a reply, a call, a note, a status change. The generic activity log the
+// ContactEmail model only covered for email. Keeps the human-summary `notes`
+// field from being overwritten by agents and gives an honest history.
+model Activity {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Polymorphic target: at least one is set.
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  entityId  String?
+  entity    Entity?  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  kind    String // "note" | "outreach" | "call" | "reply" | "status_change"
+  body    String @db.Text
+  channel String? // "email" | "linkedin" | "phone" | null
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([contactId, createdAt])
+  @@index([entityId, createdAt])
+  @@map("activities")
 }
 
 enum ContactStatus {
