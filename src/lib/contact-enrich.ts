@@ -15,6 +15,7 @@ import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
 import { getPeopleAtCompany, isExploriumConfigured } from "@/lib/explorium";
 import { recordProvenance, CONFIDENCE } from "@/lib/provenance";
+import { findVerifiedEmail, isEmailWaterfallConfigured } from "@/lib/enrich/email-waterfall";
 
 export type Field = "linkedin" | "email" | "phone";
 
@@ -182,8 +183,8 @@ export async function enrichContactField(
       } catch (e) { console.warn("[enrich] explorium linkedin failed", e); providerError = true; }
     }
   } else {
-    if (!isPipe0Configured() && !isExploriumConfigured())
-      throw new OpError("No contact-info finder configured (set PIPE0_API_KEY or EXPLORIUM_API_KEY).", 501);
+    if (!isPipe0Configured() && !isExploriumConfigured() && !isEmailWaterfallConfigured())
+      throw new OpError("No contact-info finder configured (set PIPE0_API_KEY, EXPLORIUM_API_KEY, or an email-waterfall key).", 501);
 
     const { first, last } = splitName(contact.name);
     // The company domain must come from a STRONG source - never guessed from a
@@ -201,7 +202,14 @@ export async function enrichContactField(
       throw new OpError("Link this contact to a company (or add a work email/website) first - we won't guess the company.", 400);
 
     if (field === "email") {
-      if (isPipe0Configured()) {
+      // Resale-safe waterfall first (Anymailfinder -> Findymail, Bouncer-verified).
+      if (isEmailWaterfallConfigured()) {
+        try {
+          const w = await findVerifiedEmail({ fullName: `${first} ${last}`, domain });
+          if (w && isEmail(w.email) && sameCompany(w.email.split("@")[1], domain)) { value = w.email; via = w.via; }
+        } catch (e) { console.warn("[enrich] email waterfall failed", e); providerError = true; }
+      }
+      if (!value && isPipe0Configured()) {
         try {
           const e = pick(await findWorkEmail(first, last, domain, contact.company ?? undefined), ["email"]);
           if (isEmail(e) && sameCompany(e.split("@")[1], domain)) { value = e; via = "pipe0"; }
