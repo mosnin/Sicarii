@@ -56,6 +56,7 @@ import {
   type PaidPlanName,
 } from "@/lib/credits";
 import { storeMemory, recallMemory } from "@/lib/memory";
+import { verifyEntity } from "@/lib/enrich/verified-entity";
 import {
   listSegments,
   getSegment,
@@ -634,6 +635,14 @@ const handler = createMcpHandler(
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ plan, xPayment }, extra) =>
         gated(extra, "x402_buy", 20, (userId) => buyPlanViaMcp(userId, plan, xPayment)),
+    );
+
+    server.tool(
+      "verify_entity",
+      "Verify and enrich a company against authoritative public registries: GLEIF (global LEI), UK Companies House, and SEC EDGAR (US public companies). Adds legal name, LEI, jurisdiction, registration status, officers, and firmographics, with provenance. Free (open/public data, no credits). Matches strictly by legal name, never a same-name stranger; returns 'no record found' rather than guessing.",
+      { id: z.string() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ id }, extra) => gated(extra, "verify_entity", 20, (userId) => verifyEntity(userId, id)),
     );
 
     /* ----------------------- Outreach tracking -------------------- */

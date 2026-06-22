@@ -33,6 +33,16 @@ export const CONFIDENCE = {
   explorium: 90, // commercial data, name + domain verified
   manual: 100, // user-entered, always trusted
   inferred: 40, // derived/guessed, not directly verified
+  // Authoritative public registries (verified-entity enrichment).
+  companies_house: 99, // UK statutory registry
+  gleif: 97, // global LEI registry (CC0)
+  sec_edgar: 96, // US SEC filings (public domain)
+  // Email finding + verification waterfall (resale-safe providers).
+  anymailfinder: 80,
+  findymail: 80,
+  bouncer: 92, // verified deliverable
+  // Self-derived from already-crawled HTML (no third-party data).
+  derived: 55,
 } as const;
 
 // Snapshot value: truncate large blobs; null for empty/undefined.
