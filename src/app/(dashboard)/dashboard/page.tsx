@@ -20,14 +20,15 @@ async function recentRadarSignals(userId: string): Promise<number> {
 
 export default async function DashboardPage() {
   const user = await getDbUser();
+  // Behind auth.protect, but be explicit: a null user means no session - send to
+  // sign-in rather than rendering a dashboard of zeros.
+  if (!user) redirect("/sign-in");
 
   // New users with no ICP and no data land on /welcome for the first-run
   // performance. Check is fast (two small queries) and skipped if not needed.
-  if (user) {
-    const done = await hasCompletedFirstRun(user.id);
-    if (!done) {
-      redirect("/welcome");
-    }
+  const done = await hasCompletedFirstRun(user.id);
+  if (!done) {
+    redirect("/welcome");
   }
 
   const [totalContacts, totalCompanies, enriched, inConversation, radarActive] = user
@@ -58,7 +59,7 @@ export default async function DashboardPage() {
   // very first visit (lastSeenAt null) so nobody gets their whole history
   // bragged back at them; computePulse returns null when the window is empty.
   let pulse = null;
-  if (user) {
+  try {
     if (user.lastSeenAt) {
       pulse = await computePulse(user.id, user.lastSeenAt);
     }
@@ -66,6 +67,9 @@ export default async function DashboardPage() {
       where: { id: user.id },
       data: { lastSeenAt: new Date() },
     });
+  } catch (e) {
+    // The Pulse is non-critical chrome; never let it 500 the dashboard.
+    console.warn("[dashboard] pulse/lastSeenAt update failed", e);
   }
 
   return (

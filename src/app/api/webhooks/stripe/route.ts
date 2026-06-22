@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { PLANS, planFor, type PlanName } from "@/lib/credits";
+import { PLANS, refillToAllotment, type PlanName } from "@/lib/credits";
 import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
 
 // Stripe billing webhook. Verifies the Stripe-Signature header against
@@ -89,13 +89,9 @@ export async function POST(req: Request) {
           select: { id: true, plan: true },
         });
         if (user) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              creditsRemaining: planFor(user.plan).credits,
-              creditsResetAt: new Date(Date.now() + RESET_MS),
-            },
-          });
+          // Refill the plan allotment but keep any mid-cycle top-ups (GREATEST),
+          // so a renewal never destroys credits the user paid extra for.
+          await refillToAllotment(user.id, user.plan);
         }
       }
       return NextResponse.json({ received: true });

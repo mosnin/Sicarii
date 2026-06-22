@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveRequestUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { applyPlan, PLAN_USD, PLANS, type PaidPlanName } from "@/lib/credits";
+import { applyPlan, alreadyCredited, PLAN_USD, PLANS, type PaidPlanName } from "@/lib/credits";
 import {
   buildRequirements,
   isX402Configured,
@@ -86,7 +86,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Idempotency: if this payment already applied, return success without
+    // settling again (a benign client retry, never a second charge). Mirrors the
+    // top-up route, which the subscribe route previously diverged from.
     const ref = paymentRef(payload);
+    const prior = await alreadyCredited(user.id, ref);
+    if (prior !== null) {
+      return NextResponse.json({ plan, duplicate: true });
+    }
+
     const settled = await settlePayment(payload, requirements);
     if (!settled.ok) {
       return NextResponse.json(

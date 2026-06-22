@@ -72,8 +72,6 @@ export async function ensureCredits(userId: string, action: CreditAction): Promi
 }
 
 // Refill the meter when the monthly window has lapsed (or was never started).
-// Not perfectly race-proof across concurrent requests, but the worst case is
-// two refills to the same allotment, which is idempotent in effect.
 async function maybeReset(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -82,15 +80,38 @@ async function maybeReset(userId: string): Promise<void> {
   if (!user) throw new OpError("User not found", 404);
 
   const now = new Date();
-  if (!user.creditsResetAt || user.creditsResetAt < now) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        creditsRemaining: planFor(user.plan).credits,
-        creditsResetAt: new Date(now.getTime() + RESET_INTERVAL_MS),
-      },
-    });
-  }
+  if (user.creditsResetAt && user.creditsResetAt >= now) return; // window still active
+
+  // Atomic + guarded: the WHERE clause means only the FIRST concurrent caller
+  // whose window has lapsed actually resets (no double-refill race), and
+  // GREATEST refills the monthly allotment WITHOUT destroying purchased top-ups
+  // (never wipe paid credits).
+  const allotment = planFor(user.plan).credits;
+  const next = new Date(now.getTime() + RESET_INTERVAL_MS);
+  await prisma.$executeRaw`
+    UPDATE users
+    SET "creditsRemaining" = GREATEST("creditsRemaining", ${allotment}),
+        "creditsResetAt" = ${next}
+    WHERE id = ${userId}
+      AND ("creditsResetAt" IS NULL OR "creditsResetAt" < ${now})
+  `;
+}
+
+/**
+ * Refill to the plan allotment at a paid renewal WITHOUT destroying purchased
+ * top-ups (GREATEST), starting a fresh 30-day window. Used by the Stripe
+ * invoice.paid cycle-renewal handler so a subscriber who topped up mid-cycle
+ * keeps those credits at renewal.
+ */
+export async function refillToAllotment(userId: string, plan: string): Promise<void> {
+  const allotment = planFor(plan).credits;
+  const next = new Date(Date.now() + RESET_INTERVAL_MS);
+  await prisma.$executeRaw`
+    UPDATE users
+    SET "creditsRemaining" = GREATEST("creditsRemaining", ${allotment}),
+        "creditsResetAt" = ${next}
+    WHERE id = ${userId}
+  `;
 }
 
 /**

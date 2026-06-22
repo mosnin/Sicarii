@@ -33,6 +33,10 @@ export async function getAuthenticatedUser(): Promise<DbUser> {
       firstName: clerk?.firstName ?? undefined,
       lastName: clerk?.lastName ?? undefined,
       imageUrl: clerk?.imageUrl ?? undefined,
+      // Match the Clerk webhook's new-user grant (free/200), not the schema
+      // defaults (beta/10000) which are only for migrated existing users.
+      plan: "free",
+      creditsRemaining: 200,
     },
   });
 }
