@@ -57,6 +57,7 @@ import {
 } from "@/lib/credits";
 import { storeMemory, recallMemory } from "@/lib/memory";
 import { verifyEntity } from "@/lib/enrich/verified-entity";
+import { detectEntityTech } from "@/lib/enrich/technographics";
 import {
   listSegments,
   getSegment,
@@ -643,6 +644,13 @@ const handler = createMcpHandler(
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ id }, extra) => gated(extra, "verify_entity", 20, (userId) => verifyEntity(userId, id)),
+    );
+    server.tool(
+      "detect_tech",
+      "Detect the technologies a company's website uses (ecommerce platform, CMS, analytics, marketing/CRM/support tools, payments, frameworks, hosting) by fingerprinting its homepage. Free (derived from the public page, no third-party data). Great for technographic targeting. The entity needs a website or domain.",
+      { id: z.string() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ id }, extra) => gated(extra, "detect_tech", 20, (userId) => detectEntityTech(userId, id)),
     );
 
     /* ----------------------- Outreach tracking -------------------- */
