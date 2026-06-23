@@ -122,6 +122,14 @@ export async function runWelcomeOrchestration(
   icp: string,
   emit: (event: WelcomeEvent) => void,
 ): Promise<void> {
+  // Once per user, ever: if the first run already completed, do not run again.
+  // Guards against a double-submit or a second tab creating duplicate companies
+  // (the in-batch dedup is per-run and can't see a concurrent run's new rows).
+  if (await hasCompletedFirstRun(userId)) {
+    emit({ type: "done", message: "Your CRM is already set up.", total: 0, enriched: 0, hasNews: 0 });
+    return;
+  }
+
   // Save the ICP as productContext - one sentence, two jobs.
   await prisma.user.update({
     where: { id: userId },

@@ -278,6 +278,16 @@ model Activity {
   @@map("activities")
 }
 
+// Idempotency ledger for incoming Stripe webhook events. The PK is the Stripe
+// event.id; a duplicate delivery (Stripe is at-least-once + retries) fails the
+// insert, so the handler can safely skip it before applying any mutation.
+model ProcessedEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
+
+  @@map("processed_events")
+}
+
 enum ContactStatus {
   NEW
   ENRICHED

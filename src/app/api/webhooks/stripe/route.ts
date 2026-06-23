@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    let event: { type?: string; data?: { object?: StripeObject } };
+    let event: { id?: string; type?: string; data?: { object?: StripeObject } };
     try {
       event = JSON.parse(rawBody) as typeof event;
     } catch {
@@ -57,6 +57,17 @@ export async function POST(req: Request) {
 
     const type = event.type ?? "";
     const obj = event.data?.object ?? {};
+
+    // Idempotency: Stripe delivers at-least-once and retries on any non-2xx.
+    // Record the event id (its PK) before applying any mutation; a duplicate
+    // delivery fails the insert and is acknowledged without re-granting credits.
+    if (event.id) {
+      try {
+        await prisma.processedEvent.create({ data: { id: event.id } });
+      } catch {
+        return NextResponse.json({ received: true, duplicate: true });
+      }
+    }
 
     // Initial purchase: a Checkout completed in subscription mode.
     if (type === "checkout.session.completed") {
