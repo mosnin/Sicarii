@@ -16,6 +16,7 @@ import { ContactEnrich, ContactEnrichAll } from "./enrich";
 import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 import { EnrichmentStatusCard, contactTier } from "@/components/dashboard/enrichment-status";
 import { ContactAgentMail } from "./agentmail";
+import { ContactAgentPhone } from "./agentphone";
 import { MatchEntity } from "./match-entity";
 import { getProvenanceMap } from "@/lib/provenance";
 import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
@@ -171,6 +172,7 @@ export default async function ContactDetailPage({
         {/* Email - AgentMail threads + saved context */}
         <FloatIn delay={0.14} className="lg:col-span-2 space-y-6">
           <ContactAgentMail contactId={contact.id} />
+          <ContactAgentPhone contactId={contact.id} />
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Saved context</CardTitle>

@@ -9,6 +9,7 @@ import { headers } from "next/headers";
 import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
 import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
+import { AgentPhoneKeyForm } from "@/components/dashboard/agentphone-key-form";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
@@ -22,6 +23,7 @@ const PAID_PLANS = ["starter", "pro", "business"];
 export default async function SettingsPage() {
   const user = await getDbUser();
   const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
+  const agentPhoneLast4 = user?.agentPhoneApiKey ? user.agentPhoneApiKey.slice(-4) : null;
   const billing = user ? await getBilling(user.id) : null;
   const planLabel = billing
     ? billing.plan.charAt(0).toUpperCase() + billing.plan.slice(1)
@@ -149,6 +151,21 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <AgentMailKeyForm initialLast4={agentMailLast4} />
+          </CardContent>
+        </Card>
+      </FloatIn>
+
+      {/* AgentPhone */}
+      <FloatIn delay={0.23}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">AgentPhone</CardTitle>
+            <CardDescription>
+              Connect your AgentPhone account so agents can call leads and track every call on the contact.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AgentPhoneKeyForm initialLast4={agentPhoneLast4} />
           </CardContent>
         </Card>
       </FloatIn>

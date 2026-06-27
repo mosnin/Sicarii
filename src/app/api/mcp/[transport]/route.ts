@@ -40,6 +40,10 @@ import {
   addActivity,
   listActivities,
   listDueFollowups,
+  placeContactCall,
+  saveCall,
+  listContactCalls,
+  syncContactCall,
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { enrichContactField } from "@/lib/contact-enrich";
@@ -651,6 +655,53 @@ const handler = createMcpHandler(
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ id }, extra) => gated(extra, "detect_tech", 20, (userId) => detectEntityTech(userId, id)),
+    );
+
+    /* ------------------------- Phone calls ------------------------ */
+    server.tool(
+      "place_call",
+      "Call a contact via the user's connected AgentPhone account: the AI phone agent dials the number and follows your systemPrompt (what to say / the goal). Logs the call on the contact and marks them CONTACTED. Uses the contact's phone unless you pass toNumber (E.164, e.g. +14155551234). Requires AgentPhone connected in Settings.",
+      {
+        contactId: z.string(),
+        systemPrompt: z.string().min(1).max(8000),
+        toNumber: z.string().max(40).optional(),
+        agentId: z.string().max(200).optional(),
+        fromNumberId: z.string().max(200).optional(),
+        initialGreeting: z.string().max(2000).optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async (a, extra) => gated(extra, "place_call", 20, (userId) => placeContactCall(userId, a)),
+    );
+    server.tool(
+      "list_contact_calls",
+      "Get the phone-call history with a contact (direction, numbers, status, duration, transcript, recording), newest first.",
+      { contactId: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ contactId }, extra) => run(() => listContactCalls(userIdFrom(extra), contactId)),
+    );
+    server.tool(
+      "sync_call",
+      "Refresh a logged call from AgentPhone: pull the latest status, duration, transcript, and recording onto the call record. Use after a call ends.",
+      { logId: z.string() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ logId }, extra) => run(() => syncContactCall(userIdFrom(extra), logId)),
+    );
+    server.tool(
+      "log_call",
+      "Record a phone call on a contact that happened outside Scalar (for context). Does not place a call.",
+      {
+        contactId: z.string(),
+        direction: z.enum(["INBOUND", "OUTBOUND"]),
+        toNumber: z.string().max(40).optional(),
+        fromNumber: z.string().max(40).optional(),
+        summary: z.string().max(10000).optional(),
+        transcript: z.string().max(100000).optional(),
+        status: z.string().max(40).optional(),
+        durationSec: z.number().int().min(0).optional(),
+        recordingUrl: z.string().max(1000).optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (a, extra) => run(() => saveCall(userIdFrom(extra), a)),
     );
 
     /* ----------------------- Outreach tracking -------------------- */

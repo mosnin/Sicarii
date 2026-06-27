@@ -29,6 +29,7 @@ model User {
   // connected AgentMail key for email. Both are per-user settings.
   productContext   String?   @db.Text
   agentMailApiKey  String?
+  agentPhoneApiKey String?
   // Outbound webhook: where Scalar POSTs results when a scheduled task (intent
   // monitor / research schedule) completes, so the user's agent can be woken up.
   taskWebhookUrl   String?
@@ -235,6 +236,7 @@ model Contact {
   enrichment Json?
 
   emails          ContactEmail[]
+  calls           ContactCall[]
   segments        ContactSegment[]
   pipelineEntries PipelineEntry[]
   activities      Activity[]
@@ -329,6 +331,40 @@ model ContactEmail {
 enum Emaildirection {
   INBOUND
   OUTBOUND
+}
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+// A phone call with a contact, placed/tracked via the user's AgentPhone account
+// (per-user key on User.agentPhoneApiKey). Mirrors ContactEmail for calls so the
+// agent's call history with a lead is durable and visible on the CRM.
+model ContactCall {
+  id        String  @id @default(uuid())
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // AgentPhone linkage (nullable until a call is placed/synced).
+  agentPhoneCallId String?
+
+  direction      CallDirection
+  fromNumber     String?
+  toNumber       String?
+  status         String? // in-progress / completed / failed
+  durationSec    Int?
+  summary        String? @db.Text
+  transcript     String? @db.Text
+  recordingUrl   String?
+  savedAsContext Boolean @default(false)
+
+  startedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([contactId])
+  @@index([agentPhoneCallId])
+  @@map("contact_calls")
 }
 
 // Recurring Exa intent monitor — runs on a schedule, delivers results via webhook.

@@ -10,6 +10,7 @@ import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 import { googleMapsLeads, scrapeSiteContacts, apifyGoogleSearch, isApifyConfigured } from "@/lib/apify";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
+import { placeCall, getCall } from "@/lib/agentphone";
 
 export class OpError extends Error {
   status: number;
@@ -588,6 +589,139 @@ export async function listDueFollowups(
       company: true,
       status: true,
       lastContactedAt: true,
+    },
+  });
+}
+
+// ─── Phone calls (AgentPhone) ────────────────────────────────────────────────
+
+export interface CallInput {
+  contactId: string;
+  direction: "INBOUND" | "OUTBOUND";
+  toNumber?: string | null;
+  fromNumber?: string | null;
+  status?: string | null;
+  durationSec?: number | null;
+  summary?: string | null;
+  transcript?: string | null;
+  recordingUrl?: string | null;
+  agentPhoneCallId?: string | null;
+  savedAsContext?: boolean;
+  startedAt?: Date | null;
+}
+
+/** Log a phone call onto a contact (e.g. a call made outside Scalar, for context). */
+export async function saveCall(userId: string, input: CallInput) {
+  const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
+  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  const { contactId, ...rest } = input;
+  return prisma.contactCall.create({ data: { contactId, ...rest } });
+}
+
+/** Place an outbound call to a contact via the user's connected AgentPhone
+ *  account, log it as a ContactCall, and mark the contact CONTACTED. */
+export async function placeContactCall(
+  userId: string,
+  input: {
+    contactId: string;
+    systemPrompt: string;
+    toNumber?: string;
+    agentId?: string;
+    fromNumberId?: string;
+    initialGreeting?: string;
+  },
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { agentPhoneApiKey: true },
+  });
+  if (!user?.agentPhoneApiKey)
+    throw new OpError("Connect your AgentPhone account in Settings first (no AgentPhone key).", 501);
+
+  const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
+  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+
+  const toNumber = (input.toNumber || contact.phone || "").trim();
+  if (!toNumber)
+    throw new OpError("No phone number for this contact - add one or pass toNumber in E.164 form.", 400);
+
+  const placed = await placeCall(user.agentPhoneApiKey, {
+    toNumber,
+    systemPrompt: input.systemPrompt,
+    agentId: input.agentId,
+    fromNumberId: input.fromNumberId,
+    initialGreeting: input.initialGreeting,
+  });
+
+  const call = await prisma.contactCall.create({
+    data: {
+      contactId: contact.id,
+      direction: "OUTBOUND",
+      toNumber,
+      agentPhoneCallId: placed.callId || null,
+      status: placed.status ?? "in-progress",
+      startedAt: placed.startedAt ? new Date(placed.startedAt) : new Date(),
+    },
+  });
+
+  // Advance status (never downgrade) and stamp the outreach timestamp.
+  await prisma.contact.update({
+    where: { id: contact.id },
+    data: {
+      lastContactedAt: new Date(),
+      ...(contact.status === "NEW" || contact.status === "ENRICHED"
+        ? { status: "CONTACTED" as const }
+        : {}),
+    },
+  });
+
+  return {
+    callId: placed.callId,
+    status: placed.status ?? "in-progress",
+    contactId: contact.id,
+    logId: call.id,
+    toNumber,
+  };
+}
+
+/** The call history with a contact (newest first). */
+export async function listContactCalls(userId: string, contactId: string) {
+  const contact = await prisma.contact.findUnique({
+    where: { id: contactId },
+    select: { userId: true },
+  });
+  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  return prisma.contactCall.findMany({
+    where: { contactId },
+    orderBy: { startedAt: "desc" },
+    take: 50,
+  });
+}
+
+/** Refresh a logged call's status/transcript/recording from AgentPhone. */
+export async function syncContactCall(userId: string, callLogId: string) {
+  const call = await prisma.contactCall.findUnique({
+    where: { id: callLogId },
+    include: { contact: { select: { userId: true } } },
+  });
+  if (!call || call.contact.userId !== userId) throw new OpError("Call not found", 404);
+  if (!call.agentPhoneCallId) throw new OpError("This call has no AgentPhone id to sync.", 400);
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { agentPhoneApiKey: true },
+  });
+  if (!user?.agentPhoneApiKey)
+    throw new OpError("Connect your AgentPhone account in Settings first.", 501);
+
+  const detail = await getCall(user.agentPhoneApiKey, call.agentPhoneCallId);
+  return prisma.contactCall.update({
+    where: { id: callLogId },
+    data: {
+      status: detail.status ?? call.status,
+      durationSec: detail.durationSec ?? call.durationSec,
+      transcript: detail.transcript ?? call.transcript,
+      recordingUrl: detail.recordingUrl ?? call.recordingUrl,
     },
   });
 }
