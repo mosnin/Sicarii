@@ -29,7 +29,7 @@ export function AboutSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-orange/80">About Scalar</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-primary">About Scalar</p>
             <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
               The CRM for teams building in the{" "}
               <span className="text-gradient-orange">AI age</span>
@@ -46,9 +46,9 @@ export function AboutSection() {
             </p>
             <Link
               href="/sign-up"
-              className="mt-8 inline-flex items-center gap-2 rounded-full bg-orange px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-dark"
+              className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
             >
-              Get Started
+              Get started
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

@@ -33,7 +33,7 @@ async function runPipe(pipeId: string, input: Record<string, string>, config?: R
     body: JSON.stringify(body),
   });
   const text = await res.text();
-  console.log(`[pipe0] ${pipeId} → ${res.status}: ${text.slice(0, 400)}`);
+  if (!res.ok) console.error(`[pipe0] ${pipeId} failed: ${res.status}`);
   if (!res.ok) throw new Error(`Pipe0 ${pipeId} failed (${res.status}): ${text.slice(0, 200)}`);
   const data = JSON.parse(text) as {
     status?: string;

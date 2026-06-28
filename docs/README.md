@@ -28,6 +28,7 @@
 | `decisions/0004-secure-mcp-and-api-keys.md` | Secure MCP server (12 tools) + per-user API keys + shared ops layer | Revisiting agent access / MCP |
 | `decisions/0005-scalar-agent.md` | Scalar agent at `/agent` — OpenAI, 13 tools, fresh-context + pgvector vector memory | Revisiting the agent / memory |
 | `decisions/0006-the-four-moments.md` | The plan from reliable (6/10) to exceptional: four choreographed moments, two agent waves, founder gates | The cycle in flight |
+| `decisions/0007-x402-agent-payments.md` | x402 agent payments: USDC top-ups + 30-day plan purchase over HTTP 402, env-gated, idempotent on the on-chain nonce | Revisiting billing / agent autonomy |
 
 ## Working knowledge (grows with the product)
 

@@ -18,30 +18,35 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(uuid())
-  clerkId         String   @unique
-  email           String
-  firstName       String?
-  lastName        String?
-  imageUrl        String?
-  role            String   @default("member")
+  id               String    @id @default(uuid())
+  clerkId          String    @unique
+  email            String
+  firstName        String?
+  lastName         String?
+  imageUrl         String?
+  role             String    @default("member")
   // Operator-authored context the agent reads (what you're selling) + a
   // connected AgentMail key for email. Both are per-user settings.
-  productContext  String?  @db.Text
-  agentMailApiKey String?
+  productContext   String?   @db.Text
+  agentMailApiKey  String?
+  agentPhoneApiKey String?
   // Outbound webhook: where Scalar POSTs results when a scheduled task (intent
   // monitor / research schedule) completes, so the user's agent can be woken up.
-  taskWebhookUrl  String?
+  taskWebhookUrl   String?
   // Billing: plan + credit meter. Existing users default to "beta" with 10,000
   // credits so nobody is suddenly blocked; new signups are set to "free"/200 by
   // the Clerk webhook at creation time. creditsResetAt is the next monthly
-  // refill; creemCustomerId links to the Creem.io customer once they pay.
+  // refill; stripeCustomerId links to the Stripe customer once they pay.
   plan             String    @default("beta")
   creditsRemaining Int       @default(10000)
   creditsResetAt   DateTime?
-  creemCustomerId  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  stripeCustomerId String?
+  // Stamped on every dashboard load; the prior value is the "while you were
+  // away" window for The Pulse. Null until the first dashboard visit, so a
+  // returning user never sees their whole history bragged back at them.
+  lastSeenAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   entities          Entity[]
   contacts          Contact[]
@@ -51,6 +56,7 @@ model User {
   intentMonitors    IntentMonitor[]
   researchSchedules ResearchSchedule[]
   creditLedger      CreditLedger[]
+  activities        Activity[]
 
   @@map("users")
 }
@@ -151,7 +157,7 @@ model Entity {
   lat         Float?
   lng         Float?
   geocodedAt  DateTime?
-  description String? @db.Text
+  description String?   @db.Text
   size        String?
 
   status EntityStatus @default(NEW)
@@ -162,7 +168,8 @@ model Entity {
   // Enrichment payload (provider-shaped JSON the agent can read/extend).
   enrichment Json?
 
-  contacts Contact[]
+  contacts   Contact[]
+  activities Activity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -171,6 +178,7 @@ model Entity {
   @@index([userId, status])
   @@index([userId, updatedAt])
   @@index([userId, createdAt])
+  @@index([userId, domain])
   @@map("entities")
 }
 
@@ -220,23 +228,67 @@ model Contact {
   source String? // how it was found: "discover:domain", "manual", "import", etc.
   tags   String[]      @default([])
   notes  String?
+  // Stamped by log_outreach when the agent reaches out; powers the
+  // "who needs a follow-up" query (status is the qualitative state, this the
+  // temporal one - updatedAt is polluted by every edit, so it can't be used).
+  lastContactedAt DateTime?
 
   // Enrichment payload (provider-shaped JSON the agent can read/extend)
   enrichment Json?
 
   emails          ContactEmail[]
+  calls           ContactCall[]
   segments        ContactSegment[]
   pipelineEntries PipelineEntry[]
+  activities      Activity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([userId, status])
+  @@index([userId, status, lastContactedAt])
   @@index([entityId])
   @@index([userId, updatedAt])
   @@index([userId, createdAt])
   @@map("contacts")
+}
+
+// A timestamped trail of what happened with a contact or company: outreach
+// sent, a reply, a call, a note, a status change. The generic activity log the
+// ContactEmail model only covered for email. Keeps the human-summary `notes`
+// field from being overwritten by agents and gives an honest history.
+model Activity {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Polymorphic target: at least one is set.
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  entityId  String?
+  entity    Entity?  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  kind    String // "note" | "outreach" | "call" | "reply" | "status_change"
+  body    String @db.Text
+  channel String? // "email" | "linkedin" | "phone" | null
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([contactId, createdAt])
+  @@index([entityId, createdAt])
+  @@map("activities")
+}
+
+// Idempotency ledger for incoming Stripe webhook events. The PK is the Stripe
+// event.id; a duplicate delivery (Stripe is at-least-once + retries) fails the
+// insert, so the handler can safely skip it before applying any mutation.
+model ProcessedEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
+
+  @@map("processed_events")
 }
 
 enum ContactStatus {
@@ -282,6 +334,40 @@ enum Emaildirection {
   OUTBOUND
 }
 
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+// A phone call with a contact, placed/tracked via the user's AgentPhone account
+// (per-user key on User.agentPhoneApiKey). Mirrors ContactEmail for calls so the
+// agent's call history with a lead is durable and visible on the CRM.
+model ContactCall {
+  id        String  @id @default(uuid())
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // AgentPhone linkage (nullable until a call is placed/synced).
+  agentPhoneCallId String?
+
+  direction      CallDirection
+  fromNumber     String?
+  toNumber       String?
+  status         String? // in-progress / completed / failed
+  durationSec    Int?
+  summary        String? @db.Text
+  transcript     String? @db.Text
+  recordingUrl   String?
+  savedAsContext Boolean @default(false)
+
+  startedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([contactId])
+  @@index([agentPhoneCallId])
+  @@map("contact_calls")
+}
+
 // Recurring Exa intent monitor — runs on a schedule, delivers results via webhook.
 // Results are attributed to userId and saved as entities tagged "intent".
 model IntentMonitor {
@@ -311,15 +397,15 @@ model IntentMonitor {
 
 // A single execution of an intent monitor: what it pulled, and how much was added.
 model MonitorRun {
-  id        String        @id @default(uuid())
-  userId    String
-  monitorId String
-  monitor   IntentMonitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
-  items     Json? // the pulled results [{ title, url, summary }]
-  found     Int           @default(0)
-  added     Int           @default(0)
-  addedToCrm Boolean      @default(false) // whether results were ingested
-  createdAt DateTime      @default(now())
+  id         String        @id @default(uuid())
+  userId     String
+  monitorId  String
+  monitor    IntentMonitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  items      Json? // the pulled results [{ title, url, summary }]
+  found      Int           @default(0)
+  added      Int           @default(0)
+  addedToCrm Boolean       @default(false) // whether results were ingested
+  createdAt  DateTime      @default(now())
 
   @@index([monitorId])
   @@index([userId])
@@ -434,5 +520,45 @@ model PipelineEntry {
   @@unique([pipelineId, contactId])
   @@index([userId])
   @@index([contactId])
+  @@index([pipelineId, stage])
   @@map("pipeline_entries")
+}
+
+// ── Provenance spine (Moment 3 - Visible Trust) ─────────────────────────────
+//
+// One row per (recordType, recordId, field) - the last provider that wrote a
+// value, how confident it was, what value it stored, and when. Used by the UI
+// to show "via explorium, 3 days ago" on each enriched field and by the
+// re-verify scheduler to find stale rows.
+//
+// recordType: "contact" | "entity"
+// field:      column name exactly as stored on the record (e.g. "email", "phone",
+//             "linkedin", "industry", "location", "phone", "description", "website")
+// source:     short provider slug: "explorium" | "pipe0" | "exa" | "manual" | etc.
+// confidence: 0-100 integer; 100 = verified exact match, lower = inferred.
+// valueSnapshot: the value we recorded at the time (truncated to 500 chars for
+//             large blobs like descriptions so the row stays lean).
+// retrievedAt: when the provider returned this value (used for staleness).
+// verifiedAt:  last time re-verify confirmed the value is still accurate.
+// stale:       true when retrievedAt is older than the re-verify threshold and a
+//             re-check has been scheduled but not yet completed.
+model FieldProvenance {
+  id            String    @id @default(uuid())
+  recordType    String // "contact" | "entity"
+  recordId      String // contact.id or entity.id
+  field         String // column name
+  source        String // provider slug
+  confidence    Int       @default(80) // 0-100
+  valueSnapshot String?   @db.Text
+  retrievedAt   DateTime  @default(now())
+  verifiedAt    DateTime?
+  stale         Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([recordType, recordId, field])
+  @@index([recordType, recordId])
+  @@index([retrievedAt])
+  @@index([stale])
+  @@map("field_provenance")
 }

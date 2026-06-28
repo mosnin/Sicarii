@@ -32,6 +32,7 @@ import {
   type FoundCompany,
 } from "@/lib/exa";
 import { linkupSearch, linkupDeepResearch, isLinkupConfigured } from "@/lib/linkup";
+import { googleMapsLeads, scrapeSiteContacts, apifyGoogleSearch, isApifyConfigured } from "@/lib/apify";
 import { refineToCompanies, isRefinerConfigured } from "@/lib/result-refiner";
 import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
 
@@ -163,6 +164,7 @@ export async function POST(req: NextRequest) {
       tool?: string;
       query?: string;
       country?: string;
+      location?: string;
       url?: string;
       urls?: string[];
       domain?: string;
@@ -253,6 +255,42 @@ export async function POST(req: NextRequest) {
             company,
             website: site,
           }));
+        break;
+      }
+
+      // ── APIFY ACTORS ──────────────────────────────────────────────────────
+      // One token (APIFY_TOKEN) runs a curated set of trusted public Actors.
+
+      case "maps-leads": {
+        if (!isApifyConfigured()) return notConfigured("Apify");
+        const q = body.query?.trim();
+        if (!q) return NextResponse.json({ error: "Enter what to search for (e.g. dentists)." }, { status: 400 });
+        const leads = await googleMapsLeads(q, {
+          location: body.location?.trim(),
+          limit: Math.min(body.limit ?? body.numResults ?? 12, 20),
+        });
+        result = await companyListResult(user.id, leads.map((l) => ({ ...l, companyName: l.companyName })));
+        break;
+      }
+
+      case "contact-info": {
+        if (!isApifyConfigured()) return notConfigured("Apify");
+        const url = body.url?.trim();
+        if (!url) return NextResponse.json({ error: "Enter a company website URL." }, { status: 400 });
+        const contacts = await scrapeSiteContacts(url);
+        if (contacts.length === 0) {
+          return NextResponse.json({ error: `No contact details found on ${url}.` }, { status: 404 });
+        }
+        result = contacts;
+        break;
+      }
+
+      case "apify-serp": {
+        if (!isApifyConfigured()) return notConfigured("Apify");
+        const q = body.query?.trim();
+        if (!q) return NextResponse.json({ error: "Enter a search query." }, { status: 400 });
+        const raw = await apifyGoogleSearch(q, body.numResults ?? 15);
+        result = await refineOrRaw(user.id, q, raw);
         break;
       }
 

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "Scalar | The CRM Your Agents Run",
   description:
     "A CRM operated by AI agents - they discover leads, enrich your database, run the conversations, and own the data. You direct; the agents operate.",
-  metadataBase: new URL("https://scalar.app"),
+  metadataBase: new URL("https://tryscalar.xyz"),
   applicationName: "Scalar",
   appleWebApp: {
     capable: true,
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     title: "Scalar | The CRM Your Agents Run",
     description:
       "A CRM operated by AI agents - discover, enrich, and own every relationship, all on data that stays inside.",
-    url: "https://scalar.app",
+    url: "https://tryscalar.xyz",
     siteName: "Scalar",
     type: "website",
   },

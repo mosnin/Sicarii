@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored static assets for the ritual framework site, not app code.
+    ".ritual/**",
   ]),
 ]);
 

@@ -50,7 +50,7 @@ export default function AboutPage() {
           <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
-            <Badge variant="orange" className="mb-4">About</Badge>
+            <Badge variant="primary" className="mb-4">About</Badge>
             <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               The CRM your{" "}
               <span className="text-gradient-orange">agents run</span>
@@ -74,7 +74,7 @@ export default function AboutPage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.05, ease: easeOut }}
                 >
-                  <p className="text-xs uppercase tracking-[0.25em] text-orange/80">
+                  <p className="text-xs uppercase tracking-[0.25em] text-primary">
                     {section.eyebrow}
                   </p>
                   <h2 className="font-brand mt-3 text-2xl text-foreground sm:text-3xl">
@@ -102,7 +102,7 @@ export default function AboutPage() {
               className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 sm:p-12 text-center"
             >
               <LogoMark className="mx-auto h-10 w-10" />
-              <p className="mt-6 text-xs uppercase tracking-[0.25em] text-orange/80">
+              <p className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
                 The principle
               </p>
               <h2 className="font-brand mt-3 text-2xl text-foreground sm:text-3xl">

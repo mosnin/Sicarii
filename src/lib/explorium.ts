@@ -22,7 +22,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   const text = await res.text();
-  console.log(`[explorium] POST ${path} → ${res.status}: ${text.slice(0, 400)}`);
+  if (!res.ok) console.error(`[explorium] POST ${path} failed: ${res.status}`);
   if (!res.ok) throw new Error(`Explorium ${path} failed (${res.status}): ${text.slice(0, 200)}`);
   return JSON.parse(text) as T;
 }

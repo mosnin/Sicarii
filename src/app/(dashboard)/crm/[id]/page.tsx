@@ -16,7 +16,10 @@ import { ContactEnrich, ContactEnrichAll } from "./enrich";
 import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 import { EnrichmentStatusCard, contactTier } from "@/components/dashboard/enrichment-status";
 import { ContactAgentMail } from "./agentmail";
+import { ContactAgentPhone } from "./agentphone";
 import { MatchEntity } from "./match-entity";
+import { getProvenanceMap } from "@/lib/provenance";
+import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
 
 export default async function ContactDetailPage({
   params,
@@ -38,6 +41,8 @@ export default async function ContactDetailPage({
     orderBy: { sentAt: "desc" },
   });
 
+  const provenance = await getProvenanceMap("contact", id);
+
   // Which core fields are still missing (drives both the prominent Enrich
   // button on the status card and the per-field Find buttons in Details).
   const missing = [
@@ -46,11 +51,13 @@ export default async function ContactDetailPage({
     !contact.phone ? ("phone" as const) : null,
   ].filter((f): f is "linkedin" | "email" | "phone" => f !== null);
 
-  const fields: { label: string; value: string | null; href?: string }[] = [
+  // Fields with optional provenance metadata. Only enriched fields carry
+  // provenance (title, company, location are usually manually entered).
+  const fields: { label: string; value: string | null; href?: string; provenanceField?: string }[] = [
     { label: "Title", value: contact.title },
     { label: "Company", value: contact.company },
-    { label: "Email", value: contact.email, href: contact.email ? `mailto:${contact.email}` : undefined },
-    { label: "Phone", value: contact.phone, href: contact.phone ? `tel:${contact.phone}` : undefined },
+    { label: "Email", value: contact.email, href: contact.email ? `mailto:${contact.email}` : undefined, provenanceField: "email" },
+    { label: "Phone", value: contact.phone, href: contact.phone ? `tel:${contact.phone}` : undefined, provenanceField: "phone" },
     {
       label: "Website",
       value: contact.website ? contact.website.replace(/^https?:\/\//, "").replace(/\/$/, "") : null,
@@ -68,6 +75,7 @@ export default async function ContactDetailPage({
           ? contact.linkedin
           : `https://${contact.linkedin}`
         : undefined,
+      provenanceField: "linkedin",
     },
     { label: "Location", value: contact.location },
   ];
@@ -126,28 +134,18 @@ export default async function ContactDetailPage({
               <CardTitle className="text-base">Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {fields
-                .filter((f) => f.value)
-                .map((f) => (
-                  <div key={f.label} className="text-sm">
-                    <p className="text-xs text-muted-foreground">{f.label}</p>
-                    {f.href ? (
-                      <a
-                        href={f.href}
-                        target={f.href.startsWith("http") ? "_blank" : undefined}
-                        rel="noopener noreferrer"
-                        className="break-words text-primary underline-offset-4 hover:underline"
-                      >
-                        {f.value}
-                      </a>
-                    ) : (
-                      <p className="break-words">{f.value}</p>
-                    )}
-                  </div>
-                ))}
-              {fields.every((f) => !f.value) && (
+              {fields.map((f) => (
+                <FieldWithProvenance
+                  key={f.label}
+                  label={f.label}
+                  value={f.value}
+                  href={f.href}
+                  meta={f.provenanceField ? provenance[f.provenanceField] : undefined}
+                />
+              ))}
+              {fields.every((f) => !f.value && !f.provenanceField) && (
                 <p className="text-sm text-muted-foreground">
-                  No details yet - enrich this contact to fill them in.
+                  No details yet. Enrich this contact to fill them in.
                 </p>
               )}
               <ContactEnrich contactId={contact.id} missing={missing} />
@@ -174,6 +172,7 @@ export default async function ContactDetailPage({
         {/* Email - AgentMail threads + saved context */}
         <FloatIn delay={0.14} className="lg:col-span-2 space-y-6">
           <ContactAgentMail contactId={contact.id} />
+          <ContactAgentPhone contactId={contact.id} />
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Saved context</CardTitle>

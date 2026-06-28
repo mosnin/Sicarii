@@ -6,6 +6,7 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 const patchSchema = z.object({
   productContext: z.string().max(20000).optional(),
   agentMailApiKey: z.string().trim().max(300).optional(),
+  agentPhoneApiKey: z.string().trim().max(300).optional(),
   taskWebhookUrl: z
     .string()
     .trim()
@@ -31,6 +32,7 @@ export async function PATCH(req: NextRequest) {
     const data: {
       productContext?: string;
       agentMailApiKey?: string | null;
+      agentPhoneApiKey?: string | null;
       taskWebhookUrl?: string | null;
     } = {};
     if (parsed.data.productContext !== undefined) {
@@ -39,6 +41,9 @@ export async function PATCH(req: NextRequest) {
     if (parsed.data.agentMailApiKey !== undefined) {
       // Empty string clears the key.
       data.agentMailApiKey = parsed.data.agentMailApiKey || null;
+    }
+    if (parsed.data.agentPhoneApiKey !== undefined) {
+      data.agentPhoneApiKey = parsed.data.agentPhoneApiKey || null;
     }
     if (parsed.data.taskWebhookUrl !== undefined) {
       data.taskWebhookUrl = parsed.data.taskWebhookUrl || null;
@@ -54,6 +59,7 @@ export async function PATCH(req: NextRequest) {
       ok: true,
       productContext: updated.productContext ?? "",
       agentMailKeyLast4: updated.agentMailApiKey ? updated.agentMailApiKey.slice(-4) : null,
+      agentPhoneKeyLast4: updated.agentPhoneApiKey ? updated.agentPhoneApiKey.slice(-4) : null,
       taskWebhookUrl: updated.taskWebhookUrl ?? "",
     });
   } catch (e) {

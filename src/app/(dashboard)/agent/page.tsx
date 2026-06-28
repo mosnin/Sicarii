@@ -15,6 +15,12 @@ import { cn } from "@/lib/utils";
 import { ScalarAvatar } from "@/components/dashboard/scalar-avatar";
 import { ThinkingIndicator } from "@/components/dashboard/thinking-indicator";
 import { useMobileNav } from "@/components/dashboard/dashboard-shell";
+import { useRouter } from "next/navigation";
+import { ItemCarousel } from "@/components/tool-ui/item-carousel";
+import { safeParseSerializableItemCarousel } from "@/components/tool-ui/item-carousel/schema";
+import { CitationList } from "@/components/tool-ui/citation";
+import type { SerializableCitation } from "@/components/tool-ui/citation";
+import { safeParseSerializableCitation } from "@/components/tool-ui/citation/schema";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,7 +31,72 @@ type RenderPart = {
   text?: string;
   state?: string;
   toolName?: string;
+  toolCallId?: string;
+  output?: unknown;
 };
+
+// Map a finished tool result to an item-carousel payload, so discovery results
+// render as a browsable strip of companies instead of a bare "done" chip.
+// Returns null for tools that don't produce a company list, or an empty result.
+function toolCarousel(name: string, output: unknown, key: string) {
+  if (name !== "find_companies" && name !== "maps_leads") return null;
+  if (!output || typeof output !== "object") return null;
+  const o = output as {
+    created?: Array<{ id?: string; name?: string; domain?: string | null }>;
+    location?: string;
+  };
+  const items = (Array.isArray(o.created) ? o.created : [])
+    .filter(
+      (c): c is { id: string; name: string; domain?: string | null } =>
+        Boolean(c && typeof c.id === "string" && typeof c.name === "string" && c.name.trim()),
+    )
+    .map((c) => ({ id: c.id, name: c.name, subtitle: c.domain ?? undefined }));
+  if (items.length === 0) return null;
+  const noun = items.length === 1 ? "company" : "companies";
+  const title = o.location
+    ? `${items.length} ${noun} in ${o.location}`
+    : `${items.length} ${noun} added`;
+  return safeParseSerializableItemCarousel({ id: `carousel-${key}`, title, items });
+}
+
+function hostOf(u: string): string | undefined {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return undefined;
+  }
+}
+
+// Map a web-research tool result to citation sources, so search results render
+// as clickable, attributed citations instead of a bare "done" chip. Handles
+// both search_web (a bare array) and google_search ({ results: [...] }).
+function toolCitations(name: string, output: unknown, key: string): SerializableCitation[] | null {
+  if (name !== "search_web" && name !== "google_search") return null;
+  const rows: unknown[] = Array.isArray(output)
+    ? output
+    : output && typeof output === "object" && Array.isArray((output as { results?: unknown[] }).results)
+      ? (output as { results: unknown[] }).results
+      : [];
+  const citations = rows
+    .map((r, idx): SerializableCitation | null => {
+      if (!r || typeof r !== "object") return null;
+      const o = r as Record<string, unknown>;
+      const href = typeof o.url === "string" ? o.url : typeof o.href === "string" ? o.href : "";
+      const snippet =
+        typeof o.content === "string" ? o.content : typeof o.description === "string" ? o.description : undefined;
+      const title = typeof o.title === "string" && o.title.trim() ? o.title : (hostOf(href) ?? href);
+      return safeParseSerializableCitation({
+        id: `cite-${key}-${idx}`,
+        href,
+        title,
+        snippet: snippet ? snippet.slice(0, 300) : undefined,
+        domain: hostOf(href),
+        type: "webpage",
+      });
+    })
+    .filter((c): c is SerializableCitation => c !== null);
+  return citations.length > 0 ? citations : null;
+}
 
 // ---------------------------------------------------------------------------
 // ToolChip - an inline chip for tool-call parts
@@ -84,6 +155,7 @@ function MessageBubble({
 }) {
   const isUser = role === "user";
   const reduce = useReducedMotion();
+  const router = useRouter();
 
   return (
     <motion.div
@@ -140,9 +212,29 @@ function MessageBubble({
               part.toolName ??
               (part.type.startsWith("tool-") ? part.type.slice(5) : "tool");
             const done = part.state === "output-available";
+            const partKey = part.toolCallId ?? String(i);
+            const carousel = done ? toolCarousel(name, part.output, partKey) : null;
+            const citations = done ? toolCitations(name, part.output, partKey) : null;
             return (
-              <div key={i} className="flex flex-wrap gap-1.5 pl-0.5">
-                <ToolChip name={name} done={done} />
+              <div key={i} className="space-y-2">
+                <div className="flex flex-wrap gap-1.5 pl-0.5">
+                  <ToolChip name={name} done={done} />
+                </div>
+                {carousel ? (
+                  <ItemCarousel
+                    id={carousel.id}
+                    title={carousel.title}
+                    items={carousel.items}
+                    onItemClick={(itemId) => router.push(`/crm/entity/${itemId}`)}
+                  />
+                ) : null}
+                {citations ? (
+                  <CitationList
+                    id={`citations-${partKey}`}
+                    citations={citations}
+                    onNavigate={(href) => window.open(href, "_blank", "noopener,noreferrer")}
+                  />
+                ) : null}
               </div>
             );
           }

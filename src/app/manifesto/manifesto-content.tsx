@@ -1,86 +1,104 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "motion/react";
+import { ArrowRight } from "lucide-react";
+import { AsciiField } from "@/components/dashboard/ascii-field";
+import { LogoMark } from "@/components/brand/logo-mark";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
-// The manifesto: a standalone, full-bleed red statement page. Deliberately its
-// own art direction (not the baby-blue product UI). Fonts come in via next/font
-// (self-hosted, so the strict CSP allows them); `fontClassName` carries the
-// --font-manrope / --font-italiana / --font-marck variables those utilities use.
-export function ManifestoContent({ fontClassName }: { fontClassName: string }) {
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.14, delayChildren: 0.1 } },
+};
+const line = {
+  hidden: { opacity: 0, y: 20, filter: "blur(6px)" },
+  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.7, ease: easeOut } },
+};
+
+// The Scalar manifesto: an on-brand editorial statement of why the product
+// exists. Replaces the inherited agency page (red, wrong logo, stock copy) with
+// the baby-blue ASCII signature and our own conviction.
+const beliefs = [
+  "We gave agents the power to do almost anything. Research a company, find the right person, draft the email, work the deal. Then we watched them forget all of it the moment the session ended. Brilliant at doing. Hopeless at remembering.",
+  "The common answer is a folder of markdown files. Scattered notes no human would tolerate and no system can trust. The same company researched twice. Contradictions nobody catches. A goldfish with a PhD.",
+  "We do not think memory is a feature you bolt on. It is the product. A structured place where every record is typed, deduped, and yours, with a real interface a human can see and an agent can operate over the same surface.",
+  "So your data compounds instead of rotting. So the second move is sharper than the first. So the leverage stays quiet: already working for you, in the background, on a single source of truth you own and can walk away with.",
+];
+
+export function ManifestoContent() {
   return (
-    <section
-      className={`${fontClassName} font-manrope relative z-10 flex min-h-screen w-full flex-col bg-[#FF0000]`}
-    >
-      {/* 1. Centered content */}
-      <div className="flex w-full flex-1 flex-col items-center pt-[100px] md:pt-[400px]">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: easeOut }}
-          className="relative z-20 mx-auto flex h-auto w-full max-w-[900px] flex-col items-center px-8 text-center md:h-[620px]"
-        >
-          {/* a) Logo */}
-          <svg
-            width="80"
-            height="80"
-            viewBox="0 0 120 120"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="mb-12"
-            aria-hidden="true"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M60 120C26.8629 120 0 93.1371 0 60V0C22.5654 0 42.2213 12.4569 52.4662 30.8691C38.4788 34.2089 28.0787 46.7902 28.0787 61.8006V63.1443C28.0787 79.9648 41.7146 93.6006 58.5353 93.6006H59.8789L59.8785 61.8006C59.8785 79.3633 74.1159 93.6006 91.6787 93.6006L91.6787 61.8006C91.6787 44.2783 77.5071 30.0661 60 30.0008L60 0H62.5352C94.2722 0 120 25.7279 120 57.4648V60C120 93.1371 93.1371 120 60 120Z"
-              fill="white"
-            />
-          </svg>
+    <section className="relative flex min-h-screen w-full flex-col items-center overflow-hidden bg-background px-4 pb-28 pt-36 sm:px-6">
+      {/* The signature, the brand's soul */}
+      <AsciiField
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12] dark:opacity-[0.22]"
+        cell={14}
+        speed={0.07}
+        gradient
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.14),transparent_55%)]" />
 
-          {/* b) Mission statement */}
-          <p className="mx-auto mb-[40px] h-[100px] w-full max-w-[400px] text-[16px] uppercase leading-[1.6] tracking-wider text-white">
-            We built this platform with a single purpose to eliminate operational
-            chaos and restore balance to your daily business routine
-          </p>
-
-          {/* c) Cursive signature */}
-          <div className="font-marck mb-[32px] text-[120px] leading-none text-white">
-            S.P.D
-          </div>
-
-          {/* d) Two paragraphs */}
-          <div className="mb-[100px] flex w-full flex-col items-center font-light leading-[1.6] text-white md:mb-24">
-            <p className="mb-[24px] w-[400px] max-w-full text-center text-[16px]">
-              I Was Exhausted By Software That Demanded More Effort Than It
-              Actually Saved. That Is Why We Engineered An Autonomous Architecture
-              That Operates Silently In The Background.
-            </p>
-            <p className="w-[400px] max-w-full text-center text-[16px]">
-              Your Business Should Serve Your Life, Not Consume It. Let Our
-              Algorithms Handle The Heavy Lifting, So You Can Focus On The Vision.
-            </p>
-          </div>
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center text-center"
+      >
+        <motion.div variants={line}>
+          <LogoMark className="h-12 w-12" />
         </motion.div>
-      </div>
 
-      {/* 2. Bottom video with red gradient blend */}
-      <div className="relative w-full shrink-0">
-        <div className="pointer-events-none absolute left-0 top-0 z-10 h-[100px] w-full bg-gradient-to-b from-[#FF0000] to-transparent" />
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="block h-auto w-full object-contain"
+        <motion.p
+          variants={line}
+          className="mt-10 text-xs uppercase tracking-[0.3em] text-primary"
         >
-          <source
-            src="https://res.cloudinary.com/daklr2whx/video/upload/v1778602552/track-video_2_s9lp53.mp4"
-            type="video/mp4"
-          />
-        </video>
-      </div>
+          Manifesto
+        </motion.p>
+
+        <motion.h1
+          variants={line}
+          className="font-brand mt-5 text-4xl leading-[1.08] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
+        >
+          The work should{" "}
+          <span className="text-gradient-orange">remember itself</span>.
+        </motion.h1>
+
+        <div className="mt-12 space-y-7">
+          {beliefs.map((belief) => (
+            <motion.p
+              key={belief}
+              variants={line}
+              className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground"
+            >
+              {belief}
+            </motion.p>
+          ))}
+        </div>
+
+        <motion.p
+          variants={line}
+          className="font-brand mt-14 text-2xl text-foreground sm:text-3xl"
+        >
+          This is Scalar.
+        </motion.p>
+
+        <motion.div variants={line} className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
+          <Link
+            href="/sign-up"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+          >
+            Get started
+            <ArrowRight className="h-5 w-5" />
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-base font-medium text-muted-foreground backdrop-blur-md transition-colors hover:border-foreground/30 hover:text-foreground"
+          >
+            Back to home
+          </Link>
+        </motion.div>
+      </motion.div>
     </section>
   );
 }

@@ -21,6 +21,11 @@ export async function getDbUser(): Promise<User | null> {
       firstName: clerk.firstName ?? undefined,
       lastName: clerk.lastName ?? undefined,
       imageUrl: clerk.imageUrl ?? undefined,
+      // Match the Clerk webhook's new-user grant. Without this, a fresh signup
+      // provisioned here (before the webhook fires) would fall back to the
+      // schema defaults (beta/10000) and keep them permanently.
+      plan: "free",
+      creditsRemaining: 200,
     },
   });
 }

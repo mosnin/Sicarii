@@ -52,7 +52,7 @@ async function exaPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   const text = await res.text();
-  console.log(`[exa] POST ${path} → ${res.status}: ${text.slice(0, 300)}`);
+  if (!res.ok) console.error(`[exa] POST ${path} failed: ${res.status}`);
   if (!res.ok) throw new Error(`Exa ${path} failed (${res.status}): ${text.slice(0, 200)}`);
   return JSON.parse(text) as T;
 }
@@ -244,12 +244,69 @@ function hostFromUrl(input?: string): string | undefined {
   }
 }
 
+// Domains that write ABOUT companies (lists, directories, news, social) but are
+// not companies themselves. Discovery must never turn one of these into an
+// entity, e.g. a "top startups in Miami" article on ycombinator.com. Passed to
+// Exa as excludeDomains and re-checked locally as a backstop.
+const AGGREGATOR_DOMAINS = [
+  "ycombinator.com",
+  "crunchbase.com",
+  "pitchbook.com",
+  "owler.com",
+  "zoominfo.com",
+  "wellfound.com",
+  "angel.co",
+  "f6s.com",
+  "builtin.com",
+  "startupblink.com",
+  "linkedin.com",
+  "wikipedia.org",
+  "medium.com",
+  "substack.com",
+  "forbes.com",
+  "inc.com",
+  "techcrunch.com",
+  "businessinsider.com",
+  "bloomberg.com",
+  "g2.com",
+  "capterra.com",
+  "clutch.co",
+  "trustpilot.com",
+  "glassdoor.com",
+  "indeed.com",
+  "yelp.com",
+  "yellowpages.com",
+  "reddit.com",
+  "twitter.com",
+  "x.com",
+  "facebook.com",
+  "youtube.com",
+  "producthunt.com",
+  "github.com",
+  "medium.com",
+];
+
+function isAggregatorHost(host?: string): boolean {
+  if (!host) return true; // no host => can't be a real company homepage
+  const h = host.toLowerCase().replace(/^www\./, "");
+  return AGGREGATOR_DOMAINS.some((d) => h === d || h.endsWith(`.${d}`));
+}
+
+// A URL that points at an article/list/profile rather than a company home page.
+// Company-category results should be homepages; these path markers signal a
+// "10 best ..." listicle or a blog post slipped through.
+function looksLikeArticle(url?: string): boolean {
+  if (!url) return false;
+  return /\/(blog|news|article|articles|posts?|stories|press|p|tag|tags|category|20\d\d)(\/|$|-)/i.test(url);
+}
+
 export async function exaFindCompanies(prompt: string, count = 10): Promise<FoundCompany[]> {
   const data = await exaPost<{ results?: (ExaResult & { summary?: string })[] }>("/search", {
     query: prompt,
     type: "auto",
     category: "company",
     numResults: Math.min(Math.max(count, 1), 50),
+    excludeDomains: AGGREGATOR_DOMAINS,
     contents: {
       text: { maxCharacters: 600 },
       summary: {
@@ -266,7 +323,11 @@ export async function exaFindCompanies(prompt: string, count = 10): Promise<Foun
       try { parsed = JSON.parse(r.summary) as Partial<FoundCompany>; } catch { /* summary wasn't JSON */ }
     }
     const website = parsed.website || r.url;
-    const name = parsed.companyName || r.title || hostFromUrl(website);
+    const host = hostFromUrl(website);
+    // Backstop the excludeDomains filter, and drop article/listicle URLs: a
+    // "top startups" blog post is not a company, even with a tidy summary.
+    if (isAggregatorHost(host) || looksLikeArticle(r.url)) continue;
+    const name = parsed.companyName || r.title || host;
     // Skip results we can't name - never emit "Unknown" companies.
     if (!isMeaningful(name)) continue;
     out.push({

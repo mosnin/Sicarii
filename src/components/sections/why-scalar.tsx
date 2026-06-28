@@ -34,7 +34,7 @@ export function WhyScalarSection() {
     <section id="why" className="relative scroll-mt-24 bg-background py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-orange/80">Why Scalar</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-primary">Why Scalar</p>
           <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             Everyone owns one piece.{" "}
             <span className="text-gradient-orange">Scalar owns all four.</span>
@@ -58,7 +58,7 @@ export function WhyScalarSection() {
               className="h-full"
             >
               <SpotlightCard className="h-full p-6">
-                <span className="font-brand text-3xl text-orange tabular-nums">{pillar.n}</span>
+                <span className="font-brand text-3xl text-primary tabular-nums">{pillar.n}</span>
                 <h3 className="font-brand mt-3 text-xl text-foreground">{pillar.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{pillar.body}</p>
               </SpotlightCard>

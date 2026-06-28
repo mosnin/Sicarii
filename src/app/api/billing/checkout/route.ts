@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { fetchWithTimeout } from "@/lib/http";
+import { createCheckoutSession, priceIdFor, stripeConfigured } from "@/lib/stripe";
+import type { PaidPlanName } from "@/lib/credits";
 
 const PAID_PLANS = ["starter", "pro", "business"] as const;
-type PaidPlan = (typeof PAID_PLANS)[number];
 
 // POST /api/billing/checkout  body: { plan: "starter" | "pro" | "business" }
-// Creates a Creem.io checkout session and returns its URL. Env-gated: without
-// CREEM_API_KEY this returns 501 so the UI can show "Billing launches soon".
+// Creates a Stripe Checkout session and returns its URL. Env-gated: without
+// STRIPE_SECRET_KEY (or the plan's price id) this returns 501 so the UI can
+// show "Billing launches soon".
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
@@ -27,16 +28,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.CREEM_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Billing is not configured yet." },
-        { status: 501 },
-      );
+    if (!stripeConfigured()) {
+      return NextResponse.json({ error: "Billing is not configured yet." }, { status: 501 });
     }
 
-    const productId = process.env[`CREEM_PRODUCT_${plan.toUpperCase()}`];
-    if (!productId) {
+    const priceId = priceIdFor(plan as PaidPlanName);
+    if (!priceId) {
       return NextResponse.json(
         { error: `Billing is not configured for the ${plan} plan yet.` },
         { status: 501 },
@@ -44,42 +41,18 @@ export async function POST(req: NextRequest) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tryscalar.xyz";
-    const res = await fetchWithTimeout("https://api.creem.io/v1/checkouts", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        product_id: productId,
-        success_url: `${appUrl}/dashboard?upgraded=1`,
-        metadata: { userId: user.id, plan: plan as PaidPlan },
-      }),
+    const result = await createCheckoutSession({
+      priceId,
+      userId: user.id,
+      plan,
+      successUrl: `${appUrl}/dashboard?upgraded=1`,
+      cancelUrl: `${appUrl}/dashboard?checkout=cancelled`,
     });
 
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      console.error("Creem checkout failed", res.status, detail.slice(0, 500));
-      return NextResponse.json(
-        { error: "Couldn't start checkout. Please try again." },
-        { status: 502 },
-      );
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
-
-    const data = (await res.json().catch(() => null)) as {
-      checkout_url?: string;
-      url?: string;
-    } | null;
-    const url = data?.checkout_url ?? data?.url;
-    if (!url) {
-      console.error("Creem checkout returned no URL", data);
-      return NextResponse.json(
-        { error: "Couldn't start checkout. Please try again." },
-        { status: 502 },
-      );
-    }
-
-    return NextResponse.json({ url });
+    return NextResponse.json({ url: result.url });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("POST /api/billing/checkout", e);

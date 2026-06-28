@@ -19,6 +19,8 @@ import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 import { EnrichmentStatusCard, entityTier } from "@/components/dashboard/enrichment-status";
 import { EntityActions } from "./actions";
 import { EntityEditor } from "./editor";
+import { getProvenanceMap } from "@/lib/provenance";
+import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
 
 export default async function EntityDetailPage({
   params,
@@ -37,17 +39,20 @@ export default async function EntityDetailPage({
     orderBy: { updatedAt: "desc" },
   });
 
+  const provenance = await getProvenanceMap("entity", id);
+
   // Website and domain are the same fact - show one clickable Website row.
   const websiteUrl = entity.website || (entity.domain ? `https://${entity.domain}` : null);
   const websiteText = entity.website
     ? entity.website.replace(/^https?:\/\//, "").replace(/\/$/, "")
     : entity.domain;
 
-  const fields: { label: string; value: string | null | undefined; href?: string }[] = [
-    { label: "Industry", value: entity.industry },
-    { label: "Website", value: websiteText, href: websiteUrl ?? undefined },
-    { label: "Phone", value: entity.phone, href: entity.phone ? `tel:${entity.phone}` : undefined },
-    { label: "Location", value: entity.location },
+  // Fields with optional provenance metadata for enriched columns.
+  const fields: { label: string; value: string | null | undefined; href?: string; provenanceField?: string }[] = [
+    { label: "Industry", value: entity.industry, provenanceField: "industry" },
+    { label: "Website", value: websiteText, href: websiteUrl ?? undefined, provenanceField: "website" },
+    { label: "Phone", value: entity.phone, href: entity.phone ? `tel:${entity.phone}` : undefined, provenanceField: "phone" },
+    { label: "Location", value: entity.location, provenanceField: "location" },
     { label: "Size", value: entity.size },
   ];
 
@@ -121,25 +126,15 @@ export default async function EntityDetailPage({
               <CardTitle className="text-base">Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {fields
-                .filter((f) => f.value)
-                .map((f) => (
-                  <div key={f.label} className="text-sm">
-                    <p className="text-xs text-muted-foreground">{f.label}</p>
-                    {f.href ? (
-                      <a
-                        href={f.href}
-                        target={f.href.startsWith("http") ? "_blank" : undefined}
-                        rel="noopener noreferrer"
-                        className="break-words text-primary underline-offset-4 hover:underline"
-                      >
-                        {f.value}
-                      </a>
-                    ) : (
-                      <p className="break-words">{f.value}</p>
-                    )}
-                  </div>
-                ))}
+              {fields.map((f) => (
+                <FieldWithProvenance
+                  key={f.label}
+                  label={f.label}
+                  value={f.value ?? null}
+                  href={f.href}
+                  meta={f.provenanceField ? provenance[f.provenanceField] : undefined}
+                />
+              ))}
               {entity.description && (
                 <div className="pt-2">
                   <p className="text-xs text-muted-foreground mb-1">Description</p>
