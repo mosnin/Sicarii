@@ -150,12 +150,16 @@ export function resourceUrl(path: string): string {
 /**
  * A stable idempotency key for a payment. The exact-evm authorization nonce is
  * single-use on-chain, so it uniquely identifies one settlement and lets us
- * recognise a benign client retry without crediting twice.
+ * recognise a benign client retry without crediting twice. Returns null when the
+ * nonce is absent (malformed payload) so callers can reject early rather than
+ * colliding on a shared "unknown" key.
  */
-export function paymentRef(payload: PaymentPayload): string {
+export function paymentRef(payload: PaymentPayload): string | null {
   const inner = (payload as { payload?: { authorization?: { nonce?: string } } })
     .payload;
-  return `x402:${inner?.authorization?.nonce ?? "unknown"}`;
+  const nonce = inner?.authorization?.nonce;
+  if (!nonce) return null;
+  return `x402:${nonce}`;
 }
 
 /** Off-chain validity check through the facilitator (cheap, no settlement). */

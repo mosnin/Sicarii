@@ -190,6 +190,7 @@ async function buyCreditsViaMcp(
   const verified = await verifyPayment(payload, requirements);
   if (!verified.ok) throw new OpError(`Payment invalid: ${verified.reason}`, 402);
   const ref = paymentRef(payload);
+  if (!ref) throw new OpError("Payment payload missing nonce - cannot process idempotently.", 400);
   const prior = await alreadyCredited(userId, ref);
   if (prior !== null) return { step: "settled", credited: 0, balance: prior, duplicate: true };
   const settled = await settlePayment(payload, requirements);
@@ -226,6 +227,7 @@ async function buyPlanViaMcp(
   const verified = await verifyPayment(payload, requirements);
   if (!verified.ok) throw new OpError(`Payment invalid: ${verified.reason}`, 402);
   const ref = paymentRef(payload);
+  if (!ref) throw new OpError("Payment payload missing nonce - cannot process idempotently.", 400);
   const seen = await alreadyCredited(userId, ref);
   if (seen !== null) return { step: "settled", plan, duplicate: true };
   const settled = await settlePayment(payload, requirements);

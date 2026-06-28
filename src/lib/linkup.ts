@@ -38,7 +38,7 @@ async function search(
     body: JSON.stringify({ q: query, depth, outputType }),
   });
   const text = await res.text();
-  console.log(`[linkup] ${depth} → ${res.status}: ${text.slice(0, 300)}`);
+  if (!res.ok) console.error(`[linkup] ${depth} failed: ${res.status}`);
   if (!res.ok) throw new Error(`Linkup search failed (${res.status}): ${text.slice(0, 200)}`);
 
   type RawItem = { url?: string; name?: string; content?: string; snippet?: string };

@@ -77,15 +77,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true });
       }
       const customerId = customerIdOf(obj);
+      // Set plan + customer id; refill uses GREATEST so existing top-ups survive.
       await prisma.user.updateMany({
         where: { id: userId },
         data: {
           plan,
-          creditsRemaining: PLANS[plan as PlanName].credits,
-          creditsResetAt: new Date(Date.now() + RESET_MS),
           ...(customerId ? { stripeCustomerId: customerId } : {}),
         },
       });
+      await refillToAllotment(userId, plan);
       return NextResponse.json({ received: true });
     }
 
@@ -144,14 +144,12 @@ export async function POST(req: Request) {
         select: { plan: true },
       });
       if (user && user.plan !== newPlan) {
+        // Set new plan; refill uses GREATEST so mid-cycle top-ups are preserved.
         await prisma.user.update({
           where: { id: resolvedId },
-          data: {
-            plan: newPlan,
-            creditsRemaining: PLANS[newPlan].credits,
-            creditsResetAt: new Date(Date.now() + RESET_MS),
-          },
+          data: { plan: newPlan },
         });
+        await refillToAllotment(resolvedId, newPlan);
       }
       return NextResponse.json({ received: true });
     }

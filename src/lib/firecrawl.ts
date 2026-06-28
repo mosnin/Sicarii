@@ -102,7 +102,7 @@ export async function analyzeSite(url: string): Promise<SiteAnalysis> {
   });
 
   const text = await res.text();
-  console.log(`[firecrawl] scrape ${target} -> ${res.status}: ${text.slice(0, 200)}`);
+  if (!res.ok) console.error(`[firecrawl] scrape ${target} failed: ${res.status}`);
   if (!res.ok) throw new Error(`Firecrawl scrape failed (${res.status}): ${text.slice(0, 200)}`);
 
   const body = JSON.parse(text) as {

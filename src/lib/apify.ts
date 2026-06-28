@@ -59,7 +59,7 @@ async function runActor<T = Record<string, unknown>>(
     timeoutMs,
   );
   const text = await res.text();
-  console.log(`[apify] ${actor} -> ${res.status} (${text.length}b)`);
+  if (!res.ok) console.error(`[apify] ${actor} failed: ${res.status}`);
   if (!res.ok) throw new Error(`Apify ${actor} failed (${res.status}): ${text.slice(0, 200)}`);
   try {
     const json = JSON.parse(text);

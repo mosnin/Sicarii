@@ -211,7 +211,7 @@ export function Header() {
           <div className="flex h-14 items-center justify-between pl-4 pr-3 sm:pl-5">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2" aria-label="Scalar home">
-              <LogoMark className="h-7 w-7" />
+              <LogoMark className="h-7 w-7" priority />
               <span className="hidden font-brand text-base font-bold text-foreground sm:inline">Scalar</span>
             </Link>
 

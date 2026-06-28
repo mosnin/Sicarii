@@ -87,9 +87,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Idempotency: if this payment already applied, return success without
-    // settling again (a benign client retry, never a second charge). Mirrors the
-    // top-up route, which the subscribe route previously diverged from.
+    // settling again (a benign client retry, never a second charge). Reject
+    // payloads with no nonce - they can't be idempotency-keyed safely.
     const ref = paymentRef(payload);
+    if (!ref) {
+      return NextResponse.json(
+        paymentRequiredBody(requirements, "Payment payload missing nonce."),
+        { status: 402 },
+      );
+    }
     const prior = await alreadyCredited(user.id, ref);
     if (prior !== null) {
       return NextResponse.json({ plan, duplicate: true });

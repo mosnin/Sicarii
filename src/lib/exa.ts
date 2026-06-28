@@ -52,7 +52,7 @@ async function exaPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   const text = await res.text();
-  console.log(`[exa] POST ${path} → ${res.status}: ${text.slice(0, 300)}`);
+  if (!res.ok) console.error(`[exa] POST ${path} failed: ${res.status}`);
   if (!res.ok) throw new Error(`Exa ${path} failed (${res.status}): ${text.slice(0, 200)}`);
   return JSON.parse(text) as T;
 }

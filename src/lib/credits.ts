@@ -242,14 +242,15 @@ export async function applyPlan(
     if (seen) return;
   }
   const credits = PLANS[plan].credits;
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      plan,
-      creditsRemaining: credits,
-      creditsResetAt: new Date(Date.now() + RESET_INTERVAL_MS),
-    },
-  });
+  const next = new Date(Date.now() + RESET_INTERVAL_MS);
+  // GREATEST: never wipe top-up credits the user already paid for.
+  await prisma.$executeRaw`
+    UPDATE users
+    SET plan = ${plan},
+        "creditsRemaining" = GREATEST("creditsRemaining", ${credits}),
+        "creditsResetAt" = ${next}
+    WHERE id = ${userId}
+  `;
   await prisma.creditLedger.create({
     data: {
       userId,

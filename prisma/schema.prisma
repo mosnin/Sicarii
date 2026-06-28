@@ -178,6 +178,7 @@ model Entity {
   @@index([userId, status])
   @@index([userId, updatedAt])
   @@index([userId, createdAt])
+  @@index([userId, domain])
   @@map("entities")
 }
 
@@ -519,6 +520,7 @@ model PipelineEntry {
   @@unique([pipelineId, contactId])
   @@index([userId])
   @@index([contactId])
+  @@index([pipelineId, stage])
   @@map("pipeline_entries")
 }
 

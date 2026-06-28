@@ -30,7 +30,7 @@ async function bdRequest(body: Record<string, unknown>): Promise<string> {
     body: JSON.stringify(body),
   });
   const text = await res.text();
-  console.log(`[brightdata] zone=${body.zone} url=${String(body.url).slice(0, 80)} → ${res.status}: ${text.slice(0, 200)}`);
+  if (!res.ok) console.error(`[brightdata] zone=${body.zone} failed: ${res.status}`);
   if (!res.ok) throw new Error(`Bright Data failed (${res.status}): ${text.slice(0, 200)}`);
   return text;
 }
