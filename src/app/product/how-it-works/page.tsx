@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FeaturePage } from "@/components/marketing/feature-page";
+import { AgentCircuitSection } from "@/components/sections/agent-circuit";
 
 export const metadata: Metadata = {
   title: "How it works | Scalar",
@@ -38,6 +39,7 @@ export default function HowItWorksPage() {
           body: "Every run sharpens the next on a single source of truth you own, with provenance on every field so you always know what to trust.",
         },
       ]}
+      extra={<AgentCircuitSection />}
       ctaTitle="Start in minutes."
     />
   );

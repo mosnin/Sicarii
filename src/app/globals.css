@@ -36,6 +36,36 @@
   --ring: #5AB0E8;
   --success: #16A34A;
   --warning: #EAB308;
+  --chart-1: #5AB0E8;
+  --chart-2: #2E7DB3;
+  --chart-3: #94A3B8;
+  --chart-4: #16A34A;
+  --chart-5: #EAB308;
+  --chart-background: oklch(1 0 0);
+  --chart-foreground: oklch(0.145 0.004 285);
+  --chart-foreground-muted: oklch(0.55 0.014 260);
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-crosshair: oklch(0.4 0.1828 274.34);
+  --chart-grid: oklch(0.9 0 0);
+  --chart-brush-border: var(--chart-grid);
+  --chart-tooltip-background: oklch(0.21 0.006 285 / 0.8);
+  --chart-tooltip-foreground: oklch(0.985 0 0);
+  --chart-tooltip-muted: oklch(0.65 0.01 260);
+  --chart-marker-background: oklch(0.97 0.005 260);
+  --chart-marker-border: oklch(0.85 0.01 260);
+  --chart-marker-foreground: oklch(0.3 0.01 260);
+  --chart-label: oklch(0.45 0.01 260);
+  --chart-scale-01: oklch(0.98 0.003 106);
+  --chart-scale-02: oklch(0.92 0.008 106);
+  --chart-scale-03: oklch(0.82 0.015 106);
+  --chart-scale-04: oklch(0.68 0.02 106);
+  --chart-scale-05: oklch(0.55 0.025 106);
+  --chart-scale-pattern-color: oklch(0.96 0.005 106);
+  --info: var(--color-blue-500);
+  --info-foreground: var(--color-blue-700);
+  --success-foreground: var(--color-emerald-700);
+  --warning-foreground: var(--color-amber-700);
 }
 
 .dark {
@@ -60,6 +90,31 @@
   --ring: #8FCCF2;
   --success: #16A34A;
   --warning: #EAB308;
+  --chart-1: #8FCCF2;
+  --chart-2: #5AB0E8;
+  --chart-3: #64748B;
+  --chart-4: #22C55E;
+  --chart-5: #FACC15;
+  --chart-background: oklch(0.145 0 0);
+  --chart-foreground: oklch(0.45 0 0);
+  --chart-foreground-muted: oklch(0.65 0.01 260);
+  --chart-crosshair: oklch(0.45 0 0);
+  --chart-grid: oklch(0.25 0 0);
+  --chart-brush-border: var(--chart-grid);
+  --chart-marker-background: oklch(0.25 0.01 260);
+  --chart-marker-border: oklch(0.4 0.01 260);
+  --chart-marker-foreground: oklch(0.9 0 0);
+  --chart-label: oklch(0.75 0.01 260);
+  --chart-scale-01: oklch(0.28 0.03 270);
+  --chart-scale-02: oklch(0.38 0.04 270);
+  --chart-scale-03: oklch(0.48 0.05 270);
+  --chart-scale-04: oklch(0.58 0.06 270);
+  --chart-scale-05: oklch(0.68 0.07 270);
+  --chart-scale-pattern-color: oklch(0.145 0 0);
+  --info: var(--color-blue-500);
+  --info-foreground: var(--color-blue-400);
+  --success-foreground: var(--color-emerald-400);
+  --warning-foreground: var(--color-amber-400);
 }
 
 @theme inline {
@@ -128,6 +183,64 @@
   --animate-slide-in: slide-in 0.3s ease-out;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
   --animate-rainbow: rainbow var(--speed, 2s) infinite linear;
+  --color-line: color-mix(in oklab, var(--border) 64%, var(--background));
+  --color-chart-scale-pattern-color: var(--chart-scale-pattern-color);
+  --color-chart-scale-05: var(--chart-scale-05);
+  --color-chart-scale-04: var(--chart-scale-04);
+  --color-chart-scale-03: var(--chart-scale-03);
+  --color-chart-scale-02: var(--chart-scale-02);
+  --color-chart-scale-01: var(--chart-scale-01);
+  --color-chart-label: var(--chart-label);
+  --color-chart-marker-foreground: var(--chart-marker-foreground);
+  --color-chart-marker-border: var(--chart-marker-border);
+  --color-chart-marker-background: var(--chart-marker-background);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --chart-brush-border: var(--chart-brush-border);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-crosshair: var(--chart-crosshair);
+  --chart-line-secondary: var(--chart-line-secondary);
+  --chart-line-primary: var(--chart-line-primary);
+  --color-chart-foreground-muted: var(--chart-foreground-muted);
+  --color-chart-foreground: var(--chart-foreground);
+  --color-chart-background: var(--chart-background);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --animate-expand: expand 0.2s ease-out;
+  --animate-collapse: collapse 0.2s ease-out;
+  --animate-indeterminate: indeterminate 1.5s ease-in-out infinite;
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success-foreground: var(--success-foreground);
+  --color-info-foreground: var(--info-foreground);
+  --color-info: var(--info);
+  @keyframes expand {
+  from {
+    height: var(--collapsed-height, 0);
+    }
+  to {
+    height: var(--height);
+    }
+  }
+  @keyframes collapse {
+  from {
+    height: var(--height);
+    }
+  to {
+    height: var(--collapsed-height, 0);
+    }
+  }
+  @keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+    }
+  100% {
+    transform: translateX(400%);
+    }
+  }
 }
 
 @keyframes fade-in {
@@ -288,4 +401,461 @@ h1,
 }
 .thin-scroll::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-muted-foreground);
+}
+@property --top-mask-height {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 0px;
+}
+@property --bottom-mask-height {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 64px;
+}
+@property --left-mask-width {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 0px;
+}
+@property --right-mask-width {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 64px;
+}
+
+@layer base {
+
+@keyframes show-top-mask {
+  to {
+    --top-mask-height: var(--mask-height);
+    }
+  }
+
+@keyframes hide-bottom-mask {
+  to {
+    --bottom-mask-height: 0px;
+    }
+  }
+
+@keyframes show-left-mask {
+  to {
+    --left-mask-width: var(--mask-width);
+    }
+  }
+
+@keyframes hide-right-mask {
+  to {
+    --right-mask-width: 0px;
+    }
+  }
+}
+
+@utility scroll-fade-effect-y {
+    --mask-height: 64px;
+    --mask-offset-top: 0px;
+    --mask-offset-bottom: 0px;
+    --scroll-buffer: 2rem;
+    mask-image: linear-gradient(to top, transparent, black 90%), linear-gradient(to bottom, transparent 0%, black 100%), linear-gradient(black, black);
+    mask-size: 100% var(--top-mask-height), 100% var(--bottom-mask-height), 100% 100%;
+    mask-repeat: no-repeat, no-repeat, no-repeat;
+    mask-position: 0 var(--mask-offset-top), 0 calc(100% - var(--mask-offset-bottom)), 0 0;
+    mask-composite: exclude;
+    animation-name: show-top-mask, hide-bottom-mask;
+    animation-timeline: scroll(self), scroll(self);
+    animation-range: 0 var(--scroll-buffer), calc(100% - var(--scroll-buffer)) 100%;
+    animation-fill-mode: both;
+}
+
+@utility scroll-fade-effect-x {
+    --mask-width: 64px;
+    --mask-offset-left: 0px;
+    --mask-offset-right: 0px;
+    --scroll-buffer: 2rem;
+    mask-image: linear-gradient(to left, transparent, black 90%), linear-gradient(to right, transparent 0%, black 100%), linear-gradient(black, black);
+    mask-size: var(--left-mask-width) 100%, var(--right-mask-width) 100%, 100% 100%;
+    mask-repeat: no-repeat, no-repeat, no-repeat;
+    mask-position: var(--mask-offset-left) 0, calc(100% - var(--mask-offset-right)) 0, 0 0;
+    mask-composite: exclude;
+    animation-name: show-left-mask, hide-right-mask;
+    animation-timeline: scroll(self inline), scroll(self inline);
+    animation-range: 0 var(--scroll-buffer), calc(100% - var(--scroll-buffer)) 100%;
+    animation-fill-mode: both;
+}
+
+@utility screen-line-top {
+    @apply relative before:absolute before:top-0 before:left-[-100vw] before:-z-1 before:h-px before:w-[200vw] before:bg-line;
+}
+
+@utility screen-line-bottom {
+    @apply relative after:absolute after:bottom-0 after:left-[-100vw] after:-z-1 after:h-px after:w-[200vw] after:bg-line;
+}
+
+@layer components {
+  .prose h1:not(.not-prose h1) {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    line-height: var(--text-2xl--line-height);
+    letter-spacing: var(--tracking-tight);
+    scroll-margin: calc(var(--spacing) * 20);
+  }
+  .prose h2:not(.not-prose h2) {
+    padding-bottom: calc(var(--spacing) * 2);
+    margin-top: calc(var(--spacing) * 8);
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: var(--text-xl--line-height);
+    letter-spacing: var(--tracking-tight);
+    scroll-margin: calc(var(--spacing) * 20);
+  }
+  .prose h2:not(.not-prose h2):first-child {
+    margin-top: 0;
+  }
+  .prose h3:not(.not-prose h3) {
+    margin-top: calc(var(--spacing) * 8);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    line-height: var(--text-lg--line-height);
+    letter-spacing: var(--tracking-tight);
+    scroll-margin: calc(var(--spacing) * 20);
+  }
+  .prose h3:not(.not-prose h3):first-child {
+    margin-top: 0;
+  }
+  .prose h4:not(.not-prose h4) {
+    margin-top: calc(var(--spacing) * 8);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    line-height: var(--text-lg--line-height);
+    letter-spacing: var(--tracking-tight);
+    scroll-margin: calc(var(--spacing) * 20);
+  }
+  .prose h4:not(.not-prose h4):first-child {
+    margin-top: 0;
+  }
+  .prose h5:not(.not-prose h5) {
+    margin-top: calc(var(--spacing) * 8);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    line-height: var(--text-lg--line-height);
+    letter-spacing: var(--tracking-tight);
+    scroll-margin: calc(var(--spacing) * 20);
+  }
+  .prose h5:not(.not-prose h5):first-child {
+    margin-top: 0;
+  }
+  .prose h6:not(.not-prose h6) {
+    margin-top: calc(var(--spacing) * 8);
+    font-size: var(--text-base);
+    font-weight: 600;
+    line-height: var(--text-base--line-height);
+    letter-spacing: var(--tracking-tight);
+    scroll-margin: calc(var(--spacing) * 20);
+  }
+  .prose h6:not(.not-prose h6):first-child {
+    margin-top: 0;
+  }
+  .prose h1:not(.not-prose h1) + p, .prose h2:not(.not-prose h2) + p, .prose h3:not(.not-prose h3) + p, .prose h4:not(.not-prose h4) + p, .prose h5:not(.not-prose h5) + p, .prose h6:not(.not-prose h6) + p {
+    margin-top: 0;
+  }
+  .prose p:not(.not-prose p) {
+    line-height: 1.75;
+  }
+  .prose p:not(.not-prose p):not(:first-child) {
+    margin-top: calc(var(--spacing) * 6);
+  }
+  .prose li:not(.not-prose li) {
+    line-height: 1.75;
+  }
+  .prose a:not(.not-prose a) {
+    font-weight: 500;
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: var(--spacing);
+  }
+  .prose blockquote:not(.not-prose blockquote) {
+    padding-left: calc(var(--spacing) * 6);
+    margin-top: calc(var(--spacing) * 6);
+    font-style: italic;
+    border-left: 2px solid var(--color-border);
+  }
+  .prose table:not(.not-prose table) {
+    width: 100%;
+    margin-top: calc(var(--spacing) * 6);
+    margin-bottom: calc(var(--spacing) * 6);
+    overflow-y: auto;
+  }
+  .prose table:not(.not-prose table) thead tr {
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .prose table:not(.not-prose table) thead tr:nth-child(even) {
+    background-color: var(--color-muted);
+  }
+  .prose table:not(.not-prose table) th {
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+    font-weight: 700;
+    text-align: left;
+    border: 1px solid var(--color-border);
+  }
+  .prose table:not(.not-prose table) th[align="center"] {
+    text-align: center;
+  }
+  .prose table:not(.not-prose table) th[align="right"] {
+    text-align: right;
+  }
+  .prose table:not(.not-prose table) tbody tr {
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .prose table:not(.not-prose table) tbody tr:nth-child(even) {
+    background-color: var(--color-muted);
+  }
+  .prose table:not(.not-prose table) td {
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+    text-align: left;
+    border: 1px solid var(--color-border);
+  }
+  .prose table:not(.not-prose table) td[align="center"] {
+    text-align: center;
+  }
+  .prose table:not(.not-prose table) td[align="right"] {
+    text-align: right;
+  }
+  .prose ul:not(.not-prose ul) {
+    margin-top: calc(var(--spacing) * 6);
+    margin-left: calc(var(--spacing) * 6);
+    list-style: disc;
+  }
+  .prose ul:not(.not-prose ul) > li {
+    margin-top: calc(var(--spacing) * 2);
+  }
+  .prose ul:not(.not-prose ul) p {
+    display: inline;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  .prose ol:not(.not-prose ol) {
+    margin-top: calc(var(--spacing) * 6);
+    margin-left: calc(var(--spacing) * 6);
+    list-style: decimal;
+  }
+  .prose ol:not(.not-prose ol) > li {
+    margin-top: calc(var(--spacing) * 2);
+  }
+  .prose ol:not(.not-prose ol) p {
+    display: inline;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  .prose img:not(.not-prose img), .prose picture:not(.not-prose picture), .prose video:not(.not-prose video) {
+    margin-top: calc(var(--spacing) * 6);
+    margin-bottom: calc(var(--spacing) * 6);
+  }
+  .prose picture > img:not(.not-prose picture > img) {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  .prose kbd:not(.not-prose kbd) {
+    padding: calc(var(--spacing) * 0.5) calc(var(--spacing) * 1.5);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    line-height: var(--text-xs--line-height);
+    background-color: var(--color-muted);
+    border-radius: calc(var(--radius) - 2px);
+  }
+  .prose hr {
+    margin-top: calc(var(--spacing) * 10);
+    margin-bottom: calc(var(--spacing) * 10);
+  }
+  .prose dl:not(.not-prose dl) {
+    margin-top: calc(var(--spacing) * 6);
+    margin-bottom: calc(var(--spacing) * 6);
+  }
+  .prose dl:not(.not-prose dl) dt {
+    margin-top: calc(var(--spacing) * 6);
+    font-weight: 600;
+    letter-spacing: var(--tracking-tight);
+  }
+  .prose dl:not(.not-prose dl) dt:first-child {
+    margin-top: 0;
+  }
+  .prose details:not(.not-prose details) {
+    margin-top: calc(var(--spacing) * 6);
+  }
+  .prose details:not(.not-prose details) summary {
+    margin-top: calc(var(--spacing) * 6);
+    font-weight: 600;
+    letter-spacing: var(--tracking-tight);
+    cursor: pointer;
+  }
+  .prose details:not(.not-prose details) p:first-of-type {
+    margin-top: calc(var(--spacing) * 2);
+  }
+  .prose mark:not(.not-prose mark) {
+    background-color: var(--color-yellow-300);
+  }
+  .prose small:not(.not-prose small) {
+    font-size: var(--text-xs);
+    line-height: 1;
+  }
+  .prose figure:not(.not-prose figure) {
+    margin-top: calc(var(--spacing) * 6);
+    margin-bottom: calc(var(--spacing) * 6);
+  }
+  .prose figure:not(.not-prose figure) img {
+    margin-top: 0;
+    margin-bottom: 0;
+    border-radius: var(--radius);
+  }
+  .prose figure:not(.not-prose figure) figcaption {
+    margin-top: calc(var(--spacing) * 2);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: var(--text-sm--line-height);
+    color: var(--color-muted-foreground);
+  }
+  .prose code:not(.not-prose code) {
+    padding: calc(var(--spacing) * 0.5) calc(var(--spacing) * 1.5);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    line-height: var(--text-xs--line-height);
+    color: var(--color-muted-foreground);
+    background-color: var(--color-muted);
+    border-radius: var(--radius-sm);
+  }
+}
+
+@utility hitbox-debug {
+    position: relative;
+  &::before {
+    position: absolute;
+    top: var(--hitbox-t, 0px);
+    right: var(--hitbox-r, 0px);
+    bottom: var(--hitbox-b, 0px);
+    left: var(--hitbox-l, 0px);
+    pointer-events: inherit;
+    content: "";
+    @apply border border-dashed border-info bg-info/10;
+  }
+  &:hover::before {
+    @apply border border-dashed border-success bg-success/10;
+  }
+}
+
+@utility hitbox {
+    position: relative;
+  &::before {
+    position: absolute;
+    top: var(--hitbox-t, 0px);
+    right: var(--hitbox-r, 0px);
+    bottom: var(--hitbox-b, 0px);
+    left: var(--hitbox-l, 0px);
+    pointer-events: inherit;
+    content: "";
+  }
+}
+
+@utility hitbox-* {
+    --hitbox-t: calc(--value([*]) * -1);
+    --hitbox-b: calc(--value([*]) * -1);
+    --hitbox-l: calc(--value([*]) * -1);
+    --hitbox-r: calc(--value([*]) * -1);
+    position: relative;
+  &::before {
+    position: absolute;
+    top: var(--hitbox-t, 0px);
+    right: var(--hitbox-r, 0px);
+    bottom: var(--hitbox-b, 0px);
+    left: var(--hitbox-l, 0px);
+    pointer-events: inherit;
+    content: "";
+  }
+}
+
+@utility hitbox-l-* {
+    --hitbox-l: calc(--value([*]) * -1);
+    position: relative;
+  &::before {
+    position: absolute;
+    top: var(--hitbox-t, 0px);
+    right: var(--hitbox-r, 0px);
+    bottom: var(--hitbox-b, 0px);
+    left: var(--hitbox-l, 0px);
+    pointer-events: inherit;
+    content: "";
+  }
+}
+
+@utility hitbox-r-* {
+    --hitbox-r: calc(--value([*]) * -1);
+    position: relative;
+  &::before {
+    position: absolute;
+    top: var(--hitbox-t, 0px);
+    right: var(--hitbox-r, 0px);
+    bottom: var(--hitbox-b, 0px);
+    left: var(--hitbox-l, 0px);
+    pointer-events: inherit;
+    content: "";
+  }
+}
+
+@utility hitbox-t-* {
+    --hitbox-t: calc(--value([*]) * -1);
+    position: relative;
+  &::before {
+    position: absolute;
+    top: var(--hitbox-t, 0px);
+    right: var(--hitbox-r, 0px);
+    bottom: var(--hitbox-b, 0px);
+    left: var(--hitbox-l, 0px);
+    pointer-events: inherit;
+    content: "";
+  }
+}
+
+@utility hitbox-b-* {
+    --hitbox-b: calc(--value([*]) * -1);
+    position: relative;
+  &::before {
+    position: absolute;
+    top: var(--hitbox-t, 0px);
+    right: var(--hitbox-r, 0px);
+    bottom: var(--hitbox-b, 0px);
+    left: var(--hitbox-l, 0px);
+    pointer-events: inherit;
+    content: "";
+  }
+}
+
+@utility hitbox-x-* {
+    --hitbox-l: calc(--value([*]) * -1);
+    --hitbox-r: calc(--value([*]) * -1);
+    position: relative;
+  &::before {
+    position: absolute;
+    top: var(--hitbox-t, 0px);
+    right: var(--hitbox-r, 0px);
+    bottom: var(--hitbox-b, 0px);
+    left: var(--hitbox-l, 0px);
+    pointer-events: inherit;
+    content: "";
+  }
+}
+
+@utility hitbox-y-* {
+    --hitbox-t: calc(--value([*]) * -1);
+    --hitbox-b: calc(--value([*]) * -1);
+    position: relative;
+  &::before {
+    position: absolute;
+    top: var(--hitbox-t, 0px);
+    right: var(--hitbox-r, 0px);
+    bottom: var(--hitbox-b, 0px);
+    left: var(--hitbox-l, 0px);
+    pointer-events: inherit;
+    content: "";
+  }
 }

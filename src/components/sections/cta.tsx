@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { AsciiField } from "@/components/dashboard/ascii-field";
+import { ShimmeringText } from "@/components/shimmering-text";
 
 export function CTASection() {
   return (
@@ -11,7 +12,12 @@ export function CTASection() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.12),transparent_60%)]" />
         <div className="relative z-10">
           <h2 className="font-brand text-3xl text-foreground sm:text-4xl lg:text-5xl">
-            Ready to run your <span className="text-gradient-orange">agent CRM?</span>
+            Ready to run your{" "}
+            <ShimmeringText
+              text="agent CRM?"
+              duration={2.4}
+              className="align-baseline font-brand [--color:var(--primary)] [--shimmering-color:var(--foreground)]"
+            />
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
             Connect your product context, point your agents at Scalar, and start building

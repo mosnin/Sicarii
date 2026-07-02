@@ -14,6 +14,23 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored static assets for the ritual framework site, not app code.
     ".ritual/**",
+    // Vendored chart engine from the metrics-01 registry component. Registry
+    // code, not authored here; kept intact so upstream updates stay diffable.
+    "src/components/charts/**",
+    // Vendored registry components (shark / pixel-perfect) pending adaptation.
+    // Remove a file from this list the moment we edit it for real use.
+    "src/components/pixel-perfect/fluid-cube-scroll.tsx",
+    "src/components/ui/chart.tsx",
+    "src/components/ui/dialog.tsx",
+    "src/components/ui/editable.tsx",
+    "src/components/ui/file-upload.tsx",
+    "src/components/ui/hint.tsx",
+    "src/components/ui/hover-card.tsx",
+    "src/components/ui/image-cropper.tsx",
+    "src/components/ui/number-input.tsx",
+    "src/components/ui/pagination.tsx",
+    "src/components/ui/radio-group.tsx",
+    "src/components/ui/sidebar.tsx",
   ]),
 ]);
 

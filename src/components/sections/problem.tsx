@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
+import { DotGridSpotlight } from "@/components/dot-grid-spotlight";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
@@ -23,8 +24,17 @@ const withScalar = [
 
 export function ProblemSection() {
   return (
-    <section className="relative scroll-mt-24 bg-background py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section className="relative scroll-mt-24 overflow-hidden bg-background py-24 sm:py-32">
+      {/* Cursor-lit dot field: quiet until you move through it. The canvas
+          tracks its own mouse events, so it keeps pointer events; content
+          sits above at z-10 and stays fully interactive. */}
+      <DotGridSpotlight
+        className="absolute inset-0 h-full w-full"
+        dotColor="rgba(90, 176, 232, 0.10)"
+        activeDotColor="rgba(90, 176, 232, 0.45)"
+        spacing={26}
+      />
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs uppercase tracking-[0.25em] text-primary">The problem</p>
           <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">

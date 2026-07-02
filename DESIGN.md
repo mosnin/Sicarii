@@ -143,6 +143,29 @@ Rules:
   morph surfaces only where capture beats navigation.
 - Icon rules from section 7 still apply inside all four surfaces.
 
+### 6c. Marketing effect kit (do not regress)
+
+Registry components adapted for the marketing site, all tuned to the baby-blue
+system. In production use:
+
+| Effect | File | Where | Notes |
+|---|---|---|---|
+| **AgentCircuit** | `sections/agent-circuit.tsx` (wraps `ui/circuit-board.tsx`) | Homepage + `/product/how-it-works` | Scalar's real data flow as an animated circuit: agent, discover/radar, verify/enrich, CRM core, email/calls. Pulses in `#5AB0E8`. Scale-to-fit via `react-use-measure`. |
+| **DotGridSpotlight** | `dot-grid-spotlight.tsx` | Problem section background | Cursor-lit dot field in primary blue at whisper opacity. Content stays `z-10`. |
+| **ShimmeringText** | `shimmering-text.tsx` | CTA heading accent | Character shimmer from `--primary` to `--foreground`. Use on ONE phrase per page. |
+| **Footer reveal** | pattern in `app/page.tsx` | Homepage | Content (`z-10`, opaque bg) slides up over the sticky footer (`sticky bottom-0 z-0`). Pure CSS. |
+
+A wider fleet (testimonials, logos carousel, metrics charts, text-flip,
+carousels, gradient/blur backgrounds, shark form primitives) is installed and
+compiling, staged for future waves - see the vendored ignore list in
+`eslint.config.mjs`. Chart colors are theme tokens (`--chart-1..5`, baby-blue
+ramp) - never orange.
+
+Honesty rule for marketing sections: no fabricated testimonials, customer names,
+or logos, ever. The testimonials and trusted-by sections ship only when the
+founder supplies real quotes and real logo permissions. The AgentMarquee (real
+MCP-client logos) is the only social-proof band until then.
+
 ---
 
 ## 7. Icons (mirrors `AGENTS.md`)

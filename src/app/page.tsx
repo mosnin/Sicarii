@@ -7,6 +7,7 @@ import { ProductDemo } from "@/components/sections/product-demo";
 import { ProblemSection } from "@/components/sections/problem";
 import { CapabilitiesSection } from "@/components/sections/capabilities";
 import { IntelligenceSection } from "@/components/sections/intelligence";
+import { AgentCircuitSection } from "@/components/sections/agent-circuit";
 import { HowItWorksSection } from "@/components/sections/how-it-works";
 import { WhyScalarSection } from "@/components/sections/why-scalar";
 import { AboutSection } from "@/components/sections/about";
@@ -17,21 +18,31 @@ export default function Home() {
   return (
     <>
       <ScrollProgress />
-      <Header />
-      <main className="flex-1">
-        <HeroSection />
-        <AgentMarquee />
-        <ProductDemo />
-        <ProblemSection />
-        <CapabilitiesSection />
-        <IntelligenceSection />
-        <HowItWorksSection />
-        <WhyScalarSection />
-        <AboutSection />
-        <ManifestoRail />
-        <CTASection />
-      </main>
-      <Footer />
+      {/* Footer reveal: the page content (z-10, opaque) slides up over the
+          sticky footer pinned beneath it, so the footer is uncovered rather
+          than scrolled into view. Pure CSS sticky, no JS. */}
+      <div className="relative">
+        <div className="relative z-10 bg-background">
+          <Header />
+          <main className="flex-1">
+            <HeroSection />
+            <AgentMarquee />
+            <ProductDemo />
+            <ProblemSection />
+            <CapabilitiesSection />
+            <IntelligenceSection />
+            <AgentCircuitSection />
+            <HowItWorksSection />
+            <WhyScalarSection />
+            <AboutSection />
+            <ManifestoRail />
+            <CTASection />
+          </main>
+        </div>
+        <div className="sticky bottom-0 z-0">
+          <Footer />
+        </div>
+      </div>
     </>
   );
 }
