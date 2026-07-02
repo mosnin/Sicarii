@@ -8,9 +8,17 @@ import { createHash } from "node:crypto";
 
 const enc = new TextEncoder();
 
+let warnedFallback = false;
 function secret(): Uint8Array {
   const s = process.env.MCP_OAUTH_SECRET || process.env.CLERK_SECRET_KEY;
   if (!s) throw new Error("MCP_OAUTH_SECRET (or CLERK_SECRET_KEY) must be set for OAuth");
+  if (!process.env.MCP_OAUTH_SECRET && process.env.NODE_ENV === "production" && !warnedFallback) {
+    warnedFallback = true;
+    console.error(
+      "[oauth] SECURITY: MCP_OAUTH_SECRET is not set; falling back to CLERK_SECRET_KEY. " +
+        "Set a distinct MCP_OAUTH_SECRET so OAuth tokens do not share signing material with Clerk.",
+    );
+  }
   return enc.encode(s);
 }
 

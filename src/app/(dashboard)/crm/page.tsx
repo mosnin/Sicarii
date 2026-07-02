@@ -168,6 +168,8 @@ async function ContactsList({ userId, page }: { userId: string; page: number }) 
     where: { userId },
     orderBy: { updatedAt: "desc" },
     include: { entity: { select: { id: true, name: true } } },
+    // The list row never renders the enrichment blob; skip pulling KBs per row.
+    omit: { enrichment: true },
     skip: (page - 1) * PAGE,
     take: PAGE,
   });
@@ -212,6 +214,8 @@ async function EntitiesList({ userId, page }: { userId: string; page: number }) 
     where: { userId },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { contacts: true } } },
+    // The list row never renders the enrichment blob; skip pulling KBs per row.
+    omit: { enrichment: true },
     skip: (page - 1) * PAGE,
     take: PAGE,
   });

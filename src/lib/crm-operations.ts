@@ -73,6 +73,9 @@ export function listEntities(userId: string, q?: string) {
     },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { contacts: true } } },
+    // Lists are for scanning; the enrichment blob (often KBs per row) belongs
+    // to get_entity. Omitting it keeps agent token usage and payloads sane.
+    omit: { enrichment: true },
     take: 200,
   });
 }
@@ -80,7 +83,7 @@ export function listEntities(userId: string, q?: string) {
 export async function getEntity(userId: string, id: string) {
   const entity = await prisma.entity.findUnique({
     where: { id },
-    include: { contacts: { orderBy: { updatedAt: "desc" } } },
+    include: { contacts: { orderBy: { updatedAt: "desc" }, take: 100 } },
   });
   if (!entity || entity.userId !== userId) throw new OpError("Entity not found", 404);
   return entity;
@@ -222,7 +225,9 @@ export async function findCompanies(
   const seenDomains = new Set(existing.map((e) => norm(e.domain)).filter(Boolean) as string[]);
   const seenNames = new Set(existing.map((e) => e.name.trim().toLowerCase()));
 
-  const created: { id: string; name: string; domain: string | null }[] = [];
+  // Filter first, insert once: a single batched INSERT instead of one round
+  // trip per company (the old loop was N sequential inserts).
+  const fresh: typeof found = [];
   let skipped = 0;
   for (const c of found) {
     const domain = norm(c.domain);
@@ -231,7 +236,13 @@ export async function findCompanies(
       skipped++;
       continue;
     }
-    const entity = await createEntity(userId, {
+    if (domain) seenDomains.add(domain);
+    seenNames.add(nameKey);
+    fresh.push(c);
+  }
+  const rows = await prisma.entity.createManyAndReturn({
+    data: fresh.map((c) => ({
+      userId,
       name: c.companyName,
       domain: c.domain ?? null,
       website: c.website ?? null,
@@ -240,13 +251,11 @@ export async function findCompanies(
       location: c.address ?? null,
       description: c.description ?? null,
       source: "agent:exa",
-      status: "NEW",
-    });
-    if (domain) seenDomains.add(domain);
-    seenNames.add(nameKey);
-    created.push({ id: entity.id, name: entity.name, domain: entity.domain });
-  }
-  return { query: input.query, added: created.length, skipped, created };
+      status: "NEW" as const,
+    })),
+    select: { id: true, name: true, domain: true },
+  });
+  return { query: input.query, added: rows.length, skipped, created: rows };
 }
 
 // Discover local businesses via Apify's Google Maps Actor and add the new ones
@@ -276,7 +285,8 @@ export async function discoverLocalLeads(
   const seenDomains = new Set(existing.map((e) => norm(e.domain)).filter(Boolean) as string[]);
   const seenNames = new Set(existing.map((e) => e.name.trim().toLowerCase()));
 
-  const created: { id: string; name: string; domain: string | null }[] = [];
+  // Filter first, insert once (same batched pattern as findCompanies).
+  const fresh: typeof found = [];
   let skipped = 0;
   for (const c of found) {
     const domain = norm(c.domain);
@@ -285,7 +295,13 @@ export async function discoverLocalLeads(
       skipped++;
       continue;
     }
-    const entity = await createEntity(userId, {
+    if (domain) seenDomains.add(domain);
+    seenNames.add(nameKey);
+    fresh.push(c);
+  }
+  const rows = await prisma.entity.createManyAndReturn({
+    data: fresh.map((c) => ({
+      userId,
       name: c.companyName,
       domain: c.domain ?? null,
       website: c.website ?? null,
@@ -293,13 +309,11 @@ export async function discoverLocalLeads(
       industry: c.industry ?? null,
       location: c.address ?? null,
       source: "agent:apify-maps",
-      status: "NEW",
-    });
-    if (domain) seenDomains.add(domain);
-    seenNames.add(nameKey);
-    created.push({ id: entity.id, name: entity.name, domain: entity.domain });
-  }
-  return { query: input.query, location: input.location ?? null, added: created.length, skipped, created };
+      status: "NEW" as const,
+    })),
+    select: { id: true, name: true, domain: true },
+  });
+  return { query: input.query, location: input.location ?? null, added: rows.length, skipped, created: rows };
 }
 
 // Pull a site's public contact details (emails/phones/socials) via Apify. Does
@@ -371,6 +385,8 @@ export function listContacts(
     },
     orderBy: { updatedAt: "desc" },
     include: { entity: { select: { id: true, name: true } } },
+    // Same as listEntities: the enrichment blob belongs to get_contact.
+    omit: { enrichment: true },
     take: 200,
   });
 }
