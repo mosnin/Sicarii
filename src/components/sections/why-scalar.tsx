@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
+import { TextFlip } from "@/components/text-flip";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
@@ -35,9 +36,15 @@ export function WhyScalarSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs uppercase tracking-[0.25em] text-primary">Why Scalar</p>
-          <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
-            Everyone owns one piece.{" "}
-            <span className="text-gradient-orange">Scalar owns all four.</span>
+          <h2 className="font-brand mt-3 flex flex-wrap items-baseline justify-center gap-x-2 text-3xl text-foreground sm:text-4xl lg:text-5xl">
+            <span>Scalar owns</span>
+            <TextFlip
+              as={motion.span}
+              interval={1.9}
+              className="text-gradient-orange"
+            >
+              {["structure.", "the UI.", "intelligence.", "all four."]}
+            </TextFlip>
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
             Enrichment tools aren&apos;t a CRM. Modern CRMs are pretty but you still

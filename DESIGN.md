@@ -159,6 +159,8 @@ system. In production use:
 | **Footer reveal** | pattern in `app/page.tsx` | Homepage | Content (`z-10`, opaque bg) slides up over the sticky footer (`sticky bottom-0 z-0`). Pure CSS. |
 | **CompoundingSection** | `sections/compounding.tsx` (vendored chart engine) | Homepage | Single-series line chart of record growth + metric tiles, labeled "Illustrative view". Chart colors are the validated tokens: `--chart-1` is `#2E7DB3` light / `#3E96D6` dark (3:1+ contrast on both surfaces, dataviz-validated). One series, crosshair tooltip, recessive grid. |
 | **Border2 corner ticks** | `pixel-perfect/border2.tsx` | Circuit + compounding containers, pricing "popular" card | Blueprint-style corner tick frame. Overlay inside a `relative` container; `pointer-events-none`. Use on technical/featured surfaces only. |
+| **TextFlip** | `text-flip.tsx` | WhyScalar heading ("Scalar owns [structure / the UI / intelligence / all four]") | Cycles an array of children with a spring flip. Use on ONE phrase per section; pass `as={motion.span}` for inline headings. |
+| **AspectView** | `dashboard/aspect-view.tsx` | Entity detail "Intelligence" bento grid | Turns raw enrichment blobs (firmographics/funding/tech/traffic/news) into stat tiles, chips, funding rounds, and news cards. Defensive deep-extraction + DataView fallback. |
 
 A wider fleet (testimonials, logos carousel, metrics charts, text-flip,
 carousels, gradient/blur backgrounds, shark form primitives) is installed and
