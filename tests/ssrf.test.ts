@@ -50,8 +50,24 @@ describe("isBlockedHost", () => {
     }
   });
 
-  it("allows normal public hosts", () => {
-    for (const h of ["example.com", "hooks.zapier.com", "8.8.8.8", "172.32.0.1", "100.128.0.1"]) {
+  it("blocks obfuscated IPv4 (integer, hex, octal, short forms) that resolve to loopback/metadata", () => {
+    for (const h of [
+      "2130706433", // decimal for 127.0.0.1
+      "0x7f000001", // hex for 127.0.0.1
+      "0x7f.0.0.1", // mixed hex
+      "0177.0.0.1", // octal 0177 = 127
+      "127.1", // short form => 127.0.0.1
+      "127.0.1", // 3-part short form
+      "017700000001", // octal integer for 127.0.0.1
+      "2852039166", // decimal for 169.254.169.254 (cloud metadata)
+      "0xA9FEA9FE", // hex for 169.254.169.254
+    ]) {
+      expect(isBlockedHost(h), h).toBe(true);
+    }
+  });
+
+  it("allows normal public hosts and public numeric IPs", () => {
+    for (const h of ["example.com", "hooks.zapier.com", "8.8.8.8", "172.32.0.1", "100.128.0.1", "134744072" /* 8.8.8.8 */]) {
       expect(isBlockedHost(h), h).toBe(false);
     }
   });
@@ -78,6 +94,9 @@ describe("safeHttpUrl", () => {
       "https://[::ffff:127.0.0.1]/x",
       "https://169.254.169.254/latest/meta-data",
       "https://metadata.google.internal/computeMetadata/v1/",
+      "https://2130706433/x", // integer loopback
+      "https://0x7f000001/x", // hex loopback
+      "https://2852039166/x", // integer cloud metadata
     ]) {
       expect(safeHttpUrl(raw as string | null | undefined), String(raw)).toBeNull();
     }
