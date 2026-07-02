@@ -17,9 +17,11 @@ const eslintConfig = defineConfig([
     // Vendored chart engine from the metrics-01 registry component. Registry
     // code, not authored here; kept intact so upstream updates stay diffable.
     "src/components/charts/**",
-    // Vendored registry components (shark / pixel-perfect) pending adaptation.
+    // Vendored shark-registry UI primitives, installed during the marketing
+    // upgrade and kept as a staged kit behind this list. They are unreachable
+    // from any page (tree-shaken out of the bundle) and left intact so upstream
+    // stays diffable. Prune deliberately when adopting or dropping the kit.
     // Remove a file from this list the moment we edit it for real use.
-    "src/components/pixel-perfect/fluid-cube-scroll.tsx",
     "src/components/ui/chart.tsx",
     "src/components/ui/dialog.tsx",
     "src/components/ui/editable.tsx",
