@@ -12,6 +12,7 @@ import Grid from "@/components/charts/grid";
 import LineChart, { Line } from "@/components/charts/line-chart";
 import { ChartTooltip } from "@/components/charts/tooltip";
 import { Metric, MetricLabel, MetricValue } from "@/components/metric";
+import Border2 from "@/components/pixel-perfect/border2";
 
 // Deterministic illustrative curve: compounding record growth over 30 days.
 // Fixed dates so server and client render identically.
@@ -40,7 +41,8 @@ export function CompoundingSection() {
           </p>
         </div>
 
-        <div className="mx-auto mt-12 max-w-4xl rounded-2xl border border-border bg-card/40 p-4 sm:p-6">
+        <div className="relative mx-auto mt-12 max-w-4xl rounded-2xl border border-border bg-card/40 p-4 sm:p-6">
+          <Border2 />
           <div className="flex items-baseline justify-between gap-4 px-2">
             <p className="font-brand text-sm text-foreground">CRM records, 30 days</p>
             <p className="text-xs text-muted-foreground">Illustrative view</p>

@@ -12,6 +12,7 @@
 import { useEffect, useState } from "react";
 import useMeasure from "react-use-measure";
 import { CircuitBoard } from "@/components/ui/circuit-board";
+import Border2 from "@/components/pixel-perfect/border2";
 
 const NODES = [
   { id: "agent", x: 70, y: 200, label: "Your agent", status: "active" as const, size: "md" as const },
@@ -92,7 +93,8 @@ export function AgentCircuitSection() {
           </p>
         </div>
 
-        <div className="mx-auto mt-12 w-full max-w-4xl rounded-2xl border border-border bg-card/40 p-3 sm:p-6">
+        <div className="relative mx-auto mt-12 w-full max-w-4xl rounded-2xl border border-border bg-card/40 p-3 sm:p-6">
+          <Border2 />
           <AgentCircuit className="w-full overflow-hidden" />
         </div>
       </div>

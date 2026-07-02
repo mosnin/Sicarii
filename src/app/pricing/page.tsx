@@ -10,6 +10,7 @@ import { Check, ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { UsageEstimator } from "@/components/marketing/usage-estimator";
+import Border2 from "@/components/pixel-perfect/border2";
 
 // Launch sale: list price is 2x the live price, struck through. Set SALE=false
 // to end it (prices then show at their live value with no strike-through).
@@ -165,9 +166,12 @@ export default function PricingPage() {
                     )}
                   >
                     {plan.popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge variant="default" className="bg-primary text-primary-foreground">Most popular</Badge>
-                      </div>
+                      <>
+                        <Border2 className="opacity-80" />
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <Badge variant="default" className="bg-primary text-primary-foreground">Most popular</Badge>
+                        </div>
+                      </>
                     )}
                     <CardHeader className="text-center">
                       <CardTitle className="font-brand text-xl">{plan.name}</CardTitle>
