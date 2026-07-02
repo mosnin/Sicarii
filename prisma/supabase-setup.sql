@@ -242,8 +242,16 @@ CREATE INDEX IF NOT EXISTS "field_provenance_stale_idx"
 -- 4. Vector similarity index for memory recall. WITHOUT this, every agent turn
 --    does a full sequential scan of the user's memory_chunks and degrades
 --    linearly as data grows. `prisma db push` does NOT create this (it is raw
---    pgvector SQL, not in schema.prisma), so RUN IT ON SUPABASE once you have
---    rows. Lists ~= sqrt(row_count); rebuild as the table grows.
+--    pgvector SQL, not in schema.prisma), so RUN IT ON SUPABASE.
+--
+--    HNSW (preferred over ivfflat): higher recall, needs no training/list
+--    tuning, and handles ongoing inserts gracefully (ivfflat lists degrade as
+--    the table grows and must be rebuilt). recallMemory() orders by the cosine
+--    operator (embedding <=> query), so the index uses vector_cosine_ops.
 -- ─────────────────────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS "memory_chunks_embedding_hnsw_idx"
+  ON "memory_chunks" USING hnsw ("embedding" vector_cosine_ops);
+-- Legacy ivfflat index (kept for older DBs; harmless if both exist). Once the
+-- HNSW index above is present you can DROP INDEX "memory_chunks_embedding_idx".
 CREATE INDEX IF NOT EXISTS "memory_chunks_embedding_idx"
   ON "memory_chunks" USING ivfflat ("embedding" vector_cosine_ops) WITH (lists = 100);

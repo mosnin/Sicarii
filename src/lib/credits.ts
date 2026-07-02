@@ -5,6 +5,7 @@
 // returns data. The atomic decrement on User is the source of truth; the
 // CreditLedger row is a best-effort audit trail.
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
 
@@ -71,30 +72,34 @@ export async function ensureCredits(userId: string, action: CreditAction): Promi
   }
 }
 
+// The plan->allotment CASE, built from PLANS so the SQL never drifts from the
+// source of truth. Plan names are trusted literals and credits are integers;
+// both are bound as parameters, not interpolated.
+const ALLOTMENT_CASE = Prisma.join(
+  Object.entries(PLANS).map(([name, p]) => Prisma.sql`WHEN ${name} THEN ${p.credits}`),
+  " ",
+);
+
 // Refill the meter when the monthly window has lapsed (or was never started).
+// One guarded UPDATE (down from a read + conditional write): the WHERE clause
+// makes it a no-op when the window is still active, so it costs a single
+// indexed statement on every metered action. The guard also means only the
+// first concurrent caller past the window resets (no double-refill race), and
+// GREATEST refills the allotment WITHOUT wiping purchased top-ups. A missing
+// user simply matches 0 rows; callers handle absence downstream.
 async function maybeReset(userId: string): Promise<void> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { plan: true, creditsResetAt: true },
-  });
-  if (!user) throw new OpError("User not found", 404);
-
   const now = new Date();
-  if (user.creditsResetAt && user.creditsResetAt >= now) return; // window still active
-
-  // Atomic + guarded: the WHERE clause means only the FIRST concurrent caller
-  // whose window has lapsed actually resets (no double-refill race), and
-  // GREATEST refills the monthly allotment WITHOUT destroying purchased top-ups
-  // (never wipe paid credits).
-  const allotment = planFor(user.plan).credits;
   const next = new Date(now.getTime() + RESET_INTERVAL_MS);
-  await prisma.$executeRaw`
+  await prisma.$executeRaw(Prisma.sql`
     UPDATE users
-    SET "creditsRemaining" = GREATEST("creditsRemaining", ${allotment}),
+    SET "creditsRemaining" = GREATEST(
+          "creditsRemaining",
+          CASE "plan" ${ALLOTMENT_CASE} ELSE ${PLANS.free.credits} END
+        ),
         "creditsResetAt" = ${next}
     WHERE id = ${userId}
       AND ("creditsResetAt" IS NULL OR "creditsResetAt" < ${now})
-  `;
+  `);
 }
 
 /**
