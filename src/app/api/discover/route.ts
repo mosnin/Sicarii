@@ -1,5 +1,6 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -35,6 +36,30 @@ import { linkupSearch, linkupDeepResearch, isLinkupConfigured } from "@/lib/link
 import { googleMapsLeads, scrapeSiteContacts, apifyGoogleSearch, isApifyConfigured } from "@/lib/apify";
 import { refineToCompanies, isRefinerConfigured } from "@/lib/result-refiner";
 import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
+
+// Input bounds for the discovery fan-out. Every string is length-capped and
+// every numeric is range-clamped so nothing oversized reaches a paid provider.
+const discoverSchema = z.object({
+  tool: z.string().max(60).optional(),
+  query: z.string().max(500).optional(),
+  country: z.string().max(8).optional(),
+  location: z.string().max(200).optional(),
+  url: z.string().max(2000).optional(),
+  urls: z.array(z.string().max(2000)).max(20).optional(),
+  domain: z.string().max(253).optional(),
+  companyName: z.string().max(200).optional(),
+  industry: z.string().max(120).optional(),
+  size: z.string().max(40).optional(),
+  firstName: z.string().max(80).optional(),
+  lastName: z.string().max(80).optional(),
+  jobTitle: z.string().max(120).optional(),
+  department: z.string().max(80).optional(),
+  level: z.string().max(40).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+  category: z.string().max(80).optional(),
+  numResults: z.number().int().min(1).max(50).optional(),
+  deep: z.boolean().optional(),
+}).nullable();
 
 function notConfigured(provider: string) {
   return NextResponse.json(
@@ -151,6 +176,15 @@ function enrichmentResult(domain: string, label: string, data: unknown) {
 }
 
 // POST /api/discover - run a discovery tool and return shaped results.
+//
+// Metering note (founder call): this route is authenticated by Clerk SESSION
+// only (getAuthenticatedUser, not resolveRequestUser), so it is reachable from
+// the dashboard UI by a logged-in human and NOT by an API-key/MCP agent. It is
+// rate-limited (30/min/user) but does NOT debit credits, i.e. interactive UI
+// research is free by design. Programmatic (metered) discovery goes through the
+// MCP tools / crm-operations, which DO charge. If free UI research should be
+// capped or metered, that is a pricing decision - change PLANS + add
+// ensureCredits/spendCredits per tool branch here.
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
@@ -160,27 +194,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests - slow down a moment." }, { status: 429 });
     }
 
-    const body = (await req.json().catch(() => null)) as {
-      tool?: string;
-      query?: string;
-      country?: string;
-      location?: string;
-      url?: string;
-      urls?: string[];
-      domain?: string;
-      companyName?: string;
-      industry?: string;
-      size?: string;
-      firstName?: string;
-      lastName?: string;
-      jobTitle?: string;
-      department?: string;
-      level?: string;
-      limit?: number;
-      category?: string;
-      numResults?: number;
-      deep?: boolean;
-    } | null;
+    // Bound every field before it can reach a paid provider or the DB. The
+    // tools fan out to Explorium/Exa/Apify/Linkup; unbounded strings/arrays
+    // here would be forwarded verbatim. safeParse => 400 on anything oversized.
+    const parsedBody = discoverSchema.safeParse(await req.json().catch(() => null));
+    if (!parsedBody.success) {
+      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+    }
+    const body = parsedBody.data;
 
     if (!body?.tool) {
       return NextResponse.json({ error: "Missing tool." }, { status: 400 });
