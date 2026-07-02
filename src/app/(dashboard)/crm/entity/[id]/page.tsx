@@ -14,7 +14,7 @@ import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 import { entityStatusBadgeVariant, entityStatusLabel } from "@/lib/entity-status";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
-import { DataView, cleanForView, humanizeKey } from "@/components/dashboard/data-view";
+import { AspectView, humanizeKey } from "@/components/dashboard/aspect-view";
 import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 import { EnrichmentStatusCard, entityTier } from "@/components/dashboard/enrichment-status";
 import { EntityActions } from "./actions";
@@ -221,26 +221,28 @@ export default async function EntityDetailPage({
         </FloatIn>
       </div>
 
-      {/* Enrichment payloads (tech stack, funding, firmographics, ...) */}
-      {enrichmentEntries.length > 0 && (
+      {/* Enrichment aspects as a visual bento grid (firmographics, funding,
+          tech stack, traffic, news) - each rendered as real cards/stats, not a
+          raw JSON blob. The deepReport key is surfaced via the ICP card above. */}
+      {enrichmentEntries.filter(([k]) => k !== "deepReport").length > 0 && (
         <FloatIn delay={0.18}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Enrichment</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {enrichmentEntries.map(([key, val]) => (
-                <details key={key} className="group" open>
-                  <summary className="flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-foreground">
-                    {humanizeKey(key)}
-                  </summary>
-                  <div className="mt-3 max-h-96 overflow-auto rounded-xl border border-border bg-muted/30 p-4">
-                    <DataView value={cleanForView(val)} />
-                  </div>
-                </details>
-              ))}
-            </CardContent>
-          </Card>
+          <div>
+            <h2 className="font-brand text-lg text-foreground">Intelligence</h2>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              {enrichmentEntries
+                .filter(([k]) => k !== "deepReport")
+                .map(([key, val]) => (
+                  <Card key={key} className={/news|firmographic/i.test(key) ? "sm:col-span-2" : ""}>
+                    <CardHeader>
+                      <CardTitle className="text-base">{humanizeKey(key)}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <AspectView aspectKey={key} value={val} />
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          </div>
         </FloatIn>
       )}
     </div>

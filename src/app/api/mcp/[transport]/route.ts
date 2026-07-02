@@ -8,6 +8,7 @@ import {
   topUpHint,
   isX402Configured,
   buildRequirements,
+  grantAfterSettle,
   paymentRequiredBody,
   paymentRef,
   verifyPayment,
@@ -195,7 +196,10 @@ async function buyCreditsViaMcp(
   if (prior !== null) return { step: "settled", credited: 0, balance: prior, duplicate: true };
   const settled = await settlePayment(payload, requirements);
   if (!settled.ok) throw new OpError(`Settlement failed: ${settled.reason}`, 402);
-  const balance = await addCredits(userId, credits, { action: "topup_x402", ref });
+  const balance = await grantAfterSettle(
+    () => addCredits(userId, credits, { action: "topup_x402", ref }),
+    { transaction: settled.transaction, userId, ref, amount: String(credits) },
+  );
   return { step: "settled", credited: credits, balance, network: x402Network(), transaction: settled.transaction };
 }
 
@@ -232,7 +236,10 @@ async function buyPlanViaMcp(
   if (seen !== null) return { step: "settled", plan, duplicate: true };
   const settled = await settlePayment(payload, requirements);
   if (!settled.ok) throw new OpError(`Settlement failed: ${settled.reason}`, 402);
-  await applyPlan(userId, plan, { ref });
+  await grantAfterSettle(
+    () => applyPlan(userId, plan, { ref }),
+    { transaction: settled.transaction, userId, ref, amount: `plan:${plan}` },
+  );
   return { step: "settled", plan, credits: PLANS[plan].credits, period: "30 days", network: x402Network(), transaction: settled.transaction };
 }
 

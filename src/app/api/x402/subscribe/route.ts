@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { applyPlan, alreadyCredited, PLAN_USD, PLANS, type PaidPlanName } from "@/lib/credits";
 import {
   buildRequirements,
+  grantAfterSettle,
   isX402Configured,
   paymentRef,
   paymentRequiredBody,
@@ -109,8 +110,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // applyPlan is idempotent on ref, so a retried settlement never refills twice.
-    await applyPlan(user.id, plan, { ref });
+    // applyPlan is idempotent on ref; grantAfterSettle retries + reconciliation-
+    // logs so a post-settle failure can never silently lose the paid plan.
+    await grantAfterSettle(
+      () => applyPlan(user.id, plan, { ref }),
+      { transaction: settled.transaction, userId: user.id, ref, amount: `plan:${plan}` },
+    );
     return NextResponse.json(
       {
         plan,

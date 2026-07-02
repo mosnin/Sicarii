@@ -3,9 +3,9 @@ import {
   verifyPkceS256,
   signAccessToken,
   signRefreshToken,
+  consumeRefreshToken,
   ACCESS_TTL,
   type CodeClaims,
-  type RefreshClaims,
 } from "@/lib/oauth";
 
 const cors = {
@@ -53,11 +53,21 @@ export async function POST(req: Request) {
 
   if (grant === "refresh_token") {
     const rt = form.get("refresh_token");
-    const claims = rt ? await verifyToken<RefreshClaims>(rt) : null;
-    if (!claims || claims.typ !== "refresh") return err("invalid_grant", 400, "Bad or expired refresh token");
+    if (!rt) return err("invalid_request");
+    // Rotation with reuse detection: consuming revokes the presented token and
+    // fails if it was already used (stolen-token replay is caught here).
+    const claims = await consumeRefreshToken(rt);
+    if (!claims) return err("invalid_grant", 400, "Bad, expired, or already-used refresh token");
     const access = await signAccessToken(claims.sub, claims.scope);
+    const refresh = await signRefreshToken(claims.sub, claims.scope);
     return Response.json(
-      { access_token: access, token_type: "Bearer", expires_in: ACCESS_TTL, scope: claims.scope ?? "mcp" },
+      {
+        access_token: access,
+        token_type: "Bearer",
+        expires_in: ACCESS_TTL,
+        refresh_token: refresh,
+        scope: claims.scope ?? "mcp",
+      },
       { headers: cors }
     );
   }

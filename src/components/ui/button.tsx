@@ -23,15 +23,25 @@ const buttonVariants = cva(
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-8 px-3 text-xs",
+        md: "h-9 px-4 text-sm",
         lg: "h-12 px-8 text-base",
         xl: "h-14 px-10 text-lg",
         icon: "h-10 w-10",
+        "icon-xs": "h-6 w-6",
         "icon-sm": "h-8 w-8",
+        "icon-md": "h-9 w-9",
+      },
+      // Press feedback used by composed registry components (sidebar,
+      // editable). Off by default so existing buttons are unchanged.
+      clickEffect: {
+        true: "active:scale-[0.98]",
+        false: "",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
+      clickEffect: false,
     },
   }
 );

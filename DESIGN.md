@@ -51,8 +51,11 @@ Rules:
 
 ## 3. Type
 
-- **Headings / wordmark / big numerals:** `.font-brand` = `"Bitcount Grid Single"`
-  (imported in `globals.css`).
+- **Headings / wordmark / big numerals:** `.font-brand` = `"Space Grotesk"`, a
+  clean geometric grotesk (imported in `globals.css`). Body copy is Inter.
+  (Was Bitcount Grid Single, a pixel-grid face; dropped - it read as retro/
+  pixelated once the CSP allowed the webfont to actually load, clashing with the
+  quiet-premium aesthetic.)
 - **Accent word:** wrap one word in `.text-gradient-orange` (a baby-blue gradient, bg-clip-text).
 - **Body:** Inter (`font-sans`).
 - **Eyebrow:** `text-xs uppercase tracking-[0.3em] text-primary`.
@@ -121,6 +124,54 @@ field; background texture only. Ramp `" .·:-=+*≡#%@"`, ~30fps, honors
 - **Always** respect `prefers-reduced-motion` (`useReducedMotion`).
 - **Avoid Framer shared-layout (`layoutId`) morphs between very different layouts**
   (e.g. horizontal dock ⇄ vertical sidebar) — they glitch. Prefer clean slide/fade.
+
+### 6b. Motion Surfaces (do not regress)
+
+Four adapted cult-ui primitives live in `src/components/ui/` and are part of the
+product's felt experience. They are installed, themed to our tokens, and in
+production use. Removing or downgrading them to static UI is a regression.
+
+| Primitive | File | In production at | Use it for |
+|---|---|---|---|
+| **DynamicIsland** | `ui/dynamic-island.tsx` | `dashboard/agent-island.tsx`, mounted in the dashboard layout | Ambient status HUDs: state that should be one glance away, never a page. Compact by default, expands on tap, auto-tucks after 8s. |
+| **MorphSurface** | `ui/morph-surface.tsx` | `crm/[id]/quick-note.tsx` (contact Activity card) | Inline capture: a one-line dock that morphs into a small form (notes, quick inputs). Submits via `onSubmit(FormData)`, success dot animates. |
+| **ExpandableScreen** | `ui/expandable-screen.tsx` | `sections/product-demo.tsx` (homepage) | A card that morphs to a full-screen immersive layer. Mount heavy content (iframes, players) only inside the expanded state so triggers stay light. Pass `bgClassName` on the trigger matching the content bg for a clean morph. |
+| **SidePanel** | `ui/side-panel.tsx` | `sections/manifesto-rail.tsx` (homepage) | An edge-anchored rail that stretches open across the page for a single held moment (a statement, a highlight). One per page, maximum. |
+
+Rules:
+- Theme through tokens only (`bg-card`, `bg-foreground`, `text-background`,
+  `border-border`, `bg-primary`). Never reintroduce the upstream hardcoded
+  neutrals/black.
+- These are moments, not wallpaper: one island per app shell, one rail per page,
+  morph surfaces only where capture beats navigation.
+- Icon rules from section 7 still apply inside all four surfaces.
+
+### 6c. Marketing effect kit (do not regress)
+
+Registry components adapted for the marketing site, all tuned to the baby-blue
+system. In production use:
+
+| Effect | File | Where | Notes |
+|---|---|---|---|
+| **AgentCircuit** | `sections/agent-circuit.tsx` (wraps `ui/circuit-board.tsx`) | Homepage + `/product/how-it-works` | Scalar's real data flow as an animated circuit: agent, discover/radar, verify/enrich, CRM core, email/calls. Pulses in `#5AB0E8`. Scale-to-fit via `react-use-measure`. |
+| **DotGridSpotlight** | `dot-grid-spotlight.tsx` | Problem section background | Cursor-lit dot field in primary blue at whisper opacity. Content stays `z-10`. |
+| **ShimmeringText** | `shimmering-text.tsx` | CTA heading accent | Character shimmer from `--primary` to `--foreground`. Use on ONE phrase per page. |
+| **Footer reveal** | pattern in `app/page.tsx` | Homepage | Content (`z-10`, opaque bg) slides up over the sticky footer (`sticky bottom-0 z-0`). Pure CSS. |
+| **CompoundingSection** | `sections/compounding.tsx` (vendored chart engine) | Homepage | Single-series line chart of record growth + metric tiles, labeled "Illustrative view". Chart colors are the validated tokens: `--chart-1` is `#2E7DB3` light / `#3E96D6` dark (3:1+ contrast on both surfaces, dataviz-validated). One series, crosshair tooltip, recessive grid. |
+| **Border2 corner ticks** | `pixel-perfect/border2.tsx` | Circuit + compounding containers, pricing "popular" card | Blueprint-style corner tick frame. Overlay inside a `relative` container; `pointer-events-none`. Use on technical/featured surfaces only. |
+| **TextFlip** | `text-flip.tsx` | WhyScalar heading ("Scalar owns [structure / the UI / intelligence / all four]") | Cycles an array of children with a spring flip. Use on ONE phrase per section; pass `as={motion.span}` for inline headings. |
+| **AspectView** | `dashboard/aspect-view.tsx` | Entity detail "Intelligence" bento grid | Turns raw enrichment blobs (firmographics/funding/tech/traffic/news) into stat tiles, chips, funding rounds, and news cards. Defensive deep-extraction + DataView fallback. |
+
+A wider fleet (testimonials, logos carousel, metrics charts, text-flip,
+carousels, gradient/blur backgrounds, shark form primitives) is installed and
+compiling, staged for future waves - see the vendored ignore list in
+`eslint.config.mjs`. Chart colors are theme tokens (`--chart-1..5`, baby-blue
+ramp) - never orange.
+
+Honesty rule for marketing sections: no fabricated testimonials, customer names,
+or logos, ever. The testimonials and trusted-by sections ship only when the
+founder supplies real quotes and real logo permissions. The AgentMarquee (real
+MCP-client logos) is the only social-proof band until then.
 
 ---
 

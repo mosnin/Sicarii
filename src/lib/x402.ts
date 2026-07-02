@@ -172,6 +172,35 @@ export async function verifyPayment(
   return res.isValid ? { ok: true } : { ok: false, reason: res.invalidReason ?? "invalid_payment" };
 }
 
+/**
+ * Grant credits/plan AFTER an on-chain settlement, safely. The USDC has already
+ * moved and the nonce is spent, so a re-settle is impossible; if the off-chain
+ * grant fails we must not silently lose it. This retries the grant a few times
+ * (transient DB blips almost always clear), and on final failure emits a
+ * structured CRITICAL "settled_but_uncredited" record carrying the on-chain tx
+ * hash so the grant can be reconciled. The grant itself is idempotent on ref,
+ * so retries never double-credit.
+ */
+export async function grantAfterSettle<T>(
+  grant: () => Promise<T>,
+  ctx: { transaction: string; userId: string; ref: string; amount: string },
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await grant();
+    } catch (e) {
+      lastErr = e;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 150 * attempt));
+    }
+  }
+  console.error(
+    "[x402] CRITICAL settled_but_uncredited " +
+      JSON.stringify({ ...ctx, error: String(lastErr) }),
+  );
+  throw lastErr;
+}
+
 /** Settle on-chain. Only one settlement of a given nonce can ever succeed. */
 export async function settlePayment(
   payload: PaymentPayload,

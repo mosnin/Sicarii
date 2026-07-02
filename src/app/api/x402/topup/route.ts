@@ -4,6 +4,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { addCredits, alreadyCredited } from "@/lib/credits";
 import {
   buildRequirements,
+  grantAfterSettle,
   isX402Configured,
   paymentRef,
   paymentRequiredBody,
@@ -114,7 +115,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const balance = await addCredits(user.id, requested, { action: "topup_x402", ref });
+    // Grant with retry + reconciliation logging: the USDC settled on-chain, so
+    // a failed credit must never be silently lost (see grantAfterSettle).
+    const balance = await grantAfterSettle(
+      () => addCredits(user.id, requested, { action: "topup_x402", ref }),
+      { transaction: settled.transaction, userId: user.id, ref, amount: String(requested) },
+    );
     return NextResponse.json(
       {
         credited: requested,

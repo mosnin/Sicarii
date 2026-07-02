@@ -48,7 +48,19 @@ function memoryCheck(key: string, limit: number, windowMs: number): RateLimitRes
 const redis: Redis | null = (() => {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
+  if (!url || !token) {
+    // Loud in production: without a durable backend, every rate limit is
+    // per-serverless-instance and effectively bypassable by hitting different
+    // cold starts. This is a real security posture gap, not just a perf note.
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[rate-limit] SECURITY: UPSTASH_REDIS_REST_URL/TOKEN not set in production. " +
+          "Rate limiting is per-instance in-memory and bypassable across autoscaled instances. " +
+          "Configure Upstash Redis for durable cross-instance limits.",
+      );
+    }
+    return null;
+  }
   try {
     return new Redis({ url, token });
   } catch {

@@ -29,6 +29,8 @@ export type FeaturePageProps = {
   subtitle: string;
   blocks: FeatureBlock[];
   steps?: FeatureStep[];
+  /** Optional extra content rendered after the steps, before the CTA. */
+  extra?: React.ReactNode;
   ctaTitle: string;
 };
 
@@ -40,6 +42,7 @@ export function FeaturePage({
   subtitle,
   blocks,
   steps,
+  extra,
   ctaTitle,
 }: FeaturePageProps) {
   return (
@@ -120,6 +123,8 @@ export function FeaturePage({
             </div>
           </section>
         ) : null}
+
+        {extra}
 
         {/* CTA */}
         <section className="py-20 sm:py-28">

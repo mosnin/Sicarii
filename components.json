@@ -10,6 +10,7 @@
     "cssVariables": true,
     "prefix": ""
   },
+  "iconLibrary": "lucide",
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils",
@@ -18,7 +19,10 @@
     "hooks": "@/hooks"
   },
   "registries": {
-    "@tool-ui": "https://www.tool-ui.com/r/{name}.json"
-  },
-  "iconLibrary": "lucide"
+    "@tool-ui": "https://www.tool-ui.com/r/{name}.json",
+    "@componentry": "https://componentry.fun/r/{name}.json",
+    "@ncdai": "https://chanhdai.com/r/{name}.json",
+    "@bklit": "https://ui.bklit.com/r/{name}.json",
+    "@shark": "https://shark.vini.one/r/{name}.json"
+  }
 }

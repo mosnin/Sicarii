@@ -103,8 +103,11 @@ describe("paymentRef", () => {
     expect(paymentRef(payload)).toBe("x402:0xdeadbeef");
   });
 
-  it("does not throw on an unexpected shape", () => {
-    expect(paymentRef({} as never)).toBe("x402:unknown");
+  it("returns null on a payload with no nonce so callers reject it", () => {
+    // Security: a shared "unknown" ref would make two different malformed
+    // payments collide on one idempotency key. Null forces a 400 upstream.
+    expect(paymentRef({} as never)).toBeNull();
+    expect(paymentRef({ payload: { authorization: {} } } as never)).toBeNull();
   });
 });
 

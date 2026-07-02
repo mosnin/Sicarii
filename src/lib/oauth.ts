@@ -4,7 +4,8 @@
 // Identity comes from Clerk at /authorize; codes/tokens are bound to that user.
 
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { prisma } from "@/lib/prisma";
 
 const enc = new TextEncoder();
 
@@ -31,7 +32,12 @@ export type CodeClaims = JWTPayload & {
   scope?: string;
 };
 export type AccessClaims = JWTPayload & { typ: "access"; sub: string; scope?: string };
-export type RefreshClaims = JWTPayload & { typ: "refresh"; sub: string; scope?: string };
+export type RefreshClaims = JWTPayload & {
+  typ: "refresh";
+  sub: string;
+  scope?: string;
+  jti: string; // unique token id, for rotation + revocation
+};
 
 async function sign(payload: JWTPayload, expSeconds: number): Promise<string> {
   return new SignJWT(payload)
@@ -52,7 +58,33 @@ export function signAccessToken(userId: string, scope?: string) {
   return sign({ sub: userId, typ: "access", ...(scope ? { scope } : {}) }, ACCESS_TTL);
 }
 export function signRefreshToken(userId: string, scope?: string) {
-  return sign({ sub: userId, typ: "refresh", ...(scope ? { scope } : {}) }, REFRESH_TTL);
+  // Every refresh token carries a unique jti so it can be individually revoked
+  // on rotation (reuse detection).
+  return sign({ sub: userId, typ: "refresh", jti: randomUUID(), ...(scope ? { scope } : {}) }, REFRESH_TTL);
+}
+
+/**
+ * Rotate a presented refresh token: verify it, reject if its jti was already
+ * consumed (reuse of a rotated/stolen token), otherwise revoke this jti and
+ * return the claims so the caller can mint a fresh access+refresh pair. Returns
+ * null when the token is invalid, the wrong type, or already revoked.
+ */
+export async function consumeRefreshToken(rt: string): Promise<RefreshClaims | null> {
+  const claims = await verifyToken<RefreshClaims>(rt);
+  if (!claims || claims.typ !== "refresh" || typeof claims.sub !== "string" || !claims.jti) {
+    return null;
+  }
+  const exp = typeof claims.exp === "number" ? new Date(claims.exp * 1000) : new Date(Date.now() + REFRESH_TTL * 1000);
+  try {
+    // Inserting the jti IS the consume: a replay of the same token collides
+    // (P2002) and is rejected. This is atomic - no check-then-act window.
+    await prisma.revokedToken.create({
+      data: { jti: claims.jti, userId: claims.sub, expiresAt: exp },
+    });
+  } catch {
+    return null; // already consumed => reuse => reject
+  }
+  return claims;
 }
 
 // Stateless Dynamic Client Registration: instead of a random client_id we issue
