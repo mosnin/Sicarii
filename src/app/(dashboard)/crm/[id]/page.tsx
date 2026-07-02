@@ -17,6 +17,7 @@ import { CrmAvatar } from "@/components/dashboard/crm-avatar";
 import { EnrichmentStatusCard, contactTier } from "@/components/dashboard/enrichment-status";
 import { ContactAgentMail } from "./agentmail";
 import { ContactAgentPhone } from "./agentphone";
+import { QuickNote } from "./quick-note";
 import { MatchEntity } from "./match-entity";
 import { getProvenanceMap } from "@/lib/provenance";
 import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
@@ -39,6 +40,14 @@ export default async function ContactDetailPage({
   const emails = await prisma.contactEmail.findMany({
     where: { contactId: id },
     orderBy: { sentAt: "desc" },
+  });
+
+  // Recent activity trail (notes, outreach, calls) - fed by the QuickNote
+  // morph surface and the agent's log_outreach/add_activity tools.
+  const activities = await prisma.activity.findMany({
+    where: { contactId: id },
+    orderBy: { createdAt: "desc" },
+    take: 8,
   });
 
   const provenance = await getProvenanceMap("contact", id);
@@ -173,6 +182,41 @@ export default async function ContactDetailPage({
         <FloatIn delay={0.14} className="lg:col-span-2 space-y-6">
           <ContactAgentMail contactId={contact.id} />
           <ContactAgentPhone contactId={contact.id} />
+
+          {/* Activity trail + QuickNote morph surface */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Activity</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <QuickNote contactId={contact.id} />
+              {activities.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No activity yet. Notes you or your agent log will show up here.
+                </p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {activities.map((a) => (
+                    <div key={a.id} className="py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {a.kind}
+                          {a.channel ? ` · ${a.channel}` : ""}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(a.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+                        {a.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Saved context</CardTitle>

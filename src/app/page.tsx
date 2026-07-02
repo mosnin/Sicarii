@@ -10,6 +10,7 @@ import { IntelligenceSection } from "@/components/sections/intelligence";
 import { HowItWorksSection } from "@/components/sections/how-it-works";
 import { WhyScalarSection } from "@/components/sections/why-scalar";
 import { AboutSection } from "@/components/sections/about";
+import { ManifestoRail } from "@/components/sections/manifesto-rail";
 import { CTASection } from "@/components/sections/cta";
 
 export default function Home() {
@@ -27,6 +28,7 @@ export default function Home() {
         <HowItWorksSection />
         <WhyScalarSection />
         <AboutSection />
+        <ManifestoRail />
         <CTASection />
       </main>
       <Footer />

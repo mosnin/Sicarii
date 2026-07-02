@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { PLANS, refillToAllotment, type PlanName } from "@/lib/credits";
+import { PLANS, refillToAllotment } from "@/lib/credits";
 import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
 
 // Stripe billing webhook. Verifies the Stripe-Signature header against
@@ -11,8 +11,6 @@ import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
 //   - customer.subscription.updated-> mid-cycle plan switch (portal/proration)
 //   - customer.subscription.deleted-> drop back to free
 // /api/webhooks(.*) is public in src/proxy.ts; the signature is the auth.
-
-const RESET_MS = 30 * 24 * 60 * 60 * 1000;
 
 type StripeObject = Record<string, unknown>;
 

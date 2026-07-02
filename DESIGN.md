@@ -122,6 +122,27 @@ field; background texture only. Ramp `" .·:-=+*≡#%@"`, ~30fps, honors
 - **Avoid Framer shared-layout (`layoutId`) morphs between very different layouts**
   (e.g. horizontal dock ⇄ vertical sidebar) — they glitch. Prefer clean slide/fade.
 
+### 6b. Motion Surfaces (do not regress)
+
+Four adapted cult-ui primitives live in `src/components/ui/` and are part of the
+product's felt experience. They are installed, themed to our tokens, and in
+production use. Removing or downgrading them to static UI is a regression.
+
+| Primitive | File | In production at | Use it for |
+|---|---|---|---|
+| **DynamicIsland** | `ui/dynamic-island.tsx` | `dashboard/agent-island.tsx`, mounted in the dashboard layout | Ambient status HUDs: state that should be one glance away, never a page. Compact by default, expands on tap, auto-tucks after 8s. |
+| **MorphSurface** | `ui/morph-surface.tsx` | `crm/[id]/quick-note.tsx` (contact Activity card) | Inline capture: a one-line dock that morphs into a small form (notes, quick inputs). Submits via `onSubmit(FormData)`, success dot animates. |
+| **ExpandableScreen** | `ui/expandable-screen.tsx` | `sections/product-demo.tsx` (homepage) | A card that morphs to a full-screen immersive layer. Mount heavy content (iframes, players) only inside the expanded state so triggers stay light. Pass `bgClassName` on the trigger matching the content bg for a clean morph. |
+| **SidePanel** | `ui/side-panel.tsx` | `sections/manifesto-rail.tsx` (homepage) | An edge-anchored rail that stretches open across the page for a single held moment (a statement, a highlight). One per page, maximum. |
+
+Rules:
+- Theme through tokens only (`bg-card`, `bg-foreground`, `text-background`,
+  `border-border`, `bg-primary`). Never reintroduce the upstream hardcoded
+  neutrals/black.
+- These are moments, not wallpaper: one island per app shell, one rail per page,
+  morph surfaces only where capture beats navigation.
+- Icon rules from section 7 still apply inside all four surfaces.
+
 ---
 
 ## 7. Icons (mirrors `AGENTS.md`)
