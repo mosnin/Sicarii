@@ -107,10 +107,41 @@ async function maybeReset(userId: string): Promise<void> {
  * top-ups (GREATEST), starting a fresh 30-day window. Used by the Stripe
  * invoice.paid cycle-renewal handler so a subscriber who topped up mid-cycle
  * keeps those credits at renewal.
+ *
+ * GREATEST alone is only idempotent when re-run immediately; if the user SPENDS
+ * between a first apply and a redelivery of the same event, a second refill
+ * would top them back up (a small double-grant). Pass `idempotencyRef` (e.g. the
+ * Stripe event id) to gate the refill exactly-once: the key insert and the
+ * refill run in one transaction, and a redelivery collides on the key (P2002)
+ * and is skipped.
  */
-export async function refillToAllotment(userId: string, plan: string): Promise<void> {
+export async function refillToAllotment(
+  userId: string,
+  plan: string,
+  idempotencyRef?: string,
+): Promise<void> {
   const allotment = planFor(plan).credits;
   const next = new Date(Date.now() + RESET_INTERVAL_MS);
+
+  if (idempotencyRef) {
+    const key = `refill:${userId}:${idempotencyRef}`;
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.idempotencyKey.create({ data: { key, userId } });
+        await tx.$executeRaw`
+          UPDATE users
+          SET "creditsRemaining" = GREATEST("creditsRemaining", ${allotment}),
+              "creditsResetAt" = ${next}
+          WHERE id = ${userId}
+        `;
+      });
+    } catch (e) {
+      if (isUniqueViolation(e)) return; // already refilled for this event
+      throw e;
+    }
+    return;
+  }
+
   await prisma.$executeRaw`
     UPDATE users
     SET "creditsRemaining" = GREATEST("creditsRemaining", ${allotment}),

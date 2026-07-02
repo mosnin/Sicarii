@@ -74,7 +74,7 @@ export async function POST(req: Request) {
 
     // Apply the effect. Throwing here returns 500 and Stripe retries, which is
     // safe precisely because the event was NOT yet marked processed.
-    await applyStripeEvent(type, obj);
+    await applyStripeEvent(type, obj, event.id);
 
     // Mark processed now that the mutation has committed. Best-effort: if this
     // insert loses a race with a concurrent duplicate it throws P2002, which we
@@ -93,9 +93,10 @@ export async function POST(req: Request) {
 }
 
 // Apply the side effect of a verified Stripe event. Every branch is idempotent
-// (GREATEST-based refills, plan set, min-clamp), so a retry re-runs safely and
-// the caller can defer marking the event processed until after this returns.
-async function applyStripeEvent(type: string, obj: StripeObject): Promise<void> {
+// (plan set + min-clamp are naturally so; refills are gated exactly-once on the
+// event id), so a retry re-runs safely and the caller can defer marking the
+// event processed until after this returns.
+async function applyStripeEvent(type: string, obj: StripeObject, eventId?: string): Promise<void> {
   // Initial purchase: a Checkout completed in subscription mode.
   if (type === "checkout.session.completed") {
     const { userId, plan } = metaOf(obj);
@@ -109,7 +110,7 @@ async function applyStripeEvent(type: string, obj: StripeObject): Promise<void> 
       where: { id: userId },
       data: { plan, ...(customerId ? { stripeCustomerId: customerId } : {}) },
     });
-    await refillToAllotment(userId, plan);
+    await refillToAllotment(userId, plan, eventId);
     return;
   }
 
@@ -126,7 +127,7 @@ async function applyStripeEvent(type: string, obj: StripeObject): Promise<void> 
       if (user) {
         // Refill the plan allotment but keep any mid-cycle top-ups (GREATEST),
         // so a renewal never destroys credits the user paid extra for.
-        await refillToAllotment(user.id, user.plan);
+        await refillToAllotment(user.id, user.plan, eventId);
       }
     }
     return;
@@ -167,7 +168,7 @@ async function applyStripeEvent(type: string, obj: StripeObject): Promise<void> 
     if (user && user.plan !== newPlan) {
       // Set new plan; refill uses GREATEST so mid-cycle top-ups are preserved.
       await prisma.user.update({ where: { id: resolvedId }, data: { plan: newPlan } });
-      await refillToAllotment(resolvedId, newPlan);
+      await refillToAllotment(resolvedId, newPlan, eventId);
     }
     return;
   }
