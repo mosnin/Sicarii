@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // GET /api/segments - list segments with member counts.
 export async function GET() {
@@ -29,6 +30,8 @@ const createSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
+    const rate = await checkRateLimit(`segments-create:${user.id}`, 30, 60_000);
+    if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid segment" }, { status: 400 });
     const { name, goal, contactIds } = parsed.data;

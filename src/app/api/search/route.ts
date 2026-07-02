@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { searchCrm } from "@/lib/crm-operations";
 
 // GET /api/search?q= - search the user's CRM (companies + contacts) for the
@@ -7,6 +8,9 @@ import { searchCrm } from "@/lib/crm-operations";
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthenticatedUser();
+    // Generous ceiling: type-ahead never hits it, bulk enumeration does.
+    const rate = await checkRateLimit(`search:${user.id}`, 120, 60_000);
+    if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
     if (q.length < 2) {
       return NextResponse.json({ entities: [], contacts: [] });

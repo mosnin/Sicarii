@@ -62,3 +62,25 @@ export function safeHttpUrl(raw?: string | null): URL | null {
   if (isBlockedHost(u.hostname)) return null;
   return u;
 }
+
+/**
+ * DNS-rebinding defense: resolve the hostname and verify EVERY resolved address
+ * is public before connecting. The literal-host check in safeHttpUrl can be
+ * defeated by a domain whose A record points at an internal IP (or is swapped
+ * to one between check and fetch); resolving here and rejecting private ranges
+ * closes the practical attack (a TTL-0 swap in the microseconds between this
+ * resolution and the fetch remains theoretical - full immunity requires pinning
+ * the socket to the checked IP, which Node fetch does not expose).
+ */
+export async function resolvesToPublicIp(hostname: string): Promise<boolean> {
+  // Literal IPs were already vetted by isBlockedHost; nothing to resolve.
+  if (/^[\d.:[\]]+$/.test(hostname)) return true;
+  try {
+    const { lookup } = await import("node:dns/promises");
+    const addrs = await lookup(hostname, { all: true, verbatim: true });
+    if (addrs.length === 0) return false;
+    return addrs.every((a) => !isBlockedHost(a.address));
+  } catch {
+    return false; // unresolvable = refuse to connect
+  }
+}

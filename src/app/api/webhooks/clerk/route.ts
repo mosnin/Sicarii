@@ -100,15 +100,19 @@ export async function POST(req: Request) {
         select: { id: true },
       });
       if (u) {
-        await prisma
-          .$transaction([
+        // Do NOT swallow failures here: account deletion is a compliance
+        // action, and a silent partial delete would leave user data retained
+        // while reporting success. Failing loudly (500) makes Clerk retry.
+        try {
+          await prisma.$transaction([
             prisma.pipeline.deleteMany({ where: { userId: u.id } }),
             prisma.segment.deleteMany({ where: { userId: u.id } }),
             prisma.user.delete({ where: { id: u.id } }),
-          ])
-          .catch(() => {
-            /* already gone - ignore */
-          });
+          ]);
+        } catch (err) {
+          console.error(`[clerk] user.deleted cleanup failed for ${u.id}`, err);
+          return NextResponse.json({ error: "Deletion failed, will retry" }, { status: 500 });
+        }
       }
     }
 

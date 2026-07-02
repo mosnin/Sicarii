@@ -1,7 +1,7 @@
 // Outbound task webhook. When a scheduled task completes, POST the results to the
 // user's configured URL so their agent (openclaw, Hermes, etc.) can wake up.
 
-import { safeHttpUrl } from "@/lib/ssrf";
+import { safeHttpUrl, resolvesToPublicIp } from "@/lib/ssrf";
 
 export interface TaskWebhookPayload {
   event: "intent-monitor.completed" | "research-schedule.completed";
@@ -19,6 +19,11 @@ export async function notifyTaskWebhook(url: string | null | undefined, payload:
   const safe = safeHttpUrl(url);
   if (!safe) {
     if (url) console.warn(`[notify] refusing webhook to blocked/invalid URL: ${url}`);
+    return;
+  }
+  // DNS-rebinding defense: the hostname must resolve to public addresses only.
+  if (!(await resolvesToPublicIp(safe.hostname))) {
+    console.warn(`[notify] refusing webhook: ${safe.hostname} resolves to a private/blocked address`);
     return;
   }
   try {

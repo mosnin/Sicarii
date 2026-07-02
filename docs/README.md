@@ -47,6 +47,7 @@
 | [`engineering/scale-audit-2026-06-08.md`](engineering/scale-audit-2026-06-08.md) | Full scale-readiness audit (7 parallel auditors): fixes shipped + items owed before scale |
 | [`engineering/claims-audit-2026-06-09.md`](engineering/claims-audit-2026-06-09.md) | Claims-vs-delivery audit: every public claim reconciled against the code; P0 integrity gaps |
 | [`engineering/claims-audit-2026-06-09b.md`](engineering/claims-audit-2026-06-09b.md) | Claims re-audit after the fix pass: integrity gaps closed; metering ordering bug found + fixed |
+| [`engineering/world-class-plan-2026-07-02.md`](engineering/world-class-plan-2026-07-02.md) | Synthesis of 4 parallel audits (OWASP, structure, perf, Playwright): waves 1+2 shipped, founder actions, next cycles |
 
 ---
 

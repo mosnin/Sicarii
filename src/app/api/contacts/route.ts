@@ -63,6 +63,9 @@ export async function GET(req: NextRequest) {
           : {}),
       },
       orderBy: { updatedAt: "desc" },
+      // The enrichment blob (often KBs per row) belongs to GET /api/contacts/[id];
+      // shipping it 500x per list call bloats payloads for no consumer.
+      omit: { enrichment: true },
       take: 500,
     });
 

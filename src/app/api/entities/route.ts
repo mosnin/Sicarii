@@ -49,6 +49,8 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { updatedAt: "desc" },
       include: { _count: { select: { contacts: true } } },
+      // Same as contacts: the blob belongs to GET /api/entities/[id].
+      omit: { enrichment: true },
       take: 500,
     });
 
