@@ -11,7 +11,10 @@ const patchSchema = z.object({
     .string()
     .trim()
     .max(500)
-    .refine((v) => v === "" || /^https?:\/\/.+/i.test(v), "Must be a valid URL")
+    // HTTPS only: the outbound webhook sender (safeHttpUrl) rejects http, so
+    // accepting it here would silently save a URL that never fires. Match the
+    // send-time guard and fail fast with a clear message instead.
+    .refine((v) => v === "" || /^https:\/\/.+/i.test(v), "Must be an https:// URL")
     .optional(),
 });
 
