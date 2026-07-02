@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PLANS, refillToAllotment } from "@/lib/credits";
 import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
+import { maybeCleanupIdempotency } from "@/lib/maintenance";
 
 // Stripe billing webhook. Verifies the Stripe-Signature header against
 // STRIPE_WEBHOOK_SECRET, then applies plan changes:
@@ -65,6 +66,9 @@ export async function POST(req: Request) {
       } catch {
         return NextResponse.json({ received: true, duplicate: true });
       }
+      // Opportunistic bounded cleanup so the idempotency tables never grow
+      // unbounded. Sampled + capped + fire-and-forget; never blocks the handler.
+      maybeCleanupIdempotency(event.id);
     }
 
     // Initial purchase: a Checkout completed in subscription mode.

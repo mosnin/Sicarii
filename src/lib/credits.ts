@@ -188,11 +188,24 @@ export async function alreadyCredited(
   return row ? row.balanceAfter : null;
 }
 
+// A P2002 unique-constraint violation (the idempotency key already exists).
+function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    (e as { code?: string }).code === "P2002"
+  );
+}
+
 /**
- * Add credits from a paid top-up (money in, the inverse of spendCredits). The
- * ledger write is awaited and reliable here, not best-effort: it is the
- * idempotency record. If `ref` was already credited, this is a no-op that
- * returns the existing balance, so a retried payment never double-credits.
+ * Add credits from a paid top-up (money in, the inverse of spendCredits).
+ *
+ * Exactly-once on `ref`: the increment, the ledger row, and an IdempotencyKey
+ * insert all run in ONE transaction. A concurrent or retried grant with the
+ * same ref collides on the key's PK (P2002), the transaction rolls back, and we
+ * return the already-credited balance. This closes the check-then-act race the
+ * old findFirst()-then-update pattern left open (two simultaneous retries could
+ * both pass the check and double-credit).
  */
 export async function addCredits(
   userId: string,
@@ -202,25 +215,55 @@ export async function addCredits(
   if (!Number.isInteger(credits) || credits <= 0) {
     throw new OpError("credits must be a positive integer", 400);
   }
-  if (opts.ref) {
-    const prior = await alreadyCredited(userId, opts.ref);
-    if (prior !== null) return prior;
+
+  // No ref => not a payment (no idempotency needed); plain increment.
+  if (!opts.ref) {
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { creditsRemaining: { increment: credits } },
+      select: { creditsRemaining: true },
+    });
+    await prisma.creditLedger.create({
+      data: { userId, delta: credits, balanceAfter: updated.creditsRemaining, action: opts.action },
+    });
+    return updated.creditsRemaining;
   }
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: { creditsRemaining: { increment: credits } },
-    select: { creditsRemaining: true },
-  });
-  await prisma.creditLedger.create({
-    data: {
-      userId,
-      delta: credits,
-      balanceAfter: updated.creditsRemaining,
-      action: opts.action,
-      ref: opts.ref,
-    },
-  });
-  return updated.creditsRemaining;
+
+  const key = `${userId}:${opts.ref}`;
+  try {
+    return await prisma.$transaction(async (tx) => {
+      // The key insert is the gate: if this ref was already credited it throws
+      // P2002 and the whole transaction (including the increment) is discarded.
+      await tx.idempotencyKey.create({ data: { key, userId } });
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: { creditsRemaining: { increment: credits } },
+        select: { creditsRemaining: true },
+      });
+      await tx.creditLedger.create({
+        data: {
+          userId,
+          delta: credits,
+          balanceAfter: updated.creditsRemaining,
+          action: opts.action,
+          ref: opts.ref,
+        },
+      });
+      return updated.creditsRemaining;
+    });
+  } catch (e) {
+    if (isUniqueViolation(e)) {
+      // Already credited (benign retry): return the current balance, no charge.
+      const prior = await alreadyCredited(userId, opts.ref);
+      if (prior !== null) return prior;
+      const u = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { creditsRemaining: true },
+      });
+      return u?.creditsRemaining ?? 0;
+    }
+    throw e;
+  }
 }
 
 /**
@@ -234,16 +277,35 @@ export async function applyPlan(
   plan: PaidPlanName,
   opts: { ref?: string } = {},
 ): Promise<void> {
-  if (opts.ref) {
-    const seen = await prisma.creditLedger.findFirst({
-      where: { userId, ref: opts.ref },
-      select: { id: true },
-    });
-    if (seen) return;
-  }
   const credits = PLANS[plan].credits;
   const next = new Date(Date.now() + RESET_INTERVAL_MS);
-  // GREATEST: never wipe top-up credits the user already paid for.
+
+  // Exactly-once on ref: the idempotency-key insert gates the refill. A retried
+  // settlement collides on the key (P2002) and rolls the whole thing back.
+  if (opts.ref) {
+    const key = `${userId}:${opts.ref}`;
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.idempotencyKey.create({ data: { key, userId } });
+        await tx.$executeRaw`
+          UPDATE users
+          SET plan = ${plan},
+              "creditsRemaining" = GREATEST("creditsRemaining", ${credits}),
+              "creditsResetAt" = ${next}
+          WHERE id = ${userId}
+        `;
+        await tx.creditLedger.create({
+          data: { userId, delta: credits, balanceAfter: credits, action: `plan_${plan}`, ref: opts.ref },
+        });
+      });
+    } catch (e) {
+      if (isUniqueViolation(e)) return; // already applied, benign retry
+      throw e;
+    }
+    return;
+  }
+
+  // No ref (should not happen for paid plans, but keep it correct): non-idempotent.
   await prisma.$executeRaw`
     UPDATE users
     SET plan = ${plan},
