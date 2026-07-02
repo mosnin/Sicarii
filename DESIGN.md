@@ -51,8 +51,11 @@ Rules:
 
 ## 3. Type
 
-- **Headings / wordmark / big numerals:** `.font-brand` = `"Bitcount Grid Single"`
-  (imported in `globals.css`).
+- **Headings / wordmark / big numerals:** `.font-brand` = `"Space Grotesk"`, a
+  clean geometric grotesk (imported in `globals.css`). Body copy is Inter.
+  (Was Bitcount Grid Single, a pixel-grid face; dropped - it read as retro/
+  pixelated once the CSP allowed the webfont to actually load, clashing with the
+  quiet-premium aesthetic.)
 - **Accent word:** wrap one word in `.text-gradient-orange` (a baby-blue gradient, bg-clip-text).
 - **Body:** Inter (`font-sans`).
 - **Eyebrow:** `text-xs uppercase tracking-[0.3em] text-primary`.

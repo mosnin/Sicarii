@@ -218,16 +218,23 @@ const DynamicIslandProvider: React.FC<DynamicIslandProviderProps> = ({
   const [state, dispatch] = useReducer(blobReducer, initialState)
 
   useEffect(() => {
+    // Cancel-on-unmount: the queue is a chain of delayed dispatches; without
+    // this flag it would keep dispatching onto an unmounted tree.
+    let cancelled = false
     const processQueue = async () => {
       for (const step of state.animationQueue) {
         await new Promise((resolve) => setTimeout(resolve, step.delay))
+        if (cancelled) return
         dispatch({ type: "SET_SIZE", newSize: step.size })
       }
-      dispatch({ type: "ANIMATION_END" })
+      if (!cancelled) dispatch({ type: "ANIMATION_END" })
     }
 
     if (state.animationQueue.length > 0) {
       processQueue()
+    }
+    return () => {
+      cancelled = true
     }
   }, [state.animationQueue])
 
