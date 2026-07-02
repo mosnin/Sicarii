@@ -154,6 +154,7 @@ system. In production use:
 | **DotGridSpotlight** | `dot-grid-spotlight.tsx` | Problem section background | Cursor-lit dot field in primary blue at whisper opacity. Content stays `z-10`. |
 | **ShimmeringText** | `shimmering-text.tsx` | CTA heading accent | Character shimmer from `--primary` to `--foreground`. Use on ONE phrase per page. |
 | **Footer reveal** | pattern in `app/page.tsx` | Homepage | Content (`z-10`, opaque bg) slides up over the sticky footer (`sticky bottom-0 z-0`). Pure CSS. |
+| **CompoundingSection** | `sections/compounding.tsx` (vendored chart engine) | Homepage | Single-series line chart of record growth + metric tiles, labeled "Illustrative view". Chart colors are the validated tokens: `--chart-1` is `#2E7DB3` light / `#3E96D6` dark (3:1+ contrast on both surfaces, dataviz-validated). One series, crosshair tooltip, recessive grid. |
 
 A wider fleet (testimonials, logos carousel, metrics charts, text-flip,
 carousels, gradient/blur backgrounds, shark form primitives) is installed and

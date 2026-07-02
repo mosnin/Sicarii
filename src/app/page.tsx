@@ -9,6 +9,7 @@ import { CapabilitiesSection } from "@/components/sections/capabilities";
 import { IntelligenceSection } from "@/components/sections/intelligence";
 import { AgentCircuitSection } from "@/components/sections/agent-circuit";
 import { HowItWorksSection } from "@/components/sections/how-it-works";
+import { CompoundingSection } from "@/components/sections/compounding";
 import { WhyScalarSection } from "@/components/sections/why-scalar";
 import { AboutSection } from "@/components/sections/about";
 import { ManifestoRail } from "@/components/sections/manifesto-rail";
@@ -33,6 +34,7 @@ export default function Home() {
             <IntelligenceSection />
             <AgentCircuitSection />
             <HowItWorksSection />
+            <CompoundingSection />
             <WhyScalarSection />
             <AboutSection />
             <ManifestoRail />
