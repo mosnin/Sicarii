@@ -48,6 +48,19 @@ export function maybeCleanupIdempotency(sampleKey: string, sampleOneIn = 16): vo
           where: { key: { in: oldKeys.map((k) => k.key) } },
         });
       }
+      // Revoked OAuth tokens past their original expiry are already rejected by
+      // the JWT exp check, so the revocation row is no longer needed.
+      const now = new Date();
+      const deadTokens = await prisma.revokedToken.findMany({
+        where: { expiresAt: { lt: now } },
+        select: { jti: true },
+        take: DELETE_CAP,
+      });
+      if (deadTokens.length > 0) {
+        await prisma.revokedToken.deleteMany({
+          where: { jti: { in: deadTokens.map((t) => t.jti) } },
+        });
+      }
     } catch (e) {
       console.warn("[maintenance] idempotency cleanup failed", e);
     }

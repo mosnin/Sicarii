@@ -309,6 +309,22 @@ model IdempotencyKey {
   @@map("idempotency_keys")
 }
 
+// Revocation list for OAuth refresh tokens (jti = the token's unique id). The
+// MCP OAuth layer uses rotation-with-reuse-detection: each refresh consumes the
+// presented token (its jti is inserted here) and issues a fresh one. A refresh
+// token whose jti is already here is rejected, so a stolen-then-replayed token
+// is caught the moment the legit client has rotated past it. Rows past the
+// token's original expiry are prunable (the JWT exp already rejects them).
+model RevokedToken {
+  jti       String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("revoked_tokens")
+}
+
 enum ContactStatus {
   NEW
   ENRICHED
