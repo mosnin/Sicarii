@@ -18,6 +18,26 @@ async function recentRadarSignals(userId: string): Promise<number> {
   return agg._sum.found ?? 0;
 }
 
+// The everyday "Needs you" counts. Kept out of the component body so the time
+// window (Date.now) isn't an impure call during render.
+async function countNeedsAttention(
+  userId: string,
+): Promise<{ replied: number; dueFollowup: number; toEnrich: number }> {
+  const followupCutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const [replied, dueFollowup, toEnrich] = await Promise.all([
+    prisma.contact.count({ where: { userId, status: "REPLIED" } }),
+    prisma.contact.count({
+      where: {
+        userId,
+        status: "CONTACTED",
+        OR: [{ lastContactedAt: null }, { lastContactedAt: { lt: followupCutoff } }],
+      },
+    }),
+    prisma.entity.count({ where: { userId, status: "NEW" } }),
+  ]);
+  return { replied, dueFollowup, toEnrich };
+}
+
 export default async function DashboardPage() {
   const user = await getDbUser();
   // Behind auth.protect, but be explicit: a null user means no session - send to
@@ -54,6 +74,11 @@ export default async function DashboardPage() {
   // The living-state number on the dashboard's Radar line.
   const radarSignals = user ? await recentRadarSignals(user.id) : 0;
 
+  // "Needs you": the everyday worklist. Cheap counts that answer "what should I
+  // do now" the moment a returning user lands - replies waiting, follow-ups due,
+  // companies still missing a full profile.
+  const { replied, dueFollowup, toEnrich } = await countNeedsAttention(user.id);
+
   // The Pulse: what the agent did since the last dashboard visit. Compute the
   // delta from the PREVIOUS lastSeenAt, then stamp it forward. Skipped on the
   // very first visit (lastSeenAt null) so nobody gets their whole history
@@ -85,6 +110,7 @@ export default async function DashboardPage() {
         radarSignals={radarSignals}
         pulse={pulse}
         isEmpty={totalContacts === 0 && totalCompanies === 0}
+        needs={{ replied, dueFollowup, toEnrich, radarSignals }}
       />
     </>
   );
