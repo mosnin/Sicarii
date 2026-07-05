@@ -34,8 +34,7 @@ export async function maybeSeedIcpRadar(userId: string, icp: string): Promise<bo
     if (query.length < MIN_ICP_LENGTH) return false;
     if (!isExaConfigured()) return false;
 
-    // Idempotent: don't create a second one, and don't touch users who already
-    // run their own monitors.
+    // Don't touch users who already run their own monitors.
     const existing = await prisma.intentMonitor.count({ where: { userId } });
     if (existing > 0) return false;
 
@@ -43,21 +42,32 @@ export async function maybeSeedIcpRadar(userId: string, icp: string): Promise<bo
     // Inngest reschedules to +7d after each run (see runIntentMonitors).
     const nextRunAt = new Date(Date.now() + FIRST_RUN_DELAY_HOURS * 60 * 60 * 1000);
 
-    // Local monitor only: the Inngest poller runs it on nextRunAt without needing
-    // an Exa-registered webhook, so we skip the network round-trip here to keep
-    // the first-run flow fast.
-    await prisma.intentMonitor.create({
-      data: {
-        userId,
-        name: `ICP radar: ${query.slice(0, 48)}`,
-        query: query.slice(0, 2000),
-        frequency: "weekly",
-        autoAdd: true,
-        active: true,
-        nextRunAt,
-      },
-    });
-    return true;
+    // Exactly-once, race-safe: the count() above is a soft check; this
+    // IdempotencyKey insert is the hard gate. Two concurrent first-runs (double
+    // submit, two tabs) both pass count===0, but only one wins the key's PK -
+    // the loser hits P2002, the transaction rolls back, and no duplicate monitor
+    // is created. Local monitor only (Inngest polls nextRunAt; no Exa
+    // round-trip), so the first-run flow stays fast.
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.idempotencyKey.create({ data: { key: `radar-seed:${userId}`, userId } });
+        await tx.intentMonitor.create({
+          data: {
+            userId,
+            name: `ICP radar: ${query.slice(0, 48)}`,
+            query: query.slice(0, 2000),
+            frequency: "weekly",
+            autoAdd: true,
+            active: true,
+            nextRunAt,
+          },
+        });
+      });
+      return true;
+    } catch (e) {
+      if ((e as { code?: string })?.code === "P2002") return false; // already seeded
+      throw e;
+    }
   } catch (e) {
     console.warn("[radar-seed] failed to seed ICP radar", e);
     return false;
