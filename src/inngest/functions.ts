@@ -42,15 +42,19 @@ export const runIntentMonitors = inngest.createFunction(
     let saved = 0;
     const webhookCache = new Map<string, string | null>();
     for (const monitor of monitors) {
+      // Compute the next slot up front so we can advance it whether the run
+      // succeeds OR fails - a run that throws (e.g. out of credits) must still
+      // push nextRunAt forward, otherwise the monitor stays "due" and gets
+      // re-queried every hour until credits refill (weeks of wasted polling).
+      const nextRun = new Date(now);
+      if (monitor.frequency === "weekly") nextRun.setDate(nextRun.getDate() + 7);
+      else if (monitor.frequency === "hourly") nextRun.setHours(nextRun.getHours() + 1);
+      else nextRun.setDate(nextRun.getDate() + 1);
+
       try {
         // Run + record history (auto-adds to CRM only when the monitor says so).
         const { added, created } = await runIntentMonitorOnce(monitor);
         saved += added;
-
-        const nextRun = new Date(now);
-        if (monitor.frequency === "weekly") nextRun.setDate(nextRun.getDate() + 7);
-        else if (monitor.frequency === "hourly") nextRun.setHours(nextRun.getHours() + 1);
-        else nextRun.setDate(nextRun.getDate() + 1);
 
         await prisma.intentMonitor.update({
           where: { id: monitor.id },
@@ -72,6 +76,10 @@ export const runIntentMonitors = inngest.createFunction(
         }
       } catch (e) {
         console.error(`[inngest] intent monitor ${monitor.id} failed`, e);
+        // Advance the schedule anyway (don't touch lastRunAt - it didn't run).
+        await prisma.intentMonitor
+          .update({ where: { id: monitor.id }, data: { nextRunAt: nextRun } })
+          .catch(() => {});
       }
     }
 

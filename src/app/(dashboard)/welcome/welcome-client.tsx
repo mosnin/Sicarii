@@ -39,6 +39,7 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
   const [statusLine, setStatusLine] = useState("");
   const [companies, setCompanies] = useState<WelcomeCompanyRow[]>([]);
   const [summary, setSummary] = useState<{ total: number; enriched: number; hasNews: number } | null>(null);
+  const [radarSeeded, setRadarSeeded] = useState(false);
   const [hasSamples, setHasSamples] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -149,6 +150,7 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
             enriched: event.enriched ?? 0,
             hasNews: event.hasNews ?? 0,
           });
+          setRadarSeeded(Boolean(event.radarSeeded));
           setPhase("done");
           break;
       }
@@ -362,7 +364,18 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
             </Link>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            Next: connect an agent over MCP and it keeps your database growing.
+            {radarSeeded ? (
+              <>
+                Your agent will keep scanning for matches every week, so there&apos;s
+                something new when you return. Manage or pause it anytime in{" "}
+                <Link href="/radar" className="text-primary hover:underline">
+                  Radar
+                </Link>
+                .
+              </>
+            ) : (
+              <>Next: connect an agent over MCP and it keeps your database growing.</>
+            )}
           </p>
         </motion.div>
       )}
