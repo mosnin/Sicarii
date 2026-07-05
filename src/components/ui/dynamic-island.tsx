@@ -11,6 +11,7 @@ import React, {
   useState,
 } from "react"
 import { AnimatePresence, motion, useWillChange } from "motion/react"
+import { cn } from "@/lib/utils"
 
 const stiffness = 400
 const damping = 30
@@ -301,10 +302,12 @@ const DynamicIslandContainer = ({ children }: { children: ReactNode }) => {
 const DynamicIsland = ({
   children,
   id,
+  className,
   ...props
 }: {
   children: ReactNode
   id: string
+  className?: string
 }) => {
   const willChange = useWillChange()
   const [screenSize, setScreenSize] = useState("desktop")
@@ -331,6 +334,7 @@ const DynamicIsland = ({
         id={id}
         willChange={willChange}
         screenSize={screenSize}
+        className={className}
         {...props}
       >
         {children}
@@ -364,12 +368,14 @@ const DynamicIslandContent = ({
   id,
   willChange,
   screenSize,
+  className,
   ...props
 }: {
   children: React.ReactNode
   id: string
   willChange: ReturnType<typeof useWillChange>
   screenSize: string
+  className?: string
   [key: string]: unknown
 }) => {
   const { state, presets } = useDynamicIslandSize()
@@ -380,7 +386,10 @@ const DynamicIslandContent = ({
   return (
     <motion.div
       id={id}
-      className="mx-auto h-0 w-0 items-center justify-center border border-foreground/10 bg-foreground text-center text-background shadow-sm transition duration-300 ease-in-out hover:shadow-md dark:border-background/10"
+      className={cn(
+        "mx-auto h-0 w-0 items-center justify-center border border-foreground/10 bg-foreground text-center text-background shadow-sm transition duration-300 ease-in-out hover:shadow-md dark:border-background/10",
+        className,
+      )}
       animate={{
         width: dimensions.width,
         height: dimensions.height,
