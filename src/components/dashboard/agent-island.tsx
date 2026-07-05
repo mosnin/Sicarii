@@ -80,22 +80,22 @@ function IslandBody({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
           </span>
-          <span className="text-sm font-medium tabular-nums text-background">
+          <span className="text-sm font-medium tabular-nums text-foreground">
             {formatCredits(credits)} credits
           </span>
         </DynamicContainer>
       ) : (
         <DynamicContainer className="flex h-full w-full items-center justify-between gap-4 px-6">
           <div className="flex flex-col items-start">
-            <span className="text-[11px] uppercase tracking-[0.18em] text-background/60">
+            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
               {plan} plan
             </span>
-            <span className="font-brand text-lg tabular-nums text-background">
+            <span className="font-brand text-lg tabular-nums text-foreground">
               {formatCredits(credits)} credits
             </span>
           </div>
           <div className="flex flex-col items-end gap-0.5">
-            <span className="flex items-center gap-1.5 text-xs text-background/80">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
@@ -126,10 +126,16 @@ export function AgentIsland({
   radarActive: number;
 }) {
   return (
-    <div className="pointer-events-none fixed left-1/2 top-3 z-50 hidden -translate-x-1/2 md:block">
+    // Tucked into the bottom-right corner, out of the way of the header and the
+    // bottom-center nav dock. Light glassy card shell (not the black default) so
+    // it reads as ambient chrome, never an obstruction.
+    <div className="pointer-events-none fixed bottom-6 right-4 z-40 hidden md:block">
       <div className="pointer-events-auto">
         <DynamicIslandProvider initialSize="compact">
-          <DynamicIsland id="agent-island">
+          <DynamicIsland
+            id="agent-island"
+            className="border-border bg-card/95 text-foreground shadow-lg shadow-black/5 backdrop-blur-xl dark:bg-card/90"
+          >
             <IslandBody credits={credits} plan={plan} radarActive={radarActive} />
           </DynamicIsland>
         </DynamicIslandProvider>

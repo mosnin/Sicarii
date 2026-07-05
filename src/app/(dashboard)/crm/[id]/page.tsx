@@ -21,6 +21,7 @@ import { QuickNote } from "./quick-note";
 import { MatchEntity } from "./match-entity";
 import { getProvenanceMap } from "@/lib/provenance";
 import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
+import { VerifiedStrip } from "@/components/dashboard/verified-strip";
 
 export default async function ContactDetailPage({
   params,
@@ -50,7 +51,7 @@ export default async function ContactDetailPage({
     take: 8,
   });
 
-  const provenance = await getProvenanceMap("contact", id);
+  const provenance = await getProvenanceMap("contact", id, user.id);
 
   // Which core fields are still missing (drives both the prominent Enrich
   // button on the status card and the per-field Find buttons in Details).
@@ -130,6 +131,13 @@ export default async function ContactDetailPage({
           <ContactActions contactId={contact.id} currentStatus={contact.status} />
         </div>
       </FloatIn>
+
+      {/* Visible Trust: one headline rolling up all field provenance. */}
+      {Object.keys(provenance).length > 0 && (
+        <FloatIn delay={0.09}>
+          <VerifiedStrip provenance={provenance} />
+        </FloatIn>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Details */}

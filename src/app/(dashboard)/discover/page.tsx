@@ -922,6 +922,39 @@ export default function DiscoverPage() {
     return () => window.removeEventListener("keydown", handler);
   }, [stage, run]);
 
+  // Auto-run from the command box: /discover?run=<toolId>&<param>=... opens the
+  // matching tool, prefills the params, and runs it once - so the plain-language
+  // box on the dashboard hands off straight into results here. Read from
+  // window.location (client-only, one-shot) to avoid a useSearchParams Suspense
+  // boundary. The URL is cleaned so a refresh doesn't re-run.
+  const didAutoInit = useRef(false);
+  const pendingRunId = useRef<string | null>(null);
+  useEffect(() => {
+    if (didAutoInit.current) return;
+    didAutoInit.current = true;
+    const sp = new URLSearchParams(window.location.search);
+    const runId = sp.get("run");
+    if (!runId) return;
+    const tool = CATEGORIES.flatMap((c) => c.tools).find((t) => t.id === runId);
+    if (!tool) return;
+    dispatch({ type: "OPEN_TOOL", tool });
+    for (const f of tool.fields) {
+      const v = sp.get(f.key);
+      if (v) dispatch({ type: "SET_VALUE", key: f.key, value: v });
+    }
+    pendingRunId.current = runId;
+    window.history.replaceState(null, "", "/discover");
+  }, []);
+
+  useEffect(() => {
+    if (pendingRunId.current && stage === "input" && active?.id === pendingRunId.current) {
+      pendingRunId.current = null;
+      // Defer out of the effect's synchronous phase so the run's dispatch
+      // doesn't cascade renders within this commit.
+      queueMicrotask(() => run());
+    }
+  }, [stage, active, values, run]);
+
   const stageOrder: Stage[] = ["grid", "input", "working", "results"];
   const stageDir = (from: Stage, to: Stage) =>
     stageOrder.indexOf(to) >= stageOrder.indexOf(from) ? 1 : -1;
