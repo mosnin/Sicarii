@@ -130,6 +130,40 @@ function StatCard({
   );
 }
 
+// ─── Capability card (shown in the empty state instead of a "0") ──────────────
+
+function CapabilityCard({
+  n,
+  title,
+  body,
+  href,
+}: {
+  n: string;
+  title: string;
+  body: string;
+  href: string;
+}) {
+  return (
+    <motion.div variants={cardVariants} className="h-full">
+      <Link href={href} className="group block h-full">
+        <motion.div
+          whileHover={{ y: -3, transition: { duration: 0.22, ease: "easeOut" } }}
+          className="flex h-full min-h-[180px] flex-col justify-between rounded-3xl bg-card p-6 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07),0_1px_4px_-1px_rgba(0,0,0,0.05)] transition-shadow duration-300 hover:shadow-[0_8px_32px_-4px_rgba(90,176,232,0.22)]"
+        >
+          <div className="flex items-start justify-between">
+            <span className="font-brand text-sm tabular-nums text-muted-foreground">{n}</span>
+            <ArrowUpRight className="h-4 w-4 -translate-y-0.5 translate-x-0.5 text-muted-foreground opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100" />
+          </div>
+          <div>
+            <h3 className="font-brand text-lg text-foreground">{title}</h3>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{body}</p>
+          </div>
+        </motion.div>
+      </Link>
+    </motion.div>
+  );
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface DashboardOverviewProps {
@@ -141,6 +175,8 @@ interface DashboardOverviewProps {
   radarActive?: number;
   radarSignals?: number;
   pulse?: PulseData | null;
+  /** No records yet: render a designed "begin" state, never a wall of zeros. */
+  isEmpty?: boolean;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -154,10 +190,17 @@ export function DashboardOverview({
   radarActive = 0,
   radarSignals = 0,
   pulse = null,
+  isEmpty = false,
 }: DashboardOverviewProps) {
   const reduce = useReducedMotion();
 
-  const greeting = firstName ? `Good to see you, ${firstName}.` : "Good to see you.";
+  const greeting = isEmpty
+    ? firstName
+      ? `Welcome, ${firstName}.`
+      : "Welcome."
+    : firstName
+      ? `Good to see you, ${firstName}.`
+      : "Good to see you.";
 
   return (
     <motion.div
@@ -247,7 +290,9 @@ export function DashboardOverview({
                 variants={cardVariants}
                 className="mt-3 max-w-md text-base text-muted-foreground"
               >
-                Your research platform - contacts discovered, enriched, and in conversation.
+                {isEmpty
+                  ? "Nothing here yet, and that's the point. Tell Scalar who you sell to and watch your CRM build itself."
+                  : "Your research platform - contacts discovered, enriched, and in conversation."}
               </motion.p>
 
               {/* The one command box - the front door. Type what you want and
@@ -265,53 +310,64 @@ export function DashboardOverview({
                 variants={cardVariants}
                 className="mt-8 flex items-baseline gap-3"
               >
-                <span className="font-brand text-7xl tabular-nums text-foreground sm:text-8xl">
-                  <CountUp value={totalContacts} duration={1.6} />
-                </span>
-                <span className="text-lg text-muted-foreground">contacts</span>
+                {isEmpty ? (
+                  <span className="font-brand text-2xl leading-snug text-foreground sm:text-3xl">
+                    One sentence in the box above,
+                    <br className="hidden sm:block" /> and it starts filling.
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-brand text-7xl tabular-nums text-foreground sm:text-8xl">
+                      <CountUp value={totalContacts} duration={1.6} />
+                    </span>
+                    <span className="text-lg text-muted-foreground">contacts</span>
+                  </>
+                )}
               </motion.div>
             </motion.div>
 
             {/* CTA */}
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
-              <Button variant="glow" size="lg" asChild>
-                <Link href="/discover">
-                  Discover contacts
-                </Link>
-              </Button>
-              <Button variant="outline" size="lg" asChild>
-                <Link href="/agent">
-                  Ask Scalar
-                </Link>
-              </Button>
+              {isEmpty ? (
+                <>
+                  <Button variant="glow" size="lg" asChild>
+                    <Link href="/welcome">Build my CRM</Link>
+                  </Button>
+                  <Button variant="outline" size="lg" asChild>
+                    <Link href="/integrations">Connect your agent</Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="glow" size="lg" asChild>
+                    <Link href="/discover">Discover contacts</Link>
+                  </Button>
+                  <Button variant="outline" size="lg" asChild>
+                    <Link href="/agent">Ask Scalar</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
       </BentoCard>
 
-      {/* ── Middle row: stat cards + agent accent ────────────────────────── */}
+      {/* ── Middle row: live stats (populated) or capability invites (empty).
+          Never a wall of zeros. The agent accent card stays in both states. ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Companies */}
-        <StatCard
-          label="Companies"
-          value={totalCompanies}
-          delay={0}
-        />
-
-        {/* Enriched */}
-        <StatCard
-          label="Enriched"
-          value={enriched}
-          accent
-          delay={1}
-        />
-
-        {/* In conversation */}
-        <StatCard
-          label="In conversation"
-          value={inConversation}
-          delay={2}
-        />
+        {isEmpty ? (
+          <>
+            <CapabilityCard n="01" title="Discover" body="Name an ideal customer and Scalar finds real companies, deduped into your CRM." href="/discover" />
+            <CapabilityCard n="02" title="Enrich" body="Every record fills itself: emails, funding, tech stack, news, sourced and dated." href="/crm" />
+            <CapabilityCard n="03" title="Track" body="Build a segment from a prompt, then work the deals as a live pipeline." href="/field" />
+          </>
+        ) : (
+          <>
+            <StatCard label="Companies" value={totalCompanies} delay={0} />
+            <StatCard label="Enriched" value={enriched} accent delay={1} />
+            <StatCard label="In conversation" value={inConversation} delay={2} />
+          </>
+        )}
 
         {/* Agent accent card - spans 1 col on lg (rightmost in this row) */}
         <motion.div variants={cardVariants} className="h-full">

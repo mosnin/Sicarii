@@ -84,6 +84,7 @@ export default async function DashboardPage() {
         radarActive={radarActive}
         radarSignals={radarSignals}
         pulse={pulse}
+        isEmpty={totalContacts === 0 && totalCompanies === 0}
       />
     </>
   );

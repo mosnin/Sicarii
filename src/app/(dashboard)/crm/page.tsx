@@ -179,15 +179,20 @@ async function ContactsList({ userId, page }: { userId: string; page: number }) 
       <Card>
         <EmptyState
           icon={Users}
-          title="No contacts yet"
-          description="Use Discover or the agent to find and save people, or add one manually."
+          title="Let's find your people"
+          description="Tell Scalar who you sell to and it discovers real people into your CRM, verified and deduped. Or add one by hand."
           action={
-            <Button variant="glow" asChild>
-              <Link href="/crm/new">
-                <Plus className="mr-1 h-4 w-4" />
-                Add contact
-              </Link>
-            </Button>
+            <div className="flex flex-col items-center gap-2 sm:flex-row">
+              <Button variant="glow" asChild>
+                <Link href="/discover">Discover people</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/crm/new">
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add manually
+                </Link>
+              </Button>
+            </div>
           }
         />
       </Card>
@@ -225,15 +230,20 @@ async function EntitiesList({ userId, page }: { userId: string; page: number }) 
       <Card>
         <EmptyState
           icon={Building2}
-          title="No entities yet"
-          description="Entities are the businesses in your pipeline. Ask the agent to find some, or add one manually."
+          title="Let's find your companies"
+          description="Describe your ideal customer and Scalar discovers matching businesses with full profiles, straight into your pipeline. Or add one by hand."
           action={
-            <Button variant="glow" asChild>
-              <Link href="/crm/entity/new">
-                <Plus className="mr-1 h-4 w-4" />
-                Add entity
-              </Link>
-            </Button>
+            <div className="flex flex-col items-center gap-2 sm:flex-row">
+              <Button variant="glow" asChild>
+                <Link href="/discover">Discover companies</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/crm/entity/new">
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add manually
+                </Link>
+              </Button>
+            </div>
           }
         />
       </Card>
