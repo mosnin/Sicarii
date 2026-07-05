@@ -21,6 +21,7 @@ import { EntityActions } from "./actions";
 import { EntityEditor } from "./editor";
 import { getProvenanceMap } from "@/lib/provenance";
 import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
+import { VerifiedStrip } from "@/components/dashboard/verified-strip";
 
 export default async function EntityDetailPage({
   params,
@@ -106,6 +107,13 @@ export default async function EntityDetailPage({
           />
         </div>
       </FloatIn>
+
+      {/* Visible Trust: one headline rolling up all field provenance. */}
+      {Object.keys(provenance).length > 0 && (
+        <FloatIn delay={0.09}>
+          <VerifiedStrip provenance={provenance} />
+        </FloatIn>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <FloatIn delay={0.1} className="lg:col-span-1 space-y-6">

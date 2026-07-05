@@ -12,25 +12,9 @@ import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/count-up";
 import { GlobalSearch } from "@/components/dashboard/global-search";
 import { CommandBox } from "@/components/dashboard/command-box";
+import { PulseMoment } from "@/components/dashboard/pulse-moment";
 import { cn } from "@/lib/utils";
 import type { PulseData } from "@/lib/pulse";
-
-// "While you were away, your agent ..." - built only from the non-zero parts,
-// so it never reads "added 0 companies". Comma-joined with an "and" before the
-// last clause.
-function pulseSentence(p: PulseData): string {
-  const parts: string[] = [];
-  if (p.companies > 0) parts.push(`added ${p.companies} ${p.companies === 1 ? "company" : "companies"}`);
-  if (p.enriched > 0) parts.push(`enriched ${p.enriched} ${p.enriched === 1 ? "record" : "records"}`);
-  if (p.inMarket > 0) parts.push(`flagged ${p.inMarket} in-market`);
-  const joined =
-    parts.length <= 1
-      ? parts[0]
-      : parts.length === 2
-        ? `${parts[0]} and ${parts[1]}`
-        : `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
-  return `While you were away, your agent ${joined}.`;
-}
 
 // ─── Motion helpers ──────────────────────────────────────────────────────────
 
@@ -182,6 +166,14 @@ export function DashboardOverview({
       animate="show"
       className="space-y-4"
     >
+      {/* ── The Pulse: what the agent did while you were away. First thing a
+          returning user sees; only rendered when there's a real delta. ── */}
+      {pulse && (
+        <motion.div variants={cardVariants}>
+          <PulseMoment pulse={pulse} />
+        </motion.div>
+      )}
+
       {/* ── HERO card (tall, full width) ─────────────────────────────────── */}
       <BentoCard hoverLift={false} className="min-h-[340px] lg:min-h-[380px]">
         {/* ASCII field - reduced opacity on light mode to preserve text contrast */}
@@ -255,19 +247,7 @@ export function DashboardOverview({
                 variants={cardVariants}
                 className="mt-3 max-w-md text-base text-muted-foreground"
               >
-                {pulse ? (
-                  <>
-                    {pulseSentence(pulse)}
-                    {pulse.best ? (
-                      <>
-                        {" "}
-                        The latest: <span className="text-foreground">{pulse.best.name}</span>.
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  <>Your research platform - contacts discovered, enriched, and in conversation.</>
-                )}
+                Your research platform - contacts discovered, enriched, and in conversation.
               </motion.p>
 
               {/* The one command box - the front door. Type what you want and

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { FloatIn } from "@/components/ui/float-in";
+import { CountUp } from "@/components/ui/count-up";
 import type { WelcomeEvent, WelcomeCompanyRow } from "@/lib/welcome-orchestrator";
 
 // --------------------------------------------------------------------------
@@ -322,16 +323,32 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
             <span className="text-gradient-orange">working</span>.
           </h2>
           {summary.total > 0 && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              {summary.total} compan{summary.total === 1 ? "y" : "ies"} found
-              {summary.enriched > 0
-                ? `, ${summary.enriched} enriched`
-                : ""}
-              {summary.hasNews > 0
-                ? `, ${summary.hasNews} with recent news`
-                : ""}
-              .
-            </p>
+            <div className="mt-6 flex flex-wrap items-baseline justify-center gap-x-8 gap-y-3">
+              <div className="flex items-baseline gap-2">
+                <span className="font-brand text-4xl tabular-nums text-foreground">
+                  <CountUp value={summary.total} duration={1.2} />
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  compan{summary.total === 1 ? "y" : "ies"}
+                </span>
+              </div>
+              {summary.enriched > 0 && (
+                <div className="flex items-baseline gap-2">
+                  <span className="font-brand text-4xl tabular-nums text-primary">
+                    <CountUp value={summary.enriched} duration={1.5} />
+                  </span>
+                  <span className="text-sm text-muted-foreground">enriched</span>
+                </div>
+              )}
+              {summary.hasNews > 0 && (
+                <div className="flex items-baseline gap-2">
+                  <span className="font-brand text-4xl tabular-nums text-foreground">
+                    <CountUp value={summary.hasNews} duration={1.7} />
+                  </span>
+                  <span className="text-sm text-muted-foreground">with news</span>
+                </div>
+              )}
+            </div>
           )}
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button size="lg" onClick={goToDashboard}>
