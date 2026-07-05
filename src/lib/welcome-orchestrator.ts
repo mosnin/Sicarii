@@ -25,6 +25,7 @@ import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
 import { createEntity } from "@/lib/crm-operations";
+import { maybeSeedIcpRadar } from "@/lib/radar-seed";
 import { Prisma } from "@prisma/client";
 
 // --------------------------------------------------------------------------
@@ -46,6 +47,7 @@ export interface WelcomeEvent {
   total?: number;
   enriched?: number;
   hasNews?: number;
+  radarSeeded?: boolean; // an away-window ICP radar was auto-created (on "done")
 }
 
 export interface WelcomeCompanyRow {
@@ -135,6 +137,12 @@ export async function runWelcomeOrchestration(
     where: { id: userId },
     data: { productContext: icp },
   });
+
+  // Seed an away-window Radar from the ICP so the agent keeps working after the
+  // user leaves (this is what makes The Pulse fire on the next session). Fast
+  // local insert, best-effort, credit-capped by construction. Done early so it
+  // survives even if the user navigates away mid-stream.
+  const radarSeeded = await maybeSeedIcpRadar(userId, icp);
 
   // Step 1: Discover companies
   emit({ type: "status", message: "Finding companies that match your ICP..." });
@@ -244,7 +252,7 @@ export async function runWelcomeOrchestration(
   }
 
   if (rows.length === 0) {
-    emit({ type: "done", message: "Nothing to show right now. Your agent will find companies when providers are configured.", total: 0, enriched: 0, hasNews: 0 });
+    emit({ type: "done", message: "Nothing to show right now. Your agent will find companies when providers are configured.", total: 0, enriched: 0, hasNews: 0, radarSeeded });
     return;
   }
 
@@ -391,6 +399,7 @@ export async function runWelcomeOrchestration(
     total: rows.length,
     enriched: enrichedCount,
     hasNews: newsCount,
+    radarSeeded,
   });
 }
 
