@@ -11,6 +11,7 @@ import { AsciiField } from "@/components/dashboard/ascii-field";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/ui/count-up";
 import { GlobalSearch } from "@/components/dashboard/global-search";
+import { CommandBox } from "@/components/dashboard/command-box";
 import { cn } from "@/lib/utils";
 import type { PulseData } from "@/lib/pulse";
 
@@ -269,8 +270,13 @@ export function DashboardOverview({
                 )}
               </motion.p>
 
-              {/* Global search */}
-              <motion.div variants={cardVariants} className="mt-5 max-w-md">
+              {/* The one command box - the front door. Type what you want and
+                  Scalar routes + runs it. Global search (find what you already
+                  have) sits below it as the quieter, secondary affordance. */}
+              <motion.div variants={cardVariants} className="mt-6 max-w-xl">
+                <CommandBox />
+              </motion.div>
+              <motion.div variants={cardVariants} className="mt-3 max-w-md">
                 <GlobalSearch />
               </motion.div>
 
