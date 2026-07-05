@@ -40,7 +40,7 @@ export default async function EntityDetailPage({
     orderBy: { updatedAt: "desc" },
   });
 
-  const provenance = await getProvenanceMap("entity", id);
+  const provenance = await getProvenanceMap("entity", id, user.id);
 
   // Website and domain are the same fact - show one clickable Website row.
   const websiteUrl = entity.website || (entity.domain ? `https://${entity.domain}` : null);

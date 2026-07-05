@@ -108,10 +108,17 @@ export async function recordProvenanceBulk(
 /**
  * Fetch all provenance rows for a record, keyed by field name for O(1) UI
  * lookup. Returns an empty object when no rows exist.
+ *
+ * FieldProvenance has no userId column (it hangs off the parent record), so
+ * pass `userId` as a SECOND fence: it verifies the parent contact/entity is
+ * owned by that user before returning anything, so provenance can never leak
+ * cross-tenant even if a caller forgets its own ownership check. Callers that
+ * have already proven ownership still pass it - defense in depth is cheap.
  */
 export async function getProvenanceMap(
   recordType: ProvenanceRecordType,
   recordId: string,
+  userId?: string,
 ): Promise<
   Record<
     string,
@@ -125,6 +132,13 @@ export async function getProvenanceMap(
   >
 > {
   try {
+    if (userId) {
+      const owner =
+        recordType === "contact"
+          ? await prisma.contact.findUnique({ where: { id: recordId }, select: { userId: true } })
+          : await prisma.entity.findUnique({ where: { id: recordId }, select: { userId: true } });
+      if (!owner || owner.userId !== userId) return {};
+    }
     const rows = await prisma.fieldProvenance.findMany({
       where: { recordType, recordId },
       select: {

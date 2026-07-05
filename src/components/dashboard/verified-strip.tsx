@@ -4,65 +4,21 @@
 // "N facts verified from M sources, freshest 2 days ago." It turns the quiet
 // per-field pills into a felt reason to trust the data. Pure render, server-safe.
 
-type ProvenanceEntry = {
-  source: string;
-  confidence: number;
-  retrievedAt: Date;
-  verifiedAt: Date | null;
-  stale: boolean;
-};
-
-// Provider slug -> display name. Unknown slugs are title-cased.
-const SOURCE_NAMES: Record<string, string> = {
-  explorium: "Explorium",
-  pipe0: "Pipe0",
-  exa: "Exa",
-  linkup: "Linkup",
-  apify: "Apify",
-  firecrawl: "Firecrawl",
-  gleif: "GLEIF",
-  companies_house: "Companies House",
-  sec_edgar: "SEC EDGAR",
-  anymailfinder: "Anymailfinder",
-  findymail: "Findymail",
-  bouncer: "Bouncer",
-  manual: "You",
-  derived: "Site analysis",
-  inferred: "Inferred",
-};
-
-function sourceName(slug: string): string {
-  return SOURCE_NAMES[slug] ?? slug.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function relativeAge(d: Date): string {
-  const ms = Date.now() - d.getTime();
-  const days = Math.floor(ms / 86_400_000);
-  if (days <= 0) {
-    const hours = Math.floor(ms / 3_600_000);
-    if (hours <= 0) return "just now";
-    return `${hours}h ago`;
-  }
-  if (days === 1) return "1 day ago";
-  if (days < 30) return `${days} days ago`;
-  const months = Math.floor(days / 30);
-  return months === 1 ? "1 month ago" : `${months} months ago`;
-}
+import {
+  sourceName,
+  relativeAge,
+  summarizeProvenance,
+  type ProvenanceEntry,
+} from "@/lib/provenance-summary";
 
 export function VerifiedStrip({
   provenance,
 }: {
   provenance: Record<string, ProvenanceEntry>;
 }) {
-  const entries = Object.values(provenance);
-  if (entries.length === 0) return null;
-
-  const fieldCount = entries.length;
-  const sources = [...new Set(entries.map((e) => e.source))];
-  const freshest = entries.reduce((a, e) => (e.retrievedAt > a ? e.retrievedAt : a), entries[0].retrievedAt);
-  const staleCount = entries.filter((e) => e.stale).length;
-  // Average confidence, rounded - a single honest number for "how sure".
-  const avgConfidence = Math.round(entries.reduce((s, e) => s + e.confidence, 0) / fieldCount);
+  const summary = summarizeProvenance(Object.values(provenance));
+  if (!summary) return null;
+  const { fieldCount, sources, freshest, staleCount, avgConfidence } = summary;
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.04] px-4 py-3 sm:px-5">

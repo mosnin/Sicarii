@@ -51,7 +51,7 @@ export default async function ContactDetailPage({
     take: 8,
   });
 
-  const provenance = await getProvenanceMap("contact", id);
+  const provenance = await getProvenanceMap("contact", id, user.id);
 
   // Which core fields are still missing (drives both the prominent Enrich
   // button on the status card and the per-field Find buttons in Details).
