@@ -8,6 +8,7 @@ const state = {
   existingMonitors: 0,
   createThrows: false,
   keyCollision: false, // simulate the exactly-once race (P2002 on the idempotency key)
+  autoRadar: true, // the user's opt-out preference
 };
 
 const monitorCreateMock = vi.fn(async (args: unknown) => {
@@ -17,6 +18,9 @@ const monitorCreateMock = vi.fn(async (args: unknown) => {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    user: {
+      findUnique: vi.fn(async () => ({ autoRadar: state.autoRadar })),
+    },
     intentMonitor: {
       count: vi.fn(async () => state.existingMonitors),
     },
@@ -52,6 +56,7 @@ beforeEach(() => {
   state.existingMonitors = 0;
   state.createThrows = false;
   state.keyCollision = false;
+  state.autoRadar = true;
   monitorCreateMock.mockClear();
 });
 
@@ -84,6 +89,18 @@ describe("maybeSeedIcpRadar", () => {
     state.keyCollision = true;
     expect(await maybeSeedIcpRadar("user-1", ICP)).toBe(false);
     // The transaction rolls back; no monitor is committed.
+  });
+
+  it("respects the user's opt-out (autoRadar = false)", async () => {
+    state.autoRadar = false;
+    expect(await maybeSeedIcpRadar("user-1", ICP)).toBe(false);
+    expect(monitorCreateMock).not.toHaveBeenCalled();
+  });
+
+  it("marks the created monitor autoSeeded so the toggle can find it", async () => {
+    await maybeSeedIcpRadar("user-1", ICP);
+    const arg = monitorCreateMock.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(arg.data.autoSeeded).toBe(true);
   });
 
   it("is provider-gated: does nothing without an EXA key", async () => {
