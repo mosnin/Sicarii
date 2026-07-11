@@ -293,11 +293,11 @@ export default async function ContactDetailPage({
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle className="text-base">Conversations</CardTitle>
-              <LogSocialMessage contactId={contact.id} />
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <LogSocialMessage contactId={contact.id} />
               {conversations.length === 0 ? (
                 <EmptyState
                   icon={Inbox}

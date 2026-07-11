@@ -301,11 +301,19 @@ export function MorphSurface({
   )
 
   return (
+    // Reserve only the COLLAPSED footprint in the surrounding layout - this is
+    // an inline capture control (see DESIGN.md, Motion Surfaces), not a
+    // page-corner floating widget. Reserving the full expanded box here
+    // (regardless of open state) left a permanent dead gap below the dock and,
+    // combined with the pill's own vertical nudge, made it possible for the
+    // pill to render outside its box and overlap whatever sits above it.
+    // The expanded form overlays on top of following content instead (like a
+    // popover), via position:absolute + z-10 on the animated pill below.
     <div
-      className={cn("flex justify-center items-end", className)}
+      className={cn("relative", className)}
       style={{
-        width: hookExpandedWidth,
-        height: hookExpandedHeight,
+        width: collapsedWidth === "auto" ? undefined : collapsedWidth,
+        height: hookCollapsedHeight,
       }}
     >
       <motion.div
@@ -316,7 +324,7 @@ export function MorphSurface({
           }
         }}
         className={cn(
-          "relative flex flex-col items-center bottom-8 z-10 overflow-hidden",
+          "absolute left-0 top-0 flex flex-col items-center z-10 overflow-hidden",
           "bg-card dark:bg-muted",
           "shadow-[0px_1px_1px_0px_rgba(0,_0,_0,_0.05),_0px_1px_1px_0px_rgba(255,_252,_240,_0.5)_inset,_0px_0px_0px_1px_hsla(0,_0%,_100%,_0.1)_inset,_0px_0px_1px_0px_rgba(28,_27,_26,_0.5)]",
           "dark:shadow-[0px_1px_0px_0px_hsla(0,_0%,_0%,_0.02)_inset,_0px_0px_0px_1px_hsla(0,_0%,_0%,_0.02)_inset,_0px_0px_0px_1px_rgba(255,_255,_255,_0.25)]",

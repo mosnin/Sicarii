@@ -35,7 +35,6 @@ export function QuickNote({ contactId }: { contactId: string }) {
       expandedWidth={360}
       expandedHeight={190}
       onSubmit={submit}
-      className="!items-start !justify-start"
     />
   );
 }
