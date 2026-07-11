@@ -39,6 +39,17 @@ function asJson(v: unknown): Prisma.InputJsonValue | undefined {
   return v == null ? undefined : (v as Prisma.InputJsonValue);
 }
 
+// List sizing. Agents (and the UI) page through lists; an unbounded dump of a
+// large CRM blows up payloads and agent context windows. Callers may ask for
+// 1..MAX_LIST_LIMIT rows; anything else clamps. The default is deliberately
+// smaller than the ceiling: ask for more when you mean it.
+export const DEFAULT_LIST_LIMIT = 50;
+export const MAX_LIST_LIMIT = 200;
+export function clampListLimit(limit?: number): number {
+  if (limit == null || !Number.isFinite(limit)) return DEFAULT_LIST_LIMIT;
+  return Math.min(Math.max(Math.trunc(limit), 1), MAX_LIST_LIMIT);
+}
+
 /* ----------------------------- Entities ----------------------------- */
 
 export interface EntityInput {
@@ -57,7 +68,7 @@ export interface EntityInput {
   enrichment?: unknown;
 }
 
-export function listEntities(userId: string, q?: string) {
+export function listEntities(userId: string, q?: string, limit?: number) {
   return prisma.entity.findMany({
     where: {
       userId,
@@ -76,7 +87,7 @@ export function listEntities(userId: string, q?: string) {
     // Lists are for scanning; the enrichment blob (often KBs per row) belongs
     // to get_entity. Omitting it keeps agent token usage and payloads sane.
     omit: { enrichment: true },
-    take: 200,
+    take: clampListLimit(limit),
   });
 }
 
@@ -368,9 +379,9 @@ export interface ContactInput {
 
 export function listContacts(
   userId: string,
-  opts: { q?: string; status?: string } = {}
+  opts: { q?: string; status?: string; limit?: number } = {}
 ) {
-  const { q, status } = opts;
+  const { q, status, limit } = opts;
   return prisma.contact.findMany({
     where: {
       userId,
@@ -391,7 +402,7 @@ export function listContacts(
     include: { entity: { select: { id: true, name: true } } },
     // Same as listEntities: the enrichment blob belongs to get_contact.
     omit: { enrichment: true },
-    take: 200,
+    take: clampListLimit(limit),
   });
 }
 

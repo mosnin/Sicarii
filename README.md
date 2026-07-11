@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Scalar
 
-## Getting Started
+The CRM your agents run. Next.js 16 (App Router), React 19, TypeScript,
+Tailwind v4, Prisma on Supabase Postgres, Clerk auth, Stripe + x402 billing.
+Agents operate the CRM over MCP; deep context lives in `CLAUDE.md` and
+`docs/README.md`.
 
-First, run the development server:
+## Local setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+cp .env.local.example .env.local   # fill in keys
+pnpm install --no-frozen-lockfile
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- `pnpm build` runs `prisma db push` first: it connects to the database in
+  `POSTGRES_PRISMA_URL` / `POSTGRES_URL_NON_POOLING` and applies the schema
+  (additive; it refuses destructive changes without an explicit flag - never
+  add `--accept-data-loss` casually).
+- `pnpm lint`, `pnpm test` (vitest), `npx tsc --noEmit` before shipping.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production requirements (founder actions)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Upstash Redis (required):** set `UPSTASH_REDIS_REST_URL` and
+  `UPSTASH_REDIS_REST_TOKEN`. Without them every rate limit is per-serverless-
+  instance and bypassable across autoscaled instances; the app logs a SECURITY
+  error once per instance until configured.
+- `OAUTH_SIGNING_SECRET` (falls back to `CLERK_SECRET_KEY` with a warning).
+- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
+  (including `STRIPE_PRICE_TEAM` for the team plan).
+- Clerk: enable Organizations and subscribe the webhook to `organization.*`
+  and `organizationMembership.*` events (Teams).
+- Supabase: run `prisma/supabase-setup.sql` section 4 (pgvector HNSW index)
+  once in the SQL editor; `db push` cannot create it.
 
-## Learn More
+## MCP
 
-To learn more about Next.js, take a look at the following resources:
+The agent-facing server is `/api/mcp/mcp` (streamable HTTP; SSE at
+`/api/mcp/sse`), authenticated with per-user API keys (`scl_...`, minted in
+Settings) or OAuth. The tool contract is documented in
+`plugins/scalar/skills/scalar-mcp-agent/SKILL.md`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Smoke-test a live server (proves list limits are enforced; the key is never
+printed):
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+SCALAR_API_KEY=scl_... pnpm smoke:mcp                 # production endpoint
+SCALAR_API_KEY=scl_... node scripts/mcp-smoke.mjs https://<preview>/api/mcp/mcp
+```

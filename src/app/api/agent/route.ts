@@ -225,7 +225,7 @@ export async function POST(req: Request) {
     }),
     list_entities: tool({
       description: "List businesses (entities). Optional search query.",
-      inputSchema: z.object({ query: z.string().optional() }),
+      inputSchema: z.object({ query: z.string().optional(), limit: z.number().int().min(1).max(200).optional() }),
       execute: ({ query }) => exec(() => listEntities(userId, query)),
     }),
     get_entity: tool({
@@ -269,9 +269,10 @@ export async function POST(req: Request) {
       inputSchema: z.object({
         query: z.string().optional(),
         status: z.string().optional(),
+        limit: z.number().int().min(1).max(200).optional(),
       }),
-      execute: ({ query, status }) =>
-        exec(() => listContacts(userId, { q: query, status })),
+      execute: ({ query, status, limit }) =>
+        exec(() => listContacts(userId, { q: query, status, limit })),
     }),
     get_contact: tool({
       description: "Get one contact by id, with linked entity and saved emails.",
