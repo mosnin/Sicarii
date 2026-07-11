@@ -52,7 +52,11 @@ const redis: Redis | null = (() => {
     // Loud in production: without a durable backend, every rate limit is
     // per-serverless-instance and effectively bypassable by hitting different
     // cold starts. This is a real security posture gap, not just a perf note.
-    if (process.env.NODE_ENV === "production") {
+    // Emitted once per instance (globalThis-guarded so multiple route bundles
+    // sharing an instance do not each log it), never silenced entirely.
+    const g = globalThis as { __rateLimitWarned?: boolean };
+    if (process.env.NODE_ENV === "production" && !g.__rateLimitWarned) {
+      g.__rateLimitWarned = true;
       console.error(
         "[rate-limit] SECURITY: UPSTASH_REDIS_REST_URL/TOKEN not set in production. " +
           "Rate limiting is per-instance in-memory and bypassable across autoscaled instances. " +

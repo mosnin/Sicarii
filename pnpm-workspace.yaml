@@ -1,12 +1,9 @@
-allowBuilds:
-  '@clerk/shared': set this to true or false
-  '@prisma/client': set this to true or false
-  '@prisma/engines': set this to true or false
-  msgpackr-extract: set this to true or false
-  prisma: set this to true or false
-  protobufjs: set this to true or false
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
+# Single-package workspace rooted at the repo. pnpm 10 requires a non-empty
+# `packages` field to treat this file as valid; without it a fresh clone fails
+# `pnpm install` with "packages field missing or empty".
+packages:
+  - .
+
 # Allow these dependencies to run install/build scripts (pnpm gates them by default).
 # Prisma must generate its client + engines; sharp builds native image bindings.
 onlyBuiltDependencies:

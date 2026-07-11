@@ -258,10 +258,14 @@ const handler = createMcpHandler(
     /* -------------------------- Entities -------------------------- */
     server.tool(
       "list_entities",
-      "List businesses (entities) in the CRM, newest first. Optional search query over name/domain/industry.",
-      { query: z.string().optional() },
-      async ({ query }, extra) =>
-        run(() => listEntities(userIdFrom(extra), query)),
+      "List businesses (entities) in the CRM, newest first. Accepted params: query (filters name/domain/industry; `search` is an alias, query wins if both are sent) and limit (rows to return, 1-200, default 50). No other params are read.",
+      {
+        query: z.string().max(500).optional(),
+        search: z.string().max(500).optional().describe("Alias for query (older agent docs); ignored when query is set"),
+        limit: z.number().int().min(1).max(200).optional().describe("Rows to return (default 50)"),
+      },
+      async ({ query, search, limit }, extra) =>
+        run(() => listEntities(userIdFrom(extra), query ?? search, limit)),
     );
 
     server.tool(
@@ -332,13 +336,15 @@ const handler = createMcpHandler(
     /* -------------------------- Contacts -------------------------- */
     server.tool(
       "list_contacts",
-      "List people (contacts), newest first. Optional search query and status filter.",
+      "List people (contacts), newest first. Accepted params: query (filters name/email/company; `search` is an alias, query wins if both are sent), status (pipeline status filter), and limit (rows to return, 1-200, default 50). No other params are read.",
       {
-        query: z.string().optional(),
-        status: z.string().optional(),
+        query: z.string().max(500).optional(),
+        search: z.string().max(500).optional().describe("Alias for query (older agent docs); ignored when query is set"),
+        status: z.string().max(20).optional(),
+        limit: z.number().int().min(1).max(200).optional().describe("Rows to return (default 50)"),
       },
-      async ({ query, status }, extra) =>
-        run(() => listContacts(userIdFrom(extra), { q: query, status })),
+      async ({ query, search, status, limit }, extra) =>
+        run(() => listContacts(userIdFrom(extra), { q: query ?? search, status, limit })),
     );
 
     server.tool(
@@ -919,5 +925,12 @@ const authHandler = withMcpAuth(
     resourceMetadataPath: "/.well-known/oauth-protected-resource",
   },
 );
+
+// Connector probes send HEAD before opening a session. Without an explicit
+// handler Next falls through to the GET (an SSE stream that never ends for a
+// bodyless probe) and the probe hangs until the platform 504s. Answer fast.
+export function HEAD() {
+  return new Response(null, { status: 204 });
+}
 
 export { authHandler as GET, authHandler as POST, authHandler as DELETE };

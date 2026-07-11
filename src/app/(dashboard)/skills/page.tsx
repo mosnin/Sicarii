@@ -3,7 +3,12 @@ import { AsciiField } from "@/components/dashboard/ascii-field";
 import { SkillsBrowser } from "@/components/dashboard/skills-browser";
 import { SKILLS } from "@/lib/skills";
 
-export const dynamic = "force-static";
+// This page lives under the authenticated dashboard layout, which is
+// force-dynamic and reads Clerk auth (getDbUser). Forcing this page static made
+// Next try to prerender it outside the Clerk request context, so a direct load
+// 500'd with "auth() was called but Clerk cannot detect clerkMiddleware()".
+// Match the rest of the dashboard: render dynamically.
+export const dynamic = "force-dynamic";
 
 export default function SkillsPage() {
   return (
