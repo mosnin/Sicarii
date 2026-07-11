@@ -13,6 +13,7 @@ import { CountUp } from "@/components/ui/count-up";
 import { GlobalSearch } from "@/components/dashboard/global-search";
 import { CommandBox } from "@/components/dashboard/command-box";
 import { PulseMoment } from "@/components/dashboard/pulse-moment";
+import { NeedsYou, type NeedsData } from "@/components/dashboard/needs-you";
 import { cn } from "@/lib/utils";
 import type { PulseData } from "@/lib/pulse";
 
@@ -177,6 +178,8 @@ interface DashboardOverviewProps {
   pulse?: PulseData | null;
   /** No records yet: render a designed "begin" state, never a wall of zeros. */
   isEmpty?: boolean;
+  /** The everyday worklist counts ("what needs me now"). */
+  needs?: NeedsData;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -191,6 +194,7 @@ export function DashboardOverview({
   radarSignals = 0,
   pulse = null,
   isEmpty = false,
+  needs = { replied: 0, dueFollowup: 0, toEnrich: 0, radarSignals: 0 },
 }: DashboardOverviewProps) {
   const reduce = useReducedMotion();
 
@@ -428,9 +432,11 @@ export function DashboardOverview({
         </motion.div>
       </div>
 
-      {/* ── Bottom row: explore + activity ────────────────────────────────── */}
+      {/* ── Bottom row: the daily driver + activity ───────────────────────── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Quick-explore card - spans 2 cols */}
+        {/* A returning user gets "Needs you" (the everyday worklist); a brand-new
+            account gets "Explore Scalar" (orientation) instead. Both span 2 cols. */}
+        {isEmpty ? (
         <motion.div variants={cardVariants} className="lg:col-span-2">
           <motion.div
             whileHover={{ y: -3, transition: { duration: 0.25, ease: "easeOut" } }}
@@ -516,6 +522,11 @@ export function DashboardOverview({
             </div>
           </motion.div>
         </motion.div>
+        ) : (
+          <motion.div variants={cardVariants} className="lg:col-span-2">
+            <NeedsYou needs={needs} />
+          </motion.div>
+        )}
 
         {/* Activity / empty state card - spans 1 col */}
         <motion.div variants={cardVariants}>
