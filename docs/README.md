@@ -30,6 +30,7 @@
 | `decisions/0006-the-four-moments.md` | The plan from reliable (6/10) to exceptional: four choreographed moments, two agent waves, founder gates | The cycle in flight |
 | `decisions/0007-x402-agent-payments.md` | x402 agent payments: USDC top-ups + 30-day plan purchase over HTTP 402, env-gated, idempotent on the on-chain nonce | Revisiting billing / agent autonomy |
 | `decisions/0008-social-channels.md` | Social channels: profiles on contacts, find_socials discovery (accuracy rule intact), ContactSocialMessage + unified Conversations, source attribution | Revisiting social / conversations |
+| `decisions/0009-teams-v1.md` | Teams v1: Clerk Orgs + synthetic workspace accounts, lead sharing (deep copy + dedup-merge), workspace agent keys with attribution, team plan $299/30d | Revisiting teams / workspaces |
 
 ## Working knowledge (grows with the product)
 

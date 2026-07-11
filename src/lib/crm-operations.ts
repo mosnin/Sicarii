@@ -561,6 +561,11 @@ const ADVANCE_FROM_OUTREACH = new Set(["NEW", "ENRICHED"]);
  *  (explicit override wins; otherwise bump NEW/ENRICHED -> CONTACTED and never
  *  downgrade a contact already further along), and log an Activity, atomically.
  *  This is the memory that lets an agent follow up reliably. */
+export interface ActivityActor {
+  id: string; // ApiKey.id (agent) or users.id (human member)
+  label: string; // display snapshot: key name or member name
+}
+
 export async function logOutreach(
   userId: string,
   input: {
@@ -568,6 +573,7 @@ export async function logOutreach(
     summary: string;
     channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other";
     status?: ContactStatus;
+    actor?: ActivityActor | null;
   }
 ) {
   const existing = await prisma.contact.findUnique({ where: { id: input.contactId } });
@@ -588,6 +594,8 @@ export async function logOutreach(
         kind: "outreach",
         body: input.summary,
         channel: input.channel ?? null,
+        actorId: input.actor?.id ?? null,
+        actorLabel: input.actor?.label ?? null,
       },
     }),
   ]);
@@ -604,6 +612,7 @@ export async function addActivity(
     kind: "note" | "call" | "outreach" | "reply" | "status_change";
     body: string;
     channel?: string | null;
+    actor?: ActivityActor | null;
   }
 ) {
   if (!input.contactId && !input.entityId)
@@ -624,6 +633,8 @@ export async function addActivity(
       kind: input.kind,
       body: input.body,
       channel: input.channel ?? null,
+      actorId: input.actor?.id ?? null,
+      actorLabel: input.actor?.label ?? null,
     },
   });
 }

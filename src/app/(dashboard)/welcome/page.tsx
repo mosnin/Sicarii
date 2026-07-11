@@ -22,6 +22,11 @@ export default async function WelcomePage() {
   }
 
   // Redirect to dashboard if the first run is already done.
+  // The first run is for humans; a team workspace context has no interview.
+  if (user.accountType === "workspace") {
+    redirect("/dashboard");
+  }
+
   const done = await hasCompletedFirstRun(user.id);
   if (done) {
     redirect("/dashboard");

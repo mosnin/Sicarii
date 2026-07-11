@@ -26,11 +26,11 @@ Conversations card, source attribution on agent-created leads, and the
 2026-07-11 MCP audit remediation (3 P1s fixed). Owed: `pnpm prisma db push`
 + one live find_socials observation.
 
-**Next cycle queued: Teams/workspaces** - architecture DESIGNED
-(`engineering/teams-plan-2026-07-11.md`): Clerk Organizations + synthetic
-workspace account row, lead sharing personal -> team, multiple agent keys per
-team, team plan. v1 is one PR (~750 LOC); founder should approve the plan
-(esp. team plan pricing, $299/30d proposed) before the build.
+**Parallel cycle shipped: 0009 - Teams v1** (`0009-teams-v1.md`). Founder
+approved the build; Clerk Orgs + synthetic workspace accounts, share-to-team
+deep copy, workspace agent keys with Activity attribution, team plan $299/30d.
+Owed: enable Organizations in Clerk + org webhook events + STRIPE_PRICE_TEAM,
+then one live org round-trip (create, invite, switch, share, agent write).
 
 **Parallel cycle shipped: 0007 - x402 agent payments** (`0007-x402-agent-payments.md`).
 The CRM your agents run now lets the agents pay for it: USDC top-ups

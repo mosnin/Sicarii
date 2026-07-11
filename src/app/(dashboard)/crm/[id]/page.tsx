@@ -21,6 +21,8 @@ import { QuickNote } from "./quick-note";
 import { MatchEntity } from "./match-entity";
 import { SocialsEditor } from "./socials";
 import { LogSocialMessage } from "./log-social";
+import { ShareToTeam } from "./share-to-team";
+import { listUserWorkspaces } from "@/lib/workspace";
 import { getProvenanceMap } from "@/lib/provenance";
 import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
 import { VerifiedStrip } from "@/components/dashboard/verified-strip";
@@ -64,6 +66,12 @@ export default async function ContactDetailPage({
   });
 
   const provenance = await getProvenanceMap("contact", id, user.id);
+
+  // Teams: a PERSONAL contact can be shared into any team the viewer belongs
+  // to. In team context user.id is the workspace row, which has no memberships,
+  // so this is naturally empty and the button never renders there.
+  const teams =
+    user.accountType === "user" ? await listUserWorkspaces(user.id) : [];
 
   // One relationship, one thread: email and social messages merged by time.
   const SOCIAL_LABELS: Record<string, string> = {
@@ -171,7 +179,13 @@ export default async function ContactDetailPage({
               </div>
             </div>
           </div>
-          <ContactActions contactId={contact.id} currentStatus={contact.status} />
+          <div className="flex flex-col items-end gap-2">
+            <ContactActions contactId={contact.id} currentStatus={contact.status} />
+            <ShareToTeam
+              contactId={contact.id}
+              teams={teams.map((t) => ({ workspaceId: t.workspaceId, name: t.name }))}
+            />
+          </div>
         </div>
       </FloatIn>
 
@@ -262,6 +276,7 @@ export default async function ContactDetailPage({
                         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           {a.kind}
                           {a.channel ? ` · ${a.channel}` : ""}
+                          {a.actorLabel ? ` · ${a.actorLabel}` : ""}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {new Date(a.createdAt).toLocaleDateString()}

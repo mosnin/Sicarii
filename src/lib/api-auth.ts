@@ -25,6 +25,25 @@ export function generateApiKey(): {
   };
 }
 
+/** Like authenticateApiKey, but also returns which key authenticated, so the
+ *  MCP layer can attribute writes to a specific agent (key) in team
+ *  workspaces. Updates lastUsedAt best-effort. */
+export async function authenticateApiKeyDetailed(
+  token?: string,
+): Promise<{ user: User; keyId: string; keyName: string } | null> {
+  if (!token || !token.startsWith(PREFIX)) return null;
+  const hashedKey = hashApiKey(token);
+  const key = await prisma.apiKey.findUnique({
+    where: { hashedKey },
+    include: { user: true },
+  });
+  if (!key || key.revokedAt) return null;
+  prisma.apiKey
+    .update({ where: { id: key.id }, data: { lastUsedAt: new Date() } })
+    .catch(() => {});
+  return { user: key.user, keyId: key.id, keyName: key.name };
+}
+
 /** Resolve the user for a bearer token, or null. Updates lastUsedAt. */
 export async function authenticateApiKey(token?: string): Promise<User | null> {
   if (!token || !token.startsWith(PREFIX)) return null;

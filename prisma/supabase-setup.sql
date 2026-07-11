@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS "users" (
   "lastName"  TEXT,
   "imageUrl"  TEXT,
   "role"      TEXT NOT NULL DEFAULT 'member',
+  "accountType"      TEXT NOT NULL DEFAULT 'user',
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "users_pkey" PRIMARY KEY ("id")
@@ -101,6 +102,7 @@ CREATE TABLE IF NOT EXISTS "api_keys" (
   "hashedKey"  TEXT NOT NULL,
   "prefix"     TEXT NOT NULL,
   "last4"      TEXT NOT NULL,
+  "createdById" TEXT,
   "lastUsedAt" TIMESTAMP(3),
   "revokedAt"  TIMESTAMP(3),
   "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -108,6 +110,21 @@ CREATE TABLE IF NOT EXISTS "api_keys" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "api_keys_hashedKey_key" ON "api_keys" ("hashedKey");
 CREATE INDEX IF NOT EXISTS "api_keys_userId_idx" ON "api_keys" ("userId");
+
+
+-- team_members — mirror of Clerk Organization memberships (Teams v1)
+CREATE TABLE IF NOT EXISTS "team_members" (
+  "id"                TEXT NOT NULL,
+  "workspaceId"       TEXT NOT NULL,
+  "userId"            TEXT NOT NULL,
+  "role"              TEXT NOT NULL DEFAULT 'member',
+  "clerkMembershipId" TEXT,
+  "createdAt"         TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "team_members_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "team_members_clerkMembershipId_key" ON "team_members" ("clerkMembershipId");
+CREATE UNIQUE INDEX IF NOT EXISTS "team_members_workspaceId_userId_key" ON "team_members" ("workspaceId", "userId");
+CREATE INDEX IF NOT EXISTS "team_members_userId_idx" ON "team_members" ("userId");
 
 -- entities — a business in the CRM (discovered, enriched, operated on by agents)
 CREATE TABLE IF NOT EXISTS "entities" (
@@ -124,6 +141,7 @@ CREATE TABLE IF NOT EXISTS "entities" (
   "source"      TEXT,
   "tags"        TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
   "notes"       TEXT,
+  "sharedFromId" TEXT,
   "enrichment"  JSONB,
   "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt"   TIMESTAMP(3) NOT NULL,
@@ -147,6 +165,7 @@ CREATE TABLE IF NOT EXISTS "contacts" (
   "facebook"   TEXT,
   "instagram"  TEXT,
   "twitter"    TEXT,
+  "sharedFromId" TEXT,
   "location"   TEXT,
   "status"     "ContactStatus" NOT NULL DEFAULT 'NEW',
   "source"     TEXT,
@@ -237,6 +256,16 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN
   ALTER TABLE "contact_emails" ADD CONSTRAINT "contact_emails_contactId_fkey"
     FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "team_members" ADD CONSTRAINT "team_members_workspaceId_fkey"
+    FOREIGN KEY ("workspaceId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "team_members" ADD CONSTRAINT "team_members_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN

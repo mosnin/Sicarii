@@ -25,6 +25,11 @@ model User {
   lastName         String?
   imageUrl         String?
   role             String    @default("member")
+  // "user" = a human account. "workspace" = a synthetic account row mirroring a
+  // Clerk Organization: it owns the team's shared data through the exact same
+  // userId scoping every query already uses (see docs/engineering/
+  // teams-plan-2026-07-11.md). Human-only flows (welcome, profile) gate on this.
+  accountType      String    @default("user")
   // Operator-authored context the agent reads (what you're selling) + a
   // connected AgentMail key for email. Both are per-user settings.
   productContext   String?   @db.Text
@@ -64,8 +69,29 @@ model User {
   activities        Activity[]
   segments          Segment[]
   pipelines         Pipeline[]
+  // Teams: workspaces this human belongs to / humans in this workspace.
+  memberships       TeamMember[] @relation("MemberOf")
+  members           TeamMember[] @relation("WorkspaceMembers")
 
   @@map("users")
+}
+
+// Mirror of a Clerk Organization membership: which humans can operate a
+// workspace account and with what role. Kept in sync by the Clerk webhook and
+// provisioned on first sight by the resolvers (same pattern as User).
+model TeamMember {
+  id                String   @id @default(uuid())
+  workspaceId       String // users.id of the workspace account row
+  workspace         User     @relation("WorkspaceMembers", fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId            String // users.id of the human member
+  user              User     @relation("MemberOf", fields: [userId], references: [id], onDelete: Cascade)
+  role              String   @default("member") // mirrors the Clerk org role
+  clerkMembershipId String?  @unique
+  createdAt         DateTime @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("team_members")
 }
 
 // Append-only record of every credit movement (debits from metered actions,
@@ -138,6 +164,8 @@ model ApiKey {
   hashedKey  String    @unique
   prefix     String
   last4      String
+  // For workspace keys: the human member (users.id) who minted it.
+  createdById String?
   lastUsedAt DateTime?
   revokedAt  DateTime?
   createdAt  DateTime  @default(now())
@@ -174,6 +202,9 @@ model Entity {
 
   // Enrichment payload (provider-shaped JSON the agent can read/extend).
   enrichment Json?
+
+  // When this row is a copy shared from another account (personal -> team).
+  sharedFromId String?
 
   contacts   Contact[]
   activities Activity[]
@@ -248,6 +279,10 @@ model Contact {
   // Enrichment payload (provider-shaped JSON the agent can read/extend)
   enrichment Json?
 
+  // When this row is a copy shared from another account (personal -> team),
+  // the source contact's id, for provenance and re-share dedup.
+  sharedFromId String?
+
   emails          ContactEmail[]
   calls           ContactCall[]
   socialMessages  ContactSocialMessage[]
@@ -285,6 +320,11 @@ model Activity {
   kind    String // "note" | "outreach" | "call" | "reply" | "status_change"
   body    String @db.Text
   channel String? // "email" | "linkedin" | "phone" | null
+  // Attribution in a team workspace: userId above is the TENANT (the workspace
+  // account); these say WHO acted - an agent's ApiKey.id or a member's users.id,
+  // with a display snapshot so the feed stays readable after key rotation.
+  actorId    String?
+  actorLabel String?
 
   createdAt DateTime @default(now())
 

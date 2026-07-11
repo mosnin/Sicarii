@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthContext, getAuthenticatedUser } from "@/lib/auth-utils";
 import { generateApiKey } from "@/lib/api-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -34,10 +34,20 @@ export async function GET() {
 
 const createSchema = z.object({ name: z.string().trim().min(1).max(80) });
 
-// POST /api/keys - mint a key. The plaintext is returned exactly once.
+// POST /api/keys - mint a key. The plaintext is returned exactly once. In a
+// team workspace, keys are workspace-scoped (multiple agents share the team
+// CRM + pooled meter); only org admins may mint them, and the minting member
+// is stamped for attribution.
 export async function POST(req: NextRequest) {
   try {
-    const user = await getAuthenticatedUser();
+    const ctx = await getAuthContext();
+    const user = ctx.account;
+    if (ctx.workspaceRole === "member") {
+      return NextResponse.json(
+        { error: "Only a team admin can create workspace API keys." },
+        { status: 403 },
+      );
+    }
     const rate = await checkRateLimit(`keys:create:${user.id}`, 10, 60 * 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many keys created. Try again later." }, { status: 429 });
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
@@ -46,7 +56,14 @@ export async function POST(req: NextRequest) {
     }
     const { plaintext, hashedKey, prefix, last4 } = generateApiKey();
     const key = await prisma.apiKey.create({
-      data: { userId: user.id, name: parsed.data.name, hashedKey, prefix, last4 },
+      data: {
+        userId: user.id,
+        name: parsed.data.name,
+        hashedKey,
+        prefix,
+        last4,
+        ...(user.id !== ctx.actor.id ? { createdById: ctx.actor.id } : {}),
+      },
       select,
     });
     // `plaintext` is shown once and never persisted.

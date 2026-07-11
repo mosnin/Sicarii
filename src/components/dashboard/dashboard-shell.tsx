@@ -46,7 +46,7 @@ import {
 } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import {
   Home,
@@ -550,9 +550,13 @@ function Sidebar({
             <span>Collapse</span>
           </button>
 
-          {/* User + theme */}
+          {/* User + workspace + theme */}
           <div className="flex items-center gap-2 px-3 py-2">
             <UserButton />
+            <OrganizationSwitcher
+              afterSelectOrganizationUrl="/dashboard"
+              afterSelectPersonalUrl="/dashboard"
+            />
             <ThemeToggle />
           </div>
         </div>
@@ -861,6 +865,12 @@ export function DashboardShell({
                   </span>
                 </Link>
                 <div className="flex items-center gap-1.5 sm:gap-2">
+                  {/* Personal vs team context: switching orgs re-scopes every
+                      page to the shared workspace CRM. */}
+                  <OrganizationSwitcher
+                    afterSelectOrganizationUrl="/dashboard"
+                    afterSelectPersonalUrl="/dashboard"
+                  />
                   <ThemeToggle />
                   <UserButton />
                 </div>

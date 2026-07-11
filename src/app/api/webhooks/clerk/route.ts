@@ -89,6 +89,90 @@ export async function POST(req: Request) {
       });
     }
 
+    /* ── Teams: mirror Clerk Organizations as workspace account rows ────── */
+
+    if (type === "organization.created" || type === "organization.updated") {
+      const orgId = data.id as string;
+      const name = (data.name as string | undefined) ?? "Team workspace";
+      await prisma.user.upsert({
+        where: { clerkId: orgId },
+        create: {
+          clerkId: orgId,
+          accountType: "workspace",
+          email: "",
+          firstName: name,
+          imageUrl: data.image_url as string | undefined,
+          plan: "free",
+          creditsRemaining: 200,
+        },
+        // Never touch plan/meter on update: the team keeps what it bought.
+        update: {
+          firstName: name,
+          imageUrl: data.image_url as string | undefined,
+        },
+      });
+    }
+
+    if (type === "organization.deleted") {
+      // Symmetric to user.deleted: the workspace's data must not survive the
+      // org. Fail loudly so Clerk retries a partial delete.
+      const ws = await prisma.user.findUnique({
+        where: { clerkId: data.id as string },
+        select: { id: true, accountType: true },
+      });
+      if (ws && ws.accountType === "workspace") {
+        try {
+          await prisma.$transaction([
+            prisma.pipeline.deleteMany({ where: { userId: ws.id } }),
+            prisma.segment.deleteMany({ where: { userId: ws.id } }),
+            prisma.user.delete({ where: { id: ws.id } }),
+          ]);
+        } catch (err) {
+          console.error(`[clerk] organization.deleted cleanup failed for ${ws.id}`, err);
+          return NextResponse.json({ error: "Deletion failed, will retry" }, { status: 500 });
+        }
+      }
+    }
+
+    if (
+      type === "organizationMembership.created" ||
+      type === "organizationMembership.updated" ||
+      type === "organizationMembership.deleted"
+    ) {
+      const org = data.organization as { id?: string; name?: string } | undefined;
+      const pub = data.public_user_data as { user_id?: string } | undefined;
+      const membershipId = data.id as string | undefined;
+      const role = (data.role as string | undefined) === "org:admin" ? "admin" : "member";
+      const orgClerkId = org?.id;
+      const memberClerkId = pub?.user_id;
+      if (orgClerkId && memberClerkId) {
+        const [ws, member] = await Promise.all([
+          prisma.user.findUnique({ where: { clerkId: orgClerkId }, select: { id: true } }),
+          prisma.user.findUnique({ where: { clerkId: memberClerkId }, select: { id: true } }),
+        ]);
+        // Rows may not exist yet (webhook ordering); the resolvers provision
+        // membership on first sight, so a miss here is safe to skip.
+        if (ws && member) {
+          if (type === "organizationMembership.deleted") {
+            await prisma.teamMember.deleteMany({
+              where: { workspaceId: ws.id, userId: member.id },
+            });
+          } else {
+            await prisma.teamMember.upsert({
+              where: { workspaceId_userId: { workspaceId: ws.id, userId: member.id } },
+              update: { role, clerkMembershipId: membershipId },
+              create: {
+                workspaceId: ws.id,
+                userId: member.id,
+                role,
+                clerkMembershipId: membershipId,
+              },
+            });
+          }
+        }
+      }
+    }
+
     if (type === "user.deleted") {
       // Entity/Contact/ApiKey/Conversation/MemoryChunk/IntentMonitor/
       // ResearchSchedule cascade via FK. Segment + Pipeline use a scalar userId
