@@ -11,15 +11,17 @@ import { embedText, toVectorLiteral } from "@/lib/embeddings";
 
 export type MemoryKind = "message" | "entity" | "contact" | "email";
 
-/** Embed and store a snippet of memory for a user. Best-effort. */
+/** Embed and store a snippet of memory for a user. Returns whether the memory
+ *  was actually persisted, so callers (the MCP `remember` tool) can report
+ *  honestly instead of confirming a write that silently no-opped. */
 export async function storeMemory(
   userId: string,
   kind: MemoryKind,
   content: string,
   refId?: string,
-): Promise<void> {
+): Promise<boolean> {
   const embedding = await embedText(content);
-  if (!embedding) return;
+  if (!embedding) return false;
   const id = randomUUID();
   const literal = toVectorLiteral(embedding);
   try {
@@ -27,8 +29,10 @@ export async function storeMemory(
       INSERT INTO memory_chunks (id, "userId", kind, "refId", content, embedding, "createdAt")
       VALUES (${id}, ${userId}, ${kind}, ${refId ?? null}, ${content}, ${literal}::vector, now())
     `;
+    return true;
   } catch (e) {
     console.error("storeMemory failed", e);
+    return false;
   }
 }
 

@@ -50,6 +50,12 @@ exponential growth into a plateau.
   missing secret. _(Cards 0003, 0005)_
 - **Token-efficient memory = fresh context + recall.** Don't replay history; mint a
   fresh conversation per load and pull top-k vector matches on demand. _(Card 0005)_
+- **One relationship, one thread.** Conversation history is channel-labeled and
+  merged (email + social + calls on one record), never siloed per channel; new
+  channels mirror the ContactEmail model shape. _(Card 0008)_
+- **Discovery saves only what it can verify.** find_socials auto-saves a profile
+  only on name AND company match; everything else is a candidate for review.
+  Null over wrong, on every enrichment path. _(Cards 0003, 0008)_
 
 ## Open debts (owed to reality)
 
@@ -68,6 +74,10 @@ exponential growth into a plateau.
 | Agent runtime (LLM loop, streaming, pgvector) | 0005 · Feasible | `OPENAI_API_KEY` + live run | founder + eng |
 | pgvector `db push` | 0005 | enable `vector` ext on Supabase; push succeeds | founder + eng |
 | 5-second spark (agent) | 0005 · Desirable | observe discover→push→enrich live | founder |
+| find_socials verification quality | 0008 · Feasible | one live run with a real Tavily key | founder + eng |
+| Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
+| Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
+| Teams v1 build | teams-plan-2026-07-11 | founder approves plan + pricing, then one PR | founder + eng |
 
 ## Kills & falsifieds (do not re-open)
 

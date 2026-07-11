@@ -35,6 +35,7 @@ export const CREDIT_COSTS = {
   maps_leads: 15,
   contact_extract: 8,
   serp_search: 4,
+  find_socials: 4,
   deep_report: 8,
   analyze_site: 8,
   company_aspect: 30,
