@@ -10,11 +10,14 @@ import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
 
 export const PLANS = {
-  free: { credits: 200, monitors: 0 },
-  starter: { credits: 3000, monitors: 1 },
-  pro: { credits: 12000, monitors: 10 },
-  business: { credits: 8000, monitors: 25 },
-  beta: { credits: 10000, monitors: 10 },
+  free: { credits: 200, monitors: 0, seats: 1 },
+  starter: { credits: 3000, monitors: 1, seats: 1 },
+  pro: { credits: 12000, monitors: 10, seats: 1 },
+  business: { credits: 8000, monitors: 25, seats: 1 },
+  beta: { credits: 10000, monitors: 10, seats: 1 },
+  // Teams: one pooled credit meter on the workspace account, shared by every
+  // member and every connected agent key. Seats are a soft cap in v1.
+  team: { credits: 30000, monitors: 25, seats: 5 },
 } as const;
 
 export type PlanName = keyof typeof PLANS;
@@ -205,6 +208,7 @@ export const PLAN_USD = {
   starter: 39,
   pro: 129,
   business: 99,
+  team: 299,
 } as const;
 
 export type PaidPlanName = keyof typeof PLAN_USD;

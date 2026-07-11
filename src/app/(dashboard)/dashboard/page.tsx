@@ -46,7 +46,9 @@ export default async function DashboardPage() {
 
   // New users with no ICP and no data land on /welcome for the first-run
   // performance. Check is fast (two small queries) and skipped if not needed.
-  const done = await hasCompletedFirstRun(user.id);
+  // Workspaces skip it: the first-run performance is a human moment, and the
+  // team CRM fills through sharing and agents, not an ICP interview.
+  const done = user.accountType === "workspace" || (await hasCompletedFirstRun(user.id));
   if (!done) {
     redirect("/welcome");
   }

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthContext } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createCheckoutSession, priceIdFor, stripeConfigured } from "@/lib/stripe";
 import type { PaidPlanName } from "@/lib/credits";
 
-const PAID_PLANS = ["starter", "pro", "business"] as const;
+const PAID_PLANS = ["starter", "pro", "business", "team"] as const;
 
 // POST /api/billing/checkout  body: { plan: "starter" | "pro" | "business" }
 // Creates a Stripe Checkout session and returns its URL. Env-gated: without
@@ -12,7 +12,8 @@ const PAID_PLANS = ["starter", "pro", "business"] as const;
 // show "Billing launches soon".
 export async function POST(req: NextRequest) {
   try {
-    const user = await getAuthenticatedUser();
+    const ctx = await getAuthContext();
+    const user = ctx.account;
 
     const rate = await checkRateLimit(`billing-checkout:${user.id}`, 10, 60_000);
     if (!rate.success) {
@@ -23,9 +24,25 @@ export async function POST(req: NextRequest) {
     const plan = body?.plan;
     if (!plan || !(PAID_PLANS as readonly string[]).includes(plan)) {
       return NextResponse.json(
-        { error: "plan must be starter, pro, or business" },
+        { error: "plan must be starter, pro, business, or team" },
         { status: 400 },
       );
+    }
+
+    // The team plan is bought FOR a workspace, from team context, by an admin.
+    if (plan === "team") {
+      if (user.accountType !== "workspace") {
+        return NextResponse.json(
+          { error: "Switch to your team workspace to buy the team plan." },
+          { status: 400 },
+        );
+      }
+      if (ctx.workspaceRole !== "admin") {
+        return NextResponse.json(
+          { error: "Only a team admin can manage the team plan." },
+          { status: 403 },
+        );
+      }
     }
 
     if (!stripeConfigured()) {

@@ -1,6 +1,6 @@
 # Teams / Workspaces - Implementation Plan (2026-07-11)
 
-> Status: DESIGNED, not yet built. Founder asked for a teams plan: personal account
+> Status: v1 BUILT (same day, Gate Card `decisions/0009-teams-v1.md`). Founder asked for a teams plan: personal account
 > plus a team workspace with shared data, lead sharing from personal to team, and
 > multiple agents connected per team. This is the grounded architecture plan; v1
 > implementation is the next cycle after the social-channels PR.

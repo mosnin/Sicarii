@@ -1,7 +1,7 @@
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { authenticateApiKey, bearerFromRequest } from "@/lib/api-auth";
+import { authenticateApiKeyDetailed, bearerFromRequest } from "@/lib/api-auth";
 import { userIdFromAccessToken } from "@/lib/oauth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
@@ -97,6 +97,13 @@ function userIdFrom(extra: { authInfo?: AuthInfo }): string {
   const id = (extra.authInfo?.extra as { userId?: string } | undefined)?.userId;
   if (!id) throw new OpError("Unauthorized", 401);
   return id;
+}
+
+// The acting agent (API key) behind this session, for Activity attribution in
+// team workspaces. Null on OAuth sessions (the human is the tenant there).
+function actorFrom(extra: { authInfo?: AuthInfo }): { id: string; label: string } | null {
+  const x = extra.authInfo?.extra as { actorId?: string; actorLabel?: string } | undefined;
+  return x?.actorId ? { id: x.actorId, label: x.actorLabel ?? "agent key" } : null;
 }
 
 // Turn an OpError into a tool message, appending the x402 top-up pointer when
@@ -728,7 +735,7 @@ const handler = createMcpHandler(
     server.tool(
       "buy_plan",
       "Buy a Scalar plan for 30 days with USDC over x402 (starter, pro, or business; cheaper per credit than top-ups for sustained work). TWO STEPS: (1) call with { plan } and NO xPayment for a quote; (2) sign the USDC payment with your x402 client and call again with the same { plan } plus xPayment (base64 X-PAYMENT). Activates the plan and refills credits to its allotment. Idempotent on the on-chain nonce; not recurring (re-buy after 30 days).",
-      { plan: z.enum(["starter", "pro", "business"]), xPayment: z.string().optional() },
+      { plan: z.enum(["starter", "pro", "business", "team"]), xPayment: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ plan, xPayment }, extra) =>
         gated(extra, "x402_buy", 20, (userId) => buyPlanViaMcp(userId, plan, xPayment)),
@@ -811,7 +818,8 @@ const handler = createMcpHandler(
           .optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async (a, extra) => run(() => logOutreach(userIdFrom(extra), a)),
+      async (a, extra) =>
+        run(() => logOutreach(userIdFrom(extra), { ...a, actor: actorFrom(extra) })),
     );
     server.tool(
       "list_due_followups",
@@ -837,7 +845,8 @@ const handler = createMcpHandler(
         channel: z.string().max(40).optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async (a, extra) => run(() => addActivity(userIdFrom(extra), a)),
+      async (a, extra) =>
+        run(() => addActivity(userIdFrom(extra), { ...a, actor: actorFrom(extra) })),
     );
     server.tool(
       "list_activities",
@@ -880,10 +889,20 @@ const authHandler = withMcpAuth(
     const token = bearerToken ?? bearerFromRequest(req);
     if (!token) return undefined;
 
-    // Per-user API key (scl_...) first.
-    const user = await authenticateApiKey(token);
-    if (user) {
-      return { token, clientId: user.id, scopes: [], extra: { userId: user.id } };
+    // Per-user API key (scl_...) first. The key id/name ride along so team
+    // workspaces can attribute which agent did what (Activity.actorId/Label).
+    const detailed = await authenticateApiKeyDetailed(token);
+    if (detailed) {
+      return {
+        token,
+        clientId: detailed.user.id,
+        scopes: [],
+        extra: {
+          userId: detailed.user.id,
+          actorId: detailed.keyId,
+          actorLabel: detailed.keyName,
+        },
+      };
     }
 
     // OAuth access token (issued by our authorization server).
