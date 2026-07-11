@@ -54,6 +54,13 @@ describe("listEntities", () => {
     expect(entityFindMany).toHaveBeenCalledTimes(1);
     expect(entityFindMany.mock.calls[0][0].take).toBe(1);
   });
+  it("accepts limit as the third positional arg (the agent/MCP call shape)", async () => {
+    // Both the MCP tool and the in-app agent tool call listEntities(userId,
+    // query, limit) positionally; a handler that drops the third arg (the bug
+    // Codex found) would silently fall back to the default. Pin the shape.
+    await listEntities("u1", "acme", 7);
+    expect(entityFindMany.mock.calls[0][0].take).toBe(7);
+  });
   it("defaults take when no limit is given", async () => {
     await listEntities("u1");
     expect(entityFindMany.mock.calls[0][0].take).toBe(DEFAULT_LIST_LIMIT);

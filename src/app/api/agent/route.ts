@@ -224,9 +224,9 @@ export async function POST(req: Request) {
       execute: ({ query }) => exec(() => searchCrm(userId, query)),
     }),
     list_entities: tool({
-      description: "List businesses (entities). Optional search query.",
+      description: "List businesses (entities). Optional search query and limit (1-200, default 50).",
       inputSchema: z.object({ query: z.string().optional(), limit: z.number().int().min(1).max(200).optional() }),
-      execute: ({ query }) => exec(() => listEntities(userId, query)),
+      execute: ({ query, limit }) => exec(() => listEntities(userId, query, limit)),
     }),
     get_entity: tool({
       description: "Get one business by id, including its contacts.",
