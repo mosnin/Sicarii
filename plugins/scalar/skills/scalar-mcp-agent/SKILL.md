@@ -74,16 +74,24 @@ social messages).
   you can confirm the person. 4 credits when anything is found; free on a miss.
 - `log_social_message { contactId, channel, direction, body, threadRef?, sentAt?, savedAsContext? }`:
   records a DM / comment / connection note. `channel` is one of `linkedin`,
-  `x`, `instagram`, `facebook`, `other`; `direction` is `INBOUND` or
-  `OUTBOUND`. OUTBOUND stamps the outreach clock and advances NEW/ENRICHED to
-  CONTACTED; INBOUND advances CONTACTED to REPLIED. Never downgrades.
+  `x` (`twitter` also accepted), `instagram`, `facebook`, `other`; `direction`
+  is `inbound` or `outbound`. Both are case-insensitive - send any casing
+  (`LINKEDIN`, `LinkedIn`, `OUTBOUND`, `outbound`, ...) and it normalizes to
+  the canonical stored value. An unrecognized value is a clear 400, not a
+  bare schema-mismatch. OUTBOUND stamps the outreach clock and advances
+  NEW/ENRICHED to CONTACTED; INBOUND advances CONTACTED to REPLIED. Never
+  downgrades.
 - `list_social_messages { contactId, channel? }`: the conversation history,
-  newest first.
+  newest first. `channel` accepts the same aliases, case-insensitively.
 - `create_contact` / `update_contact` carry `linkedin`, `facebook`,
   `instagram`, `twitter` (X profile URL or handle) directly.
 - Source attribution: set `source` on `create_contact` to where you found the
   lead (`linkedin`, `x`, `instagram`, `facebook`, `referral`, `event`, ...).
   It defaults to `agent`; honest attribution is expected.
+- `add_activity { contactId?, entityId?, kind, body, channel? }`: `kind` is
+  one of `note`, `call`, `outreach`, `reply`, `status_change` -
+  case-insensitive (`NOTE` and `note` both work). Provide a `contactId` or an
+  `entityId`.
 
 ## Paying your own way
 

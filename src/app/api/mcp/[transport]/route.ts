@@ -52,6 +52,12 @@ import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { enrichContactField } from "@/lib/contact-enrich";
 import { findContactSocials } from "@/lib/social-find";
 import {
+  normalizeSocialChannel,
+  normalizeDirection,
+  normalizeActivityKind,
+  requireNormalized,
+} from "@/lib/agent-enums";
+import {
   spendCredits,
   ensureCredits,
   getBilling,
@@ -468,11 +474,14 @@ const handler = createMcpHandler(
 
     server.tool(
       "log_social_message",
-      "Record a social media message with a contact (a LinkedIn/X/Instagram/Facebook DM, comment, or connection note) so the conversation history stays on the CRM alongside email. Advances pipeline state honestly: an OUTBOUND message stamps the outreach time and moves NEW/ENRICHED to CONTACTED; an INBOUND message moves CONTACTED to REPLIED. Pass threadRef (a permalink or thread id) when you have one.",
+      "Record a social media message with a contact (a LinkedIn/X/Instagram/Facebook DM, comment, or connection note) so the conversation history stays on the CRM alongside email. Advances pipeline state honestly: an OUTBOUND message stamps the outreach time and moves NEW/ENRICHED to CONTACTED; an INBOUND message moves CONTACTED to REPLIED. Pass threadRef (a permalink or thread id) when you have one. channel accepts linkedin, x (or twitter), instagram, facebook, other - any casing. direction accepts inbound, outbound - any casing.",
       {
         contactId: z.string(),
-        channel: z.enum(["linkedin", "x", "instagram", "facebook", "other"]),
-        direction: z.enum(["INBOUND", "OUTBOUND"]),
+        channel: z
+          .string()
+          .max(20)
+          .describe("linkedin | x (or twitter) | instagram | facebook | other - case-insensitive"),
+        direction: z.string().max(20).describe("inbound | outbound - case-insensitive"),
         body: z.string().min(1).max(10000),
         threadRef: z.string().max(500).optional(),
         sentAt: z.string().datetime().optional().describe("ISO timestamp of when the message was sent"),
@@ -483,9 +492,13 @@ const handler = createMcpHandler(
         run(() =>
           saveSocialMessage(userIdFrom(extra), {
             contactId,
-            channel: (channel === "x" ? "X" : channel.toUpperCase()) as
-              | "LINKEDIN" | "X" | "INSTAGRAM" | "FACEBOOK" | "OTHER",
-            direction,
+            channel: requireNormalized(
+              channel,
+              normalizeSocialChannel,
+              "channel",
+              "linkedin, x, instagram, facebook, other",
+            ),
+            direction: requireNormalized(direction, normalizeDirection, "direction", "inbound, outbound"),
             body,
             threadRef: threadRef ?? null,
             sentAt: sentAt ? new Date(sentAt) : null,
@@ -496,10 +509,14 @@ const handler = createMcpHandler(
 
     server.tool(
       "list_social_messages",
-      "Get the social media conversation history with a contact (LinkedIn/X/Instagram/Facebook messages), newest first, optionally filtered to one channel.",
+      "Get the social media conversation history with a contact (LinkedIn/X/Instagram/Facebook messages), newest first, optionally filtered to one channel. channel accepts linkedin, x (or twitter), instagram, facebook, other - any casing.",
       {
         contactId: z.string(),
-        channel: z.enum(["linkedin", "x", "instagram", "facebook", "other"]).optional(),
+        channel: z
+          .string()
+          .max(20)
+          .optional()
+          .describe("linkedin | x (or twitter) | instagram | facebook | other - case-insensitive"),
       },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ contactId, channel }, extra) =>
@@ -508,8 +525,12 @@ const handler = createMcpHandler(
             userIdFrom(extra),
             contactId,
             channel
-              ? ((channel === "x" ? "X" : channel.toUpperCase()) as
-                  | "LINKEDIN" | "X" | "INSTAGRAM" | "FACEBOOK" | "OTHER")
+              ? requireNormalized(
+                  channel,
+                  normalizeSocialChannel,
+                  "channel",
+                  "linkedin, x, instagram, facebook, other",
+                )
               : undefined,
           ),
         ),
@@ -842,17 +863,31 @@ const handler = createMcpHandler(
     );
     server.tool(
       "add_activity",
-      "Log a timestamped note, call, or reply on a contact or company without overwriting its notes field.",
+      "Log a timestamped note, call, or reply on a contact or company without overwriting its notes field. kind accepts note, call, outreach, reply, status_change - any casing.",
       {
         contactId: z.string().optional(),
         entityId: z.string().optional(),
-        kind: z.enum(["note", "call", "outreach", "reply", "status_change"]),
+        kind: z
+          .string()
+          .max(20)
+          .describe("note | call | outreach | reply | status_change - case-insensitive"),
         body: z.string().max(10000),
         channel: z.string().max(40).optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (a, extra) =>
-        run(() => addActivity(userIdFrom(extra), { ...a, actor: actorFrom(extra) })),
+        run(() =>
+          addActivity(userIdFrom(extra), {
+            ...a,
+            kind: requireNormalized(
+              a.kind,
+              normalizeActivityKind,
+              "kind",
+              "note, call, outreach, reply, status_change",
+            ),
+            actor: actorFrom(extra),
+          }),
+        ),
     );
     server.tool(
       "list_activities",
