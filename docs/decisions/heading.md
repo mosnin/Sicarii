@@ -19,6 +19,19 @@ moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
 | 4 | **Moment 4 - The Handshake**: /connect page that listens and flips green on the first agent write (+ first live OAuth observation) | agents (Wave B) | after Wave A |
 | 5 | **Gate out**: founder runs all four moments as one journey; subtraction holds; RECORD | Founder | last |
 
+**Parallel cycle shipped: 0008 - Social channels** (`0008-social-channels.md`).
+Social profiles on contacts (LinkedIn/X/Instagram/Facebook), find_socials
+discovery with the accuracy rule intact, ContactSocialMessage + the unified
+Conversations card, source attribution on agent-created leads, and the
+2026-07-11 MCP audit remediation (3 P1s fixed). Owed: `pnpm prisma db push`
++ one live find_socials observation.
+
+**Next cycle queued: Teams/workspaces** - architecture DESIGNED
+(`engineering/teams-plan-2026-07-11.md`): Clerk Organizations + synthetic
+workspace account row, lead sharing personal -> team, multiple agent keys per
+team, team plan. v1 is one PR (~750 LOC); founder should approve the plan
+(esp. team plan pricing, $299/30d proposed) before the build.
+
 **Parallel cycle shipped: 0007 - x402 agent payments** (`0007-x402-agent-payments.md`).
 The CRM your agents run now lets the agents pay for it: USDC top-ups
 (`/api/x402/topup`) and 30-day plan purchase (`/api/x402/subscribe`) over HTTP

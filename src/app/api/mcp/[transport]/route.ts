@@ -36,6 +36,8 @@ import {
   updateContact,
   deleteContact,
   saveEmail,
+  saveSocialMessage,
+  listSocialMessages,
   searchCrm,
   logOutreach,
   addActivity,
@@ -48,6 +50,7 @@ import {
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { enrichContactField } from "@/lib/contact-enrich";
+import { findContactSocials } from "@/lib/social-find";
 import {
   spendCredits,
   ensureCredits,
@@ -265,14 +268,15 @@ const handler = createMcpHandler(
       "create_entity",
       "Create a business (entity) in the CRM.",
       {
-        name: z.string(),
-        domain: z.string().optional(),
-        website: z.string().optional(),
-        industry: z.string().optional(),
-        location: z.string().optional(),
-        description: z.string().optional(),
-        size: z.string().optional(),
-        notes: z.string().optional(),
+        name: z.string().max(300),
+        domain: z.string().max(255).optional(),
+        website: z.string().max(500).optional(),
+        phone: z.string().max(50).optional(),
+        industry: z.string().max(200).optional(),
+        location: z.string().max(300).optional(),
+        description: z.string().max(10000).optional(),
+        size: z.string().max(100).optional(),
+        notes: z.string().max(10000).optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
       },
       async (args, extra) =>
@@ -286,14 +290,15 @@ const handler = createMcpHandler(
       "Update fields on a business.",
       {
         id: z.string(),
-        name: z.string().optional(),
-        domain: z.string().nullable().optional(),
-        website: z.string().nullable().optional(),
-        industry: z.string().nullable().optional(),
-        location: z.string().nullable().optional(),
-        description: z.string().nullable().optional(),
-        size: z.string().nullable().optional(),
-        notes: z.string().nullable().optional(),
+        name: z.string().max(300).optional(),
+        domain: z.string().max(255).nullable().optional(),
+        website: z.string().max(500).nullable().optional(),
+        phone: z.string().max(50).nullable().optional(),
+        industry: z.string().max(200).nullable().optional(),
+        location: z.string().max(300).nullable().optional(),
+        description: z.string().max(10000).nullable().optional(),
+        size: z.string().max(100).nullable().optional(),
+        notes: z.string().max(10000).nullable().optional(),
         status: z.enum(["NEW", "ENRICHED", "ARCHIVED"]).optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
       },
@@ -338,36 +343,47 @@ const handler = createMcpHandler(
 
     server.tool(
       "create_contact",
-      "Create a person (contact). Optionally assign to an entity by entityId.",
+      "Create a person (contact). Optionally assign to an entity by entityId. Set source to where you found the lead (e.g. 'linkedin', 'x', 'instagram', 'facebook', 'referral', 'event') so attribution stays honest; it defaults to 'agent'.",
       {
-        name: z.string().optional(),
-        email: z.string().optional(),
-        phone: z.string().optional(),
-        company: z.string().optional(),
-        title: z.string().optional(),
-        website: z.string().optional(),
-        linkedin: z.string().optional(),
-        location: z.string().optional(),
-        notes: z.string().optional(),
+        name: z.string().max(200).optional(),
+        email: z.string().max(320).optional(),
+        phone: z.string().max(50).optional(),
+        company: z.string().max(200).optional(),
+        title: z.string().max(200).optional(),
+        website: z.string().max(500).optional(),
+        linkedin: z.string().max(500).optional(),
+        facebook: z.string().max(500).optional(),
+        instagram: z.string().max(500).optional(),
+        twitter: z.string().max(500).optional().describe("X (twitter.com / x.com) profile URL or handle"),
+        location: z.string().max(200).optional(),
+        notes: z.string().max(10000).optional(),
+        source: z.string().max(100).optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().optional(),
       },
       async (args, extra) =>
         gated(extra, "create", 120, (userId) =>
-          createContact(userId, { ...args, source: "agent" }),
+          createContact(userId, { ...args, source: args.source || "agent" }),
         ),
     );
 
     server.tool(
       "update_contact",
-      "Update fields on a contact (including status and entity assignment).",
+      "Update fields on a contact (including status, social profiles, and entity assignment).",
       {
         id: z.string(),
-        name: z.string().nullable().optional(),
-        email: z.string().nullable().optional(),
-        phone: z.string().nullable().optional(),
-        company: z.string().nullable().optional(),
-        title: z.string().nullable().optional(),
+        name: z.string().max(200).nullable().optional(),
+        email: z.string().max(320).nullable().optional(),
+        phone: z.string().max(50).nullable().optional(),
+        company: z.string().max(200).nullable().optional(),
+        title: z.string().max(200).nullable().optional(),
+        website: z.string().max(500).nullable().optional(),
+        linkedin: z.string().max(500).nullable().optional(),
+        facebook: z.string().max(500).nullable().optional(),
+        instagram: z.string().max(500).nullable().optional(),
+        twitter: z.string().max(500).nullable().optional().describe("X (twitter.com / x.com) profile URL or handle"),
+        location: z.string().max(200).nullable().optional(),
+        source: z.string().max(100).nullable().optional(),
         status: z
           .enum([
             "NEW",
@@ -380,7 +396,7 @@ const handler = createMcpHandler(
             "ARCHIVED",
           ])
           .optional(),
-        notes: z.string().nullable().optional(),
+        notes: z.string().max(10000).nullable().optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().nullable().optional(),
       },
@@ -427,6 +443,65 @@ const handler = createMcpHandler(
         ),
     );
 
+    /* ---------------------- Social profiles + DMs ----------------- */
+    server.tool(
+      "find_socials",
+      "Find a contact's social profiles (LinkedIn, X, Instagram, Facebook) on the web. AUTO-SAVES only profiles verified against the contact's name AND company - a same-name stranger is never attached. Unverified hits come back as candidates: review them and save with update_contact only if you can confirm the person. Costs 4 credits when anything is found (a dry search is free). Needs the contact's name; a company/entity makes verification much stronger.",
+      { contactId: z.string() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ contactId }, extra) =>
+        gated(extra, "enrich", 20, (userId) => findContactSocials(userId, contactId)),
+    );
+
+    server.tool(
+      "log_social_message",
+      "Record a social media message with a contact (a LinkedIn/X/Instagram/Facebook DM, comment, or connection note) so the conversation history stays on the CRM alongside email. Advances pipeline state honestly: an OUTBOUND message stamps the outreach time and moves NEW/ENRICHED to CONTACTED; an INBOUND message moves CONTACTED to REPLIED. Pass threadRef (a permalink or thread id) when you have one.",
+      {
+        contactId: z.string(),
+        channel: z.enum(["linkedin", "x", "instagram", "facebook", "other"]),
+        direction: z.enum(["INBOUND", "OUTBOUND"]),
+        body: z.string().min(1).max(10000),
+        threadRef: z.string().max(500).optional(),
+        sentAt: z.string().datetime().optional().describe("ISO timestamp of when the message was sent"),
+        savedAsContext: z.boolean().optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async ({ contactId, channel, direction, body, threadRef, sentAt, savedAsContext }, extra) =>
+        run(() =>
+          saveSocialMessage(userIdFrom(extra), {
+            contactId,
+            channel: (channel === "x" ? "X" : channel.toUpperCase()) as
+              | "LINKEDIN" | "X" | "INSTAGRAM" | "FACEBOOK" | "OTHER",
+            direction,
+            body,
+            threadRef: threadRef ?? null,
+            sentAt: sentAt ? new Date(sentAt) : null,
+            savedAsContext: savedAsContext ?? true,
+          }),
+        ),
+    );
+
+    server.tool(
+      "list_social_messages",
+      "Get the social media conversation history with a contact (LinkedIn/X/Instagram/Facebook messages), newest first, optionally filtered to one channel.",
+      {
+        contactId: z.string(),
+        channel: z.enum(["linkedin", "x", "instagram", "facebook", "other"]).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ contactId, channel }, extra) =>
+        run(() =>
+          listSocialMessages(
+            userIdFrom(extra),
+            contactId,
+            channel
+              ? ((channel === "x" ? "X" : channel.toUpperCase()) as
+                  | "LINKEDIN" | "X" | "INSTAGRAM" | "FACEBOOK" | "OTHER")
+              : undefined,
+          ),
+        ),
+    );
+
     /* -------------------------- Discovery ------------------------- */
     server.tool(
       "search_crm",
@@ -449,9 +524,11 @@ const handler = createMcpHandler(
             throw new OpError("Web search is not configured (TAVILY_API_KEY missing).", 501);
           await ensureCredits(userId, "web_search");
           const results = await tavilySearch(query, { maxResults });
-          // Debit only after the search succeeded. (enrich/find tools debit
-          // inside the shared ops layer - never double-charge here.)
-          await spendCredits(userId, "web_search");
+          // Debit only after the search succeeded AND returned something - a
+          // dry search is free, same policy as every other metered tool.
+          // (enrich/find tools debit inside the shared ops layer - never
+          // double-charge here.)
+          if (results.length > 0) await spendCredits(userId, "web_search");
           return results;
         }),
     );
@@ -481,8 +558,9 @@ const handler = createMcpHandler(
     server.tool(
       "extract_contact_details",
       "Extract a company site's public contact details (emails, phones, social links) via Apify, deduped and tied to the site host (a strong, accurate company link). Returns the data for you to review and save selectively with create_contact - it does NOT auto-create contacts, so it never makes junk records from unnamed emails. Costs 8 credits when details are found (nothing on a miss).",
-      { url: z.string() },
-      { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      { url: z.string().max(500) },
+      // Not readOnly: it debits the credit meter on a hit.
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ url }, extra) =>
         gated(extra, "contact_extract", 20, (userId) => extractSiteContacts(userId, url)),
     );
@@ -491,10 +569,11 @@ const handler = createMcpHandler(
       "google_search",
       "Run a Google web search via Apify and get organic results (title, URL, snippet) to turn into entities. For finding AND adding companies in one step, prefer find_companies or maps_leads. Costs 4 credits per search that returns results.",
       {
-        query: z.string(),
+        query: z.string().max(500),
         limit: z.number().int().min(1).max(20).optional(),
       },
-      { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      // Not readOnly: it debits the credit meter on a hit.
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ query, limit }, extra) =>
         gated(extra, "serp_search", 30, (userId) => searchGoogle(userId, { query, limit })),
     );
@@ -593,8 +672,12 @@ const handler = createMcpHandler(
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async ({ content, refId }, extra) =>
         run(async () => {
-          await storeMemory(userIdFrom(extra), "message", content, refId);
-          return { remembered: true };
+          const remembered = await storeMemory(userIdFrom(extra), "message", content, refId);
+          // Report honestly: a silent no-op (embeddings unconfigured, insert
+          // failure) must not hand an autonomous agent a success receipt.
+          return remembered
+            ? { remembered: true }
+            : { remembered: false, reason: "Memory is unavailable right now (embeddings not configured or storage failed). Keep critical context in the CRM record instead." };
         }),
     );
 
@@ -707,7 +790,9 @@ const handler = createMcpHandler(
         transcript: z.string().max(100000).optional(),
         status: z.string().max(40).optional(),
         durationSec: z.number().int().min(0).optional(),
-        recordingUrl: z.string().max(1000).optional(),
+        // https only: this is rendered as a link in the UI, so a javascript:
+        // or data: URL from a prompt-injected agent must never be storable.
+        recordingUrl: z.string().url().max(1000).startsWith("https://").optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (a, extra) => run(() => saveCall(userIdFrom(extra), a)),
@@ -720,7 +805,7 @@ const handler = createMcpHandler(
       {
         contactId: z.string(),
         summary: z.string().max(5000),
-        channel: z.enum(["email", "linkedin", "phone"]).optional(),
+        channel: z.enum(["email", "linkedin", "phone", "x", "instagram", "facebook", "other"]).optional(),
         status: z
           .enum(["NEW", "ENRICHED", "CONTACTED", "REPLIED", "QUALIFIED", "WON", "LOST", "ARCHIVED"])
           .optional(),
@@ -773,9 +858,9 @@ const handler = createMcpHandler(
 THE OPERATING LOOP
 1. Orient. Call get_balance to know your runway, and recall to retrieve relevant past context (this session is stateless). Call search_crm or list_entities / list_contacts before discovering, so you build on existing records instead of duplicating them.
 2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). Both dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
-3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. Enrich what you will act on, not the whole database; every enrichment costs credits.
+3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. For their social profiles (LinkedIn, X, Instagram, Facebook), call find_socials: it auto-saves only name+company-verified profiles and returns the rest as candidates for you to review. Enrich what you will act on, not the whole database; every enrichment costs credits.
 4. Organize. Group not-yet-contacted prospects with build_smart_segment, then create_pipeline to track them through stages.
-5. Track outreach. This is the memory that makes you reliable. When you email a contact, call save_email_context, then log_outreach to stamp when you reached out and advance status. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. remember any decision or context worth keeping.
+5. Track outreach. This is the memory that makes you reliable. When you email a contact, call save_email_context, then log_outreach to stamp when you reached out and advance status. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message (it advances pipeline state itself; use list_social_messages to reread a conversation). When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. remember any decision or context worth keeping.
 6. Measure and repeat. Use pipeline_metrics to see what is working, then loop back to discovery.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.

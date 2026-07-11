@@ -152,10 +152,6 @@ export async function enrichEntity(userId: string, id: string) {
   const enriched = await enrichDomain(entity.domain);
   if (!enriched) throw new OpError(`No enrichment data found for ${entity.domain}`, 404);
 
-  // Debit only on a hit (the not-found path above throws first), and never on
-  // the idempotent short-circuit when firmographics already exist.
-  await spendCredits(userId, "company_aspect", { ref: id });
-
   const { raw, fields } = enriched;
   const data: Prisma.EntityUncheckedUpdateInput = {
     status: "ENRICHED",
@@ -169,6 +165,11 @@ export async function enrichEntity(userId: string, id: string) {
     if (!entity.website && fields.website) data.website = fields.website;
   }
   const updated = await prisma.entity.update({ where: { id }, data });
+
+  // Debit only after the enrichment is PERSISTED (a DB failure above must not
+  // charge), only on a hit (the not-found path throws first), and never on the
+  // idempotent short-circuit when firmographics already exist.
+  await spendCredits(userId, "company_aspect", { ref: id });
 
   // Record provenance for the firmographics blob and any columns filled.
   const provenanceRows: ProvenanceInput[] = [
@@ -353,6 +354,9 @@ export interface ContactInput {
   title?: string | null;
   website?: string | null;
   linkedin?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  twitter?: string | null;
   location?: string | null;
   status?: ContactStatus;
   source?: string | null;
@@ -396,7 +400,10 @@ export async function getContact(userId: string, id: string) {
     where: { id },
     include: {
       entity: { select: { id: true, name: true } },
-      emails: { orderBy: { sentAt: "desc" } },
+      // Capped: a long relationship otherwise blows up the payload (and an
+      // agent's context) with every message ever saved.
+      emails: { orderBy: { sentAt: "desc" }, take: 50 },
+      socialMessages: { orderBy: { createdAt: "desc" }, take: 50 },
     },
   });
   if (!contact || contact.userId !== userId)
@@ -476,6 +483,65 @@ export async function saveEmail(userId: string, input: EmailInput) {
   return prisma.contactEmail.create({ data: { contactId, ...rest } });
 }
 
+/* -------------------------- Social messages ------------------------- */
+
+export type SocialChannelName = "LINKEDIN" | "X" | "INSTAGRAM" | "FACEBOOK" | "OTHER";
+
+export interface SocialMessageInput {
+  contactId: string;
+  channel: SocialChannelName;
+  direction: "INBOUND" | "OUTBOUND";
+  body: string;
+  threadRef?: string | null;
+  savedAsContext?: boolean;
+  sentAt?: Date | null;
+}
+
+/** Save a social media message (DM, comment, connection note) onto a contact
+ *  and keep the pipeline state honest: an OUTBOUND message stamps
+ *  lastContactedAt and advances NEW/ENRICHED to CONTACTED; an INBOUND message
+ *  advances CONTACTED to REPLIED. Never downgrades a status. */
+export async function saveSocialMessage(userId: string, input: SocialMessageInput) {
+  const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
+  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+
+  const { contactId, ...rest } = input;
+  const touch: Prisma.ContactUncheckedUpdateInput =
+    input.direction === "OUTBOUND"
+      ? {
+          lastContactedAt: new Date(),
+          ...(ADVANCE_FROM_OUTREACH.has(contact.status) ? { status: "CONTACTED" as const } : {}),
+        }
+      : contact.status === "CONTACTED"
+        ? { status: "REPLIED" as const }
+        : {};
+
+  const [message] = await prisma.$transaction([
+    prisma.contactSocialMessage.create({ data: { contactId, ...rest } }),
+    prisma.contact.update({ where: { id: contactId }, data: touch }),
+  ]);
+  return message;
+}
+
+/** The social message history with a contact (newest first), optionally
+ *  filtered to one channel. */
+export async function listSocialMessages(
+  userId: string,
+  contactId: string,
+  channel?: SocialChannelName,
+) {
+  const contact = await prisma.contact.findUnique({
+    where: { id: contactId },
+    select: { userId: true },
+  });
+  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  return prisma.contactSocialMessage.findMany({
+    where: { contactId, ...(channel ? { channel } : {}) },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+}
+
 /* ------------------------------ Search ------------------------------ */
 
 /** Search across entities and contacts. */
@@ -500,7 +566,7 @@ export async function logOutreach(
   input: {
     contactId: string;
     summary: string;
-    channel?: "email" | "linkedin" | "phone";
+    channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other";
     status?: ContactStatus;
   }
 ) {

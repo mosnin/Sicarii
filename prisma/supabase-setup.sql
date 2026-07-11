@@ -31,6 +31,14 @@ DO $$ BEGIN
   CREATE TYPE "Emaildirection" AS ENUM ('INBOUND', 'OUTBOUND');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE "SocialChannel" AS ENUM ('LINKEDIN', 'X', 'INSTAGRAM', 'FACEBOOK', 'OTHER');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "SocialDirection" AS ENUM ('INBOUND', 'OUTBOUND');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. Tables
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -136,6 +144,9 @@ CREATE TABLE IF NOT EXISTS "contacts" (
   "title"      TEXT,
   "website"    TEXT,
   "linkedin"   TEXT,
+  "facebook"   TEXT,
+  "instagram"  TEXT,
+  "twitter"    TEXT,
   "location"   TEXT,
   "status"     "ContactStatus" NOT NULL DEFAULT 'NEW',
   "source"     TEXT,
@@ -168,6 +179,22 @@ CREATE TABLE IF NOT EXISTS "contact_emails" (
 );
 CREATE INDEX IF NOT EXISTS "contact_emails_contactId_idx" ON "contact_emails" ("contactId");
 CREATE INDEX IF NOT EXISTS "contact_emails_agentMailThreadId_idx" ON "contact_emails" ("agentMailThreadId");
+
+-- contact_social_messages — social media messages (DMs, comments) with a contact
+CREATE TABLE IF NOT EXISTS "contact_social_messages" (
+  "id"             TEXT NOT NULL,
+  "contactId"      TEXT NOT NULL,
+  "channel"        "SocialChannel" NOT NULL,
+  "direction"      "SocialDirection" NOT NULL,
+  "body"           TEXT NOT NULL,
+  "threadRef"      TEXT,
+  "savedAsContext" BOOLEAN NOT NULL DEFAULT false,
+  "sentAt"         TIMESTAMP(3),
+  "createdAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "contact_social_messages_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "contact_social_messages_contactId_createdAt_idx"
+  ON "contact_social_messages" ("contactId", "createdAt");
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. Foreign keys
@@ -209,6 +236,11 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
   ALTER TABLE "contact_emails" ADD CONSTRAINT "contact_emails_contactId_fkey"
+    FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "contact_social_messages" ADD CONSTRAINT "contact_social_messages_contactId_fkey"
     FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 

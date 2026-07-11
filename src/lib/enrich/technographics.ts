@@ -5,6 +5,7 @@
 // rather than bundle the community ruleset (which is GPL-3.0 / copyleft).
 import { Prisma } from "@prisma/client";
 import { fetchWithTimeout } from "@/lib/http";
+import { safeHttpUrl, resolvesToPublicIp } from "@/lib/ssrf";
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
 import { recordProvenance, CONFIDENCE } from "@/lib/provenance";
@@ -83,13 +84,18 @@ export function detectTech(html: string, headers?: Record<string, string>): Dete
   return found;
 }
 
-/** Fetch a site's homepage and detect its tech stack. Returns [] on any error. */
+/** Fetch a site's homepage and detect its tech stack. Returns [] on any error.
+ *  SSRF-guarded: the URL is agent-writable (update_entity.website), so it must
+ *  be a public HTTPS host - never an internal address probe. */
 export async function detectSiteTech(url: string): Promise<DetectedTech[]> {
-  const target = url.startsWith("http") ? url : `https://${url}`;
+  const target = safeHttpUrl(url.startsWith("http") ? url : `https://${url}`);
+  if (!target || !(await resolvesToPublicIp(target.hostname).catch(() => false))) {
+    return [];
+  }
   let res: Response;
   try {
     res = await fetchWithTimeout(
-      target,
+      target.toString(),
       { headers: { "User-Agent": "Mozilla/5.0 (compatible; ScalarBot/1.0; +https://tryscalar.xyz)" } },
       15_000,
     );

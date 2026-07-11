@@ -29,6 +29,7 @@
 | `decisions/0005-scalar-agent.md` | Scalar agent at `/agent` — OpenAI, 13 tools, fresh-context + pgvector vector memory | Revisiting the agent / memory |
 | `decisions/0006-the-four-moments.md` | The plan from reliable (6/10) to exceptional: four choreographed moments, two agent waves, founder gates | The cycle in flight |
 | `decisions/0007-x402-agent-payments.md` | x402 agent payments: USDC top-ups + 30-day plan purchase over HTTP 402, env-gated, idempotent on the on-chain nonce | Revisiting billing / agent autonomy |
+| `decisions/0008-social-channels.md` | Social channels: profiles on contacts, find_socials discovery (accuracy rule intact), ContactSocialMessage + unified Conversations, source attribution | Revisiting social / conversations |
 
 ## Working knowledge (grows with the product)
 
@@ -48,6 +49,8 @@
 | [`engineering/claims-audit-2026-06-09.md`](engineering/claims-audit-2026-06-09.md) | Claims-vs-delivery audit: every public claim reconciled against the code; P0 integrity gaps |
 | [`engineering/claims-audit-2026-06-09b.md`](engineering/claims-audit-2026-06-09b.md) | Claims re-audit after the fix pass: integrity gaps closed; metering ordering bug found + fixed |
 | [`engineering/world-class-plan-2026-07-02.md`](engineering/world-class-plan-2026-07-02.md) | Synthesis of 4 parallel audits (OWASP, structure, perf, Playwright): waves 1+2 shipped, founder actions, next cycles |
+| [`engineering/mcp-audit-2026-07-11.md`](engineering/mcp-audit-2026-07-11.md) | Deep MCP re-audit (45 tools): isolation + metering clean; 3 P1s found and fixed same-cycle; open items + agent coverage gaps |
+| [`engineering/teams-plan-2026-07-11.md`](engineering/teams-plan-2026-07-11.md) | Teams/workspaces architecture plan: Clerk Orgs + synthetic workspace account, lead sharing semantics, v1 cut (designed, not built) |
 
 ---
 

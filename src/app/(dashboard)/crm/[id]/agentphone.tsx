@@ -110,7 +110,7 @@ export function ContactAgentPhone({ contactId }: { contactId: string }) {
                     {c.summary ?? c.transcript}
                   </p>
                 )}
-                {c.recordingUrl && (
+                {c.recordingUrl && c.recordingUrl.startsWith("https://") && (
                   <a
                     href={c.recordingUrl}
                     target="_blank"

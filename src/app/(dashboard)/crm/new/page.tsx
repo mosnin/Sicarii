@@ -18,6 +18,9 @@ const FIELDS = [
   { name: "phone", label: "Phone", type: "text" },
   { name: "website", label: "Website", type: "text" },
   { name: "linkedin", label: "LinkedIn", type: "text" },
+  { name: "twitter", label: "X", type: "text" },
+  { name: "instagram", label: "Instagram", type: "text" },
+  { name: "facebook", label: "Facebook", type: "text" },
   { name: "location", label: "Location", type: "text" },
 ] as const;
 

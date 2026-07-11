@@ -19,6 +19,8 @@ import { ContactAgentMail } from "./agentmail";
 import { ContactAgentPhone } from "./agentphone";
 import { QuickNote } from "./quick-note";
 import { MatchEntity } from "./match-entity";
+import { SocialsEditor } from "./socials";
+import { LogSocialMessage } from "./log-social";
 import { getProvenanceMap } from "@/lib/provenance";
 import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
 import { VerifiedStrip } from "@/components/dashboard/verified-strip";
@@ -41,6 +43,16 @@ export default async function ContactDetailPage({
   const emails = await prisma.contactEmail.findMany({
     where: { contactId: id },
     orderBy: { sentAt: "desc" },
+    take: 50,
+  });
+
+  // Social conversations (LinkedIn / X / Instagram / Facebook), rendered in the
+  // same Conversations card as email so the whole relationship reads as one
+  // thread regardless of channel.
+  const socialMessages = await prisma.contactSocialMessage.findMany({
+    where: { contactId: id },
+    orderBy: { createdAt: "desc" },
+    take: 50,
   });
 
   // Recent activity trail (notes, outreach, calls) - fed by the QuickNote
@@ -52,6 +64,37 @@ export default async function ContactDetailPage({
   });
 
   const provenance = await getProvenanceMap("contact", id, user.id);
+
+  // One relationship, one thread: email and social messages merged by time.
+  const SOCIAL_LABELS: Record<string, string> = {
+    LINKEDIN: "LinkedIn",
+    X: "X",
+    INSTAGRAM: "Instagram",
+    FACEBOOK: "Facebook",
+    OTHER: "Social",
+  };
+  const conversations = [
+    ...emails.map((m) => ({
+      id: `email-${m.id}`,
+      channelLabel: "Email",
+      direction: m.direction as string,
+      subject: m.subject,
+      body: m.body,
+      threadRef: null as string | null,
+      savedAsContext: m.savedAsContext,
+      at: m.sentAt ?? m.createdAt,
+    })),
+    ...socialMessages.map((m) => ({
+      id: `social-${m.id}`,
+      channelLabel: SOCIAL_LABELS[m.channel] ?? "Social",
+      direction: m.direction as string,
+      subject: null as string | null,
+      body: m.body,
+      threadRef: m.threadRef,
+      savedAsContext: m.savedAsContext,
+      at: m.sentAt ?? m.createdAt,
+    })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
 
   // Which core fields are still missing (drives both the prominent Enrich
   // button on the status card and the per-field Find buttons in Details).
@@ -77,16 +120,16 @@ export default async function ContactDetailPage({
           : `https://${contact.website}`
         : undefined,
     },
-    {
-      label: "LinkedIn",
-      value: contact.linkedin ? contact.linkedin.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") : null,
-      href: contact.linkedin
-        ? contact.linkedin.startsWith("http")
-          ? contact.linkedin
-          : `https://${contact.linkedin}`
-        : undefined,
-      provenanceField: "linkedin",
-    },
+    ...(["linkedin", "twitter", "instagram", "facebook"] as const).map((f) => {
+      const labels = { linkedin: "LinkedIn", twitter: "X", instagram: "Instagram", facebook: "Facebook" };
+      const v = contact[f];
+      return {
+        label: labels[f],
+        value: v ? v.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "") : null,
+        href: v ? (v.startsWith("http") ? v : `https://${v}`) : undefined,
+        provenanceField: f,
+      };
+    }),
     { label: "Location", value: contact.location },
   ];
 
@@ -166,6 +209,15 @@ export default async function ContactDetailPage({
                 </p>
               )}
               <ContactEnrich contactId={contact.id} missing={missing} />
+              <SocialsEditor
+                contactId={contact.id}
+                current={{
+                  linkedin: contact.linkedin,
+                  twitter: contact.twitter,
+                  instagram: contact.instagram,
+                  facebook: contact.facebook,
+                }}
+              />
               {!contact.entity && <MatchEntity contactId={contact.id} />}
               {contact.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-2">
@@ -226,25 +278,27 @@ export default async function ContactDetailPage({
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Saved context</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Conversations</CardTitle>
+              <LogSocialMessage contactId={contact.id} />
             </CardHeader>
             <CardContent>
-              {emails.length === 0 ? (
+              {conversations.length === 0 ? (
                 <EmptyState
                   icon={Inbox}
-                  title="No emails yet"
-                  description="Connect your AgentMail account in Settings to send and receive email here. Messages your agent saves as context will appear on this record."
+                  title="No conversations yet"
+                  description="Email threads (via AgentMail) and social messages your agent or you log will appear here as one history, labeled by channel."
                 />
               ) : (
                 <div className="space-y-4">
-                  {emails.map((m) => (
+                  {conversations.map((m) => (
                     <div
                       key={m.id}
                       className="rounded-xl border border-border bg-card/50 p-4"
                     >
                       <div className="mb-1 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{m.channelLabel}</Badge>
                           <Badge
                             variant={
                               m.direction === "OUTBOUND" ? "orange" : "secondary"
@@ -256,11 +310,9 @@ export default async function ContactDetailPage({
                             <Badge variant="success">Saved as context</Badge>
                           )}
                         </div>
-                        {m.sentAt && (
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(m.sentAt).toLocaleString()}
-                          </span>
-                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(m.at).toLocaleString()}
+                        </span>
                       </div>
                       {m.subject && (
                         <p className="font-medium">{m.subject}</p>
@@ -269,6 +321,16 @@ export default async function ContactDetailPage({
                         <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
                           {m.body}
                         </p>
+                      )}
+                      {m.threadRef && (
+                        <a
+                          href={m.threadRef.startsWith("https://") ? m.threadRef : undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+                        >
+                          {m.threadRef.startsWith("https://") ? "Open thread" : m.threadRef}
+                        </a>
                       )}
                     </div>
                   ))}

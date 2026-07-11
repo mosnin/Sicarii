@@ -26,6 +26,7 @@ import {
   getContact,
   createContact,
   updateContact,
+  saveSocialMessage,
   searchCrm,
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
@@ -278,28 +279,63 @@ export async function POST(req: Request) {
       execute: ({ id }) => exec(() => getContact(userId, id)),
     }),
     create_contact: tool({
-      description: "Create a person (contact). Optionally assign to an entity.",
+      description:
+        "Create a person (contact). Optionally assign to an entity. Set source to where the lead came from (e.g. 'linkedin', 'x', 'instagram', 'facebook', 'referral'); defaults to 'agent'.",
       inputSchema: z.object({
         name: z.string().optional(),
         email: z.string().optional(),
+        phone: z.string().optional(),
         title: z.string().optional(),
         company: z.string().optional(),
+        linkedin: z.string().optional(),
+        facebook: z.string().optional(),
+        instagram: z.string().optional(),
+        twitter: z.string().optional(),
+        source: z.string().optional(),
         notes: z.string().optional(),
         entityId: z.string().optional(),
       }),
-      execute: (args) => exec(() => createContact(userId, { ...args, source: "agent" })),
+      execute: (args) =>
+        exec(() => createContact(userId, { ...args, source: args.source || "agent" })),
     }),
     update_contact: tool({
-      description: "Update fields on a contact (including status, entity).",
+      description: "Update fields on a contact (including status, entity, social profiles).",
       inputSchema: z.object({
         id: z.string(),
         name: z.string().optional(),
         email: z.string().optional(),
+        phone: z.string().optional(),
         title: z.string().optional(),
+        linkedin: z.string().optional(),
+        facebook: z.string().optional(),
+        instagram: z.string().optional(),
+        twitter: z.string().optional(),
         notes: z.string().optional(),
         entityId: z.string().optional(),
       }),
       execute: ({ id, ...rest }) => exec(() => updateContact(userId, id, rest)),
+    }),
+    log_social_message: tool({
+      description:
+        "Record a social media message with a contact (LinkedIn/X/Instagram/Facebook DM or comment) so the conversation is tracked next to email. OUTBOUND stamps the outreach time and advances NEW/ENRICHED to CONTACTED; INBOUND advances CONTACTED to REPLIED.",
+      inputSchema: z.object({
+        contactId: z.string(),
+        channel: z.enum(["linkedin", "x", "instagram", "facebook", "other"]),
+        direction: z.enum(["INBOUND", "OUTBOUND"]),
+        body: z.string().min(1).max(10000),
+        threadRef: z.string().optional(),
+      }),
+      execute: ({ contactId, channel, direction, body, threadRef }) =>
+        exec(() =>
+          saveSocialMessage(userId, {
+            contactId,
+            channel: (channel === "x" ? "X" : channel.toUpperCase()) as
+              | "LINKEDIN" | "X" | "INSTAGRAM" | "FACEBOOK" | "OTHER",
+            direction,
+            body,
+            threadRef: threadRef ?? null,
+          }),
+        ),
     }),
   };
 

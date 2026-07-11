@@ -222,6 +222,11 @@ model Contact {
   title    String?
   website  String?
   linkedin String?
+  // Other social profiles (URL or handle). Filled manually, by an agent over
+  // MCP, or by find_socials (strict name+company verification, see social-find).
+  facebook  String?
+  instagram String?
+  twitter   String? // X (twitter.com / x.com)
   location String?
   imageUrl String?
 
@@ -240,6 +245,7 @@ model Contact {
 
   emails          ContactEmail[]
   calls           ContactCall[]
+  socialMessages  ContactSocialMessage[]
   segments        ContactSegment[]
   pipelineEntries PipelineEntry[]
   activities      Activity[]
@@ -371,6 +377,43 @@ enum Emaildirection {
 enum CallDirection {
   INBOUND
   OUTBOUND
+}
+
+enum SocialChannel {
+  LINKEDIN
+  X
+  INSTAGRAM
+  FACEBOOK
+  OTHER
+}
+
+enum SocialDirection {
+  INBOUND
+  OUTBOUND
+}
+
+// A social media message (DM, comment thread, connection note) exchanged with a
+// contact on LinkedIn, X, Instagram, or Facebook. Mirrors ContactEmail so the
+// conversation history a user or agent tracks is durable and channel-labeled.
+// Agents log these over MCP (log_social_message); humans log them from the
+// contact page. threadRef is a permalink or external thread id when available.
+model ContactSocialMessage {
+  id        String  @id @default(uuid())
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  channel   SocialChannel
+  direction SocialDirection
+  body      String          @db.Text
+  threadRef String?
+  // Whether the agent flagged this message as durable context.
+  savedAsContext Boolean @default(false)
+
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([contactId, createdAt])
+  @@map("contact_social_messages")
 }
 
 // A phone call with a contact, placed/tracked via the user's AgentPhone account
