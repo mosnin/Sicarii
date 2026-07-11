@@ -10,6 +10,7 @@ import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
 import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
 import { AgentPhoneKeyForm } from "@/components/dashboard/agentphone-key-form";
+import { AutoRadarToggle } from "@/components/dashboard/auto-radar-toggle";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
@@ -114,6 +115,19 @@ export default async function SettingsPage() {
                 <BillingUpgrade />
               </div>
             )}
+          </CardContent>
+        </Card>
+      </FloatIn>
+
+      {/* Automation preferences */}
+      <FloatIn delay={0.13}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Automation</CardTitle>
+            <CardDescription>What your agent does on its own while you&apos;re away.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AutoRadarToggle initialOn={user?.autoRadar ?? true} />
           </CardContent>
         </Card>
       </FloatIn>

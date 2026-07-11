@@ -34,8 +34,13 @@ export async function maybeSeedIcpRadar(userId: string, icp: string): Promise<bo
     if (query.length < MIN_ICP_LENGTH) return false;
     if (!isExaConfigured()) return false;
 
-    // Don't touch users who already run their own monitors.
-    const existing = await prisma.intentMonitor.count({ where: { userId } });
+    // Respect the user's opt-out (default on) and don't touch users who already
+    // run their own monitors.
+    const [user, existing] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { autoRadar: true } }),
+      prisma.intentMonitor.count({ where: { userId } }),
+    ]);
+    if (!user?.autoRadar) return false;
     if (existing > 0) return false;
 
     // First run soon (so the Pulse has something by the next visit), then weekly.
@@ -59,6 +64,7 @@ export async function maybeSeedIcpRadar(userId: string, icp: string): Promise<bo
             frequency: "weekly",
             autoAdd: true,
             active: true,
+            autoSeeded: true,
             nextRunAt,
           },
         });
