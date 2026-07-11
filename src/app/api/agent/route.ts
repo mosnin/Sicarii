@@ -11,6 +11,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { normalizeSocialChannel, normalizeDirection, requireNormalized } from "@/lib/agent-enums";
 import {
   OpError,
   listEntities,
@@ -318,11 +319,11 @@ export async function POST(req: Request) {
     }),
     log_social_message: tool({
       description:
-        "Record a social media message with a contact (LinkedIn/X/Instagram/Facebook DM or comment) so the conversation is tracked next to email. OUTBOUND stamps the outreach time and advances NEW/ENRICHED to CONTACTED; INBOUND advances CONTACTED to REPLIED.",
+        "Record a social media message with a contact (LinkedIn/X/Instagram/Facebook DM or comment) so the conversation is tracked next to email. OUTBOUND stamps the outreach time and advances NEW/ENRICHED to CONTACTED; INBOUND advances CONTACTED to REPLIED. channel accepts linkedin, x (or twitter), instagram, facebook, other - any casing. direction accepts inbound, outbound - any casing.",
       inputSchema: z.object({
         contactId: z.string(),
-        channel: z.enum(["linkedin", "x", "instagram", "facebook", "other"]),
-        direction: z.enum(["INBOUND", "OUTBOUND"]),
+        channel: z.string().max(20),
+        direction: z.string().max(20),
         body: z.string().min(1).max(10000),
         threadRef: z.string().optional(),
       }),
@@ -330,9 +331,13 @@ export async function POST(req: Request) {
         exec(() =>
           saveSocialMessage(userId, {
             contactId,
-            channel: (channel === "x" ? "X" : channel.toUpperCase()) as
-              | "LINKEDIN" | "X" | "INSTAGRAM" | "FACEBOOK" | "OTHER",
-            direction,
+            channel: requireNormalized(
+              channel,
+              normalizeSocialChannel,
+              "channel",
+              "linkedin, x, instagram, facebook, other",
+            ),
+            direction: requireNormalized(direction, normalizeDirection, "direction", "inbound, outbound"),
             body,
             threadRef: threadRef ?? null,
           }),
