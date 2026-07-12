@@ -32,7 +32,6 @@ import {
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
-import { spendCredits } from "@/lib/credits";
 
 export const maxDuration = 60;
 
@@ -116,17 +115,6 @@ export async function POST(req: Request) {
   const rate = await checkRateLimit(`agent:${userId}`, 30, 60_000);
   if (!rate.success) {
     return NextResponse.json({ error: "You're sending messages too fast. Please wait a moment." }, { status: 429 });
-  }
-
-  // One credit per agent turn, debited up front: a turn always consumes the
-  // LLM regardless of outcome, so this is not a "miss" case.
-  try {
-    await spendCredits(userId, "agent_turn");
-  } catch (e) {
-    if (e instanceof OpError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
-    }
-    throw e;
   }
 
   const body = (await req.json().catch(() => null)) as {

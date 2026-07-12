@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import { PLANS, CREDIT_COSTS, planFor } from "@/lib/credits";
 
@@ -7,6 +9,10 @@ describe("credit constants", () => {
       expect(cost, action).toBeGreaterThan(0);
       expect(Number.isInteger(cost), action).toBe(true);
     }
+  });
+
+  it("does not price normal agent chat turns", () => {
+    expect(CREDIT_COSTS).not.toHaveProperty("agent_turn");
   });
 
   it("every plan has positive credits and a monitor allowance", () => {
@@ -20,6 +26,14 @@ describe("credit constants", () => {
     expect(PLANS.free.credits).toBeLessThan(PLANS.starter.credits);
     expect(PLANS.free.monitors).toBe(0);
     expect(PLANS.beta.credits).toBeGreaterThanOrEqual(PLANS.pro.credits / 2);
+  });
+});
+
+describe("agent credit policy", () => {
+  it("does not debit credits before the agent knows which tools ran", () => {
+    const route = readFileSync(resolve(process.cwd(), "src/app/api/agent/route.ts"), "utf8");
+    expect(route).not.toContain("spendCredits");
+    expect(route).not.toContain("agent_turn");
   });
 });
 
