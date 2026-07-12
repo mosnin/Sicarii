@@ -1,6 +1,6 @@
 // The credit meter - the single module that makes the /pricing claims real.
 // 1 credit = $0.01. CRM reads/writes are free; credits are spent only when an
-// action pulls real data from the outside world (or runs the agent's LLM).
+// action pulls real data from the outside world.
 // Policy: never charge for a miss - callers debit AFTER a paid lookup actually
 // returns data. The atomic decrement on User is the source of truth; the
 // CreditLedger row is a best-effort audit trail.
@@ -29,7 +29,6 @@ export function planFor(plan: string | null | undefined) {
 // Credits per action. Each is priced at roughly 3x the underlying provider
 // cost, so usage is always margin-positive (see /pricing).
 export const CREDIT_COSTS = {
-  agent_turn: 1,
   web_search: 2,
   linkedin: 3,
   email: 8,
@@ -157,7 +156,7 @@ export async function refillToAllotment(
 /**
  * Debit credits for a successful metered action. Throws OpError 402 when the
  * balance can't cover the cost. Call this only AFTER the paid lookup returned
- * data (never charge a miss), except agent turns which always consume the LLM.
+ * data (never charge a miss).
  */
 export async function spendCredits(
   userId: string,
