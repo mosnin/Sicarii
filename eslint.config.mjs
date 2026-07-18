@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Isolated agent worktrees (each a full nested checkout, created under
+    // .claude/worktrees/ by Agent tool calls with isolation:"worktree").
+    // Without this, `pnpm lint` from the main checkout walks every worktree's
+    // full source tree too - correctness is unaffected (each worktree lints
+    // itself independently when its own agent runs lint), but repo-wide lint
+    // from the main checkout balloons from ~1 tree to N+1 trees.
+    ".claude/worktrees/**",
     // Vendored static assets for the ritual framework site, not app code.
     ".ritual/**",
     // Vendored chart engine from the metrics-01 registry component. Registry
