@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { getThreadsForContact, isAgentMailConfigured } from "@/lib/agentmail";
+import { decryptSecret } from "@/lib/secrets";
 
 // GET /api/contacts/[id]/emails - AgentMail threads involving this contact.
 // Returns { connected: false } when no AgentMail key is set (UI shows a CTA).
@@ -18,16 +19,19 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const key = user.agentMailApiKey;
-    if (!isAgentMailConfigured(key)) {
+    // Truthiness check only - no need to decrypt just to know "is a key set".
+    const storedKey = user.agentMailApiKey;
+    if (!isAgentMailConfigured(storedKey)) {
       return NextResponse.json({ connected: false });
     }
     if (!contact.email) {
       return NextResponse.json({ connected: true, threads: [], note: "This contact has no email address." });
     }
 
+    // Real plaintext needed here: this calls the live AgentMail API.
+    const key = decryptSecret(storedKey as string);
     try {
-      const threads = await getThreadsForContact(key as string, contact.email);
+      const threads = await getThreadsForContact(key, contact.email);
       return NextResponse.json({ connected: true, threads });
     } catch (e) {
       console.error("AgentMail fetch failed", e);

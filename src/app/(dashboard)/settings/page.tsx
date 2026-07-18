@@ -16,6 +16,7 @@ import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
 import { getDbUser } from "@/lib/server-user";
 import { getBilling } from "@/lib/credits";
+import { decryptSecret } from "@/lib/secrets";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +24,14 @@ const PAID_PLANS = ["starter", "pro", "business"];
 
 export default async function SettingsPage() {
   const user = await getDbUser();
-  const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
-  const agentPhoneLast4 = user?.agentPhoneApiKey ? user.agentPhoneApiKey.slice(-4) : null;
+  // Stored encrypted at rest; decrypt only to show the last4 (never rendered
+  // in full). decryptSecret is tolerant of legacy plaintext rows.
+  const agentMailLast4 = user?.agentMailApiKey
+    ? decryptSecret(user.agentMailApiKey).slice(-4)
+    : null;
+  const agentPhoneLast4 = user?.agentPhoneApiKey
+    ? decryptSecret(user.agentPhoneApiKey).slice(-4)
+    : null;
   const billing = user ? await getBilling(user.id) : null;
   const planLabel = billing
     ? billing.plan.charAt(0).toUpperCase() + billing.plan.slice(1)

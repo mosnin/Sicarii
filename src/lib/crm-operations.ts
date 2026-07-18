@@ -11,6 +11,7 @@ import { googleMapsLeads, scrapeSiteContacts, apifyGoogleSearch, isApifyConfigur
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 import { placeCall, getCall } from "@/lib/agentphone";
+import { decryptSecret } from "@/lib/secrets";
 
 export class OpError extends Error {
   status: number;
@@ -749,7 +750,8 @@ export async function placeContactCall(
   if (!toNumber)
     throw new OpError("No phone number for this contact - add one or pass toNumber in E.164 form.", 400);
 
-  const placed = await placeCall(user.agentPhoneApiKey, {
+  // Real plaintext needed here: this calls the live AgentPhone API.
+  const placed = await placeCall(decryptSecret(user.agentPhoneApiKey), {
     toNumber,
     systemPrompt: input.systemPrompt,
     agentId: input.agentId,
@@ -818,7 +820,8 @@ export async function syncContactCall(userId: string, callLogId: string) {
   if (!user?.agentPhoneApiKey)
     throw new OpError("Connect your AgentPhone account in Settings first.", 501);
 
-  const detail = await getCall(user.agentPhoneApiKey, call.agentPhoneCallId);
+  // Real plaintext needed here: this calls the live AgentPhone API.
+  const detail = await getCall(decryptSecret(user.agentPhoneApiKey), call.agentPhoneCallId);
   return prisma.contactCall.update({
     where: { id: callLogId },
     data: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { encryptSecret, decryptSecret } from "@/lib/secrets";
 
 const patchSchema = z.object({
   productContext: z.string().max(20000).optional(),
@@ -43,12 +44,20 @@ export async function PATCH(req: NextRequest) {
     if (parsed.data.productContext !== undefined) {
       data.productContext = parsed.data.productContext;
     }
+    // Track the plaintext last4 here (before encrypting) so the response can
+    // show it without a decrypt round trip. Encrypted at rest; see
+    // src/lib/secrets.ts. Empty string clears the key.
+    let agentMailKeyLast4: string | null | undefined;
+    let agentPhoneKeyLast4: string | null | undefined;
     if (parsed.data.agentMailApiKey !== undefined) {
-      // Empty string clears the key.
-      data.agentMailApiKey = parsed.data.agentMailApiKey || null;
+      const next = parsed.data.agentMailApiKey || null;
+      data.agentMailApiKey = next ? encryptSecret(next) : null;
+      agentMailKeyLast4 = next ? next.slice(-4) : null;
     }
     if (parsed.data.agentPhoneApiKey !== undefined) {
-      data.agentPhoneApiKey = parsed.data.agentPhoneApiKey || null;
+      const next = parsed.data.agentPhoneApiKey || null;
+      data.agentPhoneApiKey = next ? encryptSecret(next) : null;
+      agentPhoneKeyLast4 = next ? next.slice(-4) : null;
     }
     if (parsed.data.taskWebhookUrl !== undefined) {
       data.taskWebhookUrl = parsed.data.taskWebhookUrl || null;
@@ -72,11 +81,25 @@ export async function PATCH(req: NextRequest) {
       });
     }
 
+    // When this request didn't touch a key, fall back to decrypting the
+    // stored value for the last4 display (decryptSecret is tolerant of
+    // legacy plaintext - see src/lib/secrets.ts).
+    if (agentMailKeyLast4 === undefined) {
+      agentMailKeyLast4 = updated.agentMailApiKey
+        ? decryptSecret(updated.agentMailApiKey).slice(-4)
+        : null;
+    }
+    if (agentPhoneKeyLast4 === undefined) {
+      agentPhoneKeyLast4 = updated.agentPhoneApiKey
+        ? decryptSecret(updated.agentPhoneApiKey).slice(-4)
+        : null;
+    }
+
     return NextResponse.json({
       ok: true,
       productContext: updated.productContext ?? "",
-      agentMailKeyLast4: updated.agentMailApiKey ? updated.agentMailApiKey.slice(-4) : null,
-      agentPhoneKeyLast4: updated.agentPhoneApiKey ? updated.agentPhoneApiKey.slice(-4) : null,
+      agentMailKeyLast4,
+      agentPhoneKeyLast4,
       taskWebhookUrl: updated.taskWebhookUrl ?? "",
       autoRadar: updated.autoRadar,
     });
