@@ -149,6 +149,12 @@ CREATE TABLE IF NOT EXISTS "entities" (
 );
 CREATE INDEX IF NOT EXISTS "entities_userId_idx" ON "entities" ("userId");
 CREATE INDEX IF NOT EXISTS "entities_userId_status_idx" ON "entities" ("userId", "status");
+-- Dedupe backstop (see schema.prisma comment on Entity.@@unique). NULL domains
+-- never collide (Postgres unique constraints treat NULL as distinct).
+-- FOUNDER: before running this against a database with existing rows, run
+-- prisma/maintenance/find-duplicate-entities.sql first and resolve any hits,
+-- or this statement will fail with a unique-violation error.
+CREATE UNIQUE INDEX IF NOT EXISTS "entities_userId_domain_key" ON "entities" ("userId", "domain");
 
 -- contacts — a person/company in the CRM, optionally under an entity
 CREATE TABLE IF NOT EXISTS "contacts" (
@@ -179,6 +185,12 @@ CREATE TABLE IF NOT EXISTS "contacts" (
 CREATE INDEX IF NOT EXISTS "contacts_userId_idx" ON "contacts" ("userId");
 CREATE INDEX IF NOT EXISTS "contacts_userId_status_idx" ON "contacts" ("userId", "status");
 CREATE INDEX IF NOT EXISTS "contacts_entityId_idx" ON "contacts" ("entityId");
+-- Dedupe backstop (see schema.prisma comment on Contact.@@unique). NULL emails
+-- never collide (Postgres unique constraints treat NULL as distinct).
+-- FOUNDER: before running this against a database with existing rows, run
+-- prisma/maintenance/find-duplicate-contacts.sql first and resolve any hits,
+-- or this statement will fail with a unique-violation error.
+CREATE UNIQUE INDEX IF NOT EXISTS "contacts_userId_email_key" ON "contacts" ("userId", "email");
 
 -- contact_emails — email exchanged with a contact (rendered from AgentMail)
 CREATE TABLE IF NOT EXISTS "contact_emails" (

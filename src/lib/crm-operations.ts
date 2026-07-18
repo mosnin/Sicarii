@@ -21,6 +21,18 @@ export class OpError extends Error {
   }
 }
 
+// A P2002 unique-constraint violation - the DB-level dedupe backstop
+// (@@unique([userId, domain]) on Entity, @@unique([userId, email]) on
+// Contact) rejecting a row that raced past the app-level check below it.
+// Same pattern as isUniqueViolation in src/lib/credits.ts.
+function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    (e as { code?: string }).code === "P2002"
+  );
+}
+
 const CONTACT_STATUSES = [
   "NEW",
   "ENRICHED",
@@ -100,16 +112,29 @@ export async function getEntity(userId: string, id: string) {
   return entity;
 }
 
-export function createEntity(userId: string, input: EntityInput) {
+export async function createEntity(userId: string, input: EntityInput) {
   const { enrichment, tags, ...rest } = input;
-  return prisma.entity.create({
-    data: {
-      ...rest,
-      tags: tags ?? [],
-      ...(asJson(enrichment) ? { enrichment: asJson(enrichment) } : {}),
-      userId,
-    },
-  });
+  try {
+    return await prisma.entity.create({
+      data: {
+        ...rest,
+        tags: tags ?? [],
+        ...(asJson(enrichment) ? { enrichment: asJson(enrichment) } : {}),
+        userId,
+      },
+    });
+  } catch (e) {
+    // A concurrent create for the same domain committed first (the
+    // @@unique([userId, domain]) backstop). Turn the raw P2002 into a clean,
+    // actionable error instead of a 500.
+    if (isUniqueViolation(e)) {
+      throw new OpError(
+        `A company with domain "${rest.domain}" already exists in this account.`,
+        409
+      );
+    }
+    throw e;
+  }
 }
 
 export async function updateEntity(
@@ -252,21 +277,37 @@ export async function findCompanies(
     seenNames.add(nameKey);
     fresh.push(c);
   }
-  const rows = await prisma.entity.createManyAndReturn({
-    data: fresh.map((c) => ({
-      userId,
-      name: c.companyName,
-      domain: c.domain ?? null,
-      website: c.website ?? null,
-      phone: c.phone ?? null,
-      industry: c.industry ?? null,
-      location: c.address ?? null,
-      description: c.description ?? null,
-      source: "agent:exa",
-      status: "NEW" as const,
-    })),
-    select: { id: true, name: true, domain: true },
-  });
+  let rows: { id: string; name: string; domain: string | null }[];
+  try {
+    rows = await prisma.entity.createManyAndReturn({
+      data: fresh.map((c) => ({
+        userId,
+        name: c.companyName,
+        domain: c.domain ?? null,
+        website: c.website ?? null,
+        phone: c.phone ?? null,
+        industry: c.industry ?? null,
+        location: c.address ?? null,
+        description: c.description ?? null,
+        source: "agent:exa",
+        status: "NEW" as const,
+      })),
+      select: { id: true, name: true, domain: true },
+    });
+  } catch (e) {
+    // A concurrent call inserted one of these domains between the dedup
+    // check above and this insert (the @@unique([userId, domain]) backstop
+    // catching it). createMany is one statement, so the whole batch is
+    // rejected rather than partially applied - surface a clean, retryable
+    // error instead of a raw 500.
+    if (isUniqueViolation(e)) {
+      throw new OpError(
+        "One of these companies was just added by another request. Retry to pick up the rest.",
+        409
+      );
+    }
+    throw e;
+  }
   return { query: input.query, added: rows.length, skipped, created: rows };
 }
 
@@ -311,20 +352,33 @@ export async function discoverLocalLeads(
     seenNames.add(nameKey);
     fresh.push(c);
   }
-  const rows = await prisma.entity.createManyAndReturn({
-    data: fresh.map((c) => ({
-      userId,
-      name: c.companyName,
-      domain: c.domain ?? null,
-      website: c.website ?? null,
-      phone: c.phone ?? null,
-      industry: c.industry ?? null,
-      location: c.address ?? null,
-      source: "agent:apify-maps",
-      status: "NEW" as const,
-    })),
-    select: { id: true, name: true, domain: true },
-  });
+  let rows: { id: string; name: string; domain: string | null }[];
+  try {
+    rows = await prisma.entity.createManyAndReturn({
+      data: fresh.map((c) => ({
+        userId,
+        name: c.companyName,
+        domain: c.domain ?? null,
+        website: c.website ?? null,
+        phone: c.phone ?? null,
+        industry: c.industry ?? null,
+        location: c.address ?? null,
+        source: "agent:apify-maps",
+        status: "NEW" as const,
+      })),
+      select: { id: true, name: true, domain: true },
+    });
+  } catch (e) {
+    // Same race as findCompanies: a concurrent call inserted one of these
+    // domains between the dedup check above and this insert.
+    if (isUniqueViolation(e)) {
+      throw new OpError(
+        "One of these companies was just added by another request. Retry to pick up the rest.",
+        409
+      );
+    }
+    throw e;
+  }
   return { query: input.query, location: input.location ?? null, added: rows.length, skipped, created: rows };
 }
 
@@ -430,15 +484,28 @@ async function assertEntityOwned(userId: string, entityId: string) {
 export async function createContact(userId: string, input: ContactInput) {
   const { enrichment, tags, entityId, ...rest } = input;
   if (entityId) await assertEntityOwned(userId, entityId);
-  return prisma.contact.create({
-    data: {
-      ...rest,
-      tags: tags ?? [],
-      ...(asJson(enrichment) ? { enrichment: asJson(enrichment) } : {}),
-      entityId: entityId ?? undefined,
-      userId,
-    },
-  });
+  try {
+    return await prisma.contact.create({
+      data: {
+        ...rest,
+        tags: tags ?? [],
+        ...(asJson(enrichment) ? { enrichment: asJson(enrichment) } : {}),
+        entityId: entityId ?? undefined,
+        userId,
+      },
+    });
+  } catch (e) {
+    // A concurrent create for the same email committed first (the
+    // @@unique([userId, email]) backstop). Turn the raw P2002 into a clean,
+    // actionable error instead of a 500.
+    if (isUniqueViolation(e)) {
+      throw new OpError(
+        `A contact with email "${rest.email}" already exists in this account.`,
+        409
+      );
+    }
+    throw e;
+  }
 }
 
 export async function updateContact(
