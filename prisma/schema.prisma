@@ -212,6 +212,23 @@ model Entity {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // DB-level dedupe backstop for the app-level check in findCompanies /
+  // discoverLocalLeads (crm-operations.ts), which look up existing domains
+  // BEFORE inserting - two concurrent MCP tool calls can both pass that check
+  // before either commits, producing a duplicate company. Scoped per user
+  // (userId, domain) because domain uniqueness is only meaningful within one
+  // account; two different users' CRMs legitimately contain the same company.
+  // Safe against nulls: Postgres treats NULL as distinct in a unique
+  // constraint, so entities without a domain (very common pre-enrichment)
+  // never collide with each other. Unlike Contact.email below, two entities
+  // sharing one real-world domain within a single user's CRM is never
+  // legitimate (a company doesn't have two identities), so this constraint
+  // is unconditionally safe to add. Note: this compares the raw stored
+  // string, while the app-level check normalizes (lowercases, strips
+  // "www."). Domains are stored as returned by providers (mostly already
+  // lowercase apex domains), so this is a residual gap, not a new one - the
+  // app-level check already has the same normalization the DB can't enforce.
+  @@unique([userId, domain])
   @@index([userId])
   @@index([userId, status])
   @@index([userId, updatedAt])
@@ -293,6 +310,38 @@ model Contact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // DB-level dedupe backstop, mirroring Entity.domain above. The app-level
+  // check that races today lives in shareContactToWorkspace (share.ts),
+  // which already treats (userId, email) as the identity key when merging a
+  // shared lead into a team - so this constraint formalizes an assumption
+  // the product already makes, it does not introduce a new one.
+  //
+  // Considered and rejected: scoping to (userId, email, entityId) instead,
+  // to allow two different people to legitimately share one inbox (e.g. a
+  // shared "sales@" team alias) as long as they're at different companies.
+  // Rejected because Postgres does not treat two NULLs as equal in a
+  // multi-column unique constraint, so any contact with no entityId (a very
+  // common case - solo contacts, or ones not yet linked to a company) would
+  // be completely unprotected: two standalone contacts with the same email
+  // could still race past this constraint. That silently reopens the exact
+  // hole this migration exists to close for a large slice of real contacts,
+  // in exchange for a narrow, unverified shared-inbox scenario. A genuine
+  // shared team inbox at ONE company (same entityId) is rare, and the
+  // manual "merge to keep the record" flow already used by dedup UIs is an
+  // acceptable resolution path if it ever happens; a race silently
+  // duplicating a lead with no company link is not.
+  //
+  // Safe against nulls: contacts with no email (also common - see above)
+  // never collide with each other, same reasoning as Entity.domain.
+  // Known residual gap: this is a case-sensitive DB constraint, while the
+  // app compares email case-insensitively (see share.ts, mode: "insensitive")
+  // and contact.email is not normalized to lowercase at write time anywhere
+  // in the app. So "Foo@x.com" and "foo@x.com" can both be inserted today
+  // and will keep being able to after this change - not a new gap, but not
+  // closed either. Normalizing email casing at write time is a good
+  // follow-up but out of scope for this change (touches every contact
+  // create/update path); flagged in the PR body.
+  @@unique([userId, email])
   @@index([userId])
   @@index([userId, status])
   @@index([userId, status, lastContactedAt])
