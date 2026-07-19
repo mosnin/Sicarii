@@ -75,6 +75,34 @@ export async function ensureCredits(userId: string, action: CreditAction): Promi
   }
 }
 
+/**
+ * Pre-flight gate for a fan-out of `count` repetitions of `action` in one call
+ * (e.g. a discovery swarm's N search angles, each billed at that action's
+ * rate). Throws OpError 402 when the balance can't cover the WORST case
+ * (every repetition hits) BEFORE any paid work starts - so a caller always
+ * knows the ceiling up front. The real spend still happens per repetition via
+ * spendCredits on each actual hit, so a swarm is gated for N but only ever
+ * billed for the repetitions that actually returned data (never a miss).
+ */
+export async function ensureCreditsForCount(
+  userId: string,
+  action: CreditAction,
+  count: number,
+): Promise<void> {
+  await maybeReset(userId);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { creditsRemaining: true },
+  });
+  const need = CREDIT_COSTS[action] * Math.max(count, 0);
+  if (!user || user.creditsRemaining < need) {
+    throw new OpError(
+      `Out of credits for this run (needs up to ${need} credits for ${count} step${count === 1 ? "" : "s"}). Upgrade your plan or wait for your monthly reset.`,
+      402,
+    );
+  }
+}
+
 // The plan->allotment CASE, built from PLANS so the SQL never drifts from the
 // source of truth. Plan names are trusted literals and credits are integers;
 // both are bound as parameters, not interpolated.

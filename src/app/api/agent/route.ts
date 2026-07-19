@@ -21,6 +21,7 @@ import {
   enrichEntity,
   findCompanies,
   discoverLocalLeads,
+  swarmDiscover,
   extractSiteContacts,
   searchGoogle,
   listContacts,
@@ -32,6 +33,7 @@ import {
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
+import { CREDIT_COSTS } from "@/lib/credits";
 
 export const maxDuration = 60;
 
@@ -50,6 +52,13 @@ How you work:
 - For LOCAL businesses (a place you would visit: restaurants, dentists, law
   firms, salons), use maps_leads (query plus a location) - it pulls them from
   Google Maps with phone and address and adds them straight to the CRM.
+- For a broad goal with multiple distinct angles worth searching independently
+  (e.g. "Series A devtools companies hiring platform engineers in the US" -
+  by sub-vertical, by geography, by hiring signal, by funding stage), use
+  swarm_discover instead of a single find_companies call. It runs several
+  searches in parallel, blind to each other, then merges and dedupes the
+  results - more thorough than one query. It tells you the cost ceiling and
+  what it actually spent; mention that to the operator for anything non-trivial.
 - search_web and google_search are for RESEARCH only - reading about a company,
   person, or topic. Their results are articles, lists, and directories, NOT
   companies. Never turn a web search result into an entity, and never present
@@ -191,6 +200,18 @@ export async function POST(req: Request) {
       }),
       execute: ({ query, location, count }) =>
         exec(() => discoverLocalLeads(userId, { query, location, count })),
+    }),
+    swarm_discover: tool({
+      description:
+        `Fan a broad discovery goal out into 2-6 DISTINCT search angles (auto-derived from the goal, or pass your own), run them in parallel and blind to each other, then merge and dedupe across angles AND the CRM, adding only new companies with attribution for which angle(s) found each one. More thorough than one find_companies call - use it when the goal has multiple distinct slices (sub-verticals, geographies, funding stages, hiring signals). COST: gated for the worst case (angle count x ${CREDIT_COSTS.find_companies} credits) but only debited per angle that actually returns companies.`,
+      inputSchema: z.object({
+        goal: z.string(),
+        angles: z.array(z.string()).max(6).optional(),
+        anglesN: z.number().int().min(2).max(6).optional(),
+        count: z.number().int().min(1).max(25).optional(),
+      }),
+      execute: ({ goal, angles, anglesN, count }) =>
+        exec(() => swarmDiscover(userId, { goal, angles, anglesN, count })),
     }),
     extract_contact_details: tool({
       description:

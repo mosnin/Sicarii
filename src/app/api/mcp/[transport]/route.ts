@@ -28,6 +28,9 @@ import {
   deleteEntity,
   findCompanies,
   discoverLocalLeads,
+  swarmDiscover,
+  listSwarmRuns,
+  getSwarmRun,
   extractSiteContacts,
   searchGoogle,
   listContacts,
@@ -590,6 +593,46 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "swarm_discover",
+      `Fan a broad discovery goal out into 2-6 DISTINCT search angles (auto-derived from the goal via OpenAI, or pass your own), run them in PARALLEL and blind to each other via Exa, then merge and dedupe the results across angles AND against the CRM by domain then name, adding only the new companies as entities with attribution for which angle(s) found each one. Strictly more thorough than one find_companies call - use it when a goal genuinely has multiple distinct slices worth searching independently (e.g. by sub-vertical, geography, funding stage, or hiring signal); prefer find_companies for a single focused query. COST MODEL: gated up front for the worst case (angle count x ${CREDIT_COSTS.find_companies} credits, the find_companies rate per angle), but only debited per angle that actually returns companies - an angle with no hits costs nothing, so the real charge is often below the ceiling you were gated for.`,
+      {
+        goal: z.string().max(1000),
+        angles: z
+          .array(z.string().max(300))
+          .max(6)
+          .optional()
+          .describe("Explicit search angles (1-6) - skips auto-derivation."),
+        anglesN: z
+          .number()
+          .int()
+          .min(2)
+          .max(6)
+          .optional()
+          .describe("How many angles to auto-derive from the goal when angles isn't given (default 4)."),
+        count: z.number().int().min(1).max(25).optional().describe("Results per angle (default 10)."),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ goal, angles, anglesN, count }, extra) =>
+        gated(extra, "swarm_discover", 5, (userId) => swarmDiscover(userId, { goal, angles, anglesN, count })),
+    );
+
+    server.tool(
+      "list_swarm_runs",
+      "List recent swarm discovery runs (newest first): goal, angles used, and found/merged/added/skipped counts.",
+      { limit: z.number().int().min(1).max(200).optional() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ limit }, extra) => run(() => listSwarmRuns(userIdFrom(extra), limit)),
+    );
+
+    server.tool(
+      "get_swarm_run",
+      "Get one swarm run's full breakdown: per-angle found/credited counts and per-company attribution (which angle(s) surfaced each company, and whether it was added or was already in the CRM).",
+      { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ id }, extra) => run(() => getSwarmRun(userIdFrom(extra), id)),
+    );
+
+    server.tool(
       "extract_contact_details",
       "Extract a company site's public contact details (emails, phones, social links) via Apify, deduped and tied to the site host (a strong, accurate company link). Returns the data for you to review and save selectively with create_contact - it does NOT auto-create contacts, so it never makes junk records from unnamed emails. Costs 8 credits when details are found (nothing on a miss).",
       { url: z.string().max(500) },
@@ -907,7 +950,7 @@ const handler = createMcpHandler(
 
 THE OPERATING LOOP
 1. Orient. Call get_balance to know your runway, and recall to retrieve relevant past context (this session is stateless). Call search_crm or list_entities / list_contacts before discovering, so you build on existing records instead of duplicating them.
-2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). Both dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
+2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). For a broad goal with multiple distinct slices (sub-verticals, geographies, funding stages, hiring signals), use swarm_discover instead: it fans out 2-6 angles in parallel, merges and dedupes across all of them plus the CRM, and tells you which angle found each company - more thorough than one find_companies call, at a clearly stated cost ceiling. All three dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
 3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. For their social profiles (LinkedIn, X, Instagram, Facebook), call find_socials: it auto-saves only name+company-verified profiles and returns the rest as candidates for you to review. Enrich what you will act on, not the whole database; every enrichment costs credits.
 4. Organize. Group not-yet-contacted prospects with build_smart_segment, then create_pipeline to track them through stages.
 5. Track outreach. This is the memory that makes you reliable. When you email a contact, call save_email_context, then log_outreach to stamp when you reached out and advance status. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message (it advances pipeline state itself; use list_social_messages to reread a conversation). When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. remember any decision or context worth keeping.

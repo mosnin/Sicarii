@@ -65,6 +65,7 @@ model User {
   memoryChunks      MemoryChunk[]
   intentMonitors    IntentMonitor[]
   researchSchedules ResearchSchedule[]
+  swarmRuns         SwarmRun[]
   creditLedger      CreditLedger[]
   activities        Activity[]
   segments          Segment[]
@@ -535,6 +536,39 @@ model MonitorRun {
   @@index([monitorId])
   @@index([userId])
   @@map("monitor_runs")
+}
+
+// A swarm discovery run: N parallel Exa search angles derived from (or given
+// for) one broad goal, each run blind to the others, then merged and deduped
+// across angles AND against the CRM. A separate model from MonitorRun on
+// purpose: a MonitorRun always belongs to a recurring IntentMonitor, while a
+// swarm is a one-off, on-demand multi-angle fan-out with no schedule and no
+// parent monitor - forcing it through MonitorRun would mean a fake monitor row
+// per run. This is the auditable record: what was searched, what came back per
+// angle, what got merged/added/skipped, and which angle(s) surfaced each
+// company (see docs/decisions/0011-swarm-discovery.md).
+model SwarmRun {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  goal        String   @db.Text
+  angles      String[] // the N angles actually run (explicit or derived)
+  angleSource String   @default("derived") // "derived" | "explicit"
+
+  found        Int @default(0) // raw company hits across all angles, before merge
+  merged       Int @default(0) // unique companies after cross-angle dedup
+  added        Int @default(0) // new entities created (merged minus CRM dupes)
+  skipped      Int @default(0) // merged companies dropped as CRM duplicates
+  creditsSpent Int @default(0) // actual credits debited (per angle that returned hits)
+
+  // Results surface: { perAngle: [{angle,found,credited}], companies: [{companyName,domain,angles,status,entityId}] }
+  items Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("swarm_runs")
 }
 
 // Scheduled deep research (Linkup or Exa) on a topic, contact, or entity.
