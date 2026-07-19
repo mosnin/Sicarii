@@ -39,6 +39,10 @@ DO $$ BEGIN
   CREATE TYPE "SocialDirection" AS ENUM ('INBOUND', 'OUTBOUND');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE "BreakupDraftStatus" AS ENUM ('PENDING', 'APPROVED', 'SENT', 'DISMISSED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. Tables
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -215,6 +219,26 @@ CREATE TABLE IF NOT EXISTS "contact_social_messages" (
 CREATE INDEX IF NOT EXISTS "contact_social_messages_contactId_createdAt_idx"
   ON "contact_social_messages" ("contactId", "createdAt");
 
+-- breakup_drafts - drafted stalled-deal "breakup" emails, held PENDING for
+-- one-click human approval (never auto-sent). See src/lib/breakup-operations.ts
+-- and docs/decisions/0012-breakup-drafts.md.
+CREATE TABLE IF NOT EXISTS "breakup_drafts" (
+  "id"            TEXT NOT NULL,
+  "userId"        TEXT NOT NULL,
+  "contactId"     TEXT NOT NULL,
+  "status"        "BreakupDraftStatus" NOT NULL DEFAULT 'PENDING',
+  "subject"       TEXT NOT NULL,
+  "body"          TEXT NOT NULL,
+  "generatedFrom" JSONB,
+  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "decidedAt"     TIMESTAMP(3),
+  CONSTRAINT "breakup_drafts_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "breakup_drafts_userId_status_idx" ON "breakup_drafts" ("userId", "status");
+CREATE INDEX IF NOT EXISTS "breakup_drafts_userId_status_createdAt_idx"
+  ON "breakup_drafts" ("userId", "status", "createdAt");
+CREATE INDEX IF NOT EXISTS "breakup_drafts_contactId_idx" ON "breakup_drafts" ("contactId");
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. Foreign keys
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -270,6 +294,16 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
   ALTER TABLE "contact_social_messages" ADD CONSTRAINT "contact_social_messages_contactId_fkey"
+    FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "breakup_drafts" ADD CONSTRAINT "breakup_drafts_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "breakup_drafts" ADD CONSTRAINT "breakup_drafts_contactId_fkey"
     FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 

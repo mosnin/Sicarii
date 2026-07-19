@@ -72,6 +72,7 @@ model User {
   // Teams: workspaces this human belongs to / humans in this workspace.
   memberships       TeamMember[] @relation("MemberOf")
   members           TeamMember[] @relation("WorkspaceMembers")
+  breakupDrafts     BreakupDraft[]
 
   @@map("users")
 }
@@ -289,6 +290,7 @@ model Contact {
   segments        ContactSegment[]
   pipelineEntries PipelineEntry[]
   activities      Activity[]
+  breakupDrafts   BreakupDraft[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -649,6 +651,50 @@ model PipelineEntry {
   @@index([contactId])
   @@index([pipelineId, stage])
   @@map("pipeline_entries")
+}
+
+// ── Breakup drafts: stalled-deal pattern-interrupt emails ───────────────────
+//
+// Scalar notices a cold deal itself (see listStalledDeals in
+// src/lib/breakup-operations.ts), drafts a polite "breakup" email grounded in
+// the contact's real activity/email history, and holds it here PENDING for
+// one-click human approval - it is never auto-sent. See
+// docs/decisions/0012-breakup-drafts.md.
+
+enum BreakupDraftStatus {
+  PENDING
+  APPROVED
+  SENT
+  DISMISSED
+}
+
+model BreakupDraft {
+  id     String @id @default(uuid())
+  userId String // tenant (owner of the contact); every query is scoped to this
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  status  BreakupDraftStatus @default(PENDING)
+  subject String
+  body    String             @db.Text
+
+  // Snapshot of the cold-detection signal (staleness window, last-contacted
+  // date, contact/pipeline status) and the reasoning + sources the draft was
+  // grounded in (activity/email ids referenced), for auditability. Captured at
+  // generation time and never re-derived, so the review queue always shows why
+  // THIS draft was written even if the underlying history later changes.
+  generatedFrom Json?
+
+  createdAt DateTime  @default(now())
+  // When the human approved or dismissed it (null while PENDING).
+  decidedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, status, createdAt])
+  @@index([contactId])
+  @@map("breakup_drafts")
 }
 
 // ── Provenance spine (Moment 3 - Visible Trust) ─────────────────────────────

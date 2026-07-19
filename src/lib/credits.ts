@@ -43,6 +43,11 @@ export const CREDIT_COSTS = {
   company_aspect: 30,
   deep_research: 18,
   monitor_run: 10,
+  // A single grounded generateObject call (short prompt: activity/email
+  // history in, subject+body out) - cheaper than deep_report's multi-source
+  // synthesis, priced in line with the other single-LLM-call actions
+  // (find_socials=4, contact_extract=8).
+  breakup_draft: 6,
 } as const;
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
