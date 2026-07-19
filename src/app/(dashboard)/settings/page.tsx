@@ -10,6 +10,7 @@ import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
 import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
 import { AgentPhoneKeyForm } from "@/components/dashboard/agentphone-key-form";
+import { VoiceSettingsForm } from "@/components/dashboard/voice-settings-form";
 import { AutoRadarToggle } from "@/components/dashboard/auto-radar-toggle";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
@@ -34,6 +35,7 @@ export default async function SettingsPage() {
   const host = h.get("host") ?? "www.tryscalar.xyz";
   const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
   const mcpUrl = `${proto}://${host}/api/mcp/mcp`;
+  const voiceWebhookBase = `${proto}://${host}/api/webhooks/agentphone`;
 
   return (
     <div className="space-y-8">
@@ -180,6 +182,26 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <AgentPhoneKeyForm initialLast4={agentPhoneLast4} />
+          </CardContent>
+        </Card>
+      </FloatIn>
+
+      {/* Voice-native CRM - call your AgentPhone number and ask out loud */}
+      <FloatIn delay={0.245}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Voice</CardTitle>
+            <CardDescription>
+              Call in and ask Scalar what needs your attention. Requires AgentPhone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <VoiceSettingsForm
+              initialEnabled={user?.voiceEnabled ?? false}
+              connected={Boolean(user?.agentPhoneApiKey)}
+              initialSecret={user?.voiceInboundSecret ?? null}
+              webhookBase={voiceWebhookBase}
+            />
           </CardContent>
         </Card>
       </FloatIn>

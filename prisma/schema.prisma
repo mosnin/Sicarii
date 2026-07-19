@@ -55,6 +55,16 @@ model User {
   // away" window for The Pulse. Null until the first dashboard visit, so a
   // returning user never sees their whole history bragged back at them.
   lastSeenAt       DateTime?
+  // Voice-native CRM (inbound): the operator calls their AgentPhone number and
+  // asks Scalar a question out loud. voiceEnabled is the explicit opt-in (off
+  // by default, and requires agentPhoneApiKey to turn on). voiceInboundSecret
+  // is a high-entropy, per-user token the operator pastes into their
+  // AgentPhone inbound-webhook config as ?key=<token> - it is the ONLY thing
+  // that authenticates an inbound call to this user, since AgentPhone's
+  // payload shape/signing is unverified and nothing in the call body is ever
+  // trusted for identity. See src/app/api/webhooks/agentphone/route.ts.
+  voiceEnabled       Boolean   @default(false)
+  voiceInboundSecret String?   @unique
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

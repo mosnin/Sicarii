@@ -300,6 +300,22 @@ CREATE INDEX IF NOT EXISTS "field_provenance_stale_idx"
   ON "field_provenance" ("stale");
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 3b. Voice-native CRM (0014): additive columns on users for inbound voice.
+--     voiceEnabled is the opt-in; voiceInboundSecret is the high-entropy
+--     per-user token that authenticates an inbound AgentPhone call (baked
+--     into the webhook URL the operator pastes into AgentPhone, as ?key=).
+--     ADD COLUMN IF NOT EXISTS is safe to re-run and safe against the
+--     pre-existing users table (this file's base CREATE TABLE for "users"
+--     predates several later columns - plan/credits/agentPhoneApiKey/etc -
+--     that already live only as app-level Prisma migrations; this statement
+--     follows the same additive pattern for the new voice columns without
+--     attempting to reconcile that earlier drift).
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "voiceEnabled" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "voiceInboundSecret" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "users_voiceInboundSecret_key" ON "users" ("voiceInboundSecret");
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 4. Vector similarity index for memory recall. WITHOUT this, every agent turn
 --    does a full sequential scan of the user's memory_chunks and degrades
 --    linearly as data grows. `prisma db push` does NOT create this (it is raw

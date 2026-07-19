@@ -7,11 +7,25 @@
 // exact endpoint/field names against the live docs before enabling in prod; the
 // whole layer is dormant until a user connects a key.
 import { fetchWithTimeout } from "@/lib/http";
+import { randomBytes } from "node:crypto";
 
 const BASE = "https://api.agentphone.ai";
 
 export function isAgentPhoneConfigured(key?: string | null): boolean {
   return Boolean(key && key.trim());
+}
+
+/** A high-entropy, per-user secret for the INBOUND voice webhook
+ *  (/api/webhooks/agentphone). Generated once when a user turns on voice in
+ *  Settings and embedded as `?key=<secret>` in the exact URL they paste into
+ *  their AgentPhone inbound-call webhook config. This token is the sole
+ *  mechanism that authenticates an inbound call to a specific Scalar user -
+ *  AgentPhone's payload shape and any signing scheme are unverified, so
+ *  nothing in the call body is ever trusted for identity (see the webhook
+ *  route for the full reasoning). 32 random bytes = 256 bits of entropy,
+ *  hex-encoded so it drops cleanly into a URL query string. */
+export function generateVoiceInboundSecret(): string {
+  return randomBytes(32).toString("hex");
 }
 
 function str(v: unknown): string | undefined {
