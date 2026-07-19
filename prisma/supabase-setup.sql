@@ -39,6 +39,10 @@ DO $$ BEGIN
   CREATE TYPE "SocialDirection" AS ENUM ('INBOUND', 'OUTBOUND');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE "VariantKind" AS ENUM ('SUBJECT', 'OPENER');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. Tables
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -215,6 +219,39 @@ CREATE TABLE IF NOT EXISTS "contact_social_messages" (
 CREATE INDEX IF NOT EXISTS "contact_social_messages_contactId_createdAt_idx"
   ON "contact_social_messages" ("contactId", "createdAt");
 
+-- outreach_variants - self-optimizing outreach: subject/opener text variants
+-- the bandit (Thompson sampling, src/lib/variant-bandit.ts) chooses between
+CREATE TABLE IF NOT EXISTS "outreach_variants" (
+  "id"        TEXT NOT NULL,
+  "userId"    TEXT NOT NULL,
+  "segmentId" TEXT,
+  "kind"      "VariantKind" NOT NULL,
+  "text"      TEXT NOT NULL,
+  "sends"     INTEGER NOT NULL DEFAULT 0,
+  "replies"   INTEGER NOT NULL DEFAULT 0,
+  "active"    BOOLEAN NOT NULL DEFAULT true,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "outreach_variants_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "outreach_variants_userId_kind_segmentId_active_idx"
+  ON "outreach_variants" ("userId", "kind", "segmentId", "active");
+
+-- variant_sends - one row per outbound send of a variant to a contact; the
+-- join that makes reply attribution exact (see attributeReply)
+CREATE TABLE IF NOT EXISTS "variant_sends" (
+  "id"        TEXT NOT NULL,
+  "variantId" TEXT NOT NULL,
+  "contactId" TEXT NOT NULL,
+  "sentAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "replied"   BOOLEAN NOT NULL DEFAULT false,
+  "repliedAt" TIMESTAMP(3),
+  CONSTRAINT "variant_sends_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "variant_sends_contactId_replied_sentAt_idx"
+  ON "variant_sends" ("contactId", "replied", "sentAt");
+CREATE INDEX IF NOT EXISTS "variant_sends_variantId_idx" ON "variant_sends" ("variantId");
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. Foreign keys
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -270,6 +307,26 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
   ALTER TABLE "contact_social_messages" ADD CONSTRAINT "contact_social_messages_contactId_fkey"
+    FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "outreach_variants" ADD CONSTRAINT "outreach_variants_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "outreach_variants" ADD CONSTRAINT "outreach_variants_segmentId_fkey"
+    FOREIGN KEY ("segmentId") REFERENCES "segments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "variant_sends" ADD CONSTRAINT "variant_sends_variantId_fkey"
+    FOREIGN KEY ("variantId") REFERENCES "outreach_variants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "variant_sends" ADD CONSTRAINT "variant_sends_contactId_fkey"
     FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 

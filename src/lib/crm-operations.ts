@@ -11,15 +11,10 @@ import { googleMapsLeads, scrapeSiteContacts, apifyGoogleSearch, isApifyConfigur
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 import { placeCall, getCall } from "@/lib/agentphone";
+import { assertVariantOwned, attributeReply } from "@/lib/variant-operations";
 
-export class OpError extends Error {
-  status: number;
-  constructor(message: string, status = 400) {
-    super(message);
-    this.name = "OpError";
-    this.status = status;
-  }
-}
+export { OpError } from "@/lib/op-error";
+import { OpError } from "@/lib/op-error";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -506,31 +501,61 @@ export interface SocialMessageInput {
   threadRef?: string | null;
   savedAsContext?: boolean;
   sentAt?: Date | null;
+  // Self-optimizing outreach: the OutreachVariant (subject/opener) used for
+  // this OUTBOUND message, from select_variant. Recorded as a VariantSend so
+  // a later inbound reply on this contact can be attributed back to it.
+  // Ignored on INBOUND (a reply doesn't "use" a variant, it resolves one).
+  variantId?: string | null;
 }
 
 /** Save a social media message (DM, comment, connection note) onto a contact
  *  and keep the pipeline state honest: an OUTBOUND message stamps
  *  lastContactedAt and advances NEW/ENRICHED to CONTACTED; an INBOUND message
- *  advances CONTACTED to REPLIED. Never downgrades a status. */
+ *  advances CONTACTED to REPLIED. Never downgrades a status.
+ *
+ *  Self-optimizing outreach hook: an OUTBOUND message carrying variantId
+ *  records a VariantSend (and bumps that variant's sends counter) so the
+ *  bandit has data to learn from. An INBOUND message that flips the contact
+ *  to REPLIED attributes the reply to that contact's most-recent unreplied
+ *  variant send, if any - this is the one place a reply is detected, so it
+ *  is the one place attribution can happen honestly. */
 export async function saveSocialMessage(userId: string, input: SocialMessageInput) {
   const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
   if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
 
-  const { contactId, ...rest } = input;
+  const recordsSend = input.direction === "OUTBOUND" && Boolean(input.variantId);
+  if (recordsSend) await assertVariantOwned(userId, input.variantId!);
+
+  const { contactId, variantId, ...rest } = input;
+  const becomesReplied = input.direction === "INBOUND" && contact.status === "CONTACTED";
   const touch: Prisma.ContactUncheckedUpdateInput =
     input.direction === "OUTBOUND"
       ? {
           lastContactedAt: new Date(),
           ...(ADVANCE_FROM_OUTREACH.has(contact.status) ? { status: "CONTACTED" as const } : {}),
         }
-      : contact.status === "CONTACTED"
+      : becomesReplied
         ? { status: "REPLIED" as const }
         : {};
 
   const [message] = await prisma.$transaction([
     prisma.contactSocialMessage.create({ data: { contactId, ...rest } }),
     prisma.contact.update({ where: { id: contactId }, data: touch }),
+    ...(recordsSend
+      ? [
+          prisma.variantSend.create({
+            data: { variantId: variantId!, contactId, sentAt: input.sentAt ?? new Date() },
+          }),
+          prisma.outreachVariant.update({ where: { id: variantId! }, data: { sends: { increment: 1 } } }),
+        ]
+      : []),
   ]);
+
+  // Attribution reads/writes its own row atomically (see attributeReply) and
+  // runs after the message is durably saved; it must never block or fail the
+  // reply itself just because there's nothing to attribute.
+  if (becomesReplied) await attributeReply(contactId);
+
   return message;
 }
 
@@ -585,10 +610,20 @@ export async function logOutreach(
     channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other";
     status?: ContactStatus;
     actor?: ActivityActor | null;
+    // Self-optimizing outreach: the OutreachVariant (subject/opener) used for
+    // this touch, from select_variant. Optional and backward-compatible -
+    // omitting it behaves exactly as before. When set, records a VariantSend
+    // and bumps that variant's sends counter so the bandit has data to learn
+    // from; a later reply on this contact (detected in saveSocialMessage, the
+    // only place INBOUND advances a contact to REPLIED today) attributes back
+    // to it.
+    variantId?: string | null;
   }
 ) {
   const existing = await prisma.contact.findUnique({ where: { id: input.contactId } });
   if (!existing || existing.userId !== userId) throw new OpError("Contact not found", 404);
+
+  if (input.variantId) await assertVariantOwned(userId, input.variantId);
 
   const nextStatus =
     input.status ?? (ADVANCE_FROM_OUTREACH.has(existing.status) ? "CONTACTED" : existing.status);
@@ -609,6 +644,17 @@ export async function logOutreach(
         actorLabel: input.actor?.label ?? null,
       },
     }),
+    ...(input.variantId
+      ? [
+          prisma.variantSend.create({
+            data: { variantId: input.variantId, contactId: input.contactId, sentAt: new Date() },
+          }),
+          prisma.outreachVariant.update({
+            where: { id: input.variantId },
+            data: { sends: { increment: 1 } },
+          }),
+        ]
+      : []),
   ]);
   return { id: contact.id, status: contact.status, lastContactedAt: contact.lastContactedAt };
 }

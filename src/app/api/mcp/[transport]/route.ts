@@ -55,6 +55,7 @@ import {
   normalizeSocialChannel,
   normalizeDirection,
   normalizeActivityKind,
+  normalizeVariantKind,
   requireNormalized,
 } from "@/lib/agent-enums";
 import {
@@ -84,6 +85,7 @@ import {
   updatePipelineEntry,
   pipelineMetrics,
 } from "@/lib/field-operations";
+import { createVariant, selectVariant, listVariantStats } from "@/lib/variant-operations";
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -474,7 +476,7 @@ const handler = createMcpHandler(
 
     server.tool(
       "log_social_message",
-      "Record a social media message with a contact (a LinkedIn/X/Instagram/Facebook DM, comment, or connection note) so the conversation history stays on the CRM alongside email. Advances pipeline state honestly: an OUTBOUND message stamps the outreach time and moves NEW/ENRICHED to CONTACTED; an INBOUND message moves CONTACTED to REPLIED. Pass threadRef (a permalink or thread id) when you have one. channel accepts linkedin, x (or twitter), instagram, facebook, other - any casing. direction accepts inbound, outbound - any casing.",
+      "Record a social media message with a contact (a LinkedIn/X/Instagram/Facebook DM, comment, or connection note) so the conversation history stays on the CRM alongside email. Advances pipeline state honestly: an OUTBOUND message stamps the outreach time and moves NEW/ENRICHED to CONTACTED; an INBOUND message moves CONTACTED to REPLIED (and attributes the reply back to a variantId used on the most recent OUTBOUND send, if any). Pass threadRef (a permalink or thread id) when you have one, and variantId (from select_variant) on an OUTBOUND message that used a bandit-picked opener. channel accepts linkedin, x (or twitter), instagram, facebook, other - any casing. direction accepts inbound, outbound - any casing.",
       {
         contactId: z.string(),
         channel: z
@@ -486,9 +488,13 @@ const handler = createMcpHandler(
         threadRef: z.string().max(500).optional(),
         sentAt: z.string().datetime().optional().describe("ISO timestamp of when the message was sent"),
         savedAsContext: z.boolean().optional(),
+        variantId: z
+          .string()
+          .optional()
+          .describe("id of the OutreachVariant used (from select_variant); only meaningful on an OUTBOUND message"),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async ({ contactId, channel, direction, body, threadRef, sentAt, savedAsContext }, extra) =>
+      async ({ contactId, channel, direction, body, threadRef, sentAt, savedAsContext, variantId }, extra) =>
         run(() =>
           saveSocialMessage(userIdFrom(extra), {
             contactId,
@@ -503,6 +509,7 @@ const handler = createMcpHandler(
             threadRef: threadRef ?? null,
             sentAt: sentAt ? new Date(sentAt) : null,
             savedAsContext: savedAsContext ?? true,
+            variantId: variantId ?? null,
           }),
         ),
     );
@@ -835,7 +842,7 @@ const handler = createMcpHandler(
     /* ----------------------- Outreach tracking -------------------- */
     server.tool(
       "log_outreach",
-      "Record that you reached out to a contact: stamps when, advances status (defaults to CONTACTED), and logs what you said as an activity. Call this after every outbound message so follow-ups stay reliable.",
+      "Record that you reached out to a contact: stamps when, advances status (defaults to CONTACTED), and logs what you said as an activity. Call this after every outbound message so follow-ups stay reliable. Pass variantId (the id select_variant returned) when the message used a bandit-picked subject/opener, so a later reply gets attributed back to it.",
       {
         contactId: z.string(),
         summary: z.string().max(5000),
@@ -843,6 +850,7 @@ const handler = createMcpHandler(
         status: z
           .enum(["NEW", "ENRICHED", "CONTACTED", "REPLIED", "QUALIFIED", "WON", "LOST", "ARCHIVED"])
           .optional(),
+        variantId: z.string().optional().describe("id of the OutreachVariant used, from select_variant"),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (a, extra) =>
@@ -900,6 +908,50 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (a, extra) => run(() => listActivities(userIdFrom(extra), a)),
     );
+
+    /* ------------------- Self-optimizing outreach ------------------ */
+    server.tool(
+      "create_variant",
+      "Create a subject-line or opener text variant for self-optimizing outreach. Optionally scope it to a segment (omit segmentId for a general-purpose variant used outside any segment). New variants start unproven (0 sends, 0 replies) and are explored by select_variant exactly like every other variant already in the pool. kind accepts subject, opener - any casing.",
+      {
+        kind: z.string().max(20).describe("subject | opener - case-insensitive"),
+        text: z.string().min(1).max(2000),
+        segmentId: z.string().optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async ({ kind, text, segmentId }, extra) =>
+        gated(extra, "create_variant", 60, (userId) =>
+          createVariant(userId, {
+            kind: requireNormalized(kind, normalizeVariantKind, "kind", "subject, opener"),
+            text,
+            segmentId: segmentId ?? null,
+          }),
+        ),
+    );
+    server.tool(
+      "select_variant",
+      "Pick the best subject-line or opener to use next: a multi-armed bandit (Thompson sampling over reply rate) that explores when a pool has little data and converges on the winner as sends accumulate - no A/B test to configure. Returns the chosen variant's id and text; use that text verbatim, then pass the id as variantId to log_outreach or log_social_message so a reply gets attributed back to it. Fails with a clear message if no variants exist yet for this kind/segment - call create_variant first. kind accepts subject, opener - any casing.",
+      {
+        kind: z.string().max(20).describe("subject | opener - case-insensitive"),
+        segmentId: z.string().optional().describe("omit for the general (no-segment) pool"),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async ({ kind, segmentId }, extra) =>
+        run(() =>
+          selectVariant(userIdFrom(extra), {
+            kind: requireNormalized(kind, normalizeVariantKind, "kind", "subject, opener"),
+            segmentId: segmentId ?? null,
+          }),
+        ),
+    );
+    server.tool(
+      "list_variant_stats",
+      "Reply-rate stats for outreach variants (subject lines / openers): sends, replies, reply rate, and which variant is currently winning, grouped by segment and kind. Read-only; free.",
+      { segmentId: z.string().optional().describe("omit to see every segment (and the general pool)") },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ segmentId }, extra) =>
+        run(() => listVariantStats(userIdFrom(extra), { segmentId: segmentId ?? undefined })),
+    );
   },
   {
     serverInfo: { name: "scalar", version: "0.1.0" },
@@ -910,8 +962,8 @@ THE OPERATING LOOP
 2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). Both dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
 3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. For their social profiles (LinkedIn, X, Instagram, Facebook), call find_socials: it auto-saves only name+company-verified profiles and returns the rest as candidates for you to review. Enrich what you will act on, not the whole database; every enrichment costs credits.
 4. Organize. Group not-yet-contacted prospects with build_smart_segment, then create_pipeline to track them through stages.
-5. Track outreach. This is the memory that makes you reliable. When you email a contact, call save_email_context, then log_outreach to stamp when you reached out and advance status. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message (it advances pipeline state itself; use list_social_messages to reread a conversation). When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. remember any decision or context worth keeping.
-6. Measure and repeat. Use pipeline_metrics to see what is working, then loop back to discovery.
+5. Track outreach. This is the memory that makes you reliable. Before writing your first message to a segment (or in general), call select_variant (kind: subject or opener) to get the bandit's current best pick for that pool - it explores automatically while data is thin and converges on the winner as replies come in, so you never need to run your own A/B test. Use the returned text verbatim, then when you email a contact, call save_email_context, then log_outreach (with variantId set to what select_variant returned) to stamp when you reached out and advance status. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message the same way (pass variantId on the OUTBOUND message; it advances pipeline state itself and attributes a later reply back to the variant automatically - use list_social_messages to reread a conversation). Check list_variant_stats any time to see reply rates and which variant is winning. If you're not testing variants, log_outreach/log_social_message work exactly the same without variantId. When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. remember any decision or context worth keeping.
+6. Measure and repeat. Use pipeline_metrics and list_variant_stats to see what is working, then loop back to discovery.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.
 

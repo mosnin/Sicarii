@@ -69,6 +69,7 @@ model User {
   activities        Activity[]
   segments          Segment[]
   pipelines         Pipeline[]
+  outreachVariants  OutreachVariant[]
   // Teams: workspaces this human belongs to / humans in this workspace.
   memberships       TeamMember[] @relation("MemberOf")
   members           TeamMember[] @relation("WorkspaceMembers")
@@ -289,6 +290,7 @@ model Contact {
   segments        ContactSegment[]
   pipelineEntries PipelineEntry[]
   activities      Activity[]
+  variantSends    VariantSend[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -576,7 +578,8 @@ model Segment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members ContactSegment[]
+  members  ContactSegment[]
+  variants OutreachVariant[]
 
   @@index([userId])
   @@map("segments")
@@ -649,6 +652,76 @@ model PipelineEntry {
   @@index([contactId])
   @@index([pipelineId, stage])
   @@map("pipeline_entries")
+}
+
+// ── Self-optimizing outreach: a bandit over subject/opener variants ────────
+//
+// The agent silently learns which outreach openers/subject lines get replies,
+// per segment, and converges on the best ones without a human ever
+// configuring an A/B test. selectVariant (src/lib/variant-operations.ts)
+// Thompson-samples over each active variant's Beta(replies+1,
+// sends-replies+1) posterior; logOutreach/saveSocialMessage record a
+// VariantSend when the agent supplies the variantId it used; an inbound
+// reply that advances a contact to REPLIED attributes back to that contact's
+// most-recent unreplied send.
+
+enum VariantKind {
+  SUBJECT
+  OPENER
+}
+
+model OutreachVariant {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Null = a general-purpose variant used outside any segment. Segment
+  // deletion unscopes rather than destroys a variant, so the reply-rate data
+  // an agent has already earned on it survives (SetNull), same pattern as
+  // Contact.entityId.
+  segmentId String?
+  segment   Segment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+
+  kind VariantKind
+  text String @db.Text
+
+  // The bandit's running counts. Incremented by recordVariantSend /
+  // attributeReply, never written directly by a caller.
+  sends   Int     @default(0)
+  replies Int     @default(0)
+  active  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variantSends VariantSend[]
+
+  @@index([userId, kind, segmentId, active])
+  @@map("outreach_variants")
+}
+
+// A single outbound send of a specific variant to a specific contact - the
+// join that makes reply attribution exact. Deliberately NOT a variantId
+// column on Activity (see the module docstring in variant-operations.ts):
+// this keeps "the most recent unreplied send to this contact" a single
+// indexed query instead of a filtered scan over a polymorphic activity log,
+// and gives attribution a clean, race-safe terminal state (replied flips
+// exactly once - see attributeReply).
+model VariantSend {
+  id String @id @default(uuid())
+
+  variantId String
+  variant   OutreachVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  sentAt    DateTime  @default(now())
+  replied   Boolean   @default(false)
+  repliedAt DateTime?
+
+  @@index([contactId, replied, sentAt])
+  @@index([variantId])
+  @@map("variant_sends")
 }
 
 // ── Provenance spine (Moment 3 - Visible Trust) ─────────────────────────────
