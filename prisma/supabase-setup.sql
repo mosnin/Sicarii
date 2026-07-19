@@ -39,6 +39,16 @@ DO $$ BEGIN
   CREATE TYPE "SocialDirection" AS ENUM ('INBOUND', 'OUTBOUND');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE "AutopilotStatus" AS ENUM (
+    'draft', 'approved', 'active', 'paused', 'exhausted', 'completed'
+  );
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "AutopilotCategory" AS ENUM ('discovery', 'enrichment', 'outreach', 'other');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. Tables
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -215,6 +225,65 @@ CREATE TABLE IF NOT EXISTS "contact_social_messages" (
 CREATE INDEX IF NOT EXISTS "contact_social_messages_contactId_createdAt_idx"
   ON "contact_social_messages" ("contactId", "createdAt");
 
+-- autopilot_plans - budgeted autopilot: a proposed/approved spend plan that
+-- runs unsupervised within its approved credit ceiling (an ADDITIONAL cap on
+-- top of the real credit meter, never a source of credits itself).
+CREATE TABLE IF NOT EXISTS "autopilot_plans" (
+  "id"             TEXT NOT NULL,
+  "userId"         TEXT NOT NULL,
+  "name"           TEXT NOT NULL,
+  "cadence"        TEXT NOT NULL DEFAULT 'weekly',
+  "status"         "AutopilotStatus" NOT NULL DEFAULT 'draft',
+  "totalCredits"   INTEGER NOT NULL,
+  "discoveryQuery" TEXT,
+  "windowStart"    TIMESTAMP(3),
+  "windowEnd"      TIMESTAMP(3),
+  "approvedAt"     TIMESTAMP(3),
+  "approvedById"   TEXT,
+  "pausedReason"   TEXT,
+  "lastRunAt"      TIMESTAMP(3),
+  "nextRunAt"      TIMESTAMP(3),
+  "createdAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"      TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "autopilot_plans_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "autopilot_plans_userId_idx" ON "autopilot_plans" ("userId");
+CREATE INDEX IF NOT EXISTS "autopilot_plans_status_nextRunAt_idx" ON "autopilot_plans" ("status", "nextRunAt");
+
+-- autopilot_allocations - one row per spend category per plan (ceiling +
+-- running total). Real integer columns so the budget guard can use a single
+-- atomic, conditional UPDATE per charge (see chargeAutopilotCategory), the
+-- same proven pattern as the credit meter's atomic decrement.
+CREATE TABLE IF NOT EXISTS "autopilot_allocations" (
+  "id"        TEXT NOT NULL,
+  "planId"    TEXT NOT NULL,
+  "category"  "AutopilotCategory" NOT NULL,
+  "allocated" INTEGER NOT NULL,
+  "spent"     INTEGER NOT NULL DEFAULT 0,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "autopilot_allocations_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "autopilot_allocations_planId_category_key"
+  ON "autopilot_allocations" ("planId", "category");
+
+-- autopilot_runs - append-only audit ledger: one row per autonomous action the
+-- plan took, so the human can see exactly what their autopilot did.
+CREATE TABLE IF NOT EXISTS "autopilot_runs" (
+  "id"           TEXT NOT NULL,
+  "planId"       TEXT NOT NULL,
+  "userId"       TEXT NOT NULL,
+  "category"     "AutopilotCategory" NOT NULL,
+  "action"       TEXT NOT NULL,
+  "creditsSpent" INTEGER NOT NULL DEFAULT 0,
+  "ref"          TEXT,
+  "summary"      TEXT,
+  "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "autopilot_runs_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "autopilot_runs_planId_createdAt_idx" ON "autopilot_runs" ("planId", "createdAt");
+CREATE INDEX IF NOT EXISTS "autopilot_runs_userId_idx" ON "autopilot_runs" ("userId");
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. Foreign keys
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -271,6 +340,21 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 DO $$ BEGIN
   ALTER TABLE "contact_social_messages" ADD CONSTRAINT "contact_social_messages_contactId_fkey"
     FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "autopilot_plans" ADD CONSTRAINT "autopilot_plans_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "autopilot_allocations" ADD CONSTRAINT "autopilot_allocations_planId_fkey"
+    FOREIGN KEY ("planId") REFERENCES "autopilot_plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "autopilot_runs" ADD CONSTRAINT "autopilot_runs_planId_fkey"
+    FOREIGN KEY ("planId") REFERENCES "autopilot_plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- field_provenance - Moment 3 (Visible Trust): one row per enriched field,
