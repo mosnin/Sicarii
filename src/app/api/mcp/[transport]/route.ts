@@ -277,6 +277,7 @@ const handler = createMcpHandler(
         search: z.string().max(500).optional().describe("Alias for query (older agent docs); ignored when query is set"),
         limit: z.number().int().min(1).max(200).optional().describe("Rows to return (default 50)"),
       },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ query, search, limit }, extra) =>
         run(() => listEntities(userIdFrom(extra), query ?? search, limit)),
     );
@@ -285,6 +286,7 @@ const handler = createMcpHandler(
       "get_entity",
       "Get one business by id, including its contacts.",
       { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) => run(() => getEntity(userIdFrom(extra), id)),
     );
 
@@ -303,6 +305,7 @@ const handler = createMcpHandler(
         notes: z.string().max(10000).optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (args, extra) =>
         gated(extra, "create", 120, (userId) =>
           createEntity(userId, { ...args, source: "agent" }),
@@ -326,8 +329,9 @@ const handler = createMcpHandler(
         status: z.enum(["NEW", "ENRICHED", "ARCHIVED"]).optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id, ...rest }, extra) =>
-        run(() => updateEntity(userIdFrom(extra), id, rest)),
+        gated(extra, "update_entity", 120, (userId) => updateEntity(userId, id, rest)),
     );
 
     server.tool(
@@ -343,7 +347,7 @@ const handler = createMcpHandler(
       "Permanently delete a business (entity) from the CRM by id. Its contacts are kept (unlinked from the company). Use to clean up junk or duplicate records.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => deleteEntity(userIdFrom(extra), id)),
+      async ({ id }, extra) => gated(extra, "delete_entity", 60, (userId) => deleteEntity(userId, id)),
     );
 
     /* -------------------------- Contacts -------------------------- */
@@ -356,6 +360,7 @@ const handler = createMcpHandler(
         status: z.string().max(20).optional(),
         limit: z.number().int().min(1).max(200).optional().describe("Rows to return (default 50)"),
       },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ query, search, status, limit }, extra) =>
         run(() => listContacts(userIdFrom(extra), { q: query ?? search, status, limit })),
     );
@@ -364,6 +369,7 @@ const handler = createMcpHandler(
       "get_contact",
       "Get one contact by id, including linked entity and saved email context.",
       { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) => run(() => getContact(userIdFrom(extra), id)),
     );
 
@@ -387,6 +393,7 @@ const handler = createMcpHandler(
         tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (args, extra) =>
         gated(extra, "create", 120, (userId) =>
           createContact(userId, { ...args, source: args.source || "agent" }),
@@ -426,8 +433,9 @@ const handler = createMcpHandler(
         tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().nullable().optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id, ...rest }, extra) =>
-        run(() => updateContact(userIdFrom(extra), id, rest)),
+        gated(extra, "update_contact", 120, (userId) => updateContact(userId, id, rest)),
     );
 
     server.tool(
@@ -435,7 +443,7 @@ const handler = createMcpHandler(
       "Permanently delete a person (contact) from the CRM by id. Use to clean up junk or duplicate records.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => deleteContact(userIdFrom(extra), id)),
+      async ({ id }, extra) => gated(extra, "delete_contact", 60, (userId) => deleteContact(userId, id)),
     );
 
     server.tool(
@@ -460,9 +468,10 @@ const handler = createMcpHandler(
         toAddr: z.string().max(320).optional(),
         savedAsContext: z.boolean().optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (args, extra) =>
-        run(() =>
-          saveEmail(userIdFrom(extra), {
+        gated(extra, "save_email_context", 120, (userId) =>
+          saveEmail(userId, {
             ...args,
             savedAsContext: args.savedAsContext ?? true,
           }),
@@ -508,8 +517,8 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async ({ contactId, channel, direction, body, threadRef, sentAt, savedAsContext }, extra) =>
-        run(() =>
-          saveSocialMessage(userIdFrom(extra), {
+        gated(extra, "log_social_message", 120, (userId) =>
+          saveSocialMessage(userId, {
             contactId,
             channel: requireNormalized(
               channel,
@@ -560,6 +569,7 @@ const handler = createMcpHandler(
       "search_crm",
       "Search across both entities and contacts in the CRM.",
       { query: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ query }, extra) =>
         run(() => searchCrm(userIdFrom(extra), query)),
     );
@@ -571,6 +581,8 @@ const handler = createMcpHandler(
         query: z.string(),
         maxResults: z.number().int().min(1).max(20).optional(),
       },
+      // Not readOnly: it debits the credit meter on a hit.
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ query, maxResults }, extra) =>
         gated(extra, "search_web", 30, async (userId) => {
           if (!isTavilyConfigured())
@@ -636,6 +648,7 @@ const handler = createMcpHandler(
       "list_segments",
       "List customer segments with member counts.",
       {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (_args, extra) => run(() => listSegments(userIdFrom(extra))),
     );
 
@@ -643,6 +656,7 @@ const handler = createMcpHandler(
       "get_segment",
       "Get a segment and its member contacts.",
       { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) => run(() => getSegment(userIdFrom(extra), id)),
     );
 
@@ -650,7 +664,8 @@ const handler = createMcpHandler(
       "create_segment",
       "Create a customer segment manually, optionally with member contact ids.",
       { name: z.string().max(200), goal: z.string().max(2000).optional(), contactIds: z.array(z.string()).max(1000).optional() },
-      async (args, extra) => run(() => createSegment(userIdFrom(extra), args)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (args, extra) => gated(extra, "create_segment", 60, (userId) => createSegment(userId, args)),
     );
 
     server.tool(
@@ -680,7 +695,8 @@ const handler = createMcpHandler(
       "build_smart_segment",
       "Build a segment from a goal: vector-matches the closest ELIGIBLE prospects (enriched, not yet contacted, not already in a pipeline). Use this to auto-create a targeted segment.",
       { goal: z.string(), quantity: z.number().int().min(1).max(100).optional(), name: z.string().optional() },
-      async (args, extra) => run(() => buildSmartSegment(userIdFrom(extra), args)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (args, extra) => gated(extra, "build_smart_segment", 20, (userId) => buildSmartSegment(userId, args)),
     );
 
     /* -------------------------- Pipelines ------------------------- */
@@ -688,6 +704,7 @@ const handler = createMcpHandler(
       "list_pipelines",
       "List pipelines with entry counts.",
       {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (_args, extra) => run(() => listPipelines(userIdFrom(extra))),
     );
 
@@ -695,6 +712,7 @@ const handler = createMcpHandler(
       "get_pipeline",
       "Get a pipeline with its entries (stage, deal score, conversation status) and contacts.",
       { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) => run(() => getPipeline(userIdFrom(extra), id)),
     );
 
@@ -702,14 +720,17 @@ const handler = createMcpHandler(
       "create_pipeline",
       "Create a pipeline with an objective, optionally seeded from a segment (recommended).",
       { name: z.string(), goal: z.string().optional(), segmentId: z.string().optional() },
-      async (args, extra) => run(() => createPipeline(userIdFrom(extra), args)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (args, extra) => gated(extra, "create_pipeline", 60, (userId) => createPipeline(userId, args)),
     );
 
     server.tool(
       "add_to_pipeline",
       "Add contacts (by ids and/or a whole segment) to a pipeline as new entries.",
       { pipelineId: z.string(), contactIds: z.array(z.string()).max(1000).optional(), segmentId: z.string().optional() },
-      async ({ pipelineId, ...rest }, extra) => run(() => addToPipeline(userIdFrom(extra), pipelineId, rest)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ pipelineId, ...rest }, extra) =>
+        gated(extra, "add_to_pipeline", 60, (userId) => addToPipeline(userId, pipelineId, rest)),
     );
 
     server.tool(
@@ -738,14 +759,16 @@ const handler = createMcpHandler(
         dealScore: z.number().int().min(0).max(100).nullable().optional(),
         conversationStatus: z.enum(["OPEN", "AWAITING_REPLY", "STALLED", "CLOSED"]).optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ pipelineId, entryId, ...patch }, extra) =>
-        run(() => updatePipelineEntry(userIdFrom(extra), pipelineId, entryId, patch)),
+        gated(extra, "update_pipeline_entry", 120, (userId) => updatePipelineEntry(userId, pipelineId, entryId, patch)),
     );
 
     server.tool(
       "pipeline_metrics",
       "Progress metrics for a pipeline: counts by stage and conversation status, won/lost, average deal score, and open conversations.",
       { pipelineId: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ pipelineId }, extra) => run(() => pipelineMetrics(userIdFrom(extra), pipelineId)),
     );
 
@@ -763,8 +786,8 @@ const handler = createMcpHandler(
       { content: z.string().max(8000), refId: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async ({ content, refId }, extra) =>
-        run(async () => {
-          const remembered = await storeMemory(userIdFrom(extra), "message", content, refId);
+        gated(extra, "remember", 60, async (userId) => {
+          const remembered = await storeMemory(userId, "message", content, refId);
           // Report honestly: a silent no-op (embeddings unconfigured, insert
           // failure) must not hand an autonomous agent a success receipt.
           return remembered
@@ -868,7 +891,7 @@ const handler = createMcpHandler(
       "Refresh a logged call from AgentPhone: pull the latest status, duration, transcript, and recording onto the call record. Use after a call ends.",
       { logId: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      async ({ logId }, extra) => run(() => syncContactCall(userIdFrom(extra), logId)),
+      async ({ logId }, extra) => gated(extra, "sync_call", 30, (userId) => syncContactCall(userId, logId)),
     );
     server.tool(
       "log_call",
@@ -887,7 +910,7 @@ const handler = createMcpHandler(
         recordingUrl: z.string().url().max(1000).startsWith("https://").optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async (a, extra) => run(() => saveCall(userIdFrom(extra), a)),
+      async (a, extra) => gated(extra, "log_call", 120, (userId) => saveCall(userId, a)),
     );
 
     /* ----------------------- Outreach tracking -------------------- */
@@ -904,7 +927,9 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (a, extra) =>
-        run(() => logOutreach(userIdFrom(extra), { ...a, actor: actorFrom(extra) })),
+        gated(extra, "log_outreach", 120, (userId) =>
+          logOutreach(userId, { ...a, actor: actorFrom(extra) }),
+        ),
     );
     server.tool(
       "list_due_followups",
@@ -934,8 +959,8 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (a, extra) =>
-        run(() =>
-          addActivity(userIdFrom(extra), {
+        gated(extra, "add_activity", 120, (userId) =>
+          addActivity(userId, {
             ...a,
             kind: requireNormalized(
               a.kind,
