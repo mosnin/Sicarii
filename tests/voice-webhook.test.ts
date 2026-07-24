@@ -30,14 +30,19 @@ const usersBySecret: Record<string, unknown> = {
   [SECRET_NO_AGENTPHONE]: USER_NO_AGENTPHONE,
 };
 
-const findUnique = vi.fn(async ({ where }: { where: { voiceInboundSecret: string } }) => {
+// The route resolves the caller via findFirst (not findUnique) - see the
+// schema comment on voiceInboundSecret: a DB-level @unique constraint on this
+// column fails prisma db push against the target Supabase database, so
+// uniqueness is now guaranteed at generation time in application code
+// instead (tested separately), and the lookup here is a plain indexed query.
+const findFirst = vi.fn(async ({ where }: { where: { voiceInboundSecret: string } }) => {
   return usersBySecret[where.voiceInboundSecret] ?? null;
 });
 const activityCreate = vi.fn().mockResolvedValue({ id: "activity-1" });
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    user: { findUnique: (...args: unknown[]) => findUnique(...(args as [never])) },
+    user: { findFirst: (...args: unknown[]) => findFirst(...(args as [never])) },
     activity: { create: (...args: unknown[]) => activityCreate(...(args as [never])) },
   },
 }));
@@ -69,7 +74,7 @@ function req(body: unknown, key?: string | null, rawBody?: string) {
 describe("POST /api/webhooks/agentphone - caller authentication", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    findUnique.mockImplementation(async ({ where }: { where: { voiceInboundSecret: string } }) => {
+    findFirst.mockImplementation(async ({ where }: { where: { voiceInboundSecret: string } }) => {
       return usersBySecret[where.voiceInboundSecret] ?? null;
     });
   });
@@ -89,7 +94,7 @@ describe("POST /api/webhooks/agentphone - caller authentication", () => {
   it("refuses a short/implausible key without even querying the database", async () => {
     const res = await POST(req({ text: "hello" }, "short"));
     expect(res.status).toBe(401);
-    expect(findUnique).not.toHaveBeenCalled();
+    expect(findFirst).not.toHaveBeenCalled();
     expect(voiceIntentMock).not.toHaveBeenCalled();
   });
 

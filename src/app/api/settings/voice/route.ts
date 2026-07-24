@@ -27,6 +27,34 @@ const patchSchema = z.object({
   rotate: z.boolean().optional(),
 });
 
+// voiceInboundSecret has no DB-level unique constraint (see the schema
+// comment on that column: a UNIQUE INDEX on this Supabase project's `users`
+// table fails `prisma db push`, confirmed by deploy behavior across sibling
+// PRs). It is unique BY CONSTRUCTION instead: 256 random bits means a
+// collision against any existing row is astronomically unlikely (on the
+// order of 1 in 2^128 for the birthday bound at any realistic user count),
+// but "astronomically unlikely" is not "impossible", so this generates a
+// candidate and checks it against every existing secret before accepting it,
+// regenerating on the (never-expected-to-happen) hit. This is the whole
+// uniqueness guarantee now that the DB is not enforcing it, so it must run
+// on every mint, not just be a comment.
+const MAX_SECRET_ATTEMPTS = 5;
+async function generateUniqueVoiceInboundSecret(): Promise<string> {
+  for (let attempt = 0; attempt < MAX_SECRET_ATTEMPTS; attempt++) {
+    const candidate = generateVoiceInboundSecret();
+    const collision = await prisma.user.findFirst({
+      where: { voiceInboundSecret: candidate },
+      select: { id: true },
+    });
+    if (!collision) return candidate;
+    console.warn("[settings/voice] voiceInboundSecret collision on generation, regenerating");
+  }
+  // Reaching this in practice would mean something is wrong with the RNG
+  // itself, not bad luck - fail loudly rather than silently accept a
+  // colliding secret.
+  throw new Error("Could not generate a unique voice inbound secret");
+}
+
 // PATCH /api/settings/voice - enable/disable voice and/or rotate the inbound
 // secret. Enabling requires a connected AgentPhone key: voice with no
 // AgentPhone account behind it is a dead end, so we refuse rather than let
@@ -55,7 +83,7 @@ export async function PATCH(req: NextRequest) {
     // Mint a secret the first time voice is turned on, or whenever the
     // operator explicitly asks to rotate (invalidates the old webhook URL).
     if (parsed.data.rotate || (parsed.data.enabled === true && !user.voiceInboundSecret)) {
-      data.voiceInboundSecret = generateVoiceInboundSecret();
+      data.voiceInboundSecret = await generateUniqueVoiceInboundSecret();
     }
 
     const updated = await prisma.user.update({ where: { id: user.id }, data });

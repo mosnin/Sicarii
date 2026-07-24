@@ -31,17 +31,20 @@ import { voiceIntent } from "@/lib/voice-intent";
 //
 // Instead: each Scalar user who turns on voice in Settings gets a unique,
 // high-entropy (256-bit) secret, `User.voiceInboundSecret`, generated server
-// side (src/lib/agentphone.ts#generateVoiceInboundSecret). Settings shows them
-// the exact webhook URL to paste into AgentPhone's inbound-webhook config:
+// side (src/app/api/settings/voice/route.ts, collision-checked at generation
+// time - see that file). Settings shows them the exact webhook URL to paste
+// into AgentPhone's inbound-webhook config:
 // `.../api/webhooks/agentphone?key=<secret>`. On every inbound call, AgentPhone
 // hits that exact URL, so the `key` query param IS the caller's identity - a
 // capability URL, the same pattern Stripe Connect, Zapier, and most
 // third-party inbound-webhook receivers use for per-tenant endpoints. We look
-// it up with a direct equality match against the unique indexed
-// `voiceInboundSecret` column; no match, no voice, no enabled flag, no
-// connected AgentPhone key -> refuse (401/501). We never fall back to "the
-// only configured user" or any other implicit identity - if we cannot
-// securely identify the caller, we refuse rather than guess, full stop.
+// it up with a direct equality match (findFirst against a plain, indexed
+// column - NOT a DB-level unique constraint; see the schema comment on
+// `voiceInboundSecret` for why, uniqueness is guaranteed at generation time
+// instead); no match, no voice, no enabled flag, no connected AgentPhone key
+// -> refuse (401/501). We never fall back to "the only configured user" or
+// any other implicit identity - if we cannot securely identify the caller, we
+// refuse rather than guess, full stop.
 export async function POST(req: NextRequest) {
   try {
     const ip =
@@ -63,7 +66,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
+    // voiceInboundSecret is not a DB-level unique constraint (see the schema
+    // comment - a UNIQUE INDEX on this Supabase project's `users` table fails
+    // `prisma db push`), so this is findFirst against a plain index, not
+    // findUnique. Uniqueness is instead guaranteed at generation time
+    // (src/app/api/settings/voice/route.ts collision-checks before saving),
+    // so in practice at most one row ever matches.
+    const user = await prisma.user.findFirst({
       where: { voiceInboundSecret: token },
       select: { id: true, voiceEnabled: true, agentPhoneApiKey: true },
     });

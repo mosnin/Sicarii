@@ -310,10 +310,19 @@ CREATE INDEX IF NOT EXISTS "field_provenance_stale_idx"
 --     that already live only as app-level Prisma migrations; this statement
 --     follows the same additive pattern for the new voice columns without
 --     attempting to reconcile that earlier drift).
+--
+--     voiceInboundSecret is a PLAIN (non-unique) index, not a unique one: a
+--     UNIQUE INDEX on this Supabase project's users table failed
+--     `prisma db push` on deploy (confirmed by isolating it - every sibling
+--     PR that only adds a new table deploys green; this table-altering one
+--     only failed with @unique). Uniqueness is instead guaranteed at
+--     generation time in application code (collision-checked before save;
+--     see src/app/api/settings/voice/route.ts), so this index exists purely
+--     for the webhook's lookup performance, not as a constraint.
 -- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "voiceEnabled" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "voiceInboundSecret" TEXT;
-CREATE UNIQUE INDEX IF NOT EXISTS "users_voiceInboundSecret_key" ON "users" ("voiceInboundSecret");
+CREATE INDEX IF NOT EXISTS "users_voiceInboundSecret_idx" ON "users" ("voiceInboundSecret");
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 4. Vector similarity index for memory recall. WITHOUT this, every agent turn

@@ -63,8 +63,15 @@ model User {
   // that authenticates an inbound call to this user, since AgentPhone's
   // payload shape/signing is unverified and nothing in the call body is ever
   // trusted for identity. See src/app/api/webhooks/agentphone/route.ts.
+  // NOTE: this is deliberately NOT @unique at the DB level - a UNIQUE INDEX on
+  // this Supabase project's `users` table fails `prisma db push` (confirmed:
+  // every sibling PR that only ADDS a table deploys green; this is the only
+  // one that ALTERs `users`, and only the @unique variant failed). Uniqueness
+  // is instead guaranteed at generation time in
+  // src/app/api/settings/voice/route.ts (collision-checked before save), and
+  // lookups use findFirst against the plain index below.
   voiceEnabled       Boolean   @default(false)
-  voiceInboundSecret String?   @unique
+  voiceInboundSecret String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -83,6 +90,9 @@ model User {
   memberships       TeamMember[] @relation("MemberOf")
   members           TeamMember[] @relation("WorkspaceMembers")
 
+  // Plain (non-unique) index for the webhook's findFirst lookup by secret -
+  // see the voiceInboundSecret comment above for why this is not @unique.
+  @@index([voiceInboundSecret])
   @@map("users")
 }
 
