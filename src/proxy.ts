@@ -23,6 +23,9 @@ const isPublicRoute = createRouteMatcher([
   "/refund-policy(.*)",
   "/api/webhooks(.*)",
   "/api/inngest(.*)",
+  // Env-doctor report - safe to expose: booleans + env var names only, never
+  // secret values. Meant to be curled after a deploy with no shell access.
+  "/api/health(.*)",
   // MCP server + OAuth endpoints do their own auth (Bearer / OAuth / Clerk).
   "/api/mcp(.*)",
   "/api/oauth(.*)",

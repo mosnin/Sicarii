@@ -17,6 +17,9 @@ const mockFindMany = vi.fn().mockResolvedValue([]);
 const mockUpdate = vi.fn().mockResolvedValue({});
 const mockFindUnique = vi.fn().mockResolvedValue(null);
 
+const mockContactFindUnique = vi.fn().mockResolvedValue(null);
+const mockEntityFindUnique = vi.fn().mockResolvedValue(null);
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     fieldProvenance: {
@@ -25,6 +28,12 @@ vi.mock("@/lib/prisma", () => ({
       findMany: (...args: unknown[]) => mockFindMany(...args),
       update: (...args: unknown[]) => mockUpdate(...args),
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
+    },
+    contact: {
+      findUnique: (...args: unknown[]) => mockContactFindUnique(...args),
+    },
+    entity: {
+      findUnique: (...args: unknown[]) => mockEntityFindUnique(...args),
     },
   },
 }));
@@ -44,6 +53,8 @@ beforeEach(() => {
   mockFindMany.mockResolvedValue([]);
   mockUpdate.mockResolvedValue({});
   mockFindUnique.mockResolvedValue(null);
+  mockContactFindUnique.mockResolvedValue(null);
+  mockEntityFindUnique.mockResolvedValue(null);
 });
 
 // ── CONFIDENCE constants ───────────────────────────────────────────────────────
@@ -206,6 +217,53 @@ describe("getProvenanceMap", () => {
     mockFindMany.mockRejectedValueOnce(new Error("DB down"));
     const map = await getProvenanceMap("contact", "c-fail");
     expect(map).toEqual({});
+  });
+
+  // FieldProvenance has no userId column of its own - the record hangs off a
+  // parent contact/entity. When a userId is passed (as the MCP get_provenance
+  // tool and the dashboard pages both do), getProvenanceMap must verify that
+  // parent is owned by the caller BEFORE returning any rows, or provenance
+  // would leak cross-tenant even though the raw table has no tenant column.
+  describe("userId ownership fence", () => {
+    it("denies a contact owned by someone else: returns {} and never queries field_provenance rows", async () => {
+      mockContactFindUnique.mockResolvedValueOnce({ userId: "owner-A" });
+      const map = await getProvenanceMap("contact", "cid-1", "attacker-B");
+      expect(map).toEqual({});
+      expect(mockFindMany).not.toHaveBeenCalled();
+    });
+
+    it("denies an entity owned by someone else: returns {} and never queries field_provenance rows", async () => {
+      mockEntityFindUnique.mockResolvedValueOnce({ userId: "owner-A" });
+      const map = await getProvenanceMap("entity", "eid-1", "attacker-B");
+      expect(map).toEqual({});
+      expect(mockFindMany).not.toHaveBeenCalled();
+    });
+
+    it("denies when the parent record does not exist at all", async () => {
+      mockContactFindUnique.mockResolvedValueOnce(null);
+      const map = await getProvenanceMap("contact", "does-not-exist", "someone");
+      expect(map).toEqual({});
+      expect(mockFindMany).not.toHaveBeenCalled();
+    });
+
+    it("allows the real owner through to the field_provenance rows", async () => {
+      mockContactFindUnique.mockResolvedValueOnce({ userId: "owner-A" });
+      mockFindMany.mockResolvedValueOnce([
+        { field: "email", source: "pipe0", confidence: 85, retrievedAt: new Date(), verifiedAt: null, stale: false },
+      ]);
+      const map = await getProvenanceMap("contact", "cid-1", "owner-A");
+      expect(Object.keys(map)).toEqual(["email"]);
+      expect(mockFindMany).toHaveBeenCalledOnce();
+    });
+
+    it("skips the ownership check entirely when no userId is passed (existing callers that already checked)", async () => {
+      mockFindMany.mockResolvedValueOnce([
+        { field: "email", source: "pipe0", confidence: 85, retrievedAt: new Date(), verifiedAt: null, stale: false },
+      ]);
+      const map = await getProvenanceMap("contact", "cid-1");
+      expect(Object.keys(map)).toEqual(["email"]);
+      expect(mockContactFindUnique).not.toHaveBeenCalled();
+    });
   });
 });
 

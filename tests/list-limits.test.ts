@@ -10,17 +10,24 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const entityFindMany = vi.fn().mockResolvedValue([]);
 const contactFindMany = vi.fn().mockResolvedValue([]);
+const contactFindUnique = vi.fn().mockResolvedValue({ userId: "u1" });
+const contactEmailFindMany = vi.fn().mockResolvedValue([]);
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     entity: { findMany: (...a: unknown[]) => entityFindMany(...a) },
-    contact: { findMany: (...a: unknown[]) => contactFindMany(...a) },
+    contact: {
+      findMany: (...a: unknown[]) => contactFindMany(...a),
+      findUnique: (...a: unknown[]) => contactFindUnique(...a),
+    },
+    contactEmail: { findMany: (...a: unknown[]) => contactEmailFindMany(...a) },
   },
 }));
 
 import {
   listEntities,
   listContacts,
+  listContactEmails,
   clampListLimit,
   DEFAULT_LIST_LIMIT,
   MAX_LIST_LIMIT,
@@ -29,6 +36,9 @@ import {
 beforeEach(() => {
   entityFindMany.mockClear();
   contactFindMany.mockClear();
+  contactFindUnique.mockClear();
+  contactFindUnique.mockResolvedValue({ userId: "u1" });
+  contactEmailFindMany.mockClear();
 });
 
 describe("clampListLimit", () => {
@@ -104,5 +114,26 @@ describe("listContacts", () => {
   it("ignores an unknown status value instead of filtering wrong", async () => {
     await listContacts("u1", { status: "NOT_A_STATUS" });
     expect(contactFindMany.mock.calls[0][0].where.status).toBeUndefined();
+  });
+});
+
+describe("listContactEmails", () => {
+  it("passes the caller's limit through as take, clamped by the shared helper", async () => {
+    await listContactEmails("u1", "c1", 1);
+    expect(contactEmailFindMany.mock.calls[0][0].take).toBe(1);
+    contactEmailFindMany.mockClear();
+
+    await listContactEmails("u1", "c1", 100000);
+    expect(contactEmailFindMany.mock.calls[0][0].take).toBe(MAX_LIST_LIMIT);
+  });
+  it("defaults take when no limit is given", async () => {
+    await listContactEmails("u1", "c1");
+    expect(contactEmailFindMany.mock.calls[0][0].take).toBe(DEFAULT_LIST_LIMIT);
+  });
+  it("orders newest first and scopes to the contact", async () => {
+    await listContactEmails("u1", "c1");
+    const call = contactEmailFindMany.mock.calls[0][0];
+    expect(call.where).toEqual({ contactId: "c1" });
+    expect(call.orderBy).toEqual({ sentAt: "desc" });
   });
 });
