@@ -28,6 +28,9 @@ import {
   deleteEntity,
   findCompanies,
   discoverLocalLeads,
+  swarmDiscover,
+  listSwarmRuns,
+  getSwarmRun,
   extractSiteContacts,
   searchGoogle,
   listContacts,
@@ -36,6 +39,7 @@ import {
   updateContact,
   deleteContact,
   saveEmail,
+  listContactEmails,
   saveSocialMessage,
   listSocialMessages,
   searchCrm,
@@ -55,6 +59,7 @@ import {
   normalizeSocialChannel,
   normalizeDirection,
   normalizeActivityKind,
+  normalizeVariantKind,
   requireNormalized,
 } from "@/lib/agent-enums";
 import {
@@ -70,17 +75,23 @@ import {
   type PaidPlanName,
 } from "@/lib/credits";
 import { storeMemory, recallMemory } from "@/lib/memory";
+import { getProvenanceMap } from "@/lib/provenance";
 import { verifyEntity } from "@/lib/enrich/verified-entity";
 import { detectEntityTech } from "@/lib/enrich/technographics";
 import {
   listSegments,
   getSegment,
   createSegment,
+  updateSegment,
+  deleteSegment,
+  removeSegmentMember,
   buildSmartSegment,
   listPipelines,
   getPipeline,
   createPipeline,
   addToPipeline,
+  deletePipeline,
+  removePipelineEntry,
   updatePipelineEntry,
   pipelineMetrics,
 } from "@/lib/field-operations";
@@ -89,6 +100,8 @@ import {
   getAutopilotStatus,
   pauseAutopilotPlan,
 } from "@/lib/autopilot-operations";
+import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
+import { createVariant, selectVariant, listVariantStats } from "@/lib/variant-operations";
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -275,6 +288,7 @@ const handler = createMcpHandler(
         search: z.string().max(500).optional().describe("Alias for query (older agent docs); ignored when query is set"),
         limit: z.number().int().min(1).max(200).optional().describe("Rows to return (default 50)"),
       },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ query, search, limit }, extra) =>
         run(() => listEntities(userIdFrom(extra), query ?? search, limit)),
     );
@@ -283,6 +297,7 @@ const handler = createMcpHandler(
       "get_entity",
       "Get one business by id, including its contacts.",
       { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) => run(() => getEntity(userIdFrom(extra), id)),
     );
 
@@ -301,6 +316,7 @@ const handler = createMcpHandler(
         notes: z.string().max(10000).optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (args, extra) =>
         gated(extra, "create", 120, (userId) =>
           createEntity(userId, { ...args, source: "agent" }),
@@ -324,8 +340,9 @@ const handler = createMcpHandler(
         status: z.enum(["NEW", "ENRICHED", "ARCHIVED"]).optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id, ...rest }, extra) =>
-        run(() => updateEntity(userIdFrom(extra), id, rest)),
+        gated(extra, "update_entity", 120, (userId) => updateEntity(userId, id, rest)),
     );
 
     server.tool(
@@ -341,7 +358,7 @@ const handler = createMcpHandler(
       "Permanently delete a business (entity) from the CRM by id. Its contacts are kept (unlinked from the company). Use to clean up junk or duplicate records.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => deleteEntity(userIdFrom(extra), id)),
+      async ({ id }, extra) => gated(extra, "delete_entity", 60, (userId) => deleteEntity(userId, id)),
     );
 
     /* -------------------------- Contacts -------------------------- */
@@ -354,6 +371,7 @@ const handler = createMcpHandler(
         status: z.string().max(20).optional(),
         limit: z.number().int().min(1).max(200).optional().describe("Rows to return (default 50)"),
       },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ query, search, status, limit }, extra) =>
         run(() => listContacts(userIdFrom(extra), { q: query ?? search, status, limit })),
     );
@@ -362,6 +380,7 @@ const handler = createMcpHandler(
       "get_contact",
       "Get one contact by id, including linked entity and saved email context.",
       { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) => run(() => getContact(userIdFrom(extra), id)),
     );
 
@@ -385,6 +404,7 @@ const handler = createMcpHandler(
         tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (args, extra) =>
         gated(extra, "create", 120, (userId) =>
           createContact(userId, { ...args, source: args.source || "agent" }),
@@ -424,8 +444,9 @@ const handler = createMcpHandler(
         tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().nullable().optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id, ...rest }, extra) =>
-        run(() => updateContact(userIdFrom(extra), id, rest)),
+        gated(extra, "update_contact", 120, (userId) => updateContact(userId, id, rest)),
     );
 
     server.tool(
@@ -433,7 +454,7 @@ const handler = createMcpHandler(
       "Permanently delete a person (contact) from the CRM by id. Use to clean up junk or duplicate records.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => deleteContact(userIdFrom(extra), id)),
+      async ({ id }, extra) => gated(extra, "delete_contact", 60, (userId) => deleteContact(userId, id)),
     );
 
     server.tool(
@@ -458,13 +479,26 @@ const handler = createMcpHandler(
         toAddr: z.string().max(320).optional(),
         savedAsContext: z.boolean().optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (args, extra) =>
-        run(() =>
-          saveEmail(userIdFrom(extra), {
+        gated(extra, "save_email_context", 120, (userId) =>
+          saveEmail(userId, {
             ...args,
             savedAsContext: args.savedAsContext ?? true,
           }),
         ),
+    );
+
+    server.tool(
+      "list_emails",
+      "Get the email history with a contact (subject, body, direction, from/to), newest first. Capped like other list tools (default 50, max 200) - ask for more with limit when you mean it.",
+      {
+        contactId: z.string().max(200),
+        limit: z.number().int().min(1).max(200).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ contactId, limit }, extra) =>
+        run(() => listContactEmails(userIdFrom(extra), contactId, limit)),
     );
 
     /* ---------------------- Social profiles + DMs ----------------- */
@@ -479,7 +513,7 @@ const handler = createMcpHandler(
 
     server.tool(
       "log_social_message",
-      "Record a social media message with a contact (a LinkedIn/X/Instagram/Facebook DM, comment, or connection note) so the conversation history stays on the CRM alongside email. Advances pipeline state honestly: an OUTBOUND message stamps the outreach time and moves NEW/ENRICHED to CONTACTED; an INBOUND message moves CONTACTED to REPLIED. Pass threadRef (a permalink or thread id) when you have one. channel accepts linkedin, x (or twitter), instagram, facebook, other - any casing. direction accepts inbound, outbound - any casing.",
+      "Record a social media message with a contact (a LinkedIn/X/Instagram/Facebook DM, comment, or connection note) so the conversation history stays on the CRM alongside email. Advances pipeline state honestly: an OUTBOUND message stamps the outreach time and moves NEW/ENRICHED to CONTACTED; an INBOUND message moves CONTACTED to REPLIED (and attributes the reply back to a variantId used on the most recent OUTBOUND send, if any). Pass threadRef (a permalink or thread id) when you have one, and variantId (from select_variant) on an OUTBOUND message that used a bandit-picked opener. channel accepts linkedin, x (or twitter), instagram, facebook, other - any casing. direction accepts inbound, outbound - any casing.",
       {
         contactId: z.string(),
         channel: z
@@ -491,11 +525,15 @@ const handler = createMcpHandler(
         threadRef: z.string().max(500).optional(),
         sentAt: z.string().datetime().optional().describe("ISO timestamp of when the message was sent"),
         savedAsContext: z.boolean().optional(),
+        variantId: z
+          .string()
+          .optional()
+          .describe("id of the OutreachVariant used (from select_variant); only meaningful on an OUTBOUND message"),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async ({ contactId, channel, direction, body, threadRef, sentAt, savedAsContext }, extra) =>
-        run(() =>
-          saveSocialMessage(userIdFrom(extra), {
+      async ({ contactId, channel, direction, body, threadRef, sentAt, savedAsContext, variantId }, extra) =>
+        gated(extra, "log_social_message", 120, (userId) =>
+          saveSocialMessage(userId, {
             contactId,
             channel: requireNormalized(
               channel,
@@ -508,6 +546,7 @@ const handler = createMcpHandler(
             threadRef: threadRef ?? null,
             sentAt: sentAt ? new Date(sentAt) : null,
             savedAsContext: savedAsContext ?? true,
+            variantId: variantId ?? null,
           }),
         ),
     );
@@ -546,6 +585,7 @@ const handler = createMcpHandler(
       "search_crm",
       "Search across both entities and contacts in the CRM.",
       { query: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ query }, extra) =>
         run(() => searchCrm(userIdFrom(extra), query)),
     );
@@ -557,6 +597,8 @@ const handler = createMcpHandler(
         query: z.string(),
         maxResults: z.number().int().min(1).max(20).optional(),
       },
+      // Not readOnly: it debits the credit meter on a hit.
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ query, maxResults }, extra) =>
         gated(extra, "search_web", 30, async (userId) => {
           if (!isTavilyConfigured())
@@ -595,6 +637,46 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "swarm_discover",
+      `Fan a broad discovery goal out into 2-6 DISTINCT search angles (auto-derived from the goal via OpenAI, or pass your own), run them in PARALLEL and blind to each other via Exa, then merge and dedupe the results across angles AND against the CRM by domain then name, adding only the new companies as entities with attribution for which angle(s) found each one. Strictly more thorough than one find_companies call - use it when a goal genuinely has multiple distinct slices worth searching independently (e.g. by sub-vertical, geography, funding stage, or hiring signal); prefer find_companies for a single focused query. COST MODEL: gated up front for the worst case (angle count x ${CREDIT_COSTS.find_companies} credits, the find_companies rate per angle), but only debited per angle that actually returns companies - an angle with no hits costs nothing, so the real charge is often below the ceiling you were gated for.`,
+      {
+        goal: z.string().max(1000),
+        angles: z
+          .array(z.string().max(300))
+          .max(6)
+          .optional()
+          .describe("Explicit search angles (1-6) - skips auto-derivation."),
+        anglesN: z
+          .number()
+          .int()
+          .min(2)
+          .max(6)
+          .optional()
+          .describe("How many angles to auto-derive from the goal when angles isn't given (default 4)."),
+        count: z.number().int().min(1).max(25).optional().describe("Results per angle (default 10)."),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ goal, angles, anglesN, count }, extra) =>
+        gated(extra, "swarm_discover", 5, (userId) => swarmDiscover(userId, { goal, angles, anglesN, count })),
+    );
+
+    server.tool(
+      "list_swarm_runs",
+      "List recent swarm discovery runs (newest first): goal, angles used, and found/merged/added/skipped counts.",
+      { limit: z.number().int().min(1).max(200).optional() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ limit }, extra) => run(() => listSwarmRuns(userIdFrom(extra), limit)),
+    );
+
+    server.tool(
+      "get_swarm_run",
+      "Get one swarm run's full breakdown: per-angle found/credited counts and per-company attribution (which angle(s) surfaced each company, and whether it was added or was already in the CRM).",
+      { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ id }, extra) => run(() => getSwarmRun(userIdFrom(extra), id)),
+    );
+
+    server.tool(
       "extract_contact_details",
       "Extract a company site's public contact details (emails, phones, social links) via Apify, deduped and tied to the site host (a strong, accurate company link). Returns the data for you to review and save selectively with create_contact - it does NOT auto-create contacts, so it never makes junk records from unnamed emails. Costs 8 credits when details are found (nothing on a miss).",
       { url: z.string().max(500) },
@@ -622,6 +704,7 @@ const handler = createMcpHandler(
       "list_segments",
       "List customer segments with member counts.",
       {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (_args, extra) => run(() => listSegments(userIdFrom(extra))),
     );
 
@@ -629,6 +712,7 @@ const handler = createMcpHandler(
       "get_segment",
       "Get a segment and its member contacts.",
       { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) => run(() => getSegment(userIdFrom(extra), id)),
     );
 
@@ -636,14 +720,40 @@ const handler = createMcpHandler(
       "create_segment",
       "Create a customer segment manually, optionally with member contact ids.",
       { name: z.string().max(200), goal: z.string().max(2000).optional(), contactIds: z.array(z.string()).max(1000).optional() },
-      async (args, extra) => run(() => createSegment(userIdFrom(extra), args)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (args, extra) => gated(extra, "create_segment", 60, (userId) => createSegment(userId, args)),
+    );
+
+    server.tool(
+      "update_segment",
+      "Update a segment's name and/or goal.",
+      { id: z.string(), name: z.string().max(200).optional(), goal: z.string().max(2000).optional() },
+      async ({ id, ...patch }, extra) => run(() => updateSegment(userIdFrom(extra), id, patch)),
+    );
+
+    server.tool(
+      "delete_segment",
+      "Permanently delete a segment by id, including its membership. The member contacts themselves are kept. Use to clean up junk or stale segments.",
+      { id: z.string() },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      async ({ id }, extra) => run(() => deleteSegment(userIdFrom(extra), id)),
+    );
+
+    server.tool(
+      "remove_segment_member",
+      "Remove one contact from a segment without deleting the segment or the contact.",
+      { segmentId: z.string(), contactId: z.string() },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      async ({ segmentId, contactId }, extra) => run(() => removeSegmentMember(userIdFrom(extra), segmentId, contactId)),
     );
 
     server.tool(
       "build_smart_segment",
-      "Build a segment from a goal: vector-matches the closest ELIGIBLE prospects (enriched, not yet contacted, not already in a pipeline). Use this to auto-create a targeted segment.",
+      "Build a segment from a goal: vector-matches the closest ELIGIBLE prospects (enriched, not yet contacted, not already in a pipeline). Use this to auto-create a targeted segment. Costs 2 credits when prospects are matched (no eligible prospects, or nothing matched, costs nothing).",
       { goal: z.string(), quantity: z.number().int().min(1).max(100).optional(), name: z.string().optional() },
-      async (args, extra) => run(() => buildSmartSegment(userIdFrom(extra), args)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async (args, extra) =>
+        gated(extra, "build_segment", 10, (userId) => buildSmartSegment(userId, args)),
     );
 
     /* -------------------------- Pipelines ------------------------- */
@@ -651,6 +761,7 @@ const handler = createMcpHandler(
       "list_pipelines",
       "List pipelines with entry counts.",
       {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (_args, extra) => run(() => listPipelines(userIdFrom(extra))),
     );
 
@@ -658,6 +769,7 @@ const handler = createMcpHandler(
       "get_pipeline",
       "Get a pipeline with its entries (stage, deal score, conversation status) and contacts.",
       { id: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) => run(() => getPipeline(userIdFrom(extra), id)),
     );
 
@@ -665,14 +777,33 @@ const handler = createMcpHandler(
       "create_pipeline",
       "Create a pipeline with an objective, optionally seeded from a segment (recommended).",
       { name: z.string(), goal: z.string().optional(), segmentId: z.string().optional() },
-      async (args, extra) => run(() => createPipeline(userIdFrom(extra), args)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (args, extra) => gated(extra, "create_pipeline", 60, (userId) => createPipeline(userId, args)),
     );
 
     server.tool(
       "add_to_pipeline",
       "Add contacts (by ids and/or a whole segment) to a pipeline as new entries.",
       { pipelineId: z.string(), contactIds: z.array(z.string()).max(1000).optional(), segmentId: z.string().optional() },
-      async ({ pipelineId, ...rest }, extra) => run(() => addToPipeline(userIdFrom(extra), pipelineId, rest)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ pipelineId, ...rest }, extra) =>
+        gated(extra, "add_to_pipeline", 60, (userId) => addToPipeline(userId, pipelineId, rest)),
+    );
+
+    server.tool(
+      "delete_pipeline",
+      "Permanently delete a pipeline by id, including its entries. The member contacts themselves are kept. Use to clean up junk or stale pipelines.",
+      { id: z.string() },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      async ({ id }, extra) => run(() => deletePipeline(userIdFrom(extra), id)),
+    );
+
+    server.tool(
+      "remove_pipeline_entry",
+      "Remove one entry from a pipeline (drop that contact out of the deal flow) without deleting the pipeline or the contact.",
+      { pipelineId: z.string(), entryId: z.string() },
+      { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      async ({ pipelineId, entryId }, extra) => run(() => removePipelineEntry(userIdFrom(extra), pipelineId, entryId)),
     );
 
     server.tool(
@@ -685,14 +816,16 @@ const handler = createMcpHandler(
         dealScore: z.number().int().min(0).max(100).nullable().optional(),
         conversationStatus: z.enum(["OPEN", "AWAITING_REPLY", "STALLED", "CLOSED"]).optional(),
       },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ pipelineId, entryId, ...patch }, extra) =>
-        run(() => updatePipelineEntry(userIdFrom(extra), pipelineId, entryId, patch)),
+        gated(extra, "update_pipeline_entry", 120, (userId) => updatePipelineEntry(userId, pipelineId, entryId, patch)),
     );
 
     server.tool(
       "pipeline_metrics",
       "Progress metrics for a pipeline: counts by stage and conversation status, won/lost, average deal score, and open conversations.",
       { pipelineId: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ pipelineId }, extra) => run(() => pipelineMetrics(userIdFrom(extra), pipelineId)),
     );
 
@@ -741,19 +874,20 @@ const handler = createMcpHandler(
     /* --------------------------- Memory --------------------------- */
     server.tool(
       "recall",
-      "Recall relevant past context (earlier work and CRM notes) by similarity. Each MCP session is stateless, so call this before assuming you do not know something.",
+      "Recall relevant past context (earlier work and CRM notes) by similarity. Each MCP session is stateless, so call this before assuming you do not know something. Free (reads only your own stored memory); rate-limited per minute.",
       { query: z.string(), k: z.number().int().min(1).max(20).optional() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      async ({ query, k }, extra) => run(() => recallMemory(userIdFrom(extra), query, k)),
+      async ({ query, k }, extra) =>
+        gated(extra, "recall", 60, (userId) => recallMemory(userId, query, k)),
     );
     server.tool(
       "remember",
-      "Persist a durable note or fact to long-term memory so a future session can recall it. Use for decisions, preferences, and outreach context worth keeping.",
+      "Persist a durable note or fact to long-term memory so a future session can recall it. Use for decisions, preferences, and outreach context worth keeping. Costs 1 credit per memory actually saved (nothing charged on a failed save).",
       { content: z.string().max(8000), refId: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async ({ content, refId }, extra) =>
-        run(async () => {
-          const remembered = await storeMemory(userIdFrom(extra), "message", content, refId);
+        gated(extra, "remember", 30, async (userId) => {
+          const remembered = await storeMemory(userId, "message", content, refId, { chargeCredits: true });
           // Report honestly: a silent no-op (embeddings unconfigured, insert
           // failure) must not hand an autonomous agent a success receipt.
           return remembered
@@ -857,7 +991,7 @@ const handler = createMcpHandler(
       "Refresh a logged call from AgentPhone: pull the latest status, duration, transcript, and recording onto the call record. Use after a call ends.",
       { logId: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      async ({ logId }, extra) => run(() => syncContactCall(userIdFrom(extra), logId)),
+      async ({ logId }, extra) => gated(extra, "sync_call", 30, (userId) => syncContactCall(userId, logId)),
     );
     server.tool(
       "log_call",
@@ -876,13 +1010,13 @@ const handler = createMcpHandler(
         recordingUrl: z.string().url().max(1000).startsWith("https://").optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async (a, extra) => run(() => saveCall(userIdFrom(extra), a)),
+      async (a, extra) => gated(extra, "log_call", 120, (userId) => saveCall(userId, a)),
     );
 
     /* ----------------------- Outreach tracking -------------------- */
     server.tool(
       "log_outreach",
-      "Record that you reached out to a contact: stamps when, advances status (defaults to CONTACTED), and logs what you said as an activity. Call this after every outbound message so follow-ups stay reliable.",
+      "Record that you reached out to a contact: stamps when, advances status (defaults to CONTACTED), and logs what you said as an activity. Call this after every outbound message so follow-ups stay reliable. Pass variantId (the id select_variant returned) when the message used a bandit-picked subject/opener, so a later reply gets attributed back to it.",
       {
         contactId: z.string(),
         summary: z.string().max(5000),
@@ -890,10 +1024,13 @@ const handler = createMcpHandler(
         status: z
           .enum(["NEW", "ENRICHED", "CONTACTED", "REPLIED", "QUALIFIED", "WON", "LOST", "ARCHIVED"])
           .optional(),
+        variantId: z.string().optional().describe("id of the OutreachVariant used, from select_variant"),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (a, extra) =>
-        run(() => logOutreach(userIdFrom(extra), { ...a, actor: actorFrom(extra) })),
+        gated(extra, "log_outreach", 120, (userId) =>
+          logOutreach(userId, { ...a, actor: actorFrom(extra) }),
+        ),
     );
     server.tool(
       "list_due_followups",
@@ -923,8 +1060,8 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (a, extra) =>
-        run(() =>
-          addActivity(userIdFrom(extra), {
+        gated(extra, "add_activity", 120, (userId) =>
+          addActivity(userId, {
             ...a,
             kind: requireNormalized(
               a.kind,
@@ -947,18 +1084,98 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (a, extra) => run(() => listActivities(userIdFrom(extra), a)),
     );
+
+    /* ------------------------- Breakup drafts ---------------------- */
+    // Scan for stalled deals and draft a polite "breakup" email for each,
+    // grounded only in stored history. Drafts are held PENDING for human
+    // review - approving (and thereby sending) a draft is a session-gated REST
+    // action (src/app/api/breakup-drafts/[id]/approve), never an MCP tool, so a
+    // prompt-injected agent can never approve its own drafts.
+    server.tool(
+      "draft_breakups",
+      "Scan for stalled deals (contacts in CONTACTED/REPLIED, or with a pipeline entry stuck AWAITING_REPLY/STALLED, with no touch in staleDays) and draft a polite 'breakup' pattern-interrupt email for each, grounded ONLY in the contact's real stored activity/email history - never invented facts. Drafts are saved PENDING for human review; this tool never sends anything. Costs credits per NEW draft generated (idempotent: a contact with an existing pending draft is skipped, not recharged).",
+      {
+        staleDays: z.number().int().min(1).max(365).optional().describe("Days without a touch to count as stalled (default 14)"),
+        limit: z.number().int().min(1).max(25).optional().describe("Max cold deals to scan/draft in this call (default 10)"),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async (a, extra) => gated(extra, "breakup_draft", 10, (userId) => draftBreakups(userId, a)),
+    );
+    server.tool(
+      "list_pending_drafts",
+      "List breakup drafts awaiting human review (oldest first), each with the contact and the drafted subject+body. Read-only - a human approves or dismisses these in the app, never an agent.",
+      { limit: z.number().int().min(1).max(200).optional() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (a, extra) => run(() => listPendingDrafts(userIdFrom(extra), a)),
+    );
+
+    server.tool(
+      "get_provenance",
+      "Get field-level provenance for a contact or entity: which provider supplied each enriched field, its confidence, when it was retrieved, and whether it is stale. This is the audit trail behind \"via explorium, 3 days ago\" in the UI - use it to decide whether a field is trustworthy enough to act on or due for a re-verify. Returns an object keyed by field name; a record with no enrichment history returns an empty object.",
+      {
+        recordType: z.enum(["contact", "entity"]),
+        recordId: z.string().max(200),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ recordType, recordId }, extra) =>
+        run(() => getProvenanceMap(recordType, recordId, userIdFrom(extra))),
+    );
+
+    /* ------------------- Self-optimizing outreach ------------------ */
+    server.tool(
+      "create_variant",
+      "Create a subject-line or opener text variant for self-optimizing outreach. Optionally scope it to a segment (omit segmentId for a general-purpose variant used outside any segment). New variants start unproven (0 sends, 0 replies) and are explored by select_variant exactly like every other variant already in the pool. kind accepts subject, opener - any casing.",
+      {
+        kind: z.string().max(20).describe("subject | opener - case-insensitive"),
+        text: z.string().min(1).max(2000),
+        segmentId: z.string().optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async ({ kind, text, segmentId }, extra) =>
+        gated(extra, "create_variant", 60, (userId) =>
+          createVariant(userId, {
+            kind: requireNormalized(kind, normalizeVariantKind, "kind", "subject, opener"),
+            text,
+            segmentId: segmentId ?? null,
+          }),
+        ),
+    );
+    server.tool(
+      "select_variant",
+      "Pick the best subject-line or opener to use next: a multi-armed bandit (Thompson sampling over reply rate) that explores when a pool has little data and converges on the winner as sends accumulate - no A/B test to configure. Returns the chosen variant's id and text; use that text verbatim, then pass the id as variantId to log_outreach or log_social_message so a reply gets attributed back to it. Fails with a clear message if no variants exist yet for this kind/segment - call create_variant first. kind accepts subject, opener - any casing.",
+      {
+        kind: z.string().max(20).describe("subject | opener - case-insensitive"),
+        segmentId: z.string().optional().describe("omit for the general (no-segment) pool"),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async ({ kind, segmentId }, extra) =>
+        run(() =>
+          selectVariant(userIdFrom(extra), {
+            kind: requireNormalized(kind, normalizeVariantKind, "kind", "subject, opener"),
+            segmentId: segmentId ?? null,
+          }),
+        ),
+    );
+    server.tool(
+      "list_variant_stats",
+      "Reply-rate stats for outreach variants (subject lines / openers): sends, replies, reply rate, and which variant is currently winning, grouped by segment and kind. Read-only; free.",
+      { segmentId: z.string().optional().describe("omit to see every segment (and the general pool)") },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ segmentId }, extra) =>
+        run(() => listVariantStats(userIdFrom(extra), { segmentId: segmentId ?? undefined })),
+    );
   },
   {
     serverInfo: { name: "scalar", version: "0.1.0" },
-    instructions: `Scalar is a CRM that you, an AI agent, operate end to end with no human. You discover leads, enrich them accurately, organize them, track outreach, and you pay for your own usage when credits run low. Reads and writes to the CRM are free; only actions that pull real data from the outside world (discovery, enrichment, web search) cost credits.
+    instructions: `Scalar is a CRM that you, an AI agent, operate end to end with no human. You discover leads, enrich them accurately, organize them, track outreach, and you pay for your own usage when credits run low. Reads and writes to the CRM are free; credits are spent only when an action calls a paid outside provider - discovery, enrichment, web search, build_smart_segment's matching, and remember's memory writes all call one. recall is free: it only searches your own already-stored memory.
 
 THE OPERATING LOOP
-1. Orient. Call get_balance to know your runway, and recall to retrieve relevant past context (this session is stateless). Call search_crm or list_entities / list_contacts before discovering, so you build on existing records instead of duplicating them.
-2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). Both dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
+1. Orient. Call get_balance to know your runway, and recall to retrieve relevant past context (this session is stateless, and recall is free). Call search_crm or list_entities / list_contacts before discovering, so you build on existing records instead of duplicating them.
+2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). For a broad goal with multiple distinct slices (sub-verticals, geographies, funding stages, hiring signals), use swarm_discover instead: it fans out 2-6 angles in parallel, merges and dedupes across all of them plus the CRM, and tells you which angle found each company - more thorough than one find_companies call, at a clearly stated cost ceiling. All three dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
 3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. For their social profiles (LinkedIn, X, Instagram, Facebook), call find_socials: it auto-saves only name+company-verified profiles and returns the rest as candidates for you to review. Enrich what you will act on, not the whole database; every enrichment costs credits.
-4. Organize. Group not-yet-contacted prospects with build_smart_segment, then create_pipeline to track them through stages.
-5. Track outreach. This is the memory that makes you reliable. When you email a contact, call save_email_context, then log_outreach to stamp when you reached out and advance status. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message (it advances pipeline state itself; use list_social_messages to reread a conversation). When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. remember any decision or context worth keeping.
-6. Measure and repeat. Use pipeline_metrics to see what is working, then loop back to discovery.
+4. Organize. Group not-yet-contacted prospects with build_smart_segment (costs credits when it matches prospects), then create_pipeline to track them through stages. Clean up as you go: update_segment/delete_segment/remove_segment_member and delete_pipeline/remove_pipeline_entry let you rename, retire, or prune segments and pipelines instead of leaving stale ones behind.
+5. Track outreach. This is the memory that makes you reliable. Before writing your first message to a segment (or in general), call select_variant (kind: subject or opener) to get the bandit's current best pick for that pool - it explores automatically while data is thin and converges on the winner as replies come in, so you never need to run your own A/B test. Use the returned text verbatim, then when you email a contact, call save_email_context, then log_outreach (with variantId set to what select_variant returned) to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message the same way (pass variantId on the OUTBOUND message; it advances pipeline state itself and attributes a later reply back to the variant automatically - use list_social_messages to reread a conversation). Check list_variant_stats any time to see reply rates and which variant is winning. If you're not testing variants, log_outreach/log_social_message work exactly the same without variantId. When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). For deals gone fully cold, call draft_breakups to write a grounded breakup email per stalled contact - it only drafts (list_pending_drafts to review); a human approves or dismisses in the app, you never send it yourself. Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping (costs 1 credit per memory actually saved).
+6. Measure and repeat. Use pipeline_metrics and list_variant_stats to see what is working, then loop back to discovery.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.
 

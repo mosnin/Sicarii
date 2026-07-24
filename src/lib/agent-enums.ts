@@ -9,6 +9,7 @@
 
 import { OpError } from "@/lib/crm-operations";
 import type { SocialChannelName } from "@/lib/crm-operations";
+import type { VariantKind } from "@/lib/variant-operations";
 
 const SOCIAL_CHANNEL_ALIASES: Record<string, SocialChannelName> = {
   linkedin: "LINKEDIN",
@@ -45,6 +46,20 @@ const ACTIVITY_KINDS: ReadonlySet<string> = new Set([
 export function normalizeActivityKind(input: string): ActivityKind | null {
   const v = input.trim().toLowerCase();
   return ACTIVITY_KINDS.has(v) ? (v as ActivityKind) : null;
+}
+
+const VARIANT_KIND_ALIASES: Record<string, VariantKind> = {
+  subject: "SUBJECT",
+  opener: "OPENER",
+};
+
+/** "subject" / "SUBJECT" / "opener" / "Opener" / ... -> the canonical
+ *  VariantKind ("SUBJECT" | "OPENER") the database and ops layer expect, or
+ *  null. Same forgiving-casing convention as the other enum normalizers
+ *  above, for the self-optimizing outreach bandit's create_variant /
+ *  select_variant tool inputs. */
+export function normalizeVariantKind(input: string): VariantKind | null {
+  return VARIANT_KIND_ALIASES[input.trim().toLowerCase()] ?? null;
 }
 
 /**

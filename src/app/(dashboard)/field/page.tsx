@@ -226,6 +226,86 @@ function SegmentsPanel() {
           ))}
         </div>
       )}
+
+      <VariantStatsPanel segments={items} />
+    </div>
+  );
+}
+
+/* ------------------- Self-optimizing outreach (read-only) ------------------ */
+
+type VariantStat = {
+  id: string;
+  kind: "SUBJECT" | "OPENER";
+  text: string;
+  segmentId: string | null;
+  sends: number;
+  replies: number;
+  replyRate: number;
+  winning: boolean;
+};
+
+// Read-only: the agent creates and picks variants over MCP (select_variant),
+// converging on the best subject line / opener per segment on its own. This
+// panel just shows what it has learned so far - there is no "start an A/B
+// test" control here by design.
+function VariantStatsPanel({ segments }: { segments: Segment[] }) {
+  const [stats, setStats] = useState<VariantStat[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/variants")
+      .then((r) => r.json())
+      .then((d) => setStats(d.variants ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || stats.length === 0) return null;
+
+  const segName = (id: string | null) =>
+    id ? (segments.find((s) => s.id === id)?.name ?? "Unlinked segment") : "General";
+
+  const groups = new Map<string, VariantStat[]>();
+  for (const v of stats) {
+    const key = v.segmentId ?? "none";
+    groups.set(key, [...(groups.get(key) ?? []), v]);
+  }
+
+  return (
+    <div className="space-y-3 pt-2">
+      <p className="font-brand text-xs uppercase tracking-[0.25em] text-muted-foreground">
+        Self-optimizing outreach
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[...groups.entries()].map(([key, vs]) => (
+          <div key={key} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <p className="font-brand truncate text-sm">{segName(vs[0].segmentId)}</p>
+            <div className="mt-3 space-y-2">
+              {vs.map((v) => (
+                <div key={v.id} className="flex items-start justify-between gap-3 rounded-xl bg-background/50 p-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium text-foreground">{v.text}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {v.kind === "SUBJECT" ? "Subject" : "Opener"} &middot; {v.sends} sent &middot; {v.replies} replied
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <span className="text-xs font-medium tabular-nums text-foreground">
+                      {Math.round(v.replyRate * 100)}%
+                    </span>
+                    {v.winning && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        Winning
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

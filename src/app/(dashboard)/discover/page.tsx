@@ -889,6 +889,7 @@ export default function DiscoverPage() {
   const reduce = useReducedMotion();
   const { stage, active, values, records, rawText, error } = state;
   const [showSchedule, setShowSchedule] = useState(false);
+  const [view, setView] = useState<"tools" | "swarm">("tools");
 
   const run = useCallback(async () => {
     if (!active) return;
@@ -1003,15 +1004,43 @@ export default function DiscoverPage() {
               Pull real company &amp; contact data, then drop it straight into your CRM.
             </p>
           </div>
-          <Button variant="outline" asChild>
-            <Link href="/crm/new">
-              <Plus className="mr-1 h-4 w-4" />
-              Add manually
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+              <button
+                type="button"
+                onClick={() => setView("tools")}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                  view === "tools" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Tools
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("swarm")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                  view === "swarm" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Network className="h-3 w-3" />
+                Swarm
+              </button>
+            </div>
+            <Button variant="outline" asChild>
+              <Link href="/crm/new">
+                <Plus className="mr-1 h-4 w-4" />
+                Add manually
+              </Link>
+            </Button>
+          </div>
         </div>
       </FloatIn>
 
+      {view === "swarm" && <SwarmPanel />}
+
+      {view === "tools" && (
       <AnimatePresence mode="wait" custom={1}>
         {/* ── GRID ── */}
         {stage === "grid" && (
@@ -1293,6 +1322,385 @@ export default function DiscoverPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      )}
+    </div>
+  );
+}
+
+// ─── swarm discovery ─────────────────────────────────────────────────────────
+// A broad goal fanned out into N distinct search angles, run in parallel and
+// blind to each other, then merged and deduped across angles and the CRM. A
+// self-contained panel (its own fetch/state) rather than another branch of the
+// big tool-runner reducer above - the shapes (per-angle breakdown, per-company
+// attribution, a persisted run history) are different enough to earn their own
+// small state machine instead of being force-fit into SaveAs/Stage.
+
+type SwarmAngleBreakdown = { angle: string; found: number; credited: boolean };
+type SwarmCompanyAttribution = {
+  companyName: string;
+  domain: string | null;
+  angles: string[];
+  status: "added" | "duplicate";
+  entityId: string | null;
+};
+type SwarmSummary = {
+  id?: string;
+  goal: string;
+  angles: string[];
+  angleSource: string;
+  found: number;
+  merged: number;
+  added: number;
+  skipped: number;
+  creditsSpent: number;
+  perAngle: SwarmAngleBreakdown[];
+  companies: SwarmCompanyAttribution[];
+  createdAt?: string;
+};
+
+// The POST /api/discover/swarm response is already flat (runId at top level);
+// the GET /api/discover/swarm history rows nest the breakdown under `items`
+// (the DB column). Normalize both into one shape so the same view renders either.
+function normalizeSwarmResult(raw: Record<string, unknown>): SwarmSummary {
+  const items = isObj(raw.items) ? raw.items : null;
+  const perAngle = (items ? items.perAngle : raw.perAngle) as SwarmAngleBreakdown[] | undefined;
+  const companies = (items ? items.companies : raw.companies) as SwarmCompanyAttribution[] | undefined;
+  return {
+    id: (raw.id as string | undefined) ?? (raw.runId as string | undefined),
+    goal: String(raw.goal ?? ""),
+    angles: Array.isArray(raw.angles) ? (raw.angles as string[]) : [],
+    angleSource: String(raw.angleSource ?? "derived"),
+    found: Number(raw.found ?? 0),
+    merged: Number(raw.merged ?? 0),
+    added: Number(raw.added ?? 0),
+    skipped: Number(raw.skipped ?? 0),
+    creditsSpent: Number(raw.creditsSpent ?? 0),
+    perAngle: perAngle ?? [],
+    companies: companies ?? [],
+    createdAt: raw.createdAt as string | undefined,
+  };
+}
+
+function SwarmPanel() {
+  const [goal, setGoal] = useState("");
+  const [mode, setMode] = useState<"auto" | "custom">("auto");
+  const [anglesN, setAnglesN] = useState(4);
+  const [customAngles, setCustomAngles] = useState("");
+  const [count, setCount] = useState(10);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<SwarmSummary | null>(null);
+
+  const [history, setHistory] = useState<SwarmSummary[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await fetch("/api/discover/swarm?limit=10");
+      const data = await res.json().catch(() => ({}));
+      if (Array.isArray(data.runs)) {
+        setHistory((data.runs as Record<string, unknown>[]).map(normalizeSwarmResult));
+      }
+    } catch {
+      /* history is a nice-to-have; a failed load just leaves the list empty */
+    } finally {
+      setHistoryLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  async function run() {
+    if (!goal.trim() || running) return;
+    setRunning(true);
+    setError(null);
+    setResult(null);
+    try {
+      const angles =
+        mode === "custom"
+          ? customAngles.split("\n").map((a) => a.trim()).filter(Boolean).slice(0, 6)
+          : undefined;
+      if (mode === "custom" && (!angles || angles.length === 0)) {
+        setError("Enter at least one angle, one per line.");
+        setRunning(false);
+        return;
+      }
+      const res = await fetch("/api/discover/swarm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          goal: goal.trim(),
+          ...(angles ? { angles } : { anglesN }),
+          count,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error ?? "Swarm discovery failed. Please try again.");
+        return;
+      }
+      setResult(normalizeSwarmResult(data.result));
+      loadHistory();
+    } catch {
+      setError("Network error - please try again.");
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: SPRING }}
+      className="space-y-6"
+    >
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <Network className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-brand text-lg">Swarm discovery</h2>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          Describe a broad goal. Scalar splits it into distinct search angles, runs them in
+          parallel and blind to each other, then merges and dedupes everything against your
+          CRM - one ranked, attributed result instead of one search&apos;s blind spots.
+        </p>
+
+        <div className="mt-4 space-y-3">
+          <div>
+            <label className="text-muted-foreground mb-1 block text-xs font-medium">Goal</label>
+            <Input
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              placeholder="Series A devtools companies hiring platform engineers in the US"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">Angles</label>
+              <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+                <button
+                  type="button"
+                  onClick={() => setMode("auto")}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    mode === "auto" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Auto-derive
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("custom")}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    mode === "custom" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  My own
+                </button>
+              </div>
+            </div>
+
+            {mode === "auto" && (
+              <div>
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">How many (2-6)</label>
+                <select
+                  value={anglesN}
+                  onChange={(e) => setAnglesN(Number(e.target.value))}
+                  className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  {[2, 3, 4, 5, 6].map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">Per angle</label>
+              <select
+                value={count}
+                onChange={(e) => setCount(Number(e.target.value))}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {[5, 10, 15, 20].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {mode === "custom" && (
+            <div>
+              <label className="text-muted-foreground mb-1 block text-xs font-medium">
+                Angles, one per line (up to 6)
+              </label>
+              <textarea
+                value={customAngles}
+                onChange={(e) => setCustomAngles(e.target.value)}
+                placeholder={"Series A devtools startups in NYC\nSeries A devtools startups hiring platform engineers\nOpen-core infra companies with recent funding"}
+                rows={3}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          )}
+
+          <p className="text-muted-foreground text-xs">
+            Cost: gated up front for the worst case (angle count x {mode === "auto" ? anglesN : (customAngles.split("\n").filter((l) => l.trim()).length || 1)} x 12 credits), but only charged per angle that actually returns companies - an empty angle is free.
+          </p>
+
+          <Button onClick={run} disabled={running || !goal.trim()}>
+            {running ? "Running swarm…" : "Run swarm"}
+          </Button>
+        </div>
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <span className="text-foreground">{error}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {running && <DiscoverWorking />}
+
+      {result && !running && (
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-sm font-medium">Latest run</p>
+          <SwarmResultView result={result} />
+        </div>
+      )}
+
+      {historyLoaded && history.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-brand text-base text-muted-foreground uppercase tracking-wide text-xs">
+            Recent swarms
+          </h3>
+          <div className="space-y-2">
+            {history.map((h) => {
+              const isOpen = expandedId === h.id;
+              return (
+                <div key={h.id} className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(isOpen ? null : (h.id ?? null))}
+                    className="flex w-full items-center justify-between gap-4 px-5 py-3 text-left hover:bg-muted/40 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-brand truncate text-sm text-foreground">{h.goal}</p>
+                      <p className="text-muted-foreground mt-0.5 text-xs">
+                        {h.angles.length} angle{h.angles.length === 1 ? "" : "s"} · {h.added} added · {h.skipped} duplicate{h.skipped === 1 ? "" : "s"} · {h.creditsSpent} credits
+                      </p>
+                    </div>
+                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+                  </button>
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden border-t border-border"
+                      >
+                        <div className="p-5">
+                          <SwarmResultView result={h} />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function SwarmResultView({ result }: { result: SwarmSummary }) {
+  const stats: { label: string; value: number }[] = [
+    { label: "Found", value: result.found },
+    { label: "Unique", value: result.merged },
+    { label: "Added", value: result.added },
+    { label: "Duplicates", value: result.skipped },
+    { label: "Credits", value: result.creditsSpent },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-xl border border-border bg-muted/30 p-3 text-center">
+            <p className="font-brand text-lg text-foreground">{s.value}</p>
+            <p className="text-muted-foreground text-[10px] uppercase tracking-wide">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {result.perAngle.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Per angle</p>
+          <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
+            {result.perAngle.map((a, i) => (
+              <div key={i} className="flex items-center justify-between gap-4 px-3 py-2 text-sm">
+                <span className="min-w-0 truncate text-foreground">{a.angle}</span>
+                <span className="text-muted-foreground shrink-0 text-xs">
+                  {a.found} found{a.credited ? " · 12 credits" : " · free (no hits)"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {result.companies.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Companies</p>
+          <div className="space-y-2">
+            {result.companies.map((c, i) => (
+              <div key={i} className="flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-foreground">{c.companyName}</p>
+                  {c.domain && <p className="text-muted-foreground truncate text-xs">{c.domain}</p>}
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {c.angles.map((a, j) => (
+                      <span key={j} className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] text-primary">
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  {c.status === "added" && c.entityId ? (
+                    <Link href={`/crm/entity/${c.entityId}`} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs text-primary hover:underline">
+                      <Check className="h-3 w-3 text-green-500" /> Added
+                    </Link>
+                  ) : (
+                    <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
+                      Already in CRM
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
