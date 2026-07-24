@@ -8,18 +8,23 @@ import { prisma } from "@/lib/prisma";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 import { googleMapsLeads, scrapeSiteContacts, apifyGoogleSearch, isApifyConfigured } from "@/lib/apify";
-import { spendCredits, ensureCredits } from "@/lib/credits";
+import { spendCredits, ensureCredits, ensureCreditsForCount, CREDIT_COSTS } from "@/lib/credits";
 import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 import { placeCall, getCall } from "@/lib/agentphone";
+import { assertVariantOwned, attributeReply } from "@/lib/variant-operations";
+import {
+  deriveAngles,
+  mergeAngleResults,
+  clampAngleCount,
+  isAngleDerivationConfigured,
+  normalizeDomain,
+  DEFAULT_ANGLES,
+  MAX_ANGLES,
+  type AngleResult,
+} from "@/lib/swarm";
 
-export class OpError extends Error {
-  status: number;
-  constructor(message: string, status = 400) {
-    super(message);
-    this.name = "OpError";
-    this.status = status;
-  }
-}
+export { OpError } from "@/lib/op-error";
+import { OpError } from "@/lib/op-error";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -207,11 +212,48 @@ export async function enrichEntity(userId: string, id: string) {
   return updated;
 }
 
+// Filter a batch of discovered companies down to the ones that are new, both
+// against the CRM (by domain then name) and against each other within the
+// batch (a duplicate that shows up twice in one batch is only fresh once).
+// Shared by every "discover and add" path - findCompanies, discoverLocalLeads,
+// swarmDiscover - so the dedup rule can never drift between them; before this
+// each caller reimplemented the same norm()+Set logic separately.
+async function dedupeAgainstCrm<T extends { companyName: string; domain?: string | null }>(
+  userId: string,
+  found: T[],
+): Promise<{ fresh: T[]; skipped: number }> {
+  const existing = await prisma.entity.findMany({
+    where: { userId },
+    select: { domain: true, name: true },
+  });
+  const seenDomains = new Set(
+    existing.map((e) => normalizeDomain(e.domain)).filter(Boolean) as string[],
+  );
+  const seenNames = new Set(existing.map((e) => e.name.trim().toLowerCase()));
+
+  const fresh: T[] = [];
+  let skipped = 0;
+  for (const c of found) {
+    const domain = normalizeDomain(c.domain);
+    const nameKey = c.companyName.trim().toLowerCase();
+    if ((domain && seenDomains.has(domain)) || seenNames.has(nameKey)) {
+      skipped++;
+      continue;
+    }
+    if (domain) seenDomains.add(domain);
+    seenNames.add(nameKey);
+    fresh.push(c);
+  }
+  return { fresh, skipped };
+}
+
 /** Discover CRM-ready companies from a prompt via Exa deep research, dedupe by
  *  domain (then name) against the CRM and within the batch, and add the new
  *  ones as entities. Accuracy first: unnamed/aggregator results are dropped
  *  upstream, and we never create a duplicate. This is the prospecting entry
- *  point (vs search_web, which only returns raw web results). */
+ *  point (vs search_web, which only returns raw web results) - and the same
+ *  single-angle primitive swarmDiscover fans out N of, in parallel, blind to
+ *  each other, when a goal needs more than one slice. */
 export async function findCompanies(
   userId: string,
   input: { query: string; count?: number }
@@ -229,29 +271,9 @@ export async function findCompanies(
     await spendCredits(userId, "find_companies");
   }
 
-  const existing = await prisma.entity.findMany({
-    where: { userId },
-    select: { domain: true, name: true },
-  });
-  const norm = (d?: string | null) => d?.toLowerCase().replace(/^www\./, "").trim() || undefined;
-  const seenDomains = new Set(existing.map((e) => norm(e.domain)).filter(Boolean) as string[]);
-  const seenNames = new Set(existing.map((e) => e.name.trim().toLowerCase()));
-
   // Filter first, insert once: a single batched INSERT instead of one round
   // trip per company (the old loop was N sequential inserts).
-  const fresh: typeof found = [];
-  let skipped = 0;
-  for (const c of found) {
-    const domain = norm(c.domain);
-    const nameKey = c.companyName.trim().toLowerCase();
-    if ((domain && seenDomains.has(domain)) || seenNames.has(nameKey)) {
-      skipped++;
-      continue;
-    }
-    if (domain) seenDomains.add(domain);
-    seenNames.add(nameKey);
-    fresh.push(c);
-  }
+  const { fresh, skipped } = await dedupeAgainstCrm(userId, found);
   const rows = await prisma.entity.createManyAndReturn({
     data: fresh.map((c) => ({
       userId,
@@ -289,28 +311,8 @@ export async function discoverLocalLeads(
     await spendCredits(userId, "maps_leads");
   }
 
-  const existing = await prisma.entity.findMany({
-    where: { userId },
-    select: { domain: true, name: true },
-  });
-  const norm = (d?: string | null) => d?.toLowerCase().replace(/^www\./, "").trim() || undefined;
-  const seenDomains = new Set(existing.map((e) => norm(e.domain)).filter(Boolean) as string[]);
-  const seenNames = new Set(existing.map((e) => e.name.trim().toLowerCase()));
-
-  // Filter first, insert once (same batched pattern as findCompanies).
-  const fresh: typeof found = [];
-  let skipped = 0;
-  for (const c of found) {
-    const domain = norm(c.domain);
-    const nameKey = c.companyName.trim().toLowerCase();
-    if ((domain && seenDomains.has(domain)) || seenNames.has(nameKey)) {
-      skipped++;
-      continue;
-    }
-    if (domain) seenDomains.add(domain);
-    seenNames.add(nameKey);
-    fresh.push(c);
-  }
+  // Filter first, insert once (same shared dedupe as findCompanies).
+  const { fresh, skipped } = await dedupeAgainstCrm(userId, found);
   const rows = await prisma.entity.createManyAndReturn({
     data: fresh.map((c) => ({
       userId,
@@ -326,6 +328,201 @@ export async function discoverLocalLeads(
     select: { id: true, name: true, domain: true },
   });
   return { query: input.query, location: input.location ?? null, added: rows.length, skipped, created: rows };
+}
+
+/* --------------------------- Swarm discovery ------------------------- */
+//
+// Swarm discovery fans a broad goal out into N distinct search angles (given
+// explicitly or auto-derived), runs each angle through the SAME single-angle
+// primitive findCompanies uses (exaFindCompanies) IN PARALLEL and blind to
+// each other's results, then merges across angles and dedupes against the CRM
+// exactly once, with per-company attribution of which angle(s) found it. This
+// is strictly more thorough than one findCompanies call: N independent slices
+// of the goal instead of one query's blind spots, on the same accuracy rules
+// (unnamed/aggregator results are dropped upstream by exaFindCompanies).
+//
+// CREDIT MODEL (see docs/decisions/0011-swarm-discovery.md): gated up front
+// for the worst case - every angle hits, billed at the find_companies rate
+// each (ensureCreditsForCount) - so a caller always knows the ceiling before
+// any paid work starts. The real debit is still per angle, only on a hit
+// (spendCredits inside the loop below): an angle that comes back empty costs
+// nothing, so a swarm never silently costs more than it gated for, and a
+// caller who only needed 2 of 6 angles to hit is only ever billed for those 2.
+
+export interface SwarmDiscoverInput {
+  goal: string;
+  angles?: string[];
+  anglesN?: number;
+  count?: number; // per-angle result count, same bounds as findCompanies
+}
+
+export interface SwarmAngleBreakdown {
+  angle: string;
+  found: number;
+  credited: boolean;
+}
+
+export interface SwarmCompanyAttribution {
+  companyName: string;
+  domain: string | null;
+  angles: string[];
+  status: "added" | "duplicate";
+  entityId: string | null;
+}
+
+export async function swarmDiscover(userId: string, input: SwarmDiscoverInput) {
+  if (!isExaConfigured())
+    throw new OpError("Discovery is not configured (EXA_API_KEY missing)", 501);
+
+  // Resolve angles first (validation only - no paid work yet) so we know N
+  // before gating credits.
+  let angles: string[];
+  let angleSource: "explicit" | "derived";
+  if (input.angles && input.angles.length > 0) {
+    const cleaned = [...new Set(input.angles.map((a) => a.trim()).filter(Boolean))];
+    if (cleaned.length === 0) throw new OpError("Provide at least one non-empty angle.", 400);
+    angles = cleaned.slice(0, MAX_ANGLES);
+    angleSource = "explicit";
+  } else {
+    if (!isAngleDerivationConfigured())
+      throw new OpError(
+        "Auto-deriving angles needs OPENAI_API_KEY configured. Pass angles explicitly instead.",
+        501,
+      );
+    const n = clampAngleCount(input.anglesN ?? DEFAULT_ANGLES);
+    try {
+      angles = await deriveAngles(input.goal, n);
+    } catch (e) {
+      throw new OpError(
+        `Could not derive search angles: ${e instanceof Error ? e.message : "unknown error"}`,
+        502,
+      );
+    }
+    if (angles.length === 0) throw new OpError("Could not derive any search angles from that goal.", 502);
+    angleSource = "derived";
+  }
+
+  // Gate up front for the worst case (see credit-model note above). Nothing
+  // paid has happened yet - this only bounds the ceiling.
+  await ensureCreditsForCount(userId, "find_companies", angles.length);
+
+  const count = Math.min(Math.max(input.count ?? 10, 1), 25);
+
+  // Fan out: each angle runs its OWN Exa search, blind to what the others
+  // find. One angle's provider error is logged and treated as an empty
+  // result (never charged) rather than sinking the whole swarm.
+  const results = await Promise.all(
+    angles.map(async (angle): Promise<AngleResult> => {
+      try {
+        const companies = await exaFindCompanies(angle, count);
+        return { angle, companies };
+      } catch (e) {
+        console.error(`[swarm] angle failed: "${angle}"`, e);
+        return { angle, companies: [] };
+      }
+    }),
+  );
+
+  // Debit ONLY the angles that actually returned companies.
+  let creditsSpent = 0;
+  const perAngle: SwarmAngleBreakdown[] = [];
+  for (const r of results) {
+    const credited = r.companies.length > 0;
+    if (credited) {
+      await spendCredits(userId, "find_companies");
+      creditsSpent += CREDIT_COSTS.find_companies;
+    }
+    perAngle.push({ angle: r.angle, found: r.companies.length, credited });
+  }
+
+  // Merge across angles (cross-angle dedup + attribution), THEN dedupe the
+  // merged set against the CRM (the same rule findCompanies uses).
+  const { merged, totalFound } = mergeAngleResults(results);
+  const { fresh, skipped } = await dedupeAgainstCrm(
+    userId,
+    merged.map((m) => m.company),
+  );
+
+  const keyOf = (c: { companyName: string; domain?: string | null }) => {
+    const d = normalizeDomain(c.domain);
+    return d ? `d:${d}` : `n:${c.companyName.trim().toLowerCase()}`;
+  };
+
+  const rows = fresh.length
+    ? await prisma.entity.createManyAndReturn({
+        data: fresh.map((c) => ({
+          userId,
+          name: c.companyName,
+          domain: c.domain ?? null,
+          website: c.website ?? null,
+          phone: c.phone ?? null,
+          industry: c.industry ?? null,
+          location: c.address ?? null,
+          description: c.description ?? null,
+          source: "agent:swarm",
+          status: "NEW" as const,
+        })),
+        select: { id: true, name: true, domain: true },
+      })
+    : [];
+  const rowByKey = new Map(rows.map((r) => [keyOf({ companyName: r.name, domain: r.domain }), r]));
+
+  const companies: SwarmCompanyAttribution[] = merged.map((m) => {
+    const row = rowByKey.get(keyOf(m.company));
+    return {
+      companyName: m.company.companyName,
+      domain: m.company.domain ?? null,
+      angles: m.angles,
+      status: row ? "added" : "duplicate",
+      entityId: row?.id ?? null,
+    };
+  });
+
+  const run = await prisma.swarmRun.create({
+    data: {
+      userId,
+      goal: input.goal,
+      angles,
+      angleSource,
+      found: totalFound,
+      merged: merged.length,
+      added: rows.length,
+      skipped,
+      creditsSpent,
+      items: { perAngle, companies } as unknown as Prisma.InputJsonValue,
+    },
+  });
+
+  return {
+    runId: run.id,
+    goal: input.goal,
+    angles,
+    angleSource,
+    found: totalFound,
+    merged: merged.length,
+    added: rows.length,
+    skipped,
+    creditsSpent,
+    perAngle,
+    companies,
+  };
+}
+
+/** Recent swarm runs (newest first) - the audit trail for what was searched
+ *  and what each run found/added, for the results surface. */
+export function listSwarmRuns(userId: string, limit?: number) {
+  return prisma.swarmRun.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: clampListLimit(limit),
+  });
+}
+
+/** One swarm run's full breakdown (per-angle counts + per-company attribution). */
+export async function getSwarmRun(userId: string, id: string) {
+  const run = await prisma.swarmRun.findUnique({ where: { id } });
+  if (!run || run.userId !== userId) throw new OpError("Swarm run not found", 404);
+  return run;
 }
 
 // Pull a site's public contact details (emails/phones/socials) via Apify. Does
@@ -506,31 +703,61 @@ export interface SocialMessageInput {
   threadRef?: string | null;
   savedAsContext?: boolean;
   sentAt?: Date | null;
+  // Self-optimizing outreach: the OutreachVariant (subject/opener) used for
+  // this OUTBOUND message, from select_variant. Recorded as a VariantSend so
+  // a later inbound reply on this contact can be attributed back to it.
+  // Ignored on INBOUND (a reply doesn't "use" a variant, it resolves one).
+  variantId?: string | null;
 }
 
 /** Save a social media message (DM, comment, connection note) onto a contact
  *  and keep the pipeline state honest: an OUTBOUND message stamps
  *  lastContactedAt and advances NEW/ENRICHED to CONTACTED; an INBOUND message
- *  advances CONTACTED to REPLIED. Never downgrades a status. */
+ *  advances CONTACTED to REPLIED. Never downgrades a status.
+ *
+ *  Self-optimizing outreach hook: an OUTBOUND message carrying variantId
+ *  records a VariantSend (and bumps that variant's sends counter) so the
+ *  bandit has data to learn from. An INBOUND message that flips the contact
+ *  to REPLIED attributes the reply to that contact's most-recent unreplied
+ *  variant send, if any - this is the one place a reply is detected, so it
+ *  is the one place attribution can happen honestly. */
 export async function saveSocialMessage(userId: string, input: SocialMessageInput) {
   const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
   if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
 
-  const { contactId, ...rest } = input;
+  const recordsSend = input.direction === "OUTBOUND" && Boolean(input.variantId);
+  if (recordsSend) await assertVariantOwned(userId, input.variantId!);
+
+  const { contactId, variantId, ...rest } = input;
+  const becomesReplied = input.direction === "INBOUND" && contact.status === "CONTACTED";
   const touch: Prisma.ContactUncheckedUpdateInput =
     input.direction === "OUTBOUND"
       ? {
           lastContactedAt: new Date(),
           ...(ADVANCE_FROM_OUTREACH.has(contact.status) ? { status: "CONTACTED" as const } : {}),
         }
-      : contact.status === "CONTACTED"
+      : becomesReplied
         ? { status: "REPLIED" as const }
         : {};
 
   const [message] = await prisma.$transaction([
     prisma.contactSocialMessage.create({ data: { contactId, ...rest } }),
     prisma.contact.update({ where: { id: contactId }, data: touch }),
+    ...(recordsSend
+      ? [
+          prisma.variantSend.create({
+            data: { variantId: variantId!, contactId, sentAt: input.sentAt ?? new Date() },
+          }),
+          prisma.outreachVariant.update({ where: { id: variantId! }, data: { sends: { increment: 1 } } }),
+        ]
+      : []),
   ]);
+
+  // Attribution reads/writes its own row atomically (see attributeReply) and
+  // runs after the message is durably saved; it must never block or fail the
+  // reply itself just because there's nothing to attribute.
+  if (becomesReplied) await attributeReply(contactId);
+
   return message;
 }
 
@@ -550,6 +777,21 @@ export async function listSocialMessages(
     where: { contactId, ...(channel ? { channel } : {}) },
     orderBy: { createdAt: "desc" },
     take: 100,
+  });
+}
+
+/** The email history with a contact (newest first). Mirrors listSocialMessages
+ *  so agents can page through either channel the same way. */
+export async function listContactEmails(userId: string, contactId: string, limit?: number) {
+  const contact = await prisma.contact.findUnique({
+    where: { id: contactId },
+    select: { userId: true },
+  });
+  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  return prisma.contactEmail.findMany({
+    where: { contactId },
+    orderBy: { sentAt: "desc" },
+    take: clampListLimit(limit),
   });
 }
 
@@ -585,10 +827,20 @@ export async function logOutreach(
     channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other";
     status?: ContactStatus;
     actor?: ActivityActor | null;
+    // Self-optimizing outreach: the OutreachVariant (subject/opener) used for
+    // this touch, from select_variant. Optional and backward-compatible -
+    // omitting it behaves exactly as before. When set, records a VariantSend
+    // and bumps that variant's sends counter so the bandit has data to learn
+    // from; a later reply on this contact (detected in saveSocialMessage, the
+    // only place INBOUND advances a contact to REPLIED today) attributes back
+    // to it.
+    variantId?: string | null;
   }
 ) {
   const existing = await prisma.contact.findUnique({ where: { id: input.contactId } });
   if (!existing || existing.userId !== userId) throw new OpError("Contact not found", 404);
+
+  if (input.variantId) await assertVariantOwned(userId, input.variantId);
 
   const nextStatus =
     input.status ?? (ADVANCE_FROM_OUTREACH.has(existing.status) ? "CONTACTED" : existing.status);
@@ -609,6 +861,17 @@ export async function logOutreach(
         actorLabel: input.actor?.label ?? null,
       },
     }),
+    ...(input.variantId
+      ? [
+          prisma.variantSend.create({
+            data: { variantId: input.variantId, contactId: input.contactId, sentAt: new Date() },
+          }),
+          prisma.outreachVariant.update({
+            where: { id: input.variantId },
+            data: { sends: { increment: 1 } },
+          }),
+        ]
+      : []),
   ]);
   return { id: contact.id, status: contact.status, lastContactedAt: contact.lastContactedAt };
 }

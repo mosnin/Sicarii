@@ -48,6 +48,48 @@ export const CREDIT_COSTS = {
   // synthesis, priced in line with the other single-LLM-call actions
   // (find_socials=4, contact_extract=8).
   breakup_draft: 6,
+  // --- Embedding-backed actions (OpenAI text-embedding-3-small, see
+  // src/lib/embeddings.ts) -----------------------------------------------
+  //
+  // build_segment (MCP tool build_smart_segment -> buildSmartSegment ->
+  // buildSegmentMatches in src/lib/segment-build.ts) embeds the goal PLUS up
+  // to `candidateCap` (200) candidate contacts in one call. Text sizes are
+  // capped by the code itself: each candidate is sliced to 800 chars, the
+  // goal to 2000 chars. text-embedding-3-small is priced at $0.02 / 1M input
+  // tokens; using OpenAI's ~4 chars/token rule of thumb for English text:
+  //   candidates: 200 * 800 chars = 160,000 chars ~= 40,000 tokens
+  //   goal:             1 * 2,000 chars =  2,000 chars ~=    500 tokens
+  //   worst case total                                 ~= 40,500 tokens
+  //   raw provider cost = 40,500 / 1,000,000 * $0.02   ~= $0.00081
+  //   at the house 3x margin                           ~= $0.00243
+  // That's under a quarter of a cent - below the smallest priceable unit (1
+  // credit = $0.01), so a strict 3x-margin price rounds UP to the platform's
+  // minimum billable increment of 1 credit. We price it at 2 credits instead
+  // of 1: this call does ~200x the embedding work of a single-text action
+  // (remember/recall below) and is the one call in this file capable of
+  // firing up to 200 OpenAI requests worth of tokens at once, so it keeps a
+  // visibly higher price than a single-embed action even though both round
+  // to the same sub-cent order of magnitude under pure 3x math. The real
+  // ceiling on repeated abuse is the per-user rate limit applied alongside
+  // this cost in the MCP route (gated(), not credits alone).
+  build_segment: 2,
+  // remember (MCP tool -> storeMemory in src/lib/memory.ts) embeds ONE piece
+  // of content, capped at 8000 chars by both the tool's zod schema and
+  // embedText's own slice - at ~4 chars/token that's <= 2,000 tokens.
+  //   raw provider cost = 2,000 / 1,000,000 * $0.02 = $0.00004
+  //   at the house 3x margin                        = $0.00012
+  // Three orders of magnitude below 1 credit - not a real cost-recovery
+  // number, just a floor. We still price it (at the platform minimum of 1
+  // credit) rather than leave it free, for policy consistency: remember is
+  // the one memory tool that calls a paid external provider (OpenAI) to
+  // create new data, the same shape as every other metered action, and the
+  // MCP server's own stated policy is "credits are spent only when an
+  // action pulls real data from the outside world / calls an outside paid
+  // provider." recall, below, is priced at 0 (see recall's own note by its
+  // MCP tool registration) because it only reads the user's OWN previously
+  // stored memory - no new external data is created - so it is rate-limited
+  // instead of credit-metered, matching "CRM reads are free."
+  remember: 1,
 } as const;
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
@@ -75,6 +117,34 @@ export async function ensureCredits(userId: string, action: CreditAction): Promi
   if (!(await hasCredits(userId, action))) {
     throw new OpError(
       "Out of credits. Upgrade your plan or wait for your monthly reset.",
+      402,
+    );
+  }
+}
+
+/**
+ * Pre-flight gate for a fan-out of `count` repetitions of `action` in one call
+ * (e.g. a discovery swarm's N search angles, each billed at that action's
+ * rate). Throws OpError 402 when the balance can't cover the WORST case
+ * (every repetition hits) BEFORE any paid work starts - so a caller always
+ * knows the ceiling up front. The real spend still happens per repetition via
+ * spendCredits on each actual hit, so a swarm is gated for N but only ever
+ * billed for the repetitions that actually returned data (never a miss).
+ */
+export async function ensureCreditsForCount(
+  userId: string,
+  action: CreditAction,
+  count: number,
+): Promise<void> {
+  await maybeReset(userId);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { creditsRemaining: true },
+  });
+  const need = CREDIT_COSTS[action] * Math.max(count, 0);
+  if (!user || user.creditsRemaining < need) {
+    throw new OpError(
+      `Out of credits for this run (needs up to ${need} credits for ${count} step${count === 1 ? "" : "s"}). Upgrade your plan or wait for your monthly reset.`,
       402,
     );
   }
