@@ -36,6 +36,7 @@ import {
   updateContact,
   deleteContact,
   saveEmail,
+  listContactEmails,
   saveSocialMessage,
   listSocialMessages,
   searchCrm,
@@ -70,6 +71,7 @@ import {
   type PaidPlanName,
 } from "@/lib/credits";
 import { storeMemory, recallMemory } from "@/lib/memory";
+import { getProvenanceMap } from "@/lib/provenance";
 import { verifyEntity } from "@/lib/enrich/verified-entity";
 import { detectEntityTech } from "@/lib/enrich/technographics";
 import {
@@ -465,6 +467,18 @@ const handler = createMcpHandler(
             savedAsContext: args.savedAsContext ?? true,
           }),
         ),
+    );
+
+    server.tool(
+      "list_emails",
+      "Get the email history with a contact (subject, body, direction, from/to), newest first. Capped like other list tools (default 50, max 200) - ask for more with limit when you mean it.",
+      {
+        contactId: z.string().max(200),
+        limit: z.number().int().min(1).max(200).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ contactId, limit }, extra) =>
+        run(() => listContactEmails(userIdFrom(extra), contactId, limit)),
     );
 
     /* ---------------------- Social profiles + DMs ----------------- */
@@ -944,6 +958,17 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (a, extra) => run(() => listActivities(userIdFrom(extra), a)),
     );
+    server.tool(
+      "get_provenance",
+      "Get field-level provenance for a contact or entity: which provider supplied each enriched field, its confidence, when it was retrieved, and whether it is stale. This is the audit trail behind \"via explorium, 3 days ago\" in the UI - use it to decide whether a field is trustworthy enough to act on or due for a re-verify. Returns an object keyed by field name; a record with no enrichment history returns an empty object.",
+      {
+        recordType: z.enum(["contact", "entity"]),
+        recordId: z.string().max(200),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ recordType, recordId }, extra) =>
+        run(() => getProvenanceMap(recordType, recordId, userIdFrom(extra))),
+    );
   },
   {
     serverInfo: { name: "scalar", version: "0.1.0" },
@@ -954,7 +979,7 @@ THE OPERATING LOOP
 2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). Both dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
 3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. For their social profiles (LinkedIn, X, Instagram, Facebook), call find_socials: it auto-saves only name+company-verified profiles and returns the rest as candidates for you to review. Enrich what you will act on, not the whole database; every enrichment costs credits.
 4. Organize. Group not-yet-contacted prospects with build_smart_segment, then create_pipeline to track them through stages. Clean up as you go: update_segment/delete_segment/remove_segment_member and delete_pipeline/remove_pipeline_entry let you rename, retire, or prune segments and pipelines instead of leaving stale ones behind.
-5. Track outreach. This is the memory that makes you reliable. When you email a contact, call save_email_context, then log_outreach to stamp when you reached out and advance status. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message (it advances pipeline state itself; use list_social_messages to reread a conversation). When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. remember any decision or context worth keeping.
+5. Track outreach. This is the memory that makes you reliable. When you email a contact, call save_email_context, then log_outreach to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message (it advances pipeline state itself; use list_social_messages to reread a conversation). When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping.
 6. Measure and repeat. Use pipeline_metrics to see what is working, then loop back to discovery.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.
