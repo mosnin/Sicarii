@@ -6,6 +6,8 @@ import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { DashboardPreloader } from "@/components/dashboard/dashboard-preloader";
 import { hasCompletedFirstRun } from "@/lib/welcome-orchestrator";
 import { computePulse } from "@/lib/pulse";
+import { listPendingDrafts } from "@/lib/breakup-operations";
+import type { PendingDraftItem } from "@/components/dashboard/breakup-queue";
 
 // New radar signals over the last 7 days. Kept out of the component body so the
 // time window (Date.now) isn't an impure call during render.
@@ -81,6 +83,24 @@ export default async function DashboardPage() {
   // companies still missing a full profile.
   const { replied, dueFollowup, toEnrich } = await countNeedsAttention(user.id);
 
+  // Breakup drafts: stalled deals Scalar has already drafted a close-out for,
+  // awaiting one-click human review. Best-effort, like the Pulse - never let a
+  // review-queue read 500 the dashboard. Dates are serialized to ISO strings
+  // for the client component boundary.
+  let breakupDrafts: PendingDraftItem[] = [];
+  try {
+    const pending = await listPendingDrafts(user.id, { limit: 10 });
+    breakupDrafts = pending.map((d) => ({
+      id: d.id,
+      subject: d.subject,
+      body: d.body,
+      createdAt: d.createdAt.toISOString(),
+      contact: d.contact,
+    }));
+  } catch (e) {
+    console.warn("[dashboard] breakup drafts read failed", e);
+  }
+
   // The Pulse: what the agent did since the last dashboard visit. Compute the
   // delta from the PREVIOUS lastSeenAt, then stamp it forward. Skipped on the
   // very first visit (lastSeenAt null) so nobody gets their whole history
@@ -113,6 +133,7 @@ export default async function DashboardPage() {
         pulse={pulse}
         isEmpty={totalContacts === 0 && totalCompanies === 0}
         needs={{ replied, dueFollowup, toEnrich, radarSignals }}
+        breakupDrafts={breakupDrafts}
       />
     </>
   );

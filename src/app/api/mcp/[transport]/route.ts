@@ -95,6 +95,7 @@ import {
   updatePipelineEntry,
   pipelineMetrics,
 } from "@/lib/field-operations";
+import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { createVariant, selectVariant, listVariantStats } from "@/lib/variant-operations";
 
 type ToolResult = {
@@ -1037,6 +1038,30 @@ const handler = createMcpHandler(
       async (a, extra) => run(() => listActivities(userIdFrom(extra), a)),
     );
 
+    /* ------------------------- Breakup drafts ---------------------- */
+    // Scan for stalled deals and draft a polite "breakup" email for each,
+    // grounded only in stored history. Drafts are held PENDING for human
+    // review - approving (and thereby sending) a draft is a session-gated REST
+    // action (src/app/api/breakup-drafts/[id]/approve), never an MCP tool, so a
+    // prompt-injected agent can never approve its own drafts.
+    server.tool(
+      "draft_breakups",
+      "Scan for stalled deals (contacts in CONTACTED/REPLIED, or with a pipeline entry stuck AWAITING_REPLY/STALLED, with no touch in staleDays) and draft a polite 'breakup' pattern-interrupt email for each, grounded ONLY in the contact's real stored activity/email history - never invented facts. Drafts are saved PENDING for human review; this tool never sends anything. Costs credits per NEW draft generated (idempotent: a contact with an existing pending draft is skipped, not recharged).",
+      {
+        staleDays: z.number().int().min(1).max(365).optional().describe("Days without a touch to count as stalled (default 14)"),
+        limit: z.number().int().min(1).max(25).optional().describe("Max cold deals to scan/draft in this call (default 10)"),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async (a, extra) => gated(extra, "breakup_draft", 10, (userId) => draftBreakups(userId, a)),
+    );
+    server.tool(
+      "list_pending_drafts",
+      "List breakup drafts awaiting human review (oldest first), each with the contact and the drafted subject+body. Read-only - a human approves or dismisses these in the app, never an agent.",
+      { limit: z.number().int().min(1).max(200).optional() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (a, extra) => run(() => listPendingDrafts(userIdFrom(extra), a)),
+    );
+
     server.tool(
       "get_provenance",
       "Get field-level provenance for a contact or entity: which provider supplied each enriched field, its confidence, when it was retrieved, and whether it is stale. This is the audit trail behind \"via explorium, 3 days ago\" in the UI - use it to decide whether a field is trustworthy enough to act on or due for a re-verify. Returns an object keyed by field name; a record with no enrichment history returns an empty object.",
@@ -1102,7 +1127,7 @@ THE OPERATING LOOP
 2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). For a broad goal with multiple distinct slices (sub-verticals, geographies, funding stages, hiring signals), use swarm_discover instead: it fans out 2-6 angles in parallel, merges and dedupes across all of them plus the CRM, and tells you which angle found each company - more thorough than one find_companies call, at a clearly stated cost ceiling. All three dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
 3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. For their social profiles (LinkedIn, X, Instagram, Facebook), call find_socials: it auto-saves only name+company-verified profiles and returns the rest as candidates for you to review. Enrich what you will act on, not the whole database; every enrichment costs credits.
 4. Organize. Group not-yet-contacted prospects with build_smart_segment (costs credits when it matches prospects), then create_pipeline to track them through stages. Clean up as you go: update_segment/delete_segment/remove_segment_member and delete_pipeline/remove_pipeline_entry let you rename, retire, or prune segments and pipelines instead of leaving stale ones behind.
-5. Track outreach. This is the memory that makes you reliable. Before writing your first message to a segment (or in general), call select_variant (kind: subject or opener) to get the bandit's current best pick for that pool - it explores automatically while data is thin and converges on the winner as replies come in, so you never need to run your own A/B test. Use the returned text verbatim, then when you email a contact, call save_email_context, then log_outreach (with variantId set to what select_variant returned) to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message the same way (pass variantId on the OUTBOUND message; it advances pipeline state itself and attributes a later reply back to the variant automatically - use list_social_messages to reread a conversation). Check list_variant_stats any time to see reply rates and which variant is winning. If you're not testing variants, log_outreach/log_social_message work exactly the same without variantId. When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping (costs 1 credit per memory actually saved).
+5. Track outreach. This is the memory that makes you reliable. Before writing your first message to a segment (or in general), call select_variant (kind: subject or opener) to get the bandit's current best pick for that pool - it explores automatically while data is thin and converges on the winner as replies come in, so you never need to run your own A/B test. Use the returned text verbatim, then when you email a contact, call save_email_context, then log_outreach (with variantId set to what select_variant returned) to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message the same way (pass variantId on the OUTBOUND message; it advances pipeline state itself and attributes a later reply back to the variant automatically - use list_social_messages to reread a conversation). Check list_variant_stats any time to see reply rates and which variant is winning. If you're not testing variants, log_outreach/log_social_message work exactly the same without variantId. When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). For deals gone fully cold, call draft_breakups to write a grounded breakup email per stalled contact - it only drafts (list_pending_drafts to review); a human approves or dismisses in the app, you never send it yourself. Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping (costs 1 credit per memory actually saved).
 6. Measure and repeat. Use pipeline_metrics and list_variant_stats to see what is working, then loop back to discovery.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.

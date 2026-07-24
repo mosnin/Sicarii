@@ -33,6 +33,7 @@ import {
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
+import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats } from "@/lib/variant-operations";
 import { CREDIT_COSTS } from "@/lib/credits";
 
@@ -68,6 +69,7 @@ How you work:
 - Use extract_contact_details to pull emails/phones off a company site. These
   tools spend credits, so confirm intent before large runs.
 - Enrich a business with enrich_entity.
+- For deals that have gone cold, draft_breakups writes a grounded "breakup" email per stalled contact for the human to review - it never sends. Use list_pending_drafts to check the queue. You cannot approve or send these yourself.
 - Outreach quietly improves itself: before your first message to a segment (or
   in general), call select_variant to get the bandit's current best subject
   line or opener for that pool - it explores while data is thin and converges
@@ -360,6 +362,21 @@ export async function POST(req: Request) {
             variantId: variantId ?? null,
           }),
         ),
+    }),
+    draft_breakups: tool({
+      description:
+        "Scan for stalled deals (no touch in staleDays, default 14) and draft a polite 'breakup' pattern-interrupt email for each, grounded ONLY in that contact's real stored history - never invented facts. Drafts are saved for human review on the dashboard; this NEVER sends anything and you never approve your own drafts. Costs credits per new draft (contacts that already have a pending draft are skipped free).",
+      inputSchema: z.object({
+        staleDays: z.number().int().min(1).max(365).optional(),
+        limit: z.number().int().min(1).max(25).optional(),
+      }),
+      execute: ({ staleDays, limit }) => exec(() => draftBreakups(userId, { staleDays, limit })),
+    }),
+    list_pending_drafts: tool({
+      description:
+        "List breakup drafts awaiting human review (oldest first), with the contact and the drafted subject+body. Read-only.",
+      inputSchema: z.object({ limit: z.number().int().min(1).max(200).optional() }),
+      execute: ({ limit }) => exec(() => listPendingDrafts(userId, { limit })),
     }),
     select_variant: tool({
       description:

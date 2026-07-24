@@ -65,6 +65,9 @@ const mustBeGated = [
   "add_to_pipeline",
   "update_pipeline_entry",
   "remember",
+  // recall reads only the user's own memory (0 credits) but still embeds the
+  // query via OpenAI, so it is rate-limited via gated() to bound flooding.
+  "recall",
   "sync_call",
   "log_call",
   "log_outreach",
@@ -119,7 +122,6 @@ const readOnlyTools = [
   "list_pipelines",
   "get_pipeline",
   "pipeline_metrics",
-  "recall",
   "get_balance",
   "get_usage",
   "list_contact_calls",

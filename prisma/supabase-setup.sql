@@ -40,6 +40,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
+  CREATE TYPE "BreakupDraftStatus" AS ENUM ('PENDING', 'APPROVED', 'SENT', 'DISMISSED');
   CREATE TYPE "VariantKind" AS ENUM ('SUBJECT', 'OPENER');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
@@ -219,6 +220,25 @@ CREATE TABLE IF NOT EXISTS "contact_social_messages" (
 CREATE INDEX IF NOT EXISTS "contact_social_messages_contactId_createdAt_idx"
   ON "contact_social_messages" ("contactId", "createdAt");
 
+-- breakup_drafts - drafted stalled-deal "breakup" emails, held PENDING for
+-- one-click human approval (never auto-sent). See src/lib/breakup-operations.ts
+-- and docs/decisions/0012-breakup-drafts.md.
+CREATE TABLE IF NOT EXISTS "breakup_drafts" (
+  "id"            TEXT NOT NULL,
+  "userId"        TEXT NOT NULL,
+  "contactId"     TEXT NOT NULL,
+  "status"        "BreakupDraftStatus" NOT NULL DEFAULT 'PENDING',
+  "subject"       TEXT NOT NULL,
+  "body"          TEXT NOT NULL,
+  "generatedFrom" JSONB,
+  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "decidedAt"     TIMESTAMP(3),
+  CONSTRAINT "breakup_drafts_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "breakup_drafts_userId_status_idx" ON "breakup_drafts" ("userId", "status");
+CREATE INDEX IF NOT EXISTS "breakup_drafts_userId_status_createdAt_idx"
+  ON "breakup_drafts" ("userId", "status", "createdAt");
+CREATE INDEX IF NOT EXISTS "breakup_drafts_contactId_idx" ON "breakup_drafts" ("contactId");
 -- outreach_variants - self-optimizing outreach: subject/opener text variants
 -- the bandit (Thompson sampling, src/lib/variant-bandit.ts) chooses between
 CREATE TABLE IF NOT EXISTS "outreach_variants" (
@@ -311,11 +331,13 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
+  ALTER TABLE "breakup_drafts" ADD CONSTRAINT "breakup_drafts_userId_fkey"
   ALTER TABLE "outreach_variants" ADD CONSTRAINT "outreach_variants_userId_fkey"
     FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
+  ALTER TABLE "breakup_drafts" ADD CONSTRAINT "breakup_drafts_contactId_fkey"
   ALTER TABLE "outreach_variants" ADD CONSTRAINT "outreach_variants_segmentId_fkey"
     FOREIGN KEY ("segmentId") REFERENCES "segments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN null; END $$;
