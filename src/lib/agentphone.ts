@@ -3,9 +3,17 @@
 // Base: https://api.agentphone.ai  Auth: Bearer <key> (keys look like sk_live_...)
 // Docs: https://agentphone.ai/skills.md
 //
-// Response shapes vary, so parsing is defensive (str/num helpers). Confirm the
-// exact endpoint/field names against the live docs before enabling in prod; the
-// whole layer is dormant until a user connects a key.
+// Response shapes are UNVERIFIED against the live API (no key has ever been
+// exercised against it here), so every field read off a response is parsed
+// defensively: runtime typeof/shape checks before use, never a bare property
+// access on an assumed path. An unexpected shape degrades to null/undefined
+// defaults and logs a console.warn naming the offending path and the keys/
+// shape actually present, so a bad integration is loud in server logs
+// instead of silently producing something that looks like success (e.g. a
+// placeCall() with callId: "" that can never be synced later - see
+// syncContactCall in crm-operations.ts). Once a real key exists, run
+// `node scripts/agentphone-smoke.mjs` to verify these shapes against the
+// live API and update this file if they differ.
 import { fetchWithTimeout } from "@/lib/http";
 
 const BASE = "https://api.agentphone.ai";
@@ -20,8 +28,19 @@ function str(v: unknown): string | undefined {
 function num(v: unknown): number | undefined {
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }
+/** True for a plain JSON object (not null, not an array). */
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+/** Short, value-free description of a shape for warning logs (never dumps values). */
+function describeShape(v: unknown): string {
+  if (v === null) return "null";
+  if (Array.isArray(v)) return `array(length=${v.length})`;
+  if (typeof v === "object") return `object(keys=${Object.keys(v as object).join(",") || "none"})`;
+  return typeof v;
+}
 
-async function ap<T>(key: string, path: string, init?: RequestInit): Promise<T> {
+async function ap(key: string, path: string, init?: RequestInit): Promise<unknown> {
   const res = await fetchWithTimeout(`${BASE}${path}`, {
     ...init,
     headers: {
@@ -32,7 +51,20 @@ async function ap<T>(key: string, path: string, init?: RequestInit): Promise<T> 
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`AgentPhone ${path} failed (${res.status}): ${text.slice(0, 200)}`);
-  return (text ? JSON.parse(text) : {}) as T;
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.warn(`[agentphone] ${path}: response body was not valid JSON (length=${text.length})`);
+    return {};
+  }
+}
+
+/** Extracts a plain object from an ap() response, warning and degrading to {} on any other shape. */
+function asRecord(path: string, raw: unknown): Record<string, unknown> {
+  if (isRecord(raw)) return raw;
+  console.warn(`[agentphone] ${path}: expected a JSON object response, got ${describeShape(raw)}`);
+  return {};
 }
 
 export interface PlacedCall {
@@ -60,12 +92,27 @@ export async function placeCall(
   if (input.fromNumberId) body.fromNumberId = input.fromNumberId;
   if (input.initialGreeting) body.initialGreeting = input.initialGreeting;
 
-  const data = await ap<Record<string, unknown>>(key, "/v1/calls", {
+  const path = "POST /v1/calls";
+  const raw = await ap(key, "/v1/calls", {
     method: "POST",
     body: JSON.stringify(body),
   });
+  const data = asRecord(path, raw);
+
+  // callId is the primary key everything downstream (sync, log lookups) is
+  // keyed on. If we can't find one under any known field name, warn loudly
+  // rather than let a "" flow silently into a call log that can never sync.
+  const callId = str(data.id) ?? str(data.call_id) ?? str(data.callId);
+  if (!callId) {
+    console.warn(
+      `[agentphone] ${path}: response has no usable call id (checked id, call_id, callId). ` +
+        `Keys present: ${Object.keys(data).join(", ") || "(none)"}. ` +
+        `This call cannot be synced later without one.`,
+    );
+  }
+
   return {
-    callId: str(data.id) ?? str(data.call_id) ?? "",
+    callId: callId ?? "",
     status: str(data.status),
     startedAt: str(data.startedAt) ?? str(data.started_at),
   };
@@ -81,28 +128,46 @@ export interface CallDetail {
 }
 
 // AgentPhone returns a `transcripts` array of {role/speaker, text/content}.
-function transcriptToText(t: unknown): string | undefined {
+// Each entry is validated before use; entries with an unexpected shape are
+// dropped (not thrown on) and counted for a single summary warning.
+function transcriptToText(path: string, t: unknown): string | undefined {
   if (Array.isArray(t)) {
-    const lines = t
-      .map((m) => {
-        const o = m as Record<string, unknown>;
-        const role = str(o.role) ?? str(o.speaker);
-        const text = str(o.text) ?? str(o.content) ?? str(o.message);
-        return text ? (role ? `${role}: ${text}` : text) : undefined;
-      })
-      .filter((l): l is string => Boolean(l));
+    const lines: string[] = [];
+    let skipped = 0;
+    for (const entry of t) {
+      if (!isRecord(entry)) {
+        skipped++;
+        continue;
+      }
+      const role = str(entry.role) ?? str(entry.speaker);
+      const text = str(entry.text) ?? str(entry.content) ?? str(entry.message);
+      if (text) lines.push(role ? `${role}: ${text}` : text);
+      else skipped++;
+    }
+    if (skipped > 0) {
+      console.warn(
+        `[agentphone] ${path}: skipped ${skipped} transcript ${skipped === 1 ? "entry" : "entries"} with an unexpected shape`,
+      );
+    }
     return lines.length ? lines.join("\n") : undefined;
   }
-  return str(t);
+  if (t === undefined || t === null) return undefined;
+  const asString = str(t);
+  if (asString === undefined) {
+    console.warn(`[agentphone] ${path}: transcript field had an unexpected shape (${describeShape(t)})`);
+  }
+  return asString;
 }
 
 /** Fetch a call's current status + transcript. GET /v1/calls/{id}. */
 export async function getCall(key: string, callId: string): Promise<CallDetail> {
-  const data = await ap<Record<string, unknown>>(key, `/v1/calls/${encodeURIComponent(callId)}`);
+  const path = `GET /v1/calls/${callId}`;
+  const raw = await ap(key, `/v1/calls/${encodeURIComponent(callId)}`);
+  const data = asRecord(path, raw);
   return {
     status: str(data.status),
     durationSec: num(data.durationSec) ?? num(data.duration_sec) ?? num(data.duration),
-    transcript: transcriptToText(data.transcripts ?? data.transcript),
+    transcript: transcriptToText(path, data.transcripts ?? data.transcript),
     recordingUrl: str(data.recordingUrl) ?? str(data.recording_url),
     toNumber: str(data.toNumber) ?? str(data.to_number),
     fromNumber: str(data.fromNumber) ?? str(data.from_number),

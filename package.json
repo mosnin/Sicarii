@@ -13,6 +13,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "smoke:mcp": "node scripts/mcp-smoke.mjs",
+    "smoke:agentphone": "node scripts/agentphone-smoke.mjs",
     "doctor": "node --no-warnings scripts/doctor.mjs"
   },
   "dependencies": {
