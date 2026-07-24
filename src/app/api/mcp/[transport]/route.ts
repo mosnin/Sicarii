@@ -95,6 +95,11 @@ import {
   updatePipelineEntry,
   pipelineMetrics,
 } from "@/lib/field-operations";
+import {
+  proposeAutopilotPlan,
+  getAutopilotStatus,
+  pauseAutopilotPlan,
+} from "@/lib/autopilot-operations";
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { createVariant, selectVariant, listVariantStats } from "@/lib/variant-operations";
 
@@ -824,6 +829,48 @@ const handler = createMcpHandler(
       async ({ pipelineId }, extra) => run(() => pipelineMetrics(userIdFrom(extra), pipelineId)),
     );
 
+    /* ------------------------- Autopilot --------------------------- */
+    server.tool(
+      "propose_autopilot_plan",
+      "Propose a budgeted autopilot plan: a spend ceiling for a period (cadence), split across discovery/enrichment/outreach/other, that you (the agent) then run unsupervised WITHIN that budget once a human approves it. Solves the surprise-402 problem: commit to a budget up front instead of erroring out mid-task. The plan is ALWAYS created as a draft - you cannot approve your own plan; only a human can, from the dashboard. allocations must sum exactly to totalCredits. discoveryQuery is what the discovery step searches for (e.g. 'B2B fintech startups in NYC'); omit it to only run enrichment + outreach.",
+      {
+        name: z.string().max(200),
+        cadence: z.enum(["hourly", "daily", "weekly"]).optional().describe("How often the budget window resets and the plan runs (default weekly)"),
+        totalCredits: z.number().int().min(1).max(1_000_000),
+        allocations: z.object({
+          discovery: z.number().int().min(0).max(1_000_000).optional(),
+          enrichment: z.number().int().min(0).max(1_000_000).optional(),
+          outreach: z.number().int().min(0).max(1_000_000).optional(),
+          other: z.number().int().min(0).max(1_000_000).optional(),
+        }).describe("Per-category ceilings; must sum exactly to totalCredits"),
+        discoveryQuery: z.string().max(2000).optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (args, extra) =>
+        // A dedicated bucket, not "create": sharing the entity/contact "create"
+        // bucket (limit 120) with a much stricter limit here would let unrelated
+        // entity/contact creation traffic exhaust this tool's counter early (and
+        // vice versa) since checkRateLimit keys purely on the bucket string.
+        gated(extra, "autopilot_propose", 20, (userId) => proposeAutopilotPlan(userId, args)),
+    );
+
+    server.tool(
+      "get_autopilot_status",
+      "Get the status of your autopilot plan(s): budget remaining per category, current window, and the recent run ledger (what it actually did). Pass planId for one plan's full detail, or omit it to list your most recent plans.",
+      { planId: z.string().optional() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ planId }, extra) => run(() => getAutopilotStatus(userIdFrom(extra), planId)),
+    );
+
+    server.tool(
+      "pause_autopilot",
+      "Pause an active autopilot plan so it stops spending, e.g. if you (the agent) decide the plan's premise no longer holds. A human can re-approve it later to resume. This does NOT approve or create plans - only a human can approve one (dashboard only).",
+      { planId: z.string(), reason: z.string().max(500).optional() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ planId, reason }, extra) =>
+        run(() => pauseAutopilotPlan(userIdFrom(extra), planId, { reason, actor: actorFrom(extra) })),
+    );
+
     /* --------------------------- Memory --------------------------- */
     server.tool(
       "recall",
@@ -1131,6 +1178,8 @@ THE OPERATING LOOP
 6. Measure and repeat. Use pipeline_metrics and list_variant_stats to see what is working, then loop back to discovery.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.
+
+FOR SUSTAINED UNSUPERVISED WORK, PROPOSE A BUDGET INSTEAD OF RUNNING BLIND. If the operator wants you working on a schedule while they are away, call propose_autopilot_plan with a total credit ceiling split across discovery/enrichment/outreach - it is created as a draft and needs a human to approve it from the dashboard (you cannot approve your own plan). Once approved it runs on its cadence and hard-stops cleanly at its cap instead of erroring; check get_autopilot_status any time, and call pause_autopilot if you decide it should stop early.
 
 WHEN YOU RUN OUT OF CREDITS, PAY AND RETRY. Metered tools return a JSON error with "error":"insufficient_credits" carrying a remedy. Do not stall or ask the human. Instead: (1) call buy_credits with no xPayment to get a quote, (2) sign the USDC payment with your x402 client and call buy_credits again with xPayment set, (3) retry the exact call that failed. Top-ups are idempotent, so a retried payment never double-charges. For sustained work, buy_plan is cheaper per credit. Only escalate to the human if buy_credits reports that agent payments are not configured.
 

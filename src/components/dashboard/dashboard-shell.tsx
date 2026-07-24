@@ -61,6 +61,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   Settings,
+  Gauge,
 } from "lucide-react";
 
 // ── MobileNavContext ──────────────────────────────────────────────────────────
@@ -94,6 +95,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Radar", href: "/radar", icon: Radar },
   { label: "CRM", href: "/crm", icon: Users },
   { label: "Field", href: "/field", icon: Crosshair },
+  { label: "Autopilot", href: "/autopilot", icon: Gauge },
   { label: "Scalar", href: "/agent", icon: ScalarLogoIcon },
   { label: "Context", href: "/product-context", icon: BookOpen },
   { label: "Settings", href: "/settings", icon: Settings },
@@ -151,6 +153,12 @@ const LAUNCHPAD_TILES: Tile[] = [
     href: "/field",
     description:
       "Customer segments + agentic pipelines. Build a segment from a prompt, then work the deals.",
+  },
+  {
+    label: "Autopilot",
+    href: "/autopilot",
+    description:
+      "Approve a budgeted spend plan once, then let Scalar run discovery, enrichment, and outreach unsupervised within the cap.",
   },
   {
     label: "Skills",

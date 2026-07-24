@@ -31,6 +31,7 @@
 | `decisions/0007-x402-agent-payments.md` | x402 agent payments: USDC top-ups + 30-day plan purchase over HTTP 402, env-gated, idempotent on the on-chain nonce | Revisiting billing / agent autonomy |
 | `decisions/0008-social-channels.md` | Social channels: profiles on contacts, find_socials discovery (accuracy rule intact), ContactSocialMessage + unified Conversations, source attribution | Revisiting social / conversations |
 | `decisions/0009-teams-v1.md` | Teams v1: Clerk Orgs + synthetic workspace accounts, lead sharing (deep copy + dedup-merge), workspace agent keys with attribution, team plan $299/30d | Revisiting teams / workspaces |
+| `decisions/0010-budgeted-autopilot.md` | Budgeted Autopilot: propose a spend plan (draft), human-only approval, atomic per-category budget guard on top of the real credit meter, scheduled execution loop (discovery/enrichment/outreach) over the existing Inngest cron | Revisiting autopilot / scheduled agent budgets |
 
 ## Working knowledge (grows with the product)
 

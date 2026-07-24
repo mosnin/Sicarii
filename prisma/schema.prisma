@@ -74,6 +74,9 @@ model User {
   // Teams: workspaces this human belongs to / humans in this workspace.
   memberships       TeamMember[] @relation("MemberOf")
   members           TeamMember[] @relation("WorkspaceMembers")
+  // Budgeted Autopilot: proposed/approved spend plans that run unsupervised
+  // within their approved credit ceiling.
+  autopilotPlans    AutopilotPlan[]
   breakupDrafts     BreakupDraft[]
 
   @@map("users")
@@ -841,4 +844,121 @@ model FieldProvenance {
   @@index([retrievedAt])
   @@index([stale])
   @@map("field_provenance")
+}
+
+// ── Budgeted Autopilot ───────────────────────────────────────────────────────
+//
+// The problem: today an agent hits a surprise HTTP 402 mid-task when credits
+// run out. Instead: the agent proposes a spend plan up front (a total ceiling
+// split across categories), a human approves it ONCE (never an agent - see
+// approveAutopilotPlan / the session-gated REST route), and the scheduler then
+// runs it unsupervised, hard-stopping cleanly at the cap instead of erroring.
+//
+// The plan's credit ceiling is an ADDITIONAL budget on top of the real user
+// credit meter (User.creditsRemaining / spendCredits) - approving a plan never
+// grants credits, it only caps how much of the user's real balance the
+// autopilot loop is allowed to spend, per category, per window.
+
+enum AutopilotStatus {
+  draft // proposed by an agent, not yet runnable
+  approved // human approved; about to open its first window (transient)
+  active // running unsupervised within budget
+  paused // hard-stopped: a category hit its cap, or a human/agent paused it
+  exhausted // hard-stopped: the plan's whole budget was spent for this window
+  completed // manually retired; kept for history
+}
+
+enum AutopilotCategory {
+  discovery
+  enrichment
+  outreach
+  other
+}
+
+// A proposed/approved spend plan. One row per plan; its per-category ceilings
+// live in AutopilotAllocation, and every autonomous action it takes is logged
+// to AutopilotRun so the human can audit what the autopilot did.
+model AutopilotPlan {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name String
+  // How often the plan's window resets and the scheduler re-runs it: "daily" |
+  // "weekly" | "hourly" - same vocabulary as IntentMonitor.frequency.
+  cadence      String          @default("weekly")
+  status       AutopilotStatus @default(draft)
+  // The ceiling for one window; mirrors the sum of AutopilotAllocation.allocated
+  // (enforced at propose time so the plan's headline number is never a lie).
+  totalCredits Int
+  // What the discovery step searches for, e.g. "B2B fintech startups in NYC".
+  // Optional - a plan with no discoveryQuery only runs enrichment + outreach.
+  discoveryQuery String? @db.Text
+
+  windowStart DateTime?
+  windowEnd   DateTime?
+  approvedAt  DateTime?
+  // The human who approved it (users.id) - never an agent; stamped by the
+  // session-gated approve route only.
+  approvedById String?
+  // Why the plan last hard-stopped (category exhausted, full budget spent, or
+  // a human/agent pause), shown in the UI so the reason is never a mystery.
+  pausedReason String? @db.Text
+
+  lastRunAt DateTime?
+  nextRunAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  allocations AutopilotAllocation[]
+  runs        AutopilotRun[]
+
+  @@index([userId])
+  @@index([status, nextRunAt])
+  @@map("autopilot_plans")
+}
+
+// One row per spend category per plan: the ceiling (allocated) and the running
+// total (spent). A dedicated table with real integer columns - not a JSON blob
+// - so the budget guard can use a single atomic, conditional SQL UPDATE per
+// charge (the exact proven pattern spendCredits already uses for the credit
+// meter's atomic decrement), with no hand-rolled JSONB arithmetic, and so the
+// per-category numbers are directly queryable for the dashboard bars.
+model AutopilotAllocation {
+  id     String        @id @default(uuid())
+  planId String
+  plan   AutopilotPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  category  AutopilotCategory
+  allocated Int
+  spent     Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([planId, category])
+  @@map("autopilot_allocations")
+}
+
+// Append-only audit ledger: one row per autonomous action the plan actually
+// took (or a zero-cost step like surfacing due follow-ups), so the human can
+// see exactly what their autopilot did while they were away.
+model AutopilotRun {
+  id     String        @id @default(uuid())
+  planId String
+  plan   AutopilotPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId String
+
+  category     AutopilotCategory
+  action       String // underlying operation, e.g. "find_companies", "company_aspect", "list_due_followups"
+  creditsSpent Int               @default(0)
+  ref          String? // the entity/contact id touched, when applicable
+  summary      String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([planId, createdAt])
+  @@index([userId])
+  @@map("autopilot_runs")
 }

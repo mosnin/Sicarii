@@ -33,6 +33,7 @@ import {
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
+import { proposeAutopilotPlan, getAutopilotStatus } from "@/lib/autopilot-operations";
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats } from "@/lib/variant-operations";
 import { CREDIT_COSTS } from "@/lib/credits";
@@ -82,6 +83,11 @@ How you work:
   conversations and CRM notes) instead of assuming. Each chat starts fresh, so
   recall is how you remember.
 - Be concise and action-oriented. Confirm before bulk writes.
+- For sustained unsupervised work (e.g. "keep working on this while I'm away"),
+  propose a budget with propose_autopilot_plan instead of just running loose -
+  it needs the operator's approval from the dashboard before it runs (you
+  cannot approve your own plan), then it works within its cap on a schedule.
+  Check get_autopilot_status to see what it has done.
 
 Response style - critical:
 - Write in plain conversational prose. No markdown: no **bold**, no bullet lists,
@@ -362,6 +368,29 @@ export async function POST(req: Request) {
             variantId: variantId ?? null,
           }),
         ),
+    }),
+    propose_autopilot_plan: tool({
+      description:
+        "Propose a budgeted autopilot plan: a spend ceiling for a period (cadence), split across discovery/enrichment/outreach/other, that runs unsupervised WITHIN that budget once the operator approves it from the dashboard. Solves the surprise-out-of-credits problem: commit to a budget up front instead of erroring out mid-task. Always created as a draft - you cannot approve your own plan. allocations must sum exactly to totalCredits.",
+      inputSchema: z.object({
+        name: z.string(),
+        cadence: z.enum(["hourly", "daily", "weekly"]).optional(),
+        totalCredits: z.number().int().min(1).max(1_000_000),
+        allocations: z.object({
+          discovery: z.number().int().min(0).optional(),
+          enrichment: z.number().int().min(0).optional(),
+          outreach: z.number().int().min(0).optional(),
+          other: z.number().int().min(0).optional(),
+        }),
+        discoveryQuery: z.string().optional(),
+      }),
+      execute: (args) => exec(() => proposeAutopilotPlan(userId, args)),
+    }),
+    get_autopilot_status: tool({
+      description:
+        "Get the status of the operator's autopilot plan(s): budget remaining per category, current window, and the recent run ledger. Pass planId for one plan's detail, or omit it to list recent plans.",
+      inputSchema: z.object({ planId: z.string().optional() }),
+      execute: ({ planId }) => exec(() => getAutopilotStatus(userId, planId)),
     }),
     draft_breakups: tool({
       description:
