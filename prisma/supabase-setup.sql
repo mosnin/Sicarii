@@ -356,6 +356,31 @@ CREATE INDEX IF NOT EXISTS "field_provenance_retrievedAt_idx"
 CREATE INDEX IF NOT EXISTS "field_provenance_stale_idx"
   ON "field_provenance" ("stale");
 
+-- swarm_runs - a swarm discovery run: N parallel Exa search angles for one
+-- broad goal, merged and deduped across angles and against the CRM. Not tied
+-- to intent_monitors/monitor_runs (those model a recurring monitor; a swarm is
+-- one-off and on-demand). See docs/decisions/0011-swarm-discovery.md.
+CREATE TABLE IF NOT EXISTS "swarm_runs" (
+  "id"           TEXT NOT NULL,
+  "userId"       TEXT NOT NULL,
+  "goal"         TEXT NOT NULL,
+  "angles"       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  "angleSource"  TEXT NOT NULL DEFAULT 'derived',
+  "found"        INTEGER NOT NULL DEFAULT 0,
+  "merged"       INTEGER NOT NULL DEFAULT 0,
+  "added"        INTEGER NOT NULL DEFAULT 0,
+  "skipped"      INTEGER NOT NULL DEFAULT 0,
+  "creditsSpent" INTEGER NOT NULL DEFAULT 0,
+  "items"        JSONB,
+  "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "swarm_runs_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "swarm_runs_userId_createdAt_idx" ON "swarm_runs" ("userId", "createdAt");
+DO $$ BEGIN
+  ALTER TABLE "swarm_runs" ADD CONSTRAINT "swarm_runs_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 4. Vector similarity index for memory recall. WITHOUT this, every agent turn
 --    does a full sequential scan of the user's memory_chunks and degrades
