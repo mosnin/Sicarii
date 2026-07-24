@@ -82,13 +82,19 @@ model User {
   memoryChunks      MemoryChunk[]
   intentMonitors    IntentMonitor[]
   researchSchedules ResearchSchedule[]
+  swarmRuns         SwarmRun[]
   creditLedger      CreditLedger[]
   activities        Activity[]
   segments          Segment[]
   pipelines         Pipeline[]
+  outreachVariants  OutreachVariant[]
   // Teams: workspaces this human belongs to / humans in this workspace.
   memberships       TeamMember[] @relation("MemberOf")
   members           TeamMember[] @relation("WorkspaceMembers")
+  // Budgeted Autopilot: proposed/approved spend plans that run unsupervised
+  // within their approved credit ceiling.
+  autopilotPlans    AutopilotPlan[]
+  breakupDrafts     BreakupDraft[]
 
   // Plain (non-unique) index for the webhook's findFirst lookup by secret -
   // see the voiceInboundSecret comment above for why this is not @unique.
@@ -309,6 +315,8 @@ model Contact {
   segments        ContactSegment[]
   pipelineEntries PipelineEntry[]
   activities      Activity[]
+  breakupDrafts   BreakupDraft[]
+  variantSends    VariantSend[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -557,6 +565,39 @@ model MonitorRun {
   @@map("monitor_runs")
 }
 
+// A swarm discovery run: N parallel Exa search angles derived from (or given
+// for) one broad goal, each run blind to the others, then merged and deduped
+// across angles AND against the CRM. A separate model from MonitorRun on
+// purpose: a MonitorRun always belongs to a recurring IntentMonitor, while a
+// swarm is a one-off, on-demand multi-angle fan-out with no schedule and no
+// parent monitor - forcing it through MonitorRun would mean a fake monitor row
+// per run. This is the auditable record: what was searched, what came back per
+// angle, what got merged/added/skipped, and which angle(s) surfaced each
+// company (see docs/decisions/0011-swarm-discovery.md).
+model SwarmRun {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  goal        String   @db.Text
+  angles      String[] // the N angles actually run (explicit or derived)
+  angleSource String   @default("derived") // "derived" | "explicit"
+
+  found        Int @default(0) // raw company hits across all angles, before merge
+  merged       Int @default(0) // unique companies after cross-angle dedup
+  added        Int @default(0) // new entities created (merged minus CRM dupes)
+  skipped      Int @default(0) // merged companies dropped as CRM duplicates
+  creditsSpent Int @default(0) // actual credits debited (per angle that returned hits)
+
+  // Results surface: { perAngle: [{angle,found,credited}], companies: [{companyName,domain,angles,status,entityId}] }
+  items Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("swarm_runs")
+}
+
 // Scheduled deep research (Linkup or Exa) on a topic, contact, or entity.
 // When targetType+targetId are set, research is merged into that record's notes.
 // When null, top sources are saved as new entities.
@@ -596,7 +637,8 @@ model Segment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members ContactSegment[]
+  members  ContactSegment[]
+  variants OutreachVariant[]
 
   @@index([userId])
   @@map("segments")
@@ -671,6 +713,120 @@ model PipelineEntry {
   @@map("pipeline_entries")
 }
 
+// ── Breakup drafts: stalled-deal pattern-interrupt emails ───────────────────
+//
+// Scalar notices a cold deal itself (see listStalledDeals in
+// src/lib/breakup-operations.ts), drafts a polite "breakup" email grounded in
+// the contact's real activity/email history, and holds it here PENDING for
+// one-click human approval - it is never auto-sent. See
+// docs/decisions/0012-breakup-drafts.md.
+
+enum BreakupDraftStatus {
+  PENDING
+  APPROVED
+  SENT
+  DISMISSED
+}
+
+model BreakupDraft {
+  id     String @id @default(uuid())
+  userId String // tenant (owner of the contact); every query is scoped to this
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  status  BreakupDraftStatus @default(PENDING)
+  subject String
+  body    String             @db.Text
+
+  // Snapshot of the cold-detection signal (staleness window, last-contacted
+  // date, contact/pipeline status) and the reasoning + sources the draft was
+  // grounded in (activity/email ids referenced), for auditability. Captured at
+  // generation time and never re-derived, so the review queue always shows why
+  // THIS draft was written even if the underlying history later changes.
+  generatedFrom Json?
+
+  createdAt DateTime  @default(now())
+  // When the human approved or dismissed it (null while PENDING).
+  decidedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, status, createdAt])
+  @@index([contactId])
+  @@map("breakup_drafts")
+}
+
+// ── Self-optimizing outreach: a bandit over subject/opener variants ────────
+//
+// The agent silently learns which outreach openers/subject lines get replies,
+// per segment, and converges on the best ones without a human ever
+// configuring an A/B test. selectVariant (src/lib/variant-operations.ts)
+// Thompson-samples over each active variant's Beta(replies+1,
+// sends-replies+1) posterior; logOutreach/saveSocialMessage record a
+// VariantSend when the agent supplies the variantId it used; an inbound
+// reply that advances a contact to REPLIED attributes back to that contact's
+// most-recent unreplied send.
+
+enum VariantKind {
+  SUBJECT
+  OPENER
+}
+
+model OutreachVariant {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Null = a general-purpose variant used outside any segment. Segment
+  // deletion unscopes rather than destroys a variant, so the reply-rate data
+  // an agent has already earned on it survives (SetNull), same pattern as
+  // Contact.entityId.
+  segmentId String?
+  segment   Segment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+
+  kind VariantKind
+  text String @db.Text
+
+  // The bandit's running counts. Incremented by recordVariantSend /
+  // attributeReply, never written directly by a caller.
+  sends   Int     @default(0)
+  replies Int     @default(0)
+  active  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variantSends VariantSend[]
+
+  @@index([userId, kind, segmentId, active])
+  @@map("outreach_variants")
+}
+
+// A single outbound send of a specific variant to a specific contact - the
+// join that makes reply attribution exact. Deliberately NOT a variantId
+// column on Activity (see the module docstring in variant-operations.ts):
+// this keeps "the most recent unreplied send to this contact" a single
+// indexed query instead of a filtered scan over a polymorphic activity log,
+// and gives attribution a clean, race-safe terminal state (replied flips
+// exactly once - see attributeReply).
+model VariantSend {
+  id String @id @default(uuid())
+
+  variantId String
+  variant   OutreachVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  sentAt    DateTime  @default(now())
+  replied   Boolean   @default(false)
+  repliedAt DateTime?
+
+  @@index([contactId, replied, sentAt])
+  @@index([variantId])
+  @@map("variant_sends")
+}
+
 // ── Provenance spine (Moment 3 - Visible Trust) ─────────────────────────────
 //
 // One row per (recordType, recordId, field) - the last provider that wrote a
@@ -708,4 +864,121 @@ model FieldProvenance {
   @@index([retrievedAt])
   @@index([stale])
   @@map("field_provenance")
+}
+
+// ── Budgeted Autopilot ───────────────────────────────────────────────────────
+//
+// The problem: today an agent hits a surprise HTTP 402 mid-task when credits
+// run out. Instead: the agent proposes a spend plan up front (a total ceiling
+// split across categories), a human approves it ONCE (never an agent - see
+// approveAutopilotPlan / the session-gated REST route), and the scheduler then
+// runs it unsupervised, hard-stopping cleanly at the cap instead of erroring.
+//
+// The plan's credit ceiling is an ADDITIONAL budget on top of the real user
+// credit meter (User.creditsRemaining / spendCredits) - approving a plan never
+// grants credits, it only caps how much of the user's real balance the
+// autopilot loop is allowed to spend, per category, per window.
+
+enum AutopilotStatus {
+  draft // proposed by an agent, not yet runnable
+  approved // human approved; about to open its first window (transient)
+  active // running unsupervised within budget
+  paused // hard-stopped: a category hit its cap, or a human/agent paused it
+  exhausted // hard-stopped: the plan's whole budget was spent for this window
+  completed // manually retired; kept for history
+}
+
+enum AutopilotCategory {
+  discovery
+  enrichment
+  outreach
+  other
+}
+
+// A proposed/approved spend plan. One row per plan; its per-category ceilings
+// live in AutopilotAllocation, and every autonomous action it takes is logged
+// to AutopilotRun so the human can audit what the autopilot did.
+model AutopilotPlan {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name String
+  // How often the plan's window resets and the scheduler re-runs it: "daily" |
+  // "weekly" | "hourly" - same vocabulary as IntentMonitor.frequency.
+  cadence      String          @default("weekly")
+  status       AutopilotStatus @default(draft)
+  // The ceiling for one window; mirrors the sum of AutopilotAllocation.allocated
+  // (enforced at propose time so the plan's headline number is never a lie).
+  totalCredits Int
+  // What the discovery step searches for, e.g. "B2B fintech startups in NYC".
+  // Optional - a plan with no discoveryQuery only runs enrichment + outreach.
+  discoveryQuery String? @db.Text
+
+  windowStart DateTime?
+  windowEnd   DateTime?
+  approvedAt  DateTime?
+  // The human who approved it (users.id) - never an agent; stamped by the
+  // session-gated approve route only.
+  approvedById String?
+  // Why the plan last hard-stopped (category exhausted, full budget spent, or
+  // a human/agent pause), shown in the UI so the reason is never a mystery.
+  pausedReason String? @db.Text
+
+  lastRunAt DateTime?
+  nextRunAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  allocations AutopilotAllocation[]
+  runs        AutopilotRun[]
+
+  @@index([userId])
+  @@index([status, nextRunAt])
+  @@map("autopilot_plans")
+}
+
+// One row per spend category per plan: the ceiling (allocated) and the running
+// total (spent). A dedicated table with real integer columns - not a JSON blob
+// - so the budget guard can use a single atomic, conditional SQL UPDATE per
+// charge (the exact proven pattern spendCredits already uses for the credit
+// meter's atomic decrement), with no hand-rolled JSONB arithmetic, and so the
+// per-category numbers are directly queryable for the dashboard bars.
+model AutopilotAllocation {
+  id     String        @id @default(uuid())
+  planId String
+  plan   AutopilotPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  category  AutopilotCategory
+  allocated Int
+  spent     Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([planId, category])
+  @@map("autopilot_allocations")
+}
+
+// Append-only audit ledger: one row per autonomous action the plan actually
+// took (or a zero-cost step like surfacing due follow-ups), so the human can
+// see exactly what their autopilot did while they were away.
+model AutopilotRun {
+  id     String        @id @default(uuid())
+  planId String
+  plan   AutopilotPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId String
+
+  category     AutopilotCategory
+  action       String // underlying operation, e.g. "find_companies", "company_aspect", "list_due_followups"
+  creditsSpent Int               @default(0)
+  ref          String? // the entity/contact id touched, when applicable
+  summary      String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([planId, createdAt])
+  @@index([userId])
+  @@map("autopilot_runs")
 }

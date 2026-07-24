@@ -39,6 +39,18 @@ DO $$ BEGIN
   CREATE TYPE "SocialDirection" AS ENUM ('INBOUND', 'OUTBOUND');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+DO $$ BEGIN
+  CREATE TYPE "AutopilotStatus" AS ENUM (
+    'draft', 'approved', 'active', 'paused', 'exhausted', 'completed'
+  );
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE "AutopilotCategory" AS ENUM ('discovery', 'enrichment', 'outreach', 'other');
+  CREATE TYPE "BreakupDraftStatus" AS ENUM ('PENDING', 'APPROVED', 'SENT', 'DISMISSED');
+  CREATE TYPE "VariantKind" AS ENUM ('SUBJECT', 'OPENER');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. Tables
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -215,6 +227,116 @@ CREATE TABLE IF NOT EXISTS "contact_social_messages" (
 CREATE INDEX IF NOT EXISTS "contact_social_messages_contactId_createdAt_idx"
   ON "contact_social_messages" ("contactId", "createdAt");
 
+-- autopilot_plans - budgeted autopilot: a proposed/approved spend plan that
+-- runs unsupervised within its approved credit ceiling (an ADDITIONAL cap on
+-- top of the real credit meter, never a source of credits itself).
+CREATE TABLE IF NOT EXISTS "autopilot_plans" (
+  "id"             TEXT NOT NULL,
+  "userId"         TEXT NOT NULL,
+  "name"           TEXT NOT NULL,
+  "cadence"        TEXT NOT NULL DEFAULT 'weekly',
+  "status"         "AutopilotStatus" NOT NULL DEFAULT 'draft',
+  "totalCredits"   INTEGER NOT NULL,
+  "discoveryQuery" TEXT,
+  "windowStart"    TIMESTAMP(3),
+  "windowEnd"      TIMESTAMP(3),
+  "approvedAt"     TIMESTAMP(3),
+  "approvedById"   TEXT,
+  "pausedReason"   TEXT,
+  "lastRunAt"      TIMESTAMP(3),
+  "nextRunAt"      TIMESTAMP(3),
+  "createdAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"      TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "autopilot_plans_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "autopilot_plans_userId_idx" ON "autopilot_plans" ("userId");
+CREATE INDEX IF NOT EXISTS "autopilot_plans_status_nextRunAt_idx" ON "autopilot_plans" ("status", "nextRunAt");
+
+-- autopilot_allocations - one row per spend category per plan (ceiling +
+-- running total). Real integer columns so the budget guard can use a single
+-- atomic, conditional UPDATE per charge (see chargeAutopilotCategory), the
+-- same proven pattern as the credit meter's atomic decrement.
+CREATE TABLE IF NOT EXISTS "autopilot_allocations" (
+  "id"        TEXT NOT NULL,
+  "planId"    TEXT NOT NULL,
+  "category"  "AutopilotCategory" NOT NULL,
+  "allocated" INTEGER NOT NULL,
+  "spent"     INTEGER NOT NULL DEFAULT 0,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "autopilot_allocations_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "autopilot_allocations_planId_category_key"
+  ON "autopilot_allocations" ("planId", "category");
+
+-- autopilot_runs - append-only audit ledger: one row per autonomous action the
+-- plan took, so the human can see exactly what their autopilot did.
+CREATE TABLE IF NOT EXISTS "autopilot_runs" (
+  "id"           TEXT NOT NULL,
+  "planId"       TEXT NOT NULL,
+  "userId"       TEXT NOT NULL,
+  "category"     "AutopilotCategory" NOT NULL,
+  "action"       TEXT NOT NULL,
+  "creditsSpent" INTEGER NOT NULL DEFAULT 0,
+  "ref"          TEXT,
+  "summary"      TEXT,
+  "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "autopilot_runs_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "autopilot_runs_planId_createdAt_idx" ON "autopilot_runs" ("planId", "createdAt");
+CREATE INDEX IF NOT EXISTS "autopilot_runs_userId_idx" ON "autopilot_runs" ("userId");
+-- breakup_drafts - drafted stalled-deal "breakup" emails, held PENDING for
+-- one-click human approval (never auto-sent). See src/lib/breakup-operations.ts
+-- and docs/decisions/0012-breakup-drafts.md.
+CREATE TABLE IF NOT EXISTS "breakup_drafts" (
+  "id"            TEXT NOT NULL,
+  "userId"        TEXT NOT NULL,
+  "contactId"     TEXT NOT NULL,
+  "status"        "BreakupDraftStatus" NOT NULL DEFAULT 'PENDING',
+  "subject"       TEXT NOT NULL,
+  "body"          TEXT NOT NULL,
+  "generatedFrom" JSONB,
+  "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "decidedAt"     TIMESTAMP(3),
+  CONSTRAINT "breakup_drafts_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "breakup_drafts_userId_status_idx" ON "breakup_drafts" ("userId", "status");
+CREATE INDEX IF NOT EXISTS "breakup_drafts_userId_status_createdAt_idx"
+  ON "breakup_drafts" ("userId", "status", "createdAt");
+CREATE INDEX IF NOT EXISTS "breakup_drafts_contactId_idx" ON "breakup_drafts" ("contactId");
+-- outreach_variants - self-optimizing outreach: subject/opener text variants
+-- the bandit (Thompson sampling, src/lib/variant-bandit.ts) chooses between
+CREATE TABLE IF NOT EXISTS "outreach_variants" (
+  "id"        TEXT NOT NULL,
+  "userId"    TEXT NOT NULL,
+  "segmentId" TEXT,
+  "kind"      "VariantKind" NOT NULL,
+  "text"      TEXT NOT NULL,
+  "sends"     INTEGER NOT NULL DEFAULT 0,
+  "replies"   INTEGER NOT NULL DEFAULT 0,
+  "active"    BOOLEAN NOT NULL DEFAULT true,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "outreach_variants_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "outreach_variants_userId_kind_segmentId_active_idx"
+  ON "outreach_variants" ("userId", "kind", "segmentId", "active");
+
+-- variant_sends - one row per outbound send of a variant to a contact; the
+-- join that makes reply attribution exact (see attributeReply)
+CREATE TABLE IF NOT EXISTS "variant_sends" (
+  "id"        TEXT NOT NULL,
+  "variantId" TEXT NOT NULL,
+  "contactId" TEXT NOT NULL,
+  "sentAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "replied"   BOOLEAN NOT NULL DEFAULT false,
+  "repliedAt" TIMESTAMP(3),
+  CONSTRAINT "variant_sends_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "variant_sends_contactId_replied_sentAt_idx"
+  ON "variant_sends" ("contactId", "replied", "sentAt");
+CREATE INDEX IF NOT EXISTS "variant_sends_variantId_idx" ON "variant_sends" ("variantId");
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3. Foreign keys
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -273,6 +395,36 @@ DO $$ BEGIN
     FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+DO $$ BEGIN
+  ALTER TABLE "autopilot_plans" ADD CONSTRAINT "autopilot_plans_userId_fkey"
+  ALTER TABLE "breakup_drafts" ADD CONSTRAINT "breakup_drafts_userId_fkey"
+  ALTER TABLE "outreach_variants" ADD CONSTRAINT "outreach_variants_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "autopilot_allocations" ADD CONSTRAINT "autopilot_allocations_planId_fkey"
+    FOREIGN KEY ("planId") REFERENCES "autopilot_plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "autopilot_runs" ADD CONSTRAINT "autopilot_runs_planId_fkey"
+    FOREIGN KEY ("planId") REFERENCES "autopilot_plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  ALTER TABLE "breakup_drafts" ADD CONSTRAINT "breakup_drafts_contactId_fkey"
+  ALTER TABLE "outreach_variants" ADD CONSTRAINT "outreach_variants_segmentId_fkey"
+    FOREIGN KEY ("segmentId") REFERENCES "segments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "variant_sends" ADD CONSTRAINT "variant_sends_variantId_fkey"
+    FOREIGN KEY ("variantId") REFERENCES "outreach_variants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "variant_sends" ADD CONSTRAINT "variant_sends_contactId_fkey"
+    FOREIGN KEY ("contactId") REFERENCES "contacts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
 -- field_provenance - Moment 3 (Visible Trust): one row per enriched field,
 -- recording who supplied it, confidence, value snapshot, and freshness.
 CREATE TABLE IF NOT EXISTS "field_provenance" (
@@ -298,6 +450,31 @@ CREATE INDEX IF NOT EXISTS "field_provenance_retrievedAt_idx"
   ON "field_provenance" ("retrievedAt");
 CREATE INDEX IF NOT EXISTS "field_provenance_stale_idx"
   ON "field_provenance" ("stale");
+
+-- swarm_runs - a swarm discovery run: N parallel Exa search angles for one
+-- broad goal, merged and deduped across angles and against the CRM. Not tied
+-- to intent_monitors/monitor_runs (those model a recurring monitor; a swarm is
+-- one-off and on-demand). See docs/decisions/0011-swarm-discovery.md.
+CREATE TABLE IF NOT EXISTS "swarm_runs" (
+  "id"           TEXT NOT NULL,
+  "userId"       TEXT NOT NULL,
+  "goal"         TEXT NOT NULL,
+  "angles"       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  "angleSource"  TEXT NOT NULL DEFAULT 'derived',
+  "found"        INTEGER NOT NULL DEFAULT 0,
+  "merged"       INTEGER NOT NULL DEFAULT 0,
+  "added"        INTEGER NOT NULL DEFAULT 0,
+  "skipped"      INTEGER NOT NULL DEFAULT 0,
+  "creditsSpent" INTEGER NOT NULL DEFAULT 0,
+  "items"        JSONB,
+  "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "swarm_runs_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "swarm_runs_userId_createdAt_idx" ON "swarm_runs" ("userId", "createdAt");
+DO $$ BEGIN
+  ALTER TABLE "swarm_runs" ADD CONSTRAINT "swarm_runs_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3b. Voice-native CRM (0014): additive columns on users for inbound voice.

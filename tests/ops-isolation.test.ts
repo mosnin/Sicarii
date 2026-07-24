@@ -43,6 +43,8 @@ vi.mock("@/lib/prisma", () => {
         create: forbid("contactCall.create"),
         findMany: forbid("contactCall.findMany"),
       },
+      contactEmail: { findMany: forbid("contactEmail.findMany") },
+      fieldProvenance: { findMany: forbid("fieldProvenance.findMany") },
       activity: { create: forbid("activity.create") },
       user: { findUnique: vi.fn().mockResolvedValue({ agentPhoneApiKey: "k" }) },
       $transaction: forbid("$transaction"),
@@ -62,8 +64,10 @@ import {
   logOutreach,
   listContactCalls,
   syncContactCall,
+  listContactEmails,
   OpError,
 } from "@/lib/crm-operations";
+import { getProvenanceMap } from "@/lib/provenance";
 
 async function expectDenied(fn: () => Promise<unknown>) {
   await expect(fn()).rejects.toMatchObject({
@@ -97,6 +101,22 @@ describe("ops-layer tenant isolation", () => {
   it("call history + sync deny a non-owner of the parent contact", async () => {
     await expectDenied(() => listContactCalls(ATTACKER, "c1"));
     await expectDenied(() => syncContactCall(ATTACKER, "call1"));
+  });
+
+  it("listContactEmails denies a non-owner of the contact and never reads its emails", async () => {
+    // contactEmail.findMany is wired to throw if reached at all, so this also
+    // proves the ownership check happens BEFORE any email row is touched.
+    await expectDenied(() => listContactEmails(ATTACKER, "c1"));
+  });
+
+  it("get_provenance (getProvenanceMap's userId fence) denies a non-owner for both contact and entity records, and never reads field_provenance rows", async () => {
+    // FieldProvenance has no userId column of its own - this is the one place
+    // that fence is enforced, by checking the parent contact/entity first.
+    // fieldProvenance.findMany is wired to throw if reached at all, so an
+    // empty-object result here (rather than a thrown error) is the correct,
+    // documented behavior: a non-owner call resolves to {}, never leaking rows.
+    await expect(getProvenanceMap("contact", "c1", ATTACKER)).resolves.toEqual({});
+    await expect(getProvenanceMap("entity", "e1", ATTACKER)).resolves.toEqual({});
   });
 
   it("the owner is allowed through the ownership gate (reads do not throw 404)", async () => {

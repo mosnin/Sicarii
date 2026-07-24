@@ -19,6 +19,34 @@ pnpm dev
   add `--accept-data-loss` casually).
 - `pnpm lint`, `pnpm test` (vitest), `npx tsc --noEmit` before shipping.
 
+## Environment doctor
+
+This app has ~15 optional-but-load-bearing integrations, each gated behind an
+env var, each failing differently when missing (some 501, some silently
+no-op, some throw at request time). Run the doctor before you assume
+something is broken:
+
+```bash
+pnpm run doctor   # note: `pnpm doctor` (no `run`) invokes pnpm's own
+                  # built-in doctor command instead, not this script
+```
+
+It reports PASS / MISSING / PARTIAL per integration, grouped the same way as
+`.env.local.example` (Auth, Database, Discovery providers, Enrichment
+providers, Agent runtime, Billing, Rate limiting, MCP auth), and ends with a
+summary count. It never prints secret values, only which env var names are
+set.
+
+The same report is available as JSON at `/api/health` (public, no auth) so it
+can be curled after a deploy with no shell access to the server:
+
+```bash
+curl https://<your-deployment>/api/health
+```
+
+Both the CLI and the route read the same check logic from
+`src/lib/env-doctor.ts`, so they can't drift apart.
+
 ## Production requirements (founder actions)
 
 - **Upstash Redis (required):** set `UPSTASH_REDIS_REST_URL` and

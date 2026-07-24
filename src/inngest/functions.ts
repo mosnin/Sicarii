@@ -7,6 +7,8 @@ import { exaIntentSearch, isExaConfigured, isMeaningful } from "@/lib/exa";
 import { linkupDeepResearch, linkupSearch, isLinkupConfigured } from "@/lib/linkup";
 import { notifyTaskWebhook } from "@/lib/notify";
 import { runIntentMonitorOnce } from "@/lib/radar-run";
+import { runAutopilotPlanOnce } from "@/lib/autopilot-run";
+import { rolloverAutopilotWindow, cadenceMs } from "@/lib/autopilot-operations";
 import { checkCreationBudget } from "@/lib/creation-guard";
 import { spendCredits } from "@/lib/credits";
 
@@ -221,4 +223,71 @@ export const runResearchSchedules = inngest.createFunction(
   }
 );
 
-export const functions = [runIntentMonitors, runResearchSchedules];
+// ── Budgeted Autopilot ────────────────────────────────────────────────────────
+// Runs each active plan's bounded work tick (see autopilot-run.ts), then either
+// rolls its window over (still active - fresh budget, same cadence) or leaves
+// it exactly as the budget guard left it (paused/exhausted mid-tick, so a
+// human can see why). Advances nextRunAt whether the tick succeeds or throws,
+// same policy as the other schedulers: a failing plan must not stay "due"
+// forever and get retried every sweep.
+
+export const runAutopilotPlans = inngest.createFunction(
+  {
+    id: "run-autopilot-plans",
+    name: "Run budgeted autopilot plans",
+    triggers: [{ cron: "15 * * * *" }], // 15 min past every hour (offset from the other two crons)
+  },
+  async () => {
+    const now = new Date();
+    const plans = await prisma.autopilotPlan.findMany({
+      where: { status: "active", nextRunAt: { lte: now } },
+      include: { allocations: true },
+    });
+
+    let processed = 0;
+    const webhookCache = new Map<string, string | null>();
+    for (const plan of plans) {
+      const nextRun = new Date(now.getTime() + cadenceMs(plan.cadence));
+      try {
+        const result = await runAutopilotPlanOnce(plan);
+
+        if (result.status === "active") {
+          // The tick used some (or none) of the window's budget but never hit
+          // a cap - roll the window forward and reset spent for the next cycle.
+          await rolloverAutopilotWindow(plan.id, now, nextRun);
+        } else {
+          // The budget guard already hard-stopped the plan (paused/exhausted)
+          // and stamped pausedReason - just advance the schedule bookkeeping,
+          // don't touch spent/window (it's the evidence of what happened).
+          await prisma.autopilotPlan.update({
+            where: { id: plan.id },
+            data: { lastRunAt: now, nextRunAt: nextRun },
+          });
+        }
+        processed++;
+
+        if (result.ranSteps.length > 0) {
+          const url = await getWebhook(webhookCache, plan.userId);
+          await notifyTaskWebhook(url, {
+            event: "autopilot-plan.completed",
+            taskId: plan.id,
+            name: plan.name,
+            query: `Autopilot ${plan.cadence} run (${plan.status}): ${[...new Set(result.ranSteps)].join(", ")}.`,
+            created: result.touched.length,
+            items: result.touched,
+            completedAt: now.toISOString(),
+          });
+        }
+      } catch (e) {
+        console.error(`[inngest] autopilot plan ${plan.id} failed`, e);
+        await prisma.autopilotPlan
+          .update({ where: { id: plan.id }, data: { nextRunAt: nextRun } })
+          .catch(() => {});
+      }
+    }
+
+    return { processed };
+  }
+);
+
+export const functions = [runIntentMonitors, runResearchSchedules, runAutopilotPlans];

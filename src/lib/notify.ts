@@ -4,7 +4,7 @@
 import { safeHttpUrl, resolvesToPublicIp } from "@/lib/ssrf";
 
 export interface TaskWebhookPayload {
-  event: "intent-monitor.completed" | "research-schedule.completed";
+  event: "intent-monitor.completed" | "research-schedule.completed" | "autopilot-plan.completed";
   taskId: string;
   name: string;
   query: string;

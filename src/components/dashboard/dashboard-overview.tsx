@@ -14,6 +14,7 @@ import { GlobalSearch } from "@/components/dashboard/global-search";
 import { CommandBox } from "@/components/dashboard/command-box";
 import { PulseMoment } from "@/components/dashboard/pulse-moment";
 import { NeedsYou, type NeedsData } from "@/components/dashboard/needs-you";
+import { BreakupQueue, type PendingDraftItem } from "@/components/dashboard/breakup-queue";
 import { cn } from "@/lib/utils";
 import type { PulseData } from "@/lib/pulse";
 
@@ -180,6 +181,9 @@ interface DashboardOverviewProps {
   isEmpty?: boolean;
   /** The everyday worklist counts ("what needs me now"). */
   needs?: NeedsData;
+  /** Pending breakup drafts awaiting human review, oldest first. Empty/omitted
+   *  renders nothing - the card only appears when there's a real decision to make. */
+  breakupDrafts?: PendingDraftItem[];
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -195,6 +199,7 @@ export function DashboardOverview({
   pulse = null,
   isEmpty = false,
   needs = { replied: 0, dueFollowup: 0, toEnrich: 0, radarSignals: 0 },
+  breakupDrafts = [],
 }: DashboardOverviewProps) {
   const reduce = useReducedMotion();
 
@@ -629,6 +634,14 @@ export function DashboardOverview({
           </motion.div>
         </motion.div>
       </div>
+
+      {/* ── Breakup drafts: stalled deals Scalar drafted a close-out for.
+          Renders nothing when the queue is empty - never a dead card. ── */}
+      {breakupDrafts.length > 0 && (
+        <motion.div variants={cardVariants}>
+          <BreakupQueue initialDrafts={breakupDrafts} />
+        </motion.div>
+      )}
     </motion.div>
   );
 }
