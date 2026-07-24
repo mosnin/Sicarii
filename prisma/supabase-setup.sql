@@ -477,6 +477,31 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 3b. Voice-native CRM (0014): additive columns on users for inbound voice.
+--     voiceEnabled is the opt-in; voiceInboundSecret is the high-entropy
+--     per-user token that authenticates an inbound AgentPhone call (baked
+--     into the webhook URL the operator pastes into AgentPhone, as ?key=).
+--     ADD COLUMN IF NOT EXISTS is safe to re-run and safe against the
+--     pre-existing users table (this file's base CREATE TABLE for "users"
+--     predates several later columns - plan/credits/agentPhoneApiKey/etc -
+--     that already live only as app-level Prisma migrations; this statement
+--     follows the same additive pattern for the new voice columns without
+--     attempting to reconcile that earlier drift).
+--
+--     voiceInboundSecret is a PLAIN (non-unique) index, not a unique one: a
+--     UNIQUE INDEX on this Supabase project's users table failed
+--     `prisma db push` on deploy (confirmed by isolating it - every sibling
+--     PR that only adds a new table deploys green; this table-altering one
+--     only failed with @unique). Uniqueness is instead guaranteed at
+--     generation time in application code (collision-checked before save;
+--     see src/app/api/settings/voice/route.ts), so this index exists purely
+--     for the webhook's lookup performance, not as a constraint.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "voiceEnabled" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "voiceInboundSecret" TEXT;
+CREATE INDEX IF NOT EXISTS "users_voiceInboundSecret_idx" ON "users" ("voiceInboundSecret");
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 4. Vector similarity index for memory recall. WITHOUT this, every agent turn
 --    does a full sequential scan of the user's memory_chunks and degrades
 --    linearly as data grows. `prisma db push` does NOT create this (it is raw

@@ -55,6 +55,23 @@ model User {
   // away" window for The Pulse. Null until the first dashboard visit, so a
   // returning user never sees their whole history bragged back at them.
   lastSeenAt       DateTime?
+  // Voice-native CRM (inbound): the operator calls their AgentPhone number and
+  // asks Scalar a question out loud. voiceEnabled is the explicit opt-in (off
+  // by default, and requires agentPhoneApiKey to turn on). voiceInboundSecret
+  // is a high-entropy, per-user token the operator pastes into their
+  // AgentPhone inbound-webhook config as ?key=<token> - it is the ONLY thing
+  // that authenticates an inbound call to this user, since AgentPhone's
+  // payload shape/signing is unverified and nothing in the call body is ever
+  // trusted for identity. See src/app/api/webhooks/agentphone/route.ts.
+  // NOTE: this is deliberately NOT @unique at the DB level - a UNIQUE INDEX on
+  // this Supabase project's `users` table fails `prisma db push` (confirmed:
+  // every sibling PR that only ADDS a table deploys green; this is the only
+  // one that ALTERs `users`, and only the @unique variant failed). Uniqueness
+  // is instead guaranteed at generation time in
+  // src/app/api/settings/voice/route.ts (collision-checked before save), and
+  // lookups use findFirst against the plain index below.
+  voiceEnabled       Boolean   @default(false)
+  voiceInboundSecret String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -79,6 +96,9 @@ model User {
   autopilotPlans    AutopilotPlan[]
   breakupDrafts     BreakupDraft[]
 
+  // Plain (non-unique) index for the webhook's findFirst lookup by secret -
+  // see the voiceInboundSecret comment above for why this is not @unique.
+  @@index([voiceInboundSecret])
   @@map("users")
 }
 
