@@ -11,7 +11,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { normalizeSocialChannel, normalizeDirection, requireNormalized } from "@/lib/agent-enums";
+import { normalizeSocialChannel, normalizeDirection, normalizeVariantKind, requireNormalized } from "@/lib/agent-enums";
 import {
   OpError,
   listEntities,
@@ -33,6 +33,7 @@ import {
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
+import { selectVariant, listVariantStats } from "@/lib/variant-operations";
 import { CREDIT_COSTS } from "@/lib/credits";
 
 export const maxDuration = 60;
@@ -67,6 +68,12 @@ How you work:
 - Use extract_contact_details to pull emails/phones off a company site. These
   tools spend credits, so confirm intent before large runs.
 - Enrich a business with enrich_entity.
+- Outreach quietly improves itself: before your first message to a segment (or
+  in general), call select_variant to get the bandit's current best subject
+  line or opener for that pool - it explores while data is thin and converges
+  on the winner as replies come in, no A/B test to set up. Use the text it
+  returns, then pass its id as variantId on log_social_message so a later
+  reply is attributed back to it. Check list_variant_stats to see reply rates.
 - Read/write the CRM with the list/get/create/update tools. Always work from real
   data - call tools rather than guessing.
 - You have long-term memory: call recall to retrieve relevant past context (earlier
@@ -328,15 +335,16 @@ export async function POST(req: Request) {
     }),
     log_social_message: tool({
       description:
-        "Record a social media message with a contact (LinkedIn/X/Instagram/Facebook DM or comment) so the conversation is tracked next to email. OUTBOUND stamps the outreach time and advances NEW/ENRICHED to CONTACTED; INBOUND advances CONTACTED to REPLIED. channel accepts linkedin, x (or twitter), instagram, facebook, other - any casing. direction accepts inbound, outbound - any casing.",
+        "Record a social media message with a contact (LinkedIn/X/Instagram/Facebook DM or comment) so the conversation is tracked next to email. OUTBOUND stamps the outreach time and advances NEW/ENRICHED to CONTACTED; INBOUND advances CONTACTED to REPLIED (and attributes the reply back to variantId used on the most recent OUTBOUND send, if any). channel accepts linkedin, x (or twitter), instagram, facebook, other - any casing. direction accepts inbound, outbound - any casing.",
       inputSchema: z.object({
         contactId: z.string(),
         channel: z.string().max(20),
         direction: z.string().max(20),
         body: z.string().min(1).max(10000),
         threadRef: z.string().optional(),
+        variantId: z.string().optional().describe("id of the OutreachVariant used, from select_variant (OUTBOUND only)"),
       }),
-      execute: ({ contactId, channel, direction, body, threadRef }) =>
+      execute: ({ contactId, channel, direction, body, threadRef, variantId }) =>
         exec(() =>
           saveSocialMessage(userId, {
             contactId,
@@ -349,8 +357,32 @@ export async function POST(req: Request) {
             direction: requireNormalized(direction, normalizeDirection, "direction", "inbound, outbound"),
             body,
             threadRef: threadRef ?? null,
+            variantId: variantId ?? null,
           }),
         ),
+    }),
+    select_variant: tool({
+      description:
+        "Pick the best subject-line or opener to use next: a multi-armed bandit (Thompson sampling over reply rate) that explores when a pool has little data and converges on the winner as sends accumulate - no A/B test to configure. Returns the chosen variant's id and text; use that text verbatim, then pass the id as variantId to log_social_message so a reply gets attributed back to it. Fails with a clear message if no variants exist yet for this kind/segment.",
+      inputSchema: z.object({
+        kind: z.string().max(20).describe("subject | opener - case-insensitive"),
+        segmentId: z.string().optional().describe("omit for the general (no-segment) pool"),
+      }),
+      execute: ({ kind, segmentId }) =>
+        exec(() =>
+          selectVariant(userId, {
+            kind: requireNormalized(kind, normalizeVariantKind, "kind", "subject, opener"),
+            segmentId: segmentId ?? null,
+          }),
+        ),
+    }),
+    list_variant_stats: tool({
+      description:
+        "Reply-rate stats for outreach variants (subject lines / openers): sends, replies, reply rate, and which variant is currently winning, grouped by segment and kind.",
+      inputSchema: z.object({
+        segmentId: z.string().optional().describe("omit to see every segment (and the general pool)"),
+      }),
+      execute: ({ segmentId }) => exec(() => listVariantStats(userId, { segmentId: segmentId ?? undefined })),
     }),
   };
 
