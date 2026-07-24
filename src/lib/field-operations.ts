@@ -44,6 +44,33 @@ export async function createSegment(userId: string, input: { name: string; goal?
   return segment;
 }
 
+export async function updateSegment(userId: string, id: string, patch: { name?: string; goal?: string }) {
+  const existing = await prisma.segment.findUnique({ where: { id } });
+  if (!existing || existing.userId !== userId) throw new OpError("Segment not found", 404);
+  if (patch.name !== undefined && !patch.name.trim()) throw new OpError("Segment name cannot be empty", 400);
+  return prisma.segment.update({
+    where: { id },
+    data: { ...(patch.name !== undefined ? { name: patch.name.trim() } : {}), ...(patch.goal !== undefined ? { goal: patch.goal } : {}) },
+  });
+}
+
+// ContactSegment.segment is onDelete: Cascade in the schema, so deleting the
+// segment row cleans up its membership join rows automatically; no explicit
+// member cleanup needed here.
+export async function deleteSegment(userId: string, id: string) {
+  const existing = await prisma.segment.findUnique({ where: { id } });
+  if (!existing || existing.userId !== userId) throw new OpError("Segment not found", 404);
+  await prisma.segment.delete({ where: { id } });
+  return { ok: true };
+}
+
+export async function removeSegmentMember(userId: string, segmentId: string, contactId: string) {
+  const segment = await prisma.segment.findUnique({ where: { id: segmentId } });
+  if (!segment || segment.userId !== userId) throw new OpError("Segment not found", 404);
+  await prisma.contactSegment.deleteMany({ where: { segmentId, contactId } });
+  return { ok: true };
+}
+
 // Smart segment: vector-match the closest eligible prospects to a goal.
 // Embeds up to ~200 candidate contacts plus the goal via OpenAI in one call
 // (see buildSegmentMatches / src/lib/segment-build.ts) - gate on credits
@@ -124,6 +151,23 @@ export async function addToPipeline(userId: string, pipelineId: string, input: {
     skipDuplicates: true,
   });
   return { added: res.count };
+}
+
+// PipelineEntry.pipeline is onDelete: Cascade in the schema, so deleting the
+// pipeline row cleans up its entries automatically; no explicit entry cleanup
+// needed here.
+export async function deletePipeline(userId: string, id: string) {
+  const existing = await prisma.pipeline.findUnique({ where: { id } });
+  if (!existing || existing.userId !== userId) throw new OpError("Pipeline not found", 404);
+  await prisma.pipeline.delete({ where: { id } });
+  return { ok: true };
+}
+
+export async function removePipelineEntry(userId: string, pipelineId: string, entryId: string) {
+  const entry = await prisma.pipelineEntry.findUnique({ where: { id: entryId } });
+  if (!entry || entry.userId !== userId || entry.pipelineId !== pipelineId) throw new OpError("Entry not found", 404);
+  await prisma.pipelineEntry.delete({ where: { id: entryId } });
+  return { ok: true };
 }
 
 export async function updatePipelineEntry(

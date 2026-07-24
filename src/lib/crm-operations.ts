@@ -553,6 +553,21 @@ export async function listSocialMessages(
   });
 }
 
+/** The email history with a contact (newest first). Mirrors listSocialMessages
+ *  so agents can page through either channel the same way. */
+export async function listContactEmails(userId: string, contactId: string, limit?: number) {
+  const contact = await prisma.contact.findUnique({
+    where: { id: contactId },
+    select: { userId: true },
+  });
+  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  return prisma.contactEmail.findMany({
+    where: { contactId },
+    orderBy: { sentAt: "desc" },
+    take: clampListLimit(limit),
+  });
+}
+
 /* ------------------------------ Search ------------------------------ */
 
 /** Search across entities and contacts. */
