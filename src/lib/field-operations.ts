@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
 import { buildSegmentMatches } from "@/lib/segment-build";
+import { ensureCredits, spendCredits } from "@/lib/credits";
 
 const STAGES = ["NEW", "ENRICHED", "PROSPECTING", "ENGAGING", "REPLYING", "WON", "LOST"] as const;
 const CONVO = ["OPEN", "AWAITING_REPLY", "STALLED", "CLOSED"] as const;
@@ -71,10 +72,18 @@ export async function removeSegmentMember(userId: string, segmentId: string, con
 }
 
 // Smart segment: vector-match the closest eligible prospects to a goal.
+// Embeds up to ~200 candidate contacts plus the goal via OpenAI in one call
+// (see buildSegmentMatches / src/lib/segment-build.ts) - gate on credits
+// BEFORE that paid call, and debit only after a segment was actually built,
+// so a genuine miss (no eligible prospects, nothing matched) is never
+// charged. See CREDIT_COSTS.build_segment in src/lib/credits.ts for the cost
+// derivation.
 export async function buildSmartSegment(userId: string, input: { goal: string; quantity?: number; name?: string }) {
   if (!input.goal?.trim()) throw new OpError("Describe the segment goal", 400);
   if (!process.env.OPENAI_API_KEY) throw new OpError("Segment building needs OPENAI_API_KEY", 501);
   const quantity = Math.min(Math.max(input.quantity ?? 20, 1), 100);
+
+  await ensureCredits(userId, "build_segment");
 
   const { matches, eligibleCount } = await buildSegmentMatches(userId, input.goal, quantity);
   if (eligibleCount === 0) throw new OpError("No eligible prospects (segments only target enriched, not-yet-contacted leads)", 422);
@@ -87,6 +96,10 @@ export async function buildSmartSegment(userId: string, input: { goal: string; q
     data: matches.map((m) => ({ segmentId: segment.id, contactId: m.contactId, score: m.score })),
     skipDuplicates: true,
   });
+
+  // Debit only now - a real segment with real matches was built.
+  await spendCredits(userId, "build_segment");
+
   return { segment, matched: matches.length, eligible: eligibleCount };
 }
 

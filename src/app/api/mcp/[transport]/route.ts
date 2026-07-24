@@ -693,10 +693,11 @@ const handler = createMcpHandler(
 
     server.tool(
       "build_smart_segment",
-      "Build a segment from a goal: vector-matches the closest ELIGIBLE prospects (enriched, not yet contacted, not already in a pipeline). Use this to auto-create a targeted segment.",
+      "Build a segment from a goal: vector-matches the closest ELIGIBLE prospects (enriched, not yet contacted, not already in a pipeline). Use this to auto-create a targeted segment. Costs 2 credits when prospects are matched (no eligible prospects, or nothing matched, costs nothing).",
       { goal: z.string(), quantity: z.number().int().min(1).max(100).optional(), name: z.string().optional() },
-      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async (args, extra) => gated(extra, "build_smart_segment", 20, (userId) => buildSmartSegment(userId, args)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async (args, extra) =>
+        gated(extra, "build_segment", 10, (userId) => buildSmartSegment(userId, args)),
     );
 
     /* -------------------------- Pipelines ------------------------- */
@@ -775,19 +776,20 @@ const handler = createMcpHandler(
     /* --------------------------- Memory --------------------------- */
     server.tool(
       "recall",
-      "Recall relevant past context (earlier work and CRM notes) by similarity. Each MCP session is stateless, so call this before assuming you do not know something.",
+      "Recall relevant past context (earlier work and CRM notes) by similarity. Each MCP session is stateless, so call this before assuming you do not know something. Free (reads only your own stored memory); rate-limited per minute.",
       { query: z.string(), k: z.number().int().min(1).max(20).optional() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      async ({ query, k }, extra) => run(() => recallMemory(userIdFrom(extra), query, k)),
+      async ({ query, k }, extra) =>
+        gated(extra, "recall", 60, (userId) => recallMemory(userId, query, k)),
     );
     server.tool(
       "remember",
-      "Persist a durable note or fact to long-term memory so a future session can recall it. Use for decisions, preferences, and outreach context worth keeping.",
+      "Persist a durable note or fact to long-term memory so a future session can recall it. Use for decisions, preferences, and outreach context worth keeping. Costs 1 credit per memory actually saved (nothing charged on a failed save).",
       { content: z.string().max(8000), refId: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async ({ content, refId }, extra) =>
-        gated(extra, "remember", 60, async (userId) => {
-          const remembered = await storeMemory(userId, "message", content, refId);
+        gated(extra, "remember", 30, async (userId) => {
+          const remembered = await storeMemory(userId, "message", content, refId, { chargeCredits: true });
           // Report honestly: a silent no-op (embeddings unconfigured, insert
           // failure) must not hand an autonomous agent a success receipt.
           return remembered
@@ -997,14 +999,14 @@ const handler = createMcpHandler(
   },
   {
     serverInfo: { name: "scalar", version: "0.1.0" },
-    instructions: `Scalar is a CRM that you, an AI agent, operate end to end with no human. You discover leads, enrich them accurately, organize them, track outreach, and you pay for your own usage when credits run low. Reads and writes to the CRM are free; only actions that pull real data from the outside world (discovery, enrichment, web search) cost credits.
+    instructions: `Scalar is a CRM that you, an AI agent, operate end to end with no human. You discover leads, enrich them accurately, organize them, track outreach, and you pay for your own usage when credits run low. Reads and writes to the CRM are free; credits are spent only when an action calls a paid outside provider - discovery, enrichment, web search, build_smart_segment's matching, and remember's memory writes all call one. recall is free: it only searches your own already-stored memory.
 
 THE OPERATING LOOP
-1. Orient. Call get_balance to know your runway, and recall to retrieve relevant past context (this session is stateless). Call search_crm or list_entities / list_contacts before discovering, so you build on existing records instead of duplicating them.
+1. Orient. Call get_balance to know your runway, and recall to retrieve relevant past context (this session is stateless, and recall is free). Call search_crm or list_entities / list_contacts before discovering, so you build on existing records instead of duplicating them.
 2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). Both dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
 3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. For their social profiles (LinkedIn, X, Instagram, Facebook), call find_socials: it auto-saves only name+company-verified profiles and returns the rest as candidates for you to review. Enrich what you will act on, not the whole database; every enrichment costs credits.
-4. Organize. Group not-yet-contacted prospects with build_smart_segment, then create_pipeline to track them through stages. Clean up as you go: update_segment/delete_segment/remove_segment_member and delete_pipeline/remove_pipeline_entry let you rename, retire, or prune segments and pipelines instead of leaving stale ones behind.
-5. Track outreach. This is the memory that makes you reliable. When you email a contact, call save_email_context, then log_outreach to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message (it advances pipeline state itself; use list_social_messages to reread a conversation). When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping.
+4. Organize. Group not-yet-contacted prospects with build_smart_segment (costs credits when it matches prospects), then create_pipeline to track them through stages. Clean up as you go: update_segment/delete_segment/remove_segment_member and delete_pipeline/remove_pipeline_entry let you rename, retire, or prune segments and pipelines instead of leaving stale ones behind.
+5. Track outreach. This is the memory that makes you reliable. When you email a contact, call save_email_context, then log_outreach to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message (it advances pipeline state itself; use list_social_messages to reread a conversation). When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping (costs 1 credit per memory actually saved).
 6. Measure and repeat. Use pipeline_metrics to see what is working, then loop back to discovery.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.
