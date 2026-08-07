@@ -1,0 +1,37 @@
+{
+  "name": "@scalar/voice-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Scalar LiveKit voice agent worker. Separate always-on deployment; cannot run on Vercel.",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "tsx watch src/agent.ts dev",
+    "start": "node dist/agent.js start",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "download-files": "node dist/agent.js download-files"
+  },
+  "dependencies": {
+    "@livekit/agents": "1.6.2",
+    "@livekit/agents-plugin-cartesia": "1.6.2",
+    "@livekit/agents-plugin-deepgram": "1.6.2",
+    "@livekit/agents-plugin-elevenlabs": "1.6.2",
+    "@livekit/agents-plugin-google": "1.6.2",
+    "@livekit/agents-plugin-livekit": "1.6.2",
+    "@livekit/agents-plugin-openai": "1.6.2",
+    "@livekit/agents-plugin-silero": "1.6.2",
+    "@livekit/rtc-node": "0.13.33",
+    "livekit-server-sdk": "2.17.0",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.20.3",
+    "typescript": "^5",
+    "vitest": "^4.1.8"
+  }
+}

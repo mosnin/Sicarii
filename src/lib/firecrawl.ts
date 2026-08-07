@@ -1,5 +1,6 @@
 // Firecrawl client for deep website analysis: pull company context and find
 import { fetchWithTimeout } from "@/lib/http";
+import { assertNoCustomerText } from "@/lib/egress";
 // people/contacts from a company's own site.
 // Base: https://api.firecrawl.dev/v2  Auth: Authorization: Bearer fc-KEY
 
@@ -133,6 +134,10 @@ export interface FirecrawlSearchResult {
 
 // Web search via Firecrawl. Returns top results with title/description.
 export async function firecrawlSearch(query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
+  // Egress boundary: checked BEFORE the log line below, so a blocked query is
+  // never written to the server log either.
+  assertNoCustomerText(query, "firecrawl.search");
+
   const res = await fetchWithTimeout(`${BASE}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key()}` },

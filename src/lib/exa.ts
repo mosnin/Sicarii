@@ -1,5 +1,6 @@
 // Exa AI search client - neural search, deep research, and monitors.
 import { fetchWithTimeout } from "@/lib/http";
+import { assertNoCustomerText } from "@/lib/egress";
 // Base: https://api.exa.ai  Auth: x-api-key header
 // Used for intent scanning (who is looking for a product like yours).
 
@@ -108,6 +109,10 @@ export async function exaIntentSearch(
   query: string,
   opts: ExaSearchOptions = {}
 ): Promise<ExaResult[]> {
+  // Egress boundary. Covers exaDeepSearch and exaFindLinkedIn, which both build
+  // their query and hand it here.
+  assertNoCustomerText(query, "exa.search");
+
   const body: Record<string, unknown> = {
     query,
     numResults: opts.numResults ?? 10,
@@ -161,6 +166,10 @@ export async function createExaMonitor(opts: {
   runEvery?: "day" | "week";
   numResults?: number;
 }): Promise<ExaMonitor> {
+  // Egress boundary, and a standing one: a monitor query is stored on Exa's
+  // side and re-run on a schedule, so bad text here leaks repeatedly.
+  assertNoCustomerText(opts.query, "exa.createMonitor");
+
   return exaPost<ExaMonitor>("/monitors", {
     query: opts.query,
     type: "neural",
@@ -301,6 +310,10 @@ function looksLikeArticle(url?: string): boolean {
 }
 
 export async function exaFindCompanies(prompt: string, count = 10): Promise<FoundCompany[]> {
+  // Egress boundary: the prompt is embedded verbatim in the summary instruction
+  // below, so it reaches Exa twice.
+  assertNoCustomerText(prompt, "exa.findCompanies");
+
   const data = await exaPost<{ results?: (ExaResult & { summary?: string })[] }>("/search", {
     query: prompt,
     type: "auto",
@@ -383,6 +396,9 @@ export async function exaResearchContacts(
   domain?: string,
   count = 8
 ): Promise<FoundPerson[]> {
+  // Egress boundary: the company name is interpolated into the outbound query.
+  assertNoCustomerText(company, "exa.researchContacts");
+
   const data = await exaPost<{ results?: (ExaResult & { summary?: string })[] }>("/search", {
     query: `Leadership team, executives, and key decision makers at ${company}${domain ? ` (${domain})` : ""}`,
     type: "auto",

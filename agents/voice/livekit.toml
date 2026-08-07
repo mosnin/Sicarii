@@ -1,0 +1,41 @@
+# LiveKit Cloud Agents deployment config, consumed by `lk agent create` and
+# `lk agent deploy`.
+#
+# Note on the ids below: `lk agent create` writes the generated agent id back
+# into this file on first run. Commit that id, because a second `create` mints a
+# second agent and jobs start splitting between two deployments.
+#
+# Secrets are NOT here. They go in `lk agent env set` or a .env.local consumed
+# by `lk agent deploy --secrets-file`, so this file stays safe to commit.
+
+[project]
+  # Fill in from `lk project list`. This is the LiveKit Cloud project the agent
+  # registers with, and it must be the same project the SIP trunks live in.
+  subdomain = "REPLACE_WITH_LIVEKIT_SUBDOMAIN"
+
+[agent]
+  # Populated by `lk agent create`. Leave empty on a first deploy.
+  id = ""
+
+  # MUST match the agentName the worker registers with (VOICE_AGENT_NAME, which
+  # defaults to "scalar-agent") and the name the control plane puts in both the
+  # SIP dispatch rule and every outbound AgentDispatchClient.createDispatch
+  # call. Explicit dispatch is how one deployment serves every tenant; a
+  # mismatch here means jobs are created and never picked up.
+  name = "scalar-agent"
+
+[agent.deploy]
+  # Telephony is latency sensitive in a way a web widget is not: a caller hears
+  # every hundred milliseconds. Deploy near the numbers, not near the office.
+  regions = ["us-east", "eu-west"]
+
+  # One replica is never right in production. A worker restart with a single
+  # replica drops live calls, and rolling deploys need somewhere to shift jobs.
+  min_replicas = 2
+  max_replicas = 10
+
+  # Sizing rule of thumb from LiveKit: roughly 4 concurrent calls per core with
+  # a hosted STT/LLM/TTS pipeline. Silero VAD and the turn detector run in
+  # process and are the memory floor.
+  cpu = "2"
+  memory = "4Gi"

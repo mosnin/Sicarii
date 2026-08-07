@@ -52,6 +52,10 @@ import {
   listContactCalls,
   syncContactCall,
 } from "@/lib/crm-operations";
+import { registerFactsTools } from "@/lib/mcp/facts-tools";
+import { registerTaskTools } from "@/lib/mcp/task-tools";
+import { registerFieldsTools } from "@/lib/mcp/fields-tools";
+import { registerDealTools } from "@/lib/mcp/deal-tools";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { enrichContactField } from "@/lib/contact-enrich";
 import { findContactSocials } from "@/lib/social-find";
@@ -1164,6 +1168,18 @@ const handler = createMcpHandler(
       async ({ segmentId }, extra) =>
         run(() => listVariantStats(userIdFrom(extra), { segmentId: segmentId ?? undefined })),
     );
+
+    /* -------------------- Modular tool packs ---------------------
+     * Newer capabilities register their own tools from src/lib/mcp
+     * rather than growing this file further. Each pack takes the same
+     * context: the three helpers defined above, so a new capability is
+     * one import and one call here, and the pack owns its own schemas
+     * and descriptions. */
+    const toolCtx = { userIdFrom, run, gated };
+    registerFactsTools(server, toolCtx);
+    registerTaskTools(server, toolCtx);
+    registerFieldsTools(server, toolCtx);
+    registerDealTools(server, toolCtx);
   },
   {
     serverInfo: { name: "scalar", version: "0.1.0" },

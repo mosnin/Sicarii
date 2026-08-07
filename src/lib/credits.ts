@@ -48,6 +48,28 @@ export const CREDIT_COSTS = {
   // synthesis, priced in line with the other single-LLM-call actions
   // (find_socials=4, contact_extract=8).
   breakup_draft: 6,
+  // --- Mailbox / calendar sync (Composio) ---------------------------------
+  // Ingest is deliberately near-free: reading the operator's own threads is
+  // the best evidence there is, and metering it would push people away from
+  // the one source no data vendor can sell them. The cost priced here is the
+  // LLM pass that extracts a signature block and links a thread to a record.
+  mailbox_ingest: 1,
+  calendar_ingest: 1,
+  // Note: recording a fact on the evidence ledger is deliberately NOT priced
+  // here. Scoring is local arithmetic, and the lookup that produced the
+  // evidence was already metered by the enrichment action that did it, so a
+  // second charge would double-bill. CREDIT_COSTS holds only actions that are
+  // actually spent, hence no zero-cost entry.
+  // Note: filling a user-defined field is likewise not priced. We ship no
+  // bundled research agent, so the operator's own agent does the looking up
+  // and pays for it through whichever provider tool it calls; the resulting
+  // set_field_value is a plain CRM write, and CRM writes are free.
+  // --- Telephony (LiveKit) -------------------------------------------------
+  // Per-call setup. Per-minute media is metered separately as the call runs,
+  // because a 40-minute call and a 20-second voicemail are not the same cost.
+  call_setup: 10,
+  call_minute: 4,
+  phone_number_provision: 50,
   // --- Embedding-backed actions (OpenAI text-embedding-3-small, see
   // src/lib/embeddings.ts) -----------------------------------------------
   //

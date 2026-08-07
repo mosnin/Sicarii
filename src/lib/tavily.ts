@@ -1,5 +1,6 @@
 // Tavily web-search client. Used by the MCP `search_web` tool and the in-app
 import { fetchWithTimeout } from "@/lib/http";
+import { assertNoCustomerText } from "@/lib/egress";
 // agent to discover businesses ("nail salons in Miami"). Gated by TAVILY_API_KEY.
 
 export class TavilyNotConfiguredError extends Error {
@@ -30,6 +31,10 @@ export async function tavilySearch(
   query: string,
   opts: { maxResults?: number } = {}
 ): Promise<TavilyResult[]> {
+  // Egress boundary: the query leaves the tenant here. Throws a 400 the agent
+  // can act on, which is distinct from the 502-shaped provider failures below.
+  assertNoCustomerText(query, "tavily.search");
+
   const res = await fetchWithTimeout("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

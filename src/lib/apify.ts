@@ -18,6 +18,7 @@
 // are tied to THAT site's host (a strong source); company leads carry their own
 // website/domain. We never guess a domain from a free-text name.
 import { fetchWithTimeout } from "@/lib/http";
+import { assertNoCustomerText } from "@/lib/egress";
 
 const BASE = "https://api.apify.com/v2";
 
@@ -100,6 +101,10 @@ export async function googleMapsLeads(
   search: string,
   opts: { location?: string; limit?: number } = {},
 ): Promise<MapsLead[]> {
+  // Egress boundary: both strings are searched on Apify's infrastructure.
+  assertNoCustomerText(search, "apify.googleMaps");
+  if (opts.location) assertNoCustomerText(opts.location, "apify.googleMaps");
+
   const items = await runActor<Record<string, unknown>>(ACTORS.googleMaps, {
     searchStringsArray: [search],
     locationQuery: opts.location || undefined,
@@ -179,6 +184,9 @@ export interface ApifySerpResult {
 
 // Organic Google results for a query, flattened across result pages.
 export async function apifyGoogleSearch(query: string, limit = 15): Promise<ApifySerpResult[]> {
+  // Egress boundary: the query is run through an Apify Actor against Google.
+  assertNoCustomerText(query, "apify.googleSearch");
+
   const items = await runActor<Record<string, unknown>>(ACTORS.googleSearch, {
     queries: query,
     resultsPerPage: Math.min(Math.max(limit, 1), 20),

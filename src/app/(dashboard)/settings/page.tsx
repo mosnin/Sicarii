@@ -13,6 +13,7 @@ import { AgentPhoneKeyForm } from "@/components/dashboard/agentphone-key-form";
 import { VoiceSettingsForm } from "@/components/dashboard/voice-settings-form";
 import { AutoRadarToggle } from "@/components/dashboard/auto-radar-toggle";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
+import { CurrencySettings } from "@/components/dashboard/currency-settings";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
 import { getDbUser } from "@/lib/server-user";
@@ -130,6 +131,22 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <AutoRadarToggle initialOn={user?.autoRadar ?? true} />
+          </CardContent>
+        </Card>
+      </FloatIn>
+
+      {/* Currency - what every deal total is denominated in */}
+      <FloatIn delay={0.135}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Currency</CardTitle>
+            <CardDescription>
+              The currency your pipeline totals are reported in, and the rates
+              they are converted at.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CurrencySettings initialBase={user?.reportingCurrency ?? "USD"} />
           </CardContent>
         </Card>
       </FloatIn>

@@ -53,6 +53,8 @@
 | [`engineering/world-class-plan-2026-07-02.md`](engineering/world-class-plan-2026-07-02.md) | Synthesis of 4 parallel audits (OWASP, structure, perf, Playwright): waves 1+2 shipped, founder actions, next cycles |
 | [`engineering/mcp-audit-2026-07-11.md`](engineering/mcp-audit-2026-07-11.md) | Deep MCP re-audit (45 tools): isolation + metering clean; 3 P1s found and fixed same-cycle; open items + agent coverage gaps |
 | [`engineering/teams-plan-2026-07-11.md`](engineering/teams-plan-2026-07-11.md) | Teams/workspaces architecture plan: Clerk Orgs + synthetic workspace account, lead sharing semantics, v1 cut (designed, not built) |
+| [`engineering/currency.md`](engineering/currency.md) | Deal money: amount vs baseAmount, frozen FX rates, the null-safe pending filter, ISO-4217 validation, MANUAL over FETCHED, and why closed deals are never re-rated |
+| [`engineering/data-boundaries.md`](engineering/data-boundaries.md) | The data boundary: egress not reading, the three egress rules, the Article 9 special-category ban, every third party Scalar sends data to and what each receives |
 
 ---
 

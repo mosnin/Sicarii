@@ -1,5 +1,6 @@
 // Bright Data scraping client.
 import { fetchWithTimeout } from "@/lib/http";
+import { assertNoCustomerText } from "@/lib/egress";
 // Base: https://api.brightdata.com/request  Auth: Authorization: Bearer KEY
 // Requires BRIGHT_DATA_API_KEY + zone names set up in Bright Data control panel.
 // Default zone names can be overridden via env vars.
@@ -47,7 +48,11 @@ export async function scrapeUrl(url: string): Promise<string> {
 
 // Google SERP - structured search results as JSON.
 export async function googleSerp(query: string, country = "us"): Promise<unknown> {
-  const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&gl=${country}`;
+  // Egress boundary: this string ends up in a Google URL fetched through a
+  // third-party proxy network, so it must be a question, not pasted content.
+  assertNoCustomerText(query, "brightdata.serp");
+
+  const searchUrl =`https://www.google.com/search?q=${encodeURIComponent(query)}&gl=${country}`;
   const text = await bdRequest({
     zone: SERP_ZONE(),
     url: searchUrl,

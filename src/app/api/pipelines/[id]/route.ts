@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { baseCurrencyOf } from "@/lib/currency";
+import { moneyTotals, serializeMoney } from "@/lib/conversion";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -16,7 +18,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
     });
     if (!pipeline || pipeline.userId !== user.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ pipeline });
+
+    // Money rides along per entry (Decimal strings, never floats) and as one
+    // total in the user's reporting currency with its unconverted count.
+    const totals = await moneyTotals(user.id, baseCurrencyOf(user), { pipelineId: id });
+    return NextResponse.json({
+      pipeline: {
+        ...pipeline,
+        entries: pipeline.entries.map((e) => ({ ...e, money: serializeMoney(e) })),
+      },
+      money: totals,
+    });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     return NextResponse.json({ error: "Failed to load pipeline" }, { status: 500 });

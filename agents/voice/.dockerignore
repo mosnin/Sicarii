@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+.env.*
+*.log
+src/__tests__
+vitest.config.ts
+README.md
+livekit.toml
