@@ -680,10 +680,10 @@ async function loadSyncContext(userId: string, connectionId: string): Promise<Sy
   // Team workspaces: every member's address is also "us".
   const members = await prisma.teamMember.findMany({
     where: { workspaceId: userId },
-    select: { member: { select: { email: true } } },
+    select: { user: { select: { email: true } } },
   });
   for (const m of members) {
-    if (m.member?.email) ownEmails.add(m.member.email.toLowerCase());
+    if (m.user?.email) ownEmails.add(m.user.email.toLowerCase());
   }
 
   return {
