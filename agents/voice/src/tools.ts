@@ -31,18 +31,63 @@ const MAX_HISTORY_ITEMS = 8;
 /** A follow up further out than this is almost always a hallucinated date. */
 const MAX_FOLLOW_UP_DAYS = 180;
 
+// The parameter schemas are named so each execute callback can be annotated
+// explicitly. Relying on inference through the tool helper leaves the
+// arguments implicitly any under noImplicitAny, which is exactly the place a
+// silent contract drift between the model and the API would hide.
+const lookupContactParams = z.object({
+  phone: z
+    .string()
+    .nullish()
+    .describe("Optional phone number to look up. Leave empty to use the number on this call."),
+});
+
+const recentHistoryParams = z.object({
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_HISTORY_ITEMS)
+    .nullish()
+    .describe("How many items to read. Defaults to five."),
+});
+
+const logCallOutcomeParams = z.object({
+  outcome: z
+    .enum([
+      "interested",
+      "not_interested",
+      "callback_requested",
+      "wrong_number",
+      "do_not_call",
+      "left_message",
+      "no_decision",
+    ])
+    .describe("The single best label for how this call ended."),
+  summary: z
+    .string()
+    .min(1)
+    .max(1000)
+    .describe("One or two sentences of what was actually said. No speculation."),
+});
+
+const scheduleFollowUpParams = z.object({
+  dueAt: z
+    .string()
+    .describe("When to follow up, as an ISO 8601 timestamp, for example 2026-08-14T15:00:00Z."),
+  reason: z.string().min(1).max(500).describe("Why the follow up exists, in the caller's own terms."),
+  callerConfirmed: z
+    .boolean()
+    .describe("True only if you said the day and time out loud and the caller explicitly agreed."),
+});
+
 export function buildTools(deps: ToolDeps) {
   return {
     lookup_contact: llm.tool({
       description:
         "Look up the CRM record for the person on this call. Use it once, early, if you need their name, company or status. Returns nothing if they are not in the CRM, which means you do not know who they are.",
-      parameters: z.object({
-        phone: z
-          .string()
-          .nullish()
-          .describe("Optional phone number to look up. Leave empty to use the number on this call."),
-      }),
-      execute: async ({ phone }) => {
+      parameters: lookupContactParams,
+      execute: async ({ phone }: z.infer<typeof lookupContactParams>) => {
         try {
           const result = await deps.api.lookupContact({
             tenantId: deps.tenantId,
@@ -64,16 +109,8 @@ export function buildTools(deps: ToolDeps) {
     recent_history: llm.tool({
       description:
         "Read the most recent recorded activity with this contact: notes, outreach, replies and past calls. Use it only when the person refers to a previous interaction. If it comes back empty, no previous interaction is known to you.",
-      parameters: z.object({
-        limit: z
-          .number()
-          .int()
-          .min(1)
-          .max(MAX_HISTORY_ITEMS)
-          .nullish()
-          .describe("How many items to read. Defaults to five."),
-      }),
-      execute: async ({ limit }) => {
+      parameters: recentHistoryParams,
+      execute: async ({ limit }: z.infer<typeof recentHistoryParams>) => {
         if (!deps.currentContactId) {
           return { items: [], message: "There is no contact record to read history from." };
         }
@@ -97,25 +134,8 @@ export function buildTools(deps: ToolDeps) {
     log_call_outcome: llm.tool({
       description:
         "Record what actually happened on this call, in one or two factual sentences. Call this once, near the end. Record what was said, not what you hoped would be said.",
-      parameters: z.object({
-        outcome: z
-          .enum([
-            "interested",
-            "not_interested",
-            "callback_requested",
-            "wrong_number",
-            "do_not_call",
-            "left_message",
-            "no_decision",
-          ])
-          .describe("The single best label for how this call ended."),
-        summary: z
-          .string()
-          .min(1)
-          .max(1000)
-          .describe("One or two sentences of what was actually said. No speculation."),
-      }),
-      execute: async ({ outcome, summary }) => {
+      parameters: logCallOutcomeParams,
+      execute: async ({ outcome, summary }: z.infer<typeof logCallOutcomeParams>) => {
         try {
           await deps.api.logOutcome({
             tenantId: deps.tenantId,
@@ -138,20 +158,8 @@ export function buildTools(deps: ToolDeps) {
     schedule_follow_up: llm.tool({
       description:
         "Schedule a follow up with this contact. This creates a real, durable task that a person will act on. You must first say the day and time out loud and receive an explicit yes from the caller. Never call this on your own initiative.",
-      parameters: z.object({
-        dueAt: z
-          .string()
-          .describe("When to follow up, as an ISO 8601 timestamp, for example 2026-08-14T15:00:00Z."),
-        reason: z
-          .string()
-          .min(1)
-          .max(500)
-          .describe("Why the follow up exists, in the caller's own terms."),
-        callerConfirmed: z
-          .boolean()
-          .describe("True only if you said the day and time out loud and the caller explicitly agreed."),
-      }),
-      execute: async ({ dueAt, reason, callerConfirmed }) => {
+      parameters: scheduleFollowUpParams,
+      execute: async ({ dueAt, reason, callerConfirmed }: z.infer<typeof scheduleFollowUpParams>) => {
         if (!callerConfirmed) {
           return {
             ok: false,

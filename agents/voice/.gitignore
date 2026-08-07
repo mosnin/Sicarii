@@ -1,0 +1,11 @@
+# The root .gitignore anchors /node_modules to the repo root, so this package's
+# own install and build output need ignoring here.
+node_modules/
+dist/
+*.tsbuildinfo
+
+# The root ignores .env*, which would swallow the annotated example too. Real
+# secrets stay out; the example is the documentation of what the worker needs.
+.env
+.env.*
+!.env.example
