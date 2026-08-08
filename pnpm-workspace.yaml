@@ -1,8 +1,10 @@
-# Single-package workspace rooted at the repo. pnpm 10 requires a non-empty
-# `packages` field to treat this file as valid; without it a fresh clone fails
-# `pnpm install` with "packages field missing or empty".
+# Workspace: the Next.js app at the root, plus the LiveKit voice agent worker
+# (a separate always-on deployable; it cannot run on Vercel). pnpm 10 requires
+# a non-empty `packages` field to treat this file as valid; without it a fresh
+# clone fails `pnpm install` with "packages field missing or empty".
 packages:
   - .
+  - agents/voice
 
 # Allow these dependencies to run install/build scripts (pnpm gates them by default).
 # Prisma must generate its client + engines; sharp builds native image bindings.

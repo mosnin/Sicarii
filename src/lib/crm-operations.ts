@@ -12,6 +12,7 @@ import { spendCredits, ensureCredits, ensureCreditsForCount, CREDIT_COSTS } from
 import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 import { placeCall, getCall } from "@/lib/agentphone";
 import { assertVariantOwned, attributeReply } from "@/lib/variant-operations";
+import { assertRecordable } from "@/lib/egress";
 import {
   deriveAngles,
   mergeAngleResults,
@@ -107,6 +108,7 @@ export async function getEntity(userId: string, id: string) {
 
 export function createEntity(userId: string, input: EntityInput) {
   const { enrichment, tags, ...rest } = input;
+  assertPatchRecordable(rest);
   return prisma.entity.create({
     data: {
       ...rest,
@@ -126,6 +128,7 @@ export async function updateEntity(
   if (!existing || existing.userId !== userId)
     throw new OpError("Entity not found", 404);
   const { enrichment, ...rest } = input;
+  assertPatchRecordable(rest);
   const data: Prisma.EntityUncheckedUpdateInput = { ...rest };
   if (enrichment !== undefined) {
     data.enrichment =
@@ -624,8 +627,20 @@ async function assertEntityOwned(userId: string, entityId: string) {
   if (!entity || entity.userId !== userId) throw new OpError("Invalid entity", 400);
 }
 
+/** Run the Article 9 special-category ban over every scalar string in a
+ *  record patch. REST, MCP and the agent all funnel through these four ops,
+ *  so this one chokepoint is what makes the ban hold product-wide: a CRM that
+ *  knows a customer's health status is a CRM somebody has to explain,
+ *  regardless of which provider or prompt volunteered it. */
+function assertPatchRecordable(patch: Record<string, unknown>): void {
+  for (const [field, value] of Object.entries(patch)) {
+    if (typeof value === "string" && value) assertRecordable(field, value);
+  }
+}
+
 export async function createContact(userId: string, input: ContactInput) {
   const { enrichment, tags, entityId, ...rest } = input;
+  assertPatchRecordable(rest);
   if (entityId) await assertEntityOwned(userId, entityId);
   return prisma.contact.create({
     data: {
@@ -647,6 +662,7 @@ export async function updateContact(
   if (!existing || existing.userId !== userId)
     throw new OpError("Contact not found", 404);
   const { enrichment, entityId, ...rest } = input;
+  assertPatchRecordable(rest);
   if (entityId) await assertEntityOwned(userId, entityId);
   const data: Prisma.ContactUncheckedUpdateInput = { ...rest };
   if (entityId !== undefined) data.entityId = entityId;

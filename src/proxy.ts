@@ -23,6 +23,9 @@ const isPublicRoute = createRouteMatcher([
   "/refund-policy(.*)",
   "/api/webhooks(.*)",
   "/api/inngest(.*)",
+  // Worker-facing internal API (voice agent). Not Clerk-authenticated: every
+  // handler verifies the x-scalar-internal-secret header itself, timing-safe.
+  "/api/internal(.*)",
   // Env-doctor report - safe to expose: booleans + env var names only, never
   // secret values. Meant to be curled after a deploy with no shell access.
   "/api/health(.*)",

@@ -186,6 +186,97 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
       ],
     },
     {
+      group: "Mailbox and calendar sync (Composio)",
+      checks: [
+        (() => {
+          const vars = [
+            "COMPOSIO_API_KEY",
+            "COMPOSIO_GMAIL_AUTH_CONFIG_ID",
+            "COMPOSIO_GCAL_AUTH_CONFIG_ID",
+            "COMPOSIO_WEBHOOK_SECRET",
+          ];
+          if (!isSet(env, "COMPOSIO_API_KEY")) {
+            return {
+              name: "Composio sync",
+              status: "missing" as CheckStatus,
+              vars,
+              detail:
+                "Not set (optional). Connections return 501; reply detection and first-party evidence stay off.",
+            };
+          }
+          const missing = missingOf(env, vars.slice(1));
+          if (missing.length === 0) {
+            return {
+              name: "Composio sync",
+              status: "pass" as CheckStatus,
+              vars,
+              detail: "Gmail + Calendar auth configs and the webhook secret are configured.",
+            };
+          }
+          return {
+            name: "Composio sync",
+            status: "partial" as CheckStatus,
+            vars,
+            detail: `COMPOSIO_API_KEY is set but missing ${missing.join(", ")}.`,
+          };
+        })(),
+      ],
+    },
+    {
+      group: "Social context (SocQ)",
+      checks: [
+        optionalKey(
+          "SocQ social data",
+          "SOCQ_API_KEY",
+          env,
+          "Hydrates verified social profiles and runs social monitors. Dormant until set; storage/resale terms are an open procurement gate (docs/engineering/socq-integration.md)."
+        ),
+      ],
+    },
+    {
+      group: "Telephony (LiveKit)",
+      checks: [
+        (() => {
+          const vars = ["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"];
+          const missing = missingOf(env, vars);
+          if (missing.length === vars.length) {
+            return {
+              name: "LiveKit control plane",
+              status: "missing" as CheckStatus,
+              vars,
+              detail: "Not set (optional). Number search/purchase and voice calls return 501.",
+            };
+          }
+          if (missing.length === 0) {
+            return {
+              name: "LiveKit control plane",
+              status: "pass" as CheckStatus,
+              vars,
+              detail: "SIP, dispatch, numbers and the webhook receiver are configured.",
+            };
+          }
+          return {
+            name: "LiveKit control plane",
+            status: "partial" as CheckStatus,
+            vars,
+            detail: `Missing ${missing.join(", ")}.`,
+          };
+        })(),
+        optionalKey(
+          "Outbound SIP trunk",
+          "LIVEKIT_OUTBOUND_TRUNK_ID",
+          env,
+          "LiveKit numbers are inbound-only today; outbound dialing stays cleanly dormant until a carrier outbound trunk is connected."
+        ),
+        optionalKey(
+          "Voice worker internal API",
+          "SCALAR_INTERNAL_SECRET",
+          env,
+          "Shared secret the voice agent worker (agents/voice) uses to reach /api/internal/voice. Without it the worker cannot read or write the CRM."
+        ),
+      ],
+    },
+    {
       group: "Billing",
       checks: [
         (() => {

@@ -8,6 +8,10 @@ import { hasCompletedFirstRun } from "@/lib/welcome-orchestrator";
 import { computePulse } from "@/lib/pulse";
 import { listPendingDrafts } from "@/lib/breakup-operations";
 import type { PendingDraftItem } from "@/components/dashboard/breakup-queue";
+import { listProposedFacts } from "@/lib/facts";
+import { SuggestionsQueue, type ProposedFactItem } from "@/components/dashboard/suggestions-queue";
+import { listSocialOpportunities } from "@/lib/social-opportunities";
+import { OpportunityQueue, type OpportunityItem } from "@/components/dashboard/opportunity-queue";
 
 // New radar signals over the last 7 days. Kept out of the component body so the
 // time window (Date.now) isn't an impure call during render.
@@ -101,6 +105,34 @@ export default async function DashboardPage() {
     console.warn("[dashboard] breakup drafts read failed", e);
   }
 
+  // The two other review queues follow the breakup pattern exactly: facts the
+  // evidence ledger held as suggestions for a human, and social posts the
+  // discovery monitors surfaced. Both best-effort; a queue read never 500s
+  // the dashboard.
+  let proposedFacts: ProposedFactItem[] = [];
+  try {
+    proposedFacts = await listProposedFacts(user.id, { limit: 10 });
+  } catch (e) {
+    console.warn("[dashboard] proposed facts read failed", e);
+  }
+  let opportunities: OpportunityItem[] = [];
+  try {
+    const rows = await listSocialOpportunities(user.id, { limit: 10 });
+    opportunities = rows.map((o) => ({
+      id: o.id,
+      platform: o.platform,
+      postUrl: o.postUrl,
+      text: o.text,
+      authorRaw: o.authorRaw,
+      publishedAt: o.publishedAt?.toISOString() ?? null,
+      intentScore: o.intentScore,
+      intentReason: o.intentReason,
+      monitor: o.monitor ? { id: o.monitor.id, name: o.monitor.name } : null,
+    }));
+  } catch (e) {
+    console.warn("[dashboard] social opportunities read failed", e);
+  }
+
   // The Pulse: what the agent did since the last dashboard visit. Compute the
   // delta from the PREVIOUS lastSeenAt, then stamp it forward. Skipped on the
   // very first visit (lastSeenAt null) so nobody gets their whole history
@@ -135,6 +167,10 @@ export default async function DashboardPage() {
         needs={{ replied, dueFollowup, toEnrich, radarSignals }}
         breakupDrafts={breakupDrafts}
       />
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pb-10 sm:px-6">
+        <SuggestionsQueue initialFacts={proposedFacts} />
+        <OpportunityQueue initialOpportunities={opportunities} />
+      </div>
     </>
   );
 }

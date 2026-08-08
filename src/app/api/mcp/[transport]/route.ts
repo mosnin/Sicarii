@@ -56,6 +56,9 @@ import { registerFactsTools } from "@/lib/mcp/facts-tools";
 import { registerTaskTools } from "@/lib/mcp/task-tools";
 import { registerFieldsTools } from "@/lib/mcp/fields-tools";
 import { registerDealTools } from "@/lib/mcp/deal-tools";
+import { registerMailboxTools } from "@/lib/mcp/mailbox-tools";
+import { registerSocialTools } from "@/lib/mcp/social-tools";
+import { registerVoiceTools } from "@/lib/mcp/voice-tools";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { enrichContactField } from "@/lib/contact-enrich";
 import { findContactSocials } from "@/lib/social-find";
@@ -1180,6 +1183,9 @@ const handler = createMcpHandler(
     registerTaskTools(server, toolCtx);
     registerFieldsTools(server, toolCtx);
     registerDealTools(server, toolCtx);
+    registerMailboxTools(server, toolCtx);
+    registerSocialTools(server, toolCtx);
+    registerVoiceTools(server, toolCtx);
   },
   {
     serverInfo: { name: "scalar", version: "0.1.0" },

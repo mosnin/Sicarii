@@ -32,6 +32,7 @@
 | `decisions/0008-social-channels.md` | Social channels: profiles on contacts, find_socials discovery (accuracy rule intact), ContactSocialMessage + unified Conversations, source attribution | Revisiting social / conversations |
 | `decisions/0009-teams-v1.md` | Teams v1: Clerk Orgs + synthetic workspace accounts, lead sharing (deep copy + dedup-merge), workspace agent keys with attribution, team plan $299/30d | Revisiting teams / workspaces |
 | `decisions/0010-budgeted-autopilot.md` | Budgeted Autopilot: propose a spend plan (draft), human-only approval, atomic per-category budget guard on top of the real credit meter, scheduled execution loop (discovery/enrichment/outreach) over the existing Inngest cron | Revisiting autopilot / scheduled agent budgets |
+| `decisions/0015-platform-foundation.md` | Platform foundation: mailbox/calendar sync (Composio), evidence ledger, leased task queue, dynamic fields, deal money, egress enforcement, SocQ social (dormant), LiveKit voice (dormant); what was taken from trycompai/crm, what was changed for cloud, what was refused | The cycle in flight |
 
 ## Working knowledge (grows with the product)
 
@@ -55,6 +56,8 @@
 | [`engineering/teams-plan-2026-07-11.md`](engineering/teams-plan-2026-07-11.md) | Teams/workspaces architecture plan: Clerk Orgs + synthetic workspace account, lead sharing semantics, v1 cut (designed, not built) |
 | [`engineering/currency.md`](engineering/currency.md) | Deal money: amount vs baseAmount, frozen FX rates, the null-safe pending filter, ISO-4217 validation, MANUAL over FETCHED, and why closed deals are never re-rated |
 | [`engineering/data-boundaries.md`](engineering/data-boundaries.md) | The data boundary: egress not reading, the three egress rules, the Article 9 special-category ban, every third party Scalar sends data to and what each receives |
+| [`engineering/telephony.md`](engineering/telephony.md) | In-house voice on LiveKit: the Vercel/worker split, per-DID dispatch rules, LiveKit numbers (US, inbound-only), why outbound is dormant, STIR/SHAKEN + consent open questions |
+| [`engineering/socq-integration.md`](engineering/socq-integration.md) | SocQ social data: the hydrate-never-resolve rule, why discovery cannot write records, async/per-result cost model, and the storage/resale procurement gate |
 
 ---
 

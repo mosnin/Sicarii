@@ -25,7 +25,6 @@ import {
   ServerError,
   SipClient,
   SipCallError,
-  TwirpRpc,
   WebhookReceiver,
   type WebhookEvent,
 } from "livekit-server-sdk";
@@ -103,7 +102,6 @@ export function isOutboundCallingConfigured(): boolean {
 let sipClient: SipClient | null = null;
 let dispatchClient: AgentDispatchClient | null = null;
 let webhookReceiver: WebhookReceiver | null = null;
-let phoneNumberRpc: TwirpRpc | null = null;
 
 export function getSipClient(): SipClient {
   const cfg = liveKitConfig();
@@ -128,15 +126,17 @@ export function resetLiveKitClients(): void {
   sipClient = null;
   dispatchClient = null;
   webhookReceiver = null;
-  phoneNumberRpc = null;
 }
 
 /* -------------------------------- raw Twirp --------------------------------
  * Some LiveKit services (PhoneNumberService) ship message types but no service
- * client, so the transport has to be driven by hand. TwirpRpc is the SDK's own
- * transport: it builds `{host}/twirp/livekit.{Service}/{Method}`, POSTs JSON,
- * and fails over across cloud regions. Reusing it means we inherit that
- * behaviour instead of reimplementing it badly with fetch.
+ * client, so the transport is driven by hand. The SDK's own TwirpRpc class is
+ * internal (not exported), so this is a minimal fetch equivalent of what it
+ * does: POST JSON to `{host}/twirp/livekit.{Service}/{Method}` with a bearer
+ * token. The path shape and JSON casing are the standard Twirp layout every
+ * exported LiveKit client uses, but PhoneNumberService itself is UNVERIFIED
+ * against a live project; livekitTwirp fails loudly with the raw response body
+ * so one live call settles it without touching call sites.
  */
 
 /** A short-lived JWT carrying the SIP admin grant, the credential every
@@ -149,15 +149,30 @@ async function sipAdminHeader(): Promise<Record<string, string>> {
 }
 
 /** Issue a raw Twirp call against a livekit.* service. `service` is the bare
- *  service name ("PhoneNumberService"); TwirpRpc prefixes the package. */
+ *  service name ("PhoneNumberService"); the `livekit.` package is prefixed
+ *  here, matching the path every exported LiveKit client uses. */
 export async function livekitTwirp(
   service: string,
   method: string,
   body: Record<string, unknown>,
 ): Promise<unknown> {
   const cfg = liveKitConfig();
-  if (!phoneNumberRpc) phoneNumberRpc = new TwirpRpc(cfg.httpUrl, "livekit");
-  return phoneNumberRpc.request(service, method, body, await sipAdminHeader());
+  const res = await fetch(`${cfg.httpUrl}/twirp/livekit.${service}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await sipAdminHeader()) },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    // Twirp errors are JSON { code, msg }; surface both so an unverified
+    // endpoint failing is diagnosable from the error alone.
+    throw new OpError(`LiveKit ${service}/${method} failed (${res.status}): ${text.slice(0, 300)}`, 502);
+  }
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    throw new OpError(`LiveKit ${service}/${method} returned non-JSON (${res.status})`, 502);
+  }
 }
 
 /* ----------------------------- dispatch rules ----------------------------- */

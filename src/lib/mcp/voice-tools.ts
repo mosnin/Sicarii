@@ -11,7 +11,8 @@
 //   import { registerVoiceTools } from "@/lib/mcp/voice-tools";
 //   registerVoiceTools(server, { userIdFrom, run, gated });
 
-import { z, type ZodRawShape } from "zod";
+import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { OUTBOUND_UNAVAILABLE_REASON, getCall, getCallTranscript, isOutboundAvailable, listCalls, placeOutboundCall } from "@/lib/telephony/calls";
 import { listNumbers, searchAvailableNumbers } from "@/lib/telephony/provisioning";
@@ -24,6 +25,9 @@ export interface McpToolExtra {
 }
 
 export interface McpToolResult {
+  // The SDK's CallToolResult carries an index signature; without it a
+  // Promise of this type does not assign to the tool callback's return.
+  [x: string]: unknown;
   content: { type: "text"; text: string }[];
   isError?: boolean;
 }
@@ -35,17 +39,11 @@ export interface McpToolAnnotations {
   openWorldHint?: boolean;
 }
 
-/** The subset of the MCP server we use. Structural so this module never has to
- *  import the server implementation. */
-export interface VoiceToolServer {
-  tool(
-    name: string,
-    description: string,
-    paramsSchema: ZodRawShape,
-    annotations: McpToolAnnotations,
-    cb: (args: Record<string, unknown>, extra: McpToolExtra) => Promise<McpToolResult>,
-  ): unknown;
-}
+/** The real server type, same as every other pack. A structural stand-in was
+ *  tried first, but McpServer.tool() is heavily overloaded and an overloaded
+ *  method never assigns to a single-signature interface, so the seam is the
+ *  ctx object below, not the server. */
+export type VoiceToolServer = McpServer;
 
 /** The helpers the MCP route already owns: identity, error shaping, and the
  *  per-user rate limit for paid tools. Passed in rather than re-implemented so

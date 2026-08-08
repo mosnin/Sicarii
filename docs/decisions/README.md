@@ -56,6 +56,30 @@ exponential growth into a plateau.
 - **Discovery saves only what it can verify.** find_socials auto-saves a profile
   only on name AND company match; everything else is a candidate for review.
   Null over wrong, on every enrichment path. _(Cards 0003, 0008)_
+- **Evidence is priced by the ledger, never self-graded.** The agent reports
+  what it observed (typed kinds); noisy-OR scores it, a contradiction clamps to
+  0.45, VERIFIED needs a primary source, and anything weaker becomes a PROPOSED
+  suggestion a human settles instead of a discard. _(Card 0015)_
+- **Hydrate, never resolve.** A provider with no identity signal (SocQ) may
+  only enrich URLs already verified upstream; its search results land in a
+  review queue with no code path to a record write. _(Card 0015)_
+- **Queues lease, crons decide nothing.** Scheduled work is `AgentTask` rows
+  claimed with FOR UPDATE SKIP LOCKED; the cron only invokes the dispatcher.
+  Every task carries a reason shown to the operator. _(Card 0015)_
+- **Only baseAmount is ever summed.** Deal money freezes its FX rate at write;
+  a missing rate is null and disclosed ("3 deals in CHF not included"), never
+  zeroed or converted on read. Rates are per tenant. _(Card 0015)_
+- **The boundary is egress, enforced in code.** Customer text never leaves in a
+  third-party query; Article 9 special-category data never lands on a record,
+  whoever volunteered it. Guard wired into every provider client and the four
+  shared record-write ops. _(Card 0015)_
+- **Separate deployables hold no DB credentials.** The voice worker reaches the
+  CRM only through a shared-secret internal API, idempotent by room name; a
+  process with egress AND a DB connection is exfiltration-shaped. _(Card 0015)_
+- **Verify SDK facts against shipped source, not memory.** Composio's initiate()
+  retirement, LiveKit's missing PhoneNumberClient, and SocQ's absent identity
+  signal were all found by reading published packages; each would have cost a
+  rebuild if coded from training memory. _(Card 0015)_
 
 ## Open debts (owed to reality)
 
@@ -78,6 +102,14 @@ exponential growth into a plateau.
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
+| 0015 schema on prod | 0015 · Deliverable | `prisma db push` (23 new tables) | founder + eng |
+| Composio sync live | 0015 · Feasible | auth configs + webhook; one reply observed advancing CONTACTED -> REPLIED | founder + eng |
+| Voice live | 0015 · Feasible | worker deployed, one number bought, one inbound call answered from CRM data | founder + eng |
+| SocQ storage/resale terms | 0015 · Viable | written confirmation BEFORE the key is set in prod | **founder** |
+| CASA assessment | 0015 · Deliverable | scheduled (Gmail restricted scope was a deliberate founder call) | **founder** |
+| STIR/SHAKEN attestation path | 0015 · Deliverable | carrier answer before outbound is enabled | founder + eng |
+| Legacy AgentPhone removal | 0015 | delete after LiveKit voice is observed working | eng |
+| agents/voice in CI | 0015 | deps installed + its 63 tests wired into the test run | eng |
 
 ## Kills & falsifieds (do not re-open)
 

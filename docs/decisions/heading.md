@@ -3,58 +3,37 @@
 > The one thing to push right now. Surfaced first by the Ratchet hook each
 > session. Keep it to a glance; update it on every RECORD. (Volatile - the *aim*.)
 
-**Binding constraint right now:** _The product is correct, honest, billable, and
-hardened (audits 2026-06-06 -> 09; PRs #19-#29) - and still **unfelt**. Nothing
-has been observed running end to end, and the product has zero choreographed
-moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
+**Binding constraint right now:** _Card 0015 (platform foundation) is built and
+TESTED (733 tests, tsc clean) but nothing in it has touched reality: no db
+push, no live webhook, no deployed voice worker. The gap between "the code
+exists" and "a tenant's reply moved a contact to REPLIED on its own" is the
+whole product right now._
 
-**The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
+**The cycle in flight: 0015 - Platform foundation** (`0015-platform-foundation.md`)
 
 | # | Phase | Owner | Status |
 |---|-------|-------|--------|
-| 0 | **Reality Gate**: fund Explorium/Pipe0, set Upstash, run pgvector index, then run discover -> enrich -> news LIVE and record whether it feels like quiet leverage | **Founder** | BLOCKING |
-| 1 | **Moment 1 - The First Run**: one sentence -> the CRM builds itself, live, in 60s | agents (Wave A) | SHIPPED (code): `/welcome` + streaming orchestrator, honest sample-degradation until Phase 0. Live observation owed. |
-| 2 | **Moment 2 - The Pulse**: "While you were away, your agent added 14 companies..." | agents (Wave A) | SHIPPED (code): `User.lastSeenAt` + `computePulse` (agent-added entities, distinct enriched refs from CreditLedger, MonitorRun signals) rendered in the dashboard hero band; never an empty brag. Needs `prisma db push` + live observation. |
-| 3 | **Moment 3 - Visible Trust**: provenance on every enriched field + the honest blank | agents (Wave B) | SHIPPED (code): `FieldProvenance` + `via Explorium, 3d ago` + re-verify endpoint. |
-| 4 | **Moment 4 - The Handshake**: /connect page that listens and flips green on the first agent write (+ first live OAuth observation) | agents (Wave B) | after Wave A |
-| 5 | **Gate out**: founder runs all four moments as one journey; subtraction holds; RECORD | Founder | last |
+| 0 | `prisma db push` (23 new tables; the one `users` column is plain, no unique index) | founder + eng | BLOCKING |
+| 1 | Composio: create the two auth configs, set the 4 env vars, subscribe the webhook, then observe ONE live thread ingest a reply and advance CONTACTED -> REPLIED | founder + eng | after 0 |
+| 2 | Voice: `pnpm install` in `agents/voice`, `lk agent deploy`, set LIVEKIT_* + SCALAR_INTERNAL_SECRET, buy one number, observe ONE inbound call answered from real CRM data | founder + eng | after 0 |
+| 3 | SocQ procurement gate: storage/resale terms in writing BEFORE the key is ever set in prod | **Founder** | independent |
+| 4 | CASA assessment scheduled (Gmail restricted scope, chosen deliberately) | **Founder** | independent |
+| 5 | Gate out: founder observes sync + suggestions queue + one call as one journey; RECORD | Founder | last |
 
-**Parallel cycle shipped: 0008 - Social channels** (`0008-social-channels.md`).
-Social profiles on contacts (LinkedIn/X/Instagram/Facebook), find_socials
-discovery with the accuracy rule intact, ContactSocialMessage + the unified
-Conversations card, source attribution on agent-created leads, and the
-2026-07-11 MCP audit remediation (3 P1s fixed). Owed: `pnpm prisma db push`
-+ one live find_socials observation.
+**Riskiest assumption under test:** _that Composio's polling triggers (15-min
+floor on managed auth) are fresh enough for reply detection to feel alive. If a
+reply takes 15 minutes to land, the loop is correct but may feel dead; the fix
+would be our own Google OAuth app (1-min polling), which drags CASA forward._
 
-**Parallel cycle shipped: 0009 - Teams v1** (`0009-teams-v1.md`). Founder
-approved the build; Clerk Orgs + synthetic workspace accounts, share-to-team
-deep copy, workspace agent keys with Activity attribution, team plan $299/30d.
-Owed: enable Organizations in Clerk + org webhook events + STRIPE_PRICE_TEAM,
-then one live org round-trip (create, invite, switch, share, agent write).
+**Standing founder debts (unchanged from 0006-0014):** Stripe prices + webhook
+in prod, Upstash env, pgvector HNSW index run once, Explorium top-up, Clerk
+Organizations enabled for Teams, one x402 mainnet settlement.
 
-**Parallel cycle shipped: 0007 - x402 agent payments** (`0007-x402-agent-payments.md`).
-The CRM your agents run now lets the agents pay for it: USDC top-ups
-(`/api/x402/topup`) and 30-day plan purchase (`/api/x402/subscribe`) over HTTP
-402, env-gated to 501 until the treasury wallet + CDP keys are set. One live
-mainnet settlement is owed to reality (the x402 sibling of Phase 0).
+**Hard rule this cycle:** nothing new lands until phases 0-2 are observed.
+The foundation is wide enough; reality is the only missing dependency.
 
-**Riskiest assumption under test:** _that the enrichment loop, observed live,
-feels like quiet leverage. If it works but feels flat, we fix the loop before
-choreographing it - chrome on a flat loop is the unforgivable spend._
-
-**Standing debts (founder-side):** Stripe goes live (2026-06-12 migration off
-Creem): create monthly Prices, set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET /
-STRIPE_PRICE_*, register /api/webhooks/stripe (checkout.session.completed,
-invoice.paid, customer.subscription.deleted), run `pnpm prisma db push` ·
-`/terms` needs a real SaaS ToS · prisma migrate deploy · DB unique
-constraints (dedupe first) · Explorium top-up (currently 403ing in prod).
-
-**Hard rule this cycle:** no new surfaces, providers, or tools. Moments, not
-features. Radar/Field/Map/Skills stay demoted.
-
-**DONE recent cycles:** rebrand + product marketing site (intelligence-first) ·
-manifesto · 26-tool MCP server + OAuth (DCR/PKCE, redirect-validated) · billing
-meter + Creem scaffolding + pricing w/ launch sale · CSV export + pagination ·
-honest FAQ/About, agency pages deleted · 33 tests · five audits recorded ·
-enrichment accuracy holes closed · Pipe0/logo/news fixed · creation guard +
-rate limiting (durable w/ Upstash) · claims integrity restored (PRs #19-#29).
+**DONE recent cycles:** 0006-0014 (four moments, x402, social channels, teams,
+autopilot, swarm, breakups, bandit, voice-native inbound) · 0015 built: mailbox
++ calendar sync, evidence ledger, leased task queue, dynamic fields, deal
+money, egress enforcement, SocQ social (dormant), LiveKit voice (dormant),
+68 -> ~100 MCP tools across 7 packs.

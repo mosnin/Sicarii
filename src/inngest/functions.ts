@@ -30,6 +30,14 @@ import {
   type DispatchSummary,
   type TaskHandler,
 } from "@/lib/dispatch";
+import {
+  MAILBOX_INGEST_KIND,
+  CALENDAR_INGEST_KIND,
+  handleMailboxIngest,
+  handleCalendarIngest,
+} from "@/lib/mailbox-ingest";
+import { registerSocialTaskHandlers } from "@/lib/social-tasks";
+import { VOICE_FOLLOW_UP_KIND, handleVoiceFollowUp } from "@/lib/internal-voice";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -337,6 +345,12 @@ export function registerCoreTaskHandlers(): void {
   registerTaskHandler(TASK_KIND.intentMonitor, intentMonitorHandler);
   registerTaskHandler(TASK_KIND.researchSchedule, researchScheduleHandler);
   registerTaskHandler(TASK_KIND.autopilotPlan, autopilotPlanHandler);
+  // Feature packs register here too, so every entry point that dispatches
+  // (the cron, /api/tasks/dispatch) knows every kind the product enqueues.
+  registerTaskHandler(MAILBOX_INGEST_KIND, handleMailboxIngest);
+  registerTaskHandler(CALENDAR_INGEST_KIND, handleCalendarIngest);
+  registerSocialTaskHandlers();
+  registerTaskHandler(VOICE_FOLLOW_UP_KIND, async (task) => handleVoiceFollowUp(task));
 }
 
 export interface SeedSummary {

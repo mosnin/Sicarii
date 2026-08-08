@@ -92,6 +92,17 @@ Deep context and all decisions are indexed in `@docs/README.md`.
   wrong person/company (no same-name strangers). Verify name AND company/domain
   before saving; prefer null + "couldn't find it" over a wrong value. Details in
   `AGENTS.md` and `docs/foundation/product.md`.
+- **Platform foundation (Card 0015, 2026-08-08):** mailbox/calendar sync via
+  Composio (reply detection, first-party evidence), the evidence ledger
+  (`src/lib/evidence.ts` - agents report observations, the ledger prices them),
+  the leased `AgentTask` queue (`src/lib/tasks.ts` - crons only invoke the
+  dispatcher), user-defined fields with `agentBrief`, deal money with frozen FX
+  (`docs/engineering/currency.md`), the egress guard (`src/lib/egress.ts` -
+  wired into every provider client and the shared record writes), SocQ social
+  (dormant - `docs/engineering/socq-integration.md`), and in-house LiveKit
+  voice (dormant - `docs/engineering/telephony.md`; the worker lives in
+  `agents/voice/` and holds no DB credentials). MCP tools register as packs in
+  `src/lib/mcp/*` - one import + one call in the route, never inline.
 - **Design & agent rules - read before any UI work:** `DESIGN.md` (the durable
   design system) and `AGENTS.md`. Two hard rules: **no decorative icons** (never
   an icon-in-a-tinted-box badge), and **this is NOT vanilla Next.js** - Next 16

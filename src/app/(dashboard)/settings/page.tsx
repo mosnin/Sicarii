@@ -14,6 +14,8 @@ import { VoiceSettingsForm } from "@/components/dashboard/voice-settings-form";
 import { AutoRadarToggle } from "@/components/dashboard/auto-radar-toggle";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { CurrencySettings } from "@/components/dashboard/currency-settings";
+import { ConnectionsManager } from "./connections";
+import { CustomFieldsManager } from "./fields";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
 import { getDbUser } from "@/lib/server-user";
@@ -133,6 +135,27 @@ export default async function SettingsPage() {
             <AutoRadarToggle initialOn={user?.autoRadar ?? true} />
           </CardContent>
         </Card>
+      </FloatIn>
+
+      {/* Connected accounts - Gmail and Google Calendar sync */}
+      <FloatIn delay={0.132}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Connected accounts</CardTitle>
+            <CardDescription>
+              Sync your mailbox and calendar so replies are detected on their
+              own and your own threads become the agent&apos;s best evidence.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ConnectionsManager />
+          </CardContent>
+        </Card>
+      </FloatIn>
+
+      {/* Custom fields - operator-defined schema the agent can fill */}
+      <FloatIn delay={0.134}>
+        <CustomFieldsManager />
       </FloatIn>
 
       {/* Currency - what every deal total is denominated in */}
