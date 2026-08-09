@@ -58,6 +58,7 @@
 | [`engineering/data-boundaries.md`](engineering/data-boundaries.md) | The data boundary: egress not reading, the three egress rules, the Article 9 special-category ban, every third party Scalar sends data to and what each receives |
 | [`engineering/telephony.md`](engineering/telephony.md) | In-house voice on LiveKit: the Vercel/worker split, per-DID dispatch rules, LiveKit numbers (US, inbound-only), why outbound is dormant, STIR/SHAKEN + consent open questions |
 | [`engineering/socq-integration.md`](engineering/socq-integration.md) | SocQ social data: the hydrate-never-resolve rule, why discovery cannot write records, async/per-result cost model, and the storage/resale procurement gate |
+| [`engineering/claims-audit-2026-08-09.md`](engineering/claims-audit-2026-08-09.md) | Claims-vs-delivery audit after Card 0015 (23-agent sweep, 256 claims, adversarially verified): the send gap, 12 confirmed gaps in 5 tiers, and the build order that closes them |
 
 ---
 
