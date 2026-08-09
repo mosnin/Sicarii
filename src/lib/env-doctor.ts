@@ -220,6 +220,12 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
             detail: `COMPOSIO_API_KEY is set but missing ${missing.join(", ")}.`,
           };
         })(),
+        optionalKey(
+          "Outbound email unsubscribe secret",
+          "UNSUBSCRIBE_SECRET",
+          env,
+          "Signs one-click unsubscribe links. Falls back to a server secret; if none exists, send_email refuses rather than send a non-compliant email. EMAIL_DAILY_CAP and EMAIL_SEND_WINDOW_* tune deliverability.",
+        ),
       ],
     },
     {

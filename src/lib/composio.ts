@@ -318,6 +318,39 @@ export async function executeAllowedTool(
   }>;
 }
 
+/* --------------------------------- send ---------------------------------
+ * Sending is a SEPARATE, deliberate capability from the read-only fence above,
+ * and it is kept separate on purpose. The read allowlist (ALLOWED_TOOL_SLUGS +
+ * MUTATING_SLUG_RE) exists to stop an agent-forwarded slug from ever reaching a
+ * mutating action; it stays exactly as strict as it was. This path is the ONE
+ * mutating action the product performs, and it is never driven by a raw slug
+ * from an agent: it is reachable only through src/lib/email-send.ts, which
+ * gates every call on suppression, an unsubscribe link, and a send cap before
+ * it gets here. So the fence is not weakened - a second, single-purpose door is
+ * added beside it, and nothing generic can open it.
+ */
+export const GMAIL_SEND_SLUG = "GMAIL_SEND_EMAIL";
+
+export interface SendEmailBody {
+  userId: string;
+  connectedAccountId: string;
+  /** Composio's GMAIL_SEND_EMAIL argument shape (recipient_email, subject,
+   *  body, and the header/cc extras) is passed through verbatim. */
+  arguments: Record<string, unknown>;
+}
+
+/** Execute exactly the Gmail send tool and nothing else. Refuses any other
+ *  slug, so this function can never be repurposed into a generic mutator. */
+export async function executeSendEmail(
+  body: SendEmailBody,
+): Promise<{ successful?: boolean; error?: string | null; data?: Record<string, unknown> }> {
+  return composioCall(() => getComposio().tools.execute(GMAIL_SEND_SLUG, body)) as Promise<{
+    successful?: boolean;
+    error?: string | null;
+    data?: Record<string, unknown>;
+  }>;
+}
+
 /**
  * Read a tool's real input schema at runtime. Per-tool ARGUMENT NAMES could
  * not be verified offline, so callers match parameters by shape against this

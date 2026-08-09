@@ -18,8 +18,9 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { Prisma, type BreakupDraftStatus, type ContactStatus, type ConversationStatus } from "@prisma/client";
-import { OpError, logOutreach, clampListLimit } from "@/lib/crm-operations";
+import { OpError, clampListLimit } from "@/lib/crm-operations";
 import { ensureCredits, spendCredits } from "@/lib/credits";
+import { sendOutboundEmail } from "@/lib/email-send";
 
 const MODEL = process.env.OPENAI_BREAKUP_MODEL ?? "gpt-5-mini";
 
@@ -349,24 +350,31 @@ export async function updateBreakupDraft(
  *  a Clerk session - never an agent API key), so a prompt-injected agent can
  *  never approve, and thereby send, its own drafts.
  *
- *  AgentMail (src/lib/agentmail.ts) exposes no send capability today - it is
- *  read-only (getThreadsForContact). So approval always takes the honest
- *  fallback: mark the draft SENT and logOutreach (channel email) so the
- *  contact's pipeline state (status, lastContactedAt) advances for real. Once
- *  a live AgentMail send capability exists, this is the one seam to change:
- *  attempt the live send first, and only fall back to the logOutreach path on
- *  failure or when no send capability is configured. */
+ *  Approval now attempts a REAL send through the chokepoint
+ *  (src/lib/email-send.ts), which enforces suppression, the daily cap, and the
+ *  unsubscribe link. sendOutboundEmail also logs the outreach and advances the
+ *  contact, so on a real send we do NOT double-log. Only mark the draft SENT
+ *  once the mail has actually gone; if there is no connected mailbox, or the
+ *  recipient is suppressed, or the send fails, the error propagates and the
+ *  draft stays PENDING rather than falsely reading as delivered. */
 export async function approveBreakupDraft(userId: string, id: string) {
   const draft = await getOwnedDraft(userId, id);
   if (draft.status !== "PENDING") throw new OpError("This draft has already been decided", 409);
 
-  // Owed to reality: no AgentMail send capability exists yet (see comment
-  // above) - mark it ready and log the outreach honestly rather than
-  // pretending it was delivered.
-  await logOutreach(userId, {
+  const contact = await assertContactOwned(userId, draft.contactId);
+  if (!contact.email) {
+    throw new OpError("This contact has no email address, so the breakup email cannot be sent.", 400);
+  }
+
+  // Real send. The chokepoint advances the contact and logs the outreach, so
+  // no separate logOutreach call here. A human clicked approve, so governance
+  // (cap/window) is bypassed for this one-off; suppression is never bypassed.
+  await sendOutboundEmail(userId, {
+    to: contact.email,
+    subject: draft.subject,
+    body: draft.body,
     contactId: draft.contactId,
-    summary: `Breakup email sent: "${draft.subject}"`,
-    channel: "email",
+    bypassGovernance: true,
   });
 
   return prisma.breakupDraft.update({

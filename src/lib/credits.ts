@@ -48,6 +48,10 @@ export const CREDIT_COSTS = {
   // synthesis, priced in line with the other single-LLM-call actions
   // (find_socials=4, contact_extract=8).
   breakup_draft: 6,
+  // Sending one outbound email through the operator's connected mailbox. Priced
+  // like the other single-provider-call actions: the send itself is one
+  // Composio action, and the value is the delivery, not the compute.
+  email_send: 4,
   // --- Mailbox / calendar sync (Composio) ---------------------------------
   // Ingest is deliberately near-free: reading the operator's own threads is
   // the best evidence there is, and metering it would push people away from

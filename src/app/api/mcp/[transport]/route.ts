@@ -59,6 +59,7 @@ import { registerDealTools } from "@/lib/mcp/deal-tools";
 import { registerMailboxTools } from "@/lib/mcp/mailbox-tools";
 import { registerSocialTools } from "@/lib/mcp/social-tools";
 import { registerVoiceTools } from "@/lib/mcp/voice-tools";
+import { registerEmailTools } from "@/lib/mcp/email-tools";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { enrichContactField } from "@/lib/contact-enrich";
 import { findContactSocials } from "@/lib/social-find";
@@ -1186,6 +1187,7 @@ const handler = createMcpHandler(
     registerMailboxTools(server, toolCtx);
     registerSocialTools(server, toolCtx);
     registerVoiceTools(server, toolCtx);
+    registerEmailTools(server, toolCtx);
   },
   {
     serverInfo: { name: "scalar", version: "0.1.0" },

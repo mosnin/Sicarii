@@ -81,7 +81,15 @@ vi.mock("@ai-sdk/openai", () => ({
   openai: vi.fn(() => "mock-model"),
 }));
 
+// Approval delegates the actual send to the chokepoint; mock it so the test
+// controls whether the send succeeds, and can assert the draft only flips to
+// SENT after a real send.
+vi.mock("@/lib/email-send", () => ({
+  sendOutboundEmail: vi.fn().mockResolvedValue({ sent: true, emailMessageId: "em1", charged: 4 }),
+}));
+
 import { prisma } from "@/lib/prisma";
+import { sendOutboundEmail } from "@/lib/email-send";
 import { ensureCredits, spendCredits } from "@/lib/credits";
 import { generateObject } from "ai";
 import {
@@ -293,18 +301,8 @@ describe("review queue tenant isolation", () => {
   });
 });
 
-describe("approveBreakupDraft (the owner path): SENT transition + logOutreach side effect", () => {
-  it("logs outreach (advancing lastContactedAt) and marks the draft SENT, never AUTO on its own", async () => {
-    // Allow the mutation path through for this one owner-path test.
-    vi.mocked(prisma.$transaction).mockImplementationOnce((arr: unknown) =>
-      Promise.all(arr as Promise<unknown>[]),
-    );
-    vi.mocked(prisma.contact.update).mockResolvedValueOnce({
-      id: CONTACT_ID,
-      status: "CONTACTED",
-      lastContactedAt: new Date(),
-    } as never);
-    vi.mocked(prisma.activity.create).mockResolvedValueOnce({ id: "a1" } as never);
+describe("approveBreakupDraft (the owner path): real send then SENT transition", () => {
+  it("sends through the chokepoint with the draft's subject/body, then marks the draft SENT", async () => {
     vi.mocked(prisma.breakupDraft.update).mockResolvedValueOnce({
       ...pendingDraft,
       status: "SENT",
@@ -313,19 +311,45 @@ describe("approveBreakupDraft (the owner path): SENT transition + logOutreach si
 
     const result = await approveBreakupDraft(OWNER, DRAFT_ID);
 
-    // logOutreach's side effect: the contact was touched via the transaction.
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(prisma.contact.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: CONTACT_ID } }),
+    // The send is delegated to the chokepoint with the contact's real email and
+    // the draft's content; governance is bypassed for a human one-off, and the
+    // chokepoint (not this function) advances the contact and logs the outreach.
+    expect(sendOutboundEmail).toHaveBeenCalledWith(
+      OWNER,
+      expect.objectContaining({
+        to: "jordan@acme.com",
+        subject: pendingDraft.subject,
+        body: pendingDraft.body,
+        contactId: CONTACT_ID,
+        bypassGovernance: true,
+      }),
     );
-    expect(prisma.activity.create).toHaveBeenCalledTimes(1);
 
-    // The draft itself transitions PENDING -> SENT with a decidedAt stamp.
+    // Only AFTER a successful send does the draft flip PENDING -> SENT.
     expect(prisma.breakupDraft.update).toHaveBeenCalledWith({
       where: { id: DRAFT_ID },
       data: { status: "SENT", decidedAt: expect.any(Date) },
     });
     expect(result.status).toBe("SENT");
+  });
+
+  it("leaves the draft PENDING when the send is refused (suppressed, no mailbox, etc.)", async () => {
+    vi.mocked(sendOutboundEmail).mockRejectedValueOnce(
+      Object.assign(new Error("suppressed"), { status: 409 }),
+    );
+    await expect(approveBreakupDraft(OWNER, DRAFT_ID)).rejects.toMatchObject({ status: 409 });
+    // The draft is never falsely marked SENT.
+    expect(prisma.breakupDraft.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses to send a breakup to a contact with no email address", async () => {
+    vi.mocked(prisma.contact.findUnique).mockResolvedValueOnce({
+      ...ownedContact,
+      email: null,
+    } as never);
+    await expect(approveBreakupDraft(OWNER, DRAFT_ID)).rejects.toMatchObject({ status: 400 });
+    expect(sendOutboundEmail).not.toHaveBeenCalled();
+    expect(prisma.breakupDraft.update).not.toHaveBeenCalled();
   });
 });
 

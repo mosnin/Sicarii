@@ -10,16 +10,34 @@
 
 ## Fixed since this audit (2026-08-09, same day)
 
-- **Gap 5 (voice billing race) - FIXED.** The room_finished webhook now settles
-  on `creditsCharged` (null = unbilled), not on `endedAt`, so a worker-first
-  completion no longer suppresses billing. The decision was extracted to a pure
-  `src/lib/voice-billing.ts` with a regression test (`tests/voice-billing.test.ts`).
-- **Gap in the unverified tail (social monitors ignore the plan cap) - FIXED.**
-  Intent and social monitors now share one per-plan allotment, enforced in both
-  the social ops layer and the intent route, so neither can slip past the
-  other's cap (`tests/social-monitor-cap.test.ts`).
+- **Tier 0 (the send) - BUILT.** Scalar can now send email through the
+  operator's connected Gmail, via ONE chokepoint (`src/lib/email-send.ts`) that
+  enforces, in order: a connected mailbox, suppression (hard refusal), daily cap
+  + send window, credit pre-flight, and an unsubscribe link + List-Unsubscribe
+  header on every message. Exposed as the `send_email` MCP tool; breakup-draft
+  approval now does a REAL send (gap 12) and only marks SENT after it succeeds.
+  The Composio read fence is untouched - send is a separate single-purpose door
+  (`executeSendEmail`, `GMAIL_SEND_SLUG`), never reachable from a raw agent
+  slug. This closes or de-fangs gaps 1, 2 (send step now exists), 3, 4, 9, 12,
+  and 13 (sent mail is now a real EmailMessage row). Env-gated: dormant until
+  Composio is configured with send scope. Tests: `email-send`, `suppression`,
+  `unsubscribe` (23 new cases).
+- **Gap 3/9 (suppression unmanageable/unenforced) - FIXED.** `src/lib/
+  suppression.ts` is the management surface (add/remove/list via
+  `/api/suppressions` and the `add_suppression`/`remove_suppression`/
+  `list_suppressions` MCP tools) AND the shared enforcement primitive
+  (`assertNotSuppressed`), now enforced on the email send path, scoped by
+  direction. Recipient opt-out lands via the public `/api/unsubscribe` route.
+- **Gap 5 (voice billing race) - FIXED.** Settles on `creditsCharged`, not
+  `endedAt` (`src/lib/voice-billing.ts`, `tests/voice-billing.test.ts`).
+- **Monitor cap bypass - FIXED.** Intent + social share one allotment
+  (`tests/social-monitor-cap.test.ts`).
 
-Everything else below stands as found.
+Still open from the list below: deliverability warmup (17, partial - cap +
+window exist, warmup ramp does not), the operator-facing inbox UI (13, the
+contact page still does not render synced threads), the compliance sweep (10,
+11, 12-export), number renewal billing (14), sequences (15), and revenue
+attribution (18). Everything else below stands as found.
 
 ## The one-sentence answer
 

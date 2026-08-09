@@ -26,6 +26,9 @@ const isPublicRoute = createRouteMatcher([
   // Worker-facing internal API (voice agent). Not Clerk-authenticated: every
   // handler verifies the x-scalar-internal-secret header itself, timing-safe.
   "/api/internal(.*)",
+  // Recipient-facing unsubscribe. Public by nature: the person opting out is
+  // not a Scalar user. The signed token in the URL is the authorization.
+  "/api/unsubscribe(.*)",
   // Env-doctor report - safe to expose: booleans + env var names only, never
   // secret values. Meant to be curled after a deploy with no shell access.
   "/api/health(.*)",
