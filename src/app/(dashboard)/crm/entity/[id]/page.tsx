@@ -23,6 +23,13 @@ import { getProvenanceMap } from "@/lib/provenance";
 import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
 import { VerifiedStrip } from "@/components/dashboard/verified-strip";
 
+/** Stamp each calendar row with whether it is in the future. Kept out of the
+ *  component body because reading the clock during render is impure. */
+function markUpcoming<T extends { startsAt: Date }>(rows: T[]): (T & { upcoming: boolean })[] {
+  const now = Date.now();
+  return rows.map((ev) => ({ ...ev, upcoming: ev.startsAt.getTime() > now }));
+}
+
 export default async function EntityDetailPage({
   params,
 }: {
@@ -39,6 +46,17 @@ export default async function EntityDetailPage({
     where: { entityId: id },
     orderBy: { updatedAt: "desc" },
   });
+
+  // Meetings synced from the operator's calendar that are linked to this
+  // company (directly, or through one of its contacts). Company-level meetings
+  // are a high-signal "this account is live" cue.
+  const meetingRows = await prisma.calendarEvent.findMany({
+    where: { userId: user.id, OR: [{ entityId: id }, { contactId: { in: contacts.map((c) => c.id) } }] },
+    orderBy: { startsAt: "desc" },
+    take: 10,
+    include: { attendees: { select: { email: true } } },
+  });
+  const meetings = markUpcoming(meetingRows);
 
   const provenance = await getProvenanceMap("entity", id, user.id);
 
@@ -228,6 +246,33 @@ export default async function EntityDetailPage({
           </Card>
         </FloatIn>
       </div>
+
+      {/* Meetings synced from the calendar, company-wide. */}
+      {meetings.length > 0 && (
+        <FloatIn delay={0.17}>
+          <div>
+            <h2 className="font-brand text-lg text-foreground">Meetings</h2>
+            <div className="mt-3 space-y-3">
+              {meetings.map((ev) => (
+                <Card key={ev.id}>
+                  <CardContent className="flex items-center justify-between gap-2 py-4">
+                    <div>
+                      <p className="font-medium">{ev.title ?? "(no title)"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(ev.startsAt).toLocaleString()}
+                        {ev.attendees.length > 0 && ` · ${ev.attendees.length} attendee${ev.attendees.length === 1 ? "" : "s"}`}
+                      </p>
+                    </div>
+                    <Badge variant={ev.upcoming ? "success" : "secondary"}>
+                      {ev.upcoming ? "Upcoming" : "Past"}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </FloatIn>
+      )}
 
       {/* Enrichment aspects as a visual bento grid (firmographics, funding,
           tech stack, traffic, news) - each rendered as real cards/stats, not a

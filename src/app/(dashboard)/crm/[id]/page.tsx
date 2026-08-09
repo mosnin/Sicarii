@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   Inbox,
+  CalendarDays,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,13 @@ import { listUserWorkspaces } from "@/lib/workspace";
 import { getProvenanceMap } from "@/lib/provenance";
 import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
 import { VerifiedStrip } from "@/components/dashboard/verified-strip";
+
+/** Stamp each calendar row with whether it is in the future. Kept out of the
+ *  component body because reading the clock during render is impure. */
+function markUpcoming<T extends { startsAt: Date }>(rows: T[]): (T & { upcoming: boolean })[] {
+  const now = Date.now();
+  return rows.map((ev) => ({ ...ev, upcoming: ev.startsAt.getTime() > now }));
+}
 
 export default async function ContactDetailPage({
   params,
@@ -56,6 +64,35 @@ export default async function ContactDetailPage({
     orderBy: { createdAt: "desc" },
     take: 50,
   });
+
+  // Synced mailbox messages (Composio Gmail sync + first-party sends). These are
+  // the REAL threads, distinct from the older self-reported ContactEmail store
+  // above; both are merged into one Conversations timeline below so a reply the
+  // sync detected shows its actual body here, not just a status badge.
+  const syncedMessages = await prisma.emailMessage.findMany({
+    where: { contactId: id },
+    orderBy: { sentAt: "desc" },
+    take: 50,
+  });
+
+  // Meetings on the operator's synced calendar involving this contact.
+  const meetingRows = await prisma.calendarEvent.findMany({
+    where: { contactId: id },
+    orderBy: { startsAt: "desc" },
+    take: 10,
+    include: { attendees: { select: { email: true, name: true, responseStatus: true } } },
+  });
+  // markUpcoming reads the clock in a plain helper (not the component body), so
+  // render stays pure per the react-hooks rules.
+  const meetings = markUpcoming(meetingRows);
+
+  // The single best evidence for a job title, extracted from the most recent
+  // inbound message that carried one. Shown by the record, because a signature
+  // is more current than any data vendor: people update it the week they are
+  // promoted.
+  const latestSignature = syncedMessages.find(
+    (m) => m.direction === "INBOUND" && m.signatureBlock,
+  )?.signatureBlock ?? null;
 
   // Recent activity trail (notes, outreach, calls) - fed by the QuickNote
   // morph surface and the agent's log_outreach/add_activity tools.
@@ -91,6 +128,16 @@ export default async function ContactDetailPage({
       threadRef: null as string | null,
       savedAsContext: m.savedAsContext,
       at: m.sentAt ?? m.createdAt,
+    })),
+    ...syncedMessages.map((m) => ({
+      id: `synced-${m.id}`,
+      channelLabel: "Email",
+      direction: m.direction as string,
+      subject: m.subject,
+      body: m.bodyText ?? m.snippet,
+      threadRef: null as string | null,
+      savedAsContext: false,
+      at: m.sentAt,
     })),
     ...socialMessages.map((m) => ({
       id: `social-${m.id}`,
@@ -302,7 +349,7 @@ export default async function ContactDetailPage({
                 <EmptyState
                   icon={Inbox}
                   title="No conversations yet"
-                  description="Email threads (via AgentMail) and social messages your agent or you log will appear here as one history, labeled by channel."
+                  description="Synced mailbox threads, emails Scalar sends, and social messages appear here as one history, labeled by channel. Connect Gmail in Settings so replies land automatically."
                 />
               ) : (
                 <div className="space-y-4">
@@ -351,8 +398,57 @@ export default async function ContactDetailPage({
                   ))}
                 </div>
               )}
+
+              {latestSignature && (
+                <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4">
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Signature, from their latest reply
+                  </p>
+                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                    {latestSignature}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Meetings - synced from the operator's calendar */}
+          {meetings.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Meetings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {meetings.map((ev) => (
+                  <div key={ev.id} className="rounded-xl border border-border bg-card/50 p-4">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{ev.title ?? "(no title)"}</span>
+                      </div>
+                      <Badge variant={ev.upcoming ? "success" : "secondary"}>
+                        {ev.upcoming ? "Upcoming" : "Past"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(ev.startsAt).toLocaleString()}
+                      {ev.attendees.length > 0 && ` · ${ev.attendees.length} attendee${ev.attendees.length === 1 ? "" : "s"}`}
+                    </p>
+                    {ev.conferenceUrl && (
+                      <a
+                        href={ev.conferenceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+                      >
+                        Join link
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </FloatIn>
       </div>
     </div>

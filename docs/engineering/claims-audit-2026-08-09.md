@@ -33,11 +33,19 @@
 - **Monitor cap bypass - FIXED.** Intent + social share one allotment
   (`tests/social-monitor-cap.test.ts`).
 
+- **Gap 13 (the loop reaches the operator) - LARGELY FIXED.** The contact page
+  now merges synced EmailMessage rows into the Conversations timeline (a reply's
+  actual body, not just a status badge), renders Meetings from synced
+  CalendarEvent, and shows the extracted signature block from the latest inbound
+  message (the sync's flagship evidence, previously invisible). The entity page
+  shows company-wide meetings. Still open on 13: the welcome/first-run nudge to
+  connect Gmail (a choreographed "moment" surface, left to the founder) and the
+  Pulse counting synced activity.
+
 Still open from the list below: deliverability warmup (17, partial - cap +
-window exist, warmup ramp does not), the operator-facing inbox UI (13, the
-contact page still does not render synced threads), the compliance sweep (10,
-11, 12-export), number renewal billing (14), sequences (15), and revenue
-attribution (18). Everything else below stands as found.
+window exist, warmup ramp does not), the compliance sweep (10, 11, 12-export),
+number renewal billing (14), sequences (15), and revenue attribution (18).
+Everything else below stands as found.
 
 ## The one-sentence answer
 
