@@ -34,8 +34,11 @@ Agents, numbers sold in-product; US-only, inbound-only for now - see
 ## Founder calls stamped this cycle
 
 1. **Gmail scopes: Composio's full default set** (includes `mail.google.com`,
-   a restricted scope). Consequences accepted: CASA assessment on the launch
-   path; delete authority granted but never exercised (tool-slug allowlist).
+   a restricted scope). Delete authority is granted but never exercised (a
+   tool-slug allowlist pins us to read + send). CASA for the restricted scope
+   is Composio's burden under their managed OAuth app; it moves to us only if
+   we switch to our own Google OAuth client, the switch that also unlocks
+   1-minute polling (COMPOSIO_POLL_INTERVAL_MINUTES) and our consent screen.
 2. **Numbers: LiveKit only, US only, for now.** Outbound therefore dormant
    behind `LIVEKIT_OUTBOUND_TRUNK_ID` with an honest error; carrier adapters
    kept as the future outbound path.
@@ -65,6 +68,7 @@ Agents, numbers sold in-product; US-only, inbound-only for now - see
   with one live call.
 - SocQ: storage/resale terms in writing BEFORE the key is set (procurement
   gate); real payload field names from one paid call per endpoint family.
-- CASA assessment scheduled (Gmail restricted scope).
+- Managed-vs-custom Google OAuth app decided (custom brings 1-min polling and
+  our branding, and brings CASA to us; managed keeps CASA with Composio).
 - Legacy AgentPhone path removal once LiveKit voice is observed working.
 - `agents/voice` deps installed + its 63 tests wired into CI.

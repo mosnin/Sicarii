@@ -29,7 +29,7 @@ import {
   scopesForProvider,
   configuredProviders,
   TRIGGERS_FOR_PROVIDER,
-  MIN_POLL_INTERVAL_MINUTES,
+  pollIntervalMinutes,
   type ComposioProvider,
 } from "@/lib/composio";
 
@@ -353,10 +353,11 @@ export async function completeConnection(
 /**
  * Register (or re-register) the polling triggers for a connection.
  *
- * `interval` is passed explicitly at the 15-minute floor every time. Composio
- * rejects anything lower as an API error on managed auth, and the trigger
- * schema's `default: 1` is stale, so relying on the default is a live bug
- * waiting for the first deploy that reads it.
+ * `interval` is passed explicitly every time, from pollIntervalMinutes():
+ * the managed-auth floor (15) by default, COMPOSIO_POLL_INTERVAL_MINUTES once
+ * a custom Google OAuth app allows faster polling. The trigger schema's
+ * `default: 1` is stale, so relying on the default is a live bug waiting for
+ * the first deploy that reads it.
  *
  * `connectedAccountId` is also passed explicitly. Omitting it makes Composio
  * pick "the first connected account for this user and toolkit", which is a
@@ -380,7 +381,7 @@ export async function registerTriggers(
       const created = (await composioCall(() =>
         composio.triggers.create(composioUserId, slug, {
           connectedAccountId: composioConnectionId,
-          triggerConfig: { interval: MIN_POLL_INTERVAL_MINUTES },
+          triggerConfig: { interval: pollIntervalMinutes() },
         }),
       )) as { triggerId?: string; id?: string } | null;
 

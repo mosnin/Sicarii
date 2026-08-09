@@ -172,7 +172,7 @@ export default defineAgent({
       tts: buildTts(config, context.tenant.ttsVoice ?? undefined),
       // Semantic end of turn beats a silence timer on the phone, where people
       // pause mid sentence and a timer talks over them.
-      turnDetection: new livekitTurn.MultilingualModel(),
+      turnDetection: new livekitTurn.turnDetector.MultilingualModel(),
     });
     holder.session = session as unknown as SessionLike;
 
@@ -379,8 +379,9 @@ function buildStt(config: VoiceAgentConfig) {
   switch (config.stt.provider) {
     case "openai":
       return new openai.STT({ model: config.stt.model, language: config.stt.language });
-    case "google":
-      return new google.STT({ model: config.stt.model });
+    // The Google plugin ships no standalone STT (only LLM, Gemini TTS, and the
+    // realtime model), so a "google" STT selection falls through to Deepgram
+    // rather than crashing the worker at boot on a config typo.
     case "deepgram":
     default:
       return new deepgram.STT({ model: config.stt.model, language: config.stt.language });
@@ -401,11 +402,15 @@ function buildTts(config: VoiceAgentConfig, voiceOverride?: string) {
   const voiceId = voiceOverride ?? config.tts.voice;
   switch (config.tts.provider) {
     case "elevenlabs":
-      return new elevenlabs.TTS({ modelID: config.tts.model, voice: voiceId });
+      return new elevenlabs.TTS({ model: config.tts.model, voiceId });
     case "openai":
-      return new openai.TTS({ model: config.tts.model, voice: voiceId });
+      // The plugin types voices as a closed union of the named OpenAI voices,
+      // but the value is env-configured. The cast trades compile-time safety
+      // for runtime configurability; an unknown name fails the first synthesis
+      // call with OpenAI's own error, which is the diagnosable place.
+      return new openai.TTS({ model: config.tts.model, voice: voiceId as never });
     case "google":
-      return new google.TTS({ voice: voiceId });
+      return new google.beta.TTS({ model: config.tts.model, voiceName: voiceId });
     case "cartesia":
     default:
       return new cartesia.TTS({ model: config.tts.model, voice: voiceId });

@@ -48,11 +48,15 @@ import { OpError } from "@/lib/op-error";
 //
 // What that choice costs, plainly:
 //
-//   1. `https://mail.google.com/` is a Google RESTRICTED scope. App
-//      verification requires a CASA (Cloud Application Security Assessment)
-//      third-party review plus an annual re-audit. Budget MONTHS, not days,
-//      before a public launch, and expect the unverified-app warning on the
-//      consent screen until it clears.
+//   1. `https://mail.google.com/` is a Google RESTRICTED scope, and app
+//      verification for it requires a CASA (Cloud Application Security
+//      Assessment) review plus an annual re-audit. WHO carries that depends on
+//      whose OAuth app the auth config uses: under Composio's managed app it
+//      is Composio's burden (their consent screen, their verification); it
+//      moves to US only if we switch the auth config to our own Google OAuth
+//      client (which is also what unlocks 1-minute polling and our branding -
+//      see pollIntervalMinutes below). Budget MONTHS for CASA if and when we
+//      make that switch.
 //
 //   2. It grants full read, write, DELETE and send over the operator's ENTIRE
 //      mailbox. Our code only reads (and, later, sends). The granted authority
@@ -136,10 +140,27 @@ export const GMAIL_SENT_TRIGGER = "GMAIL_EMAIL_SENT_TRIGGER";
 // returns full event data including attendees, which is what we actually need.
 export const GCAL_EVENT_SYNC_TRIGGER = "GOOGLECALENDAR_GOOGLE_CALENDAR_EVENT_SYNC_TRIGGER";
 
-/** Composio-managed auth rejects any interval below 15 minutes as an API
- *  error. The trigger schema's `default: 1` is stale; only a custom Google
- *  OAuth app can poll faster. Always send this explicitly. */
-export const MIN_POLL_INTERVAL_MINUTES = 15;
+/** Polling interval, in minutes, sent explicitly on every trigger.
+ *
+ *  The floor depends on WHOSE Google OAuth app the auth config uses:
+ *  Composio-managed auth (their shared app) rejects anything below 15 as an
+ *  API error, while an auth config built on OUR OWN Google OAuth client may
+ *  poll down to 1 minute, with dedicated Google quota and our name on the
+ *  consent screen. That is the production posture: reply detection at a
+ *  15-minute cadence is correct but feels dead, at 1 minute it feels alive.
+ *
+ *  So the default is the managed-auth floor (safe everywhere), and
+ *  COMPOSIO_POLL_INTERVAL_MINUTES overrides it once a custom OAuth app is in
+ *  place. The trigger schema's `default: 1` is stale; never rely on it. Note
+ *  the ownership trade: managed auth means Composio carries Google's CASA
+ *  verification for the restricted Gmail scope; a custom app moves CASA to us. */
+export const MANAGED_AUTH_MIN_POLL_MINUTES = 15;
+
+export function pollIntervalMinutes(): number {
+  const raw = Number(process.env.COMPOSIO_POLL_INTERVAL_MINUTES);
+  if (!Number.isFinite(raw)) return MANAGED_AUTH_MIN_POLL_MINUTES;
+  return Math.min(Math.max(Math.trunc(raw), 1), 24 * 60);
+}
 
 /** The triggers we register per provider, in the order we register them. */
 export const TRIGGERS_FOR_PROVIDER: Record<ComposioProvider, readonly string[]> = {

@@ -106,10 +106,10 @@ exponential growth into a plateau.
 | Composio sync live | 0015 · Feasible | auth configs + webhook; one reply observed advancing CONTACTED -> REPLIED | founder + eng |
 | Voice live | 0015 · Feasible | worker deployed, one number bought, one inbound call answered from CRM data | founder + eng |
 | SocQ storage/resale terms | 0015 · Viable | written confirmation BEFORE the key is set in prod | **founder** |
-| CASA assessment | 0015 · Deliverable | scheduled (Gmail restricted scope was a deliberate founder call) | **founder** |
+| Managed vs custom Google OAuth app | 0015 · Deliverable | founder call: custom = 1-min polling + our branding but CASA lands on us; managed = 15-min polling, CASA is Composio's | **founder** |
 | STIR/SHAKEN attestation path | 0015 · Deliverable | carrier answer before outbound is enabled | founder + eng |
 | Legacy AgentPhone removal | 0015 | delete after LiveKit voice is observed working | eng |
-| agents/voice in CI | 0015 | deps installed + its 63 tests wired into the test run | eng |
+| ~~agents/voice in CI~~ ✅ | 0015 | DONE - deps installed, typecheck clean against real SDKs, 63 tests wired into `pnpm test` | eng |
 
 ## Kills & falsifieds (do not re-open)
 

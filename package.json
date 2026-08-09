@@ -8,7 +8,7 @@
     "build": "prisma db push --skip-generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
+    "test": "vitest run && pnpm --dir agents/voice test",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",

@@ -17,13 +17,17 @@ whole product right now._
 | 1 | Composio: create the two auth configs, set the 4 env vars, subscribe the webhook, then observe ONE live thread ingest a reply and advance CONTACTED -> REPLIED | founder + eng | after 0 |
 | 2 | Voice: `pnpm install` in `agents/voice`, `lk agent deploy`, set LIVEKIT_* + SCALAR_INTERNAL_SECRET, buy one number, observe ONE inbound call answered from real CRM data | founder + eng | after 0 |
 | 3 | SocQ procurement gate: storage/resale terms in writing BEFORE the key is ever set in prod | **Founder** | independent |
-| 4 | CASA assessment scheduled (Gmail restricted scope, chosen deliberately) | **Founder** | independent |
+| 4 | Decide managed vs custom Google OAuth app (custom = 1-min polling + our branding, but CASA moves to us; managed = slow polling, CASA is Composio's) | **Founder** | with 1 |
 | 5 | Gate out: founder observes sync + suggestions queue + one call as one journey; RECORD | Founder | last |
 
-**Riskiest assumption under test:** _that Composio's polling triggers (15-min
-floor on managed auth) are fresh enough for reply detection to feel alive. If a
-reply takes 15 minutes to land, the loop is correct but may feel dead; the fix
-would be our own Google OAuth app (1-min polling), which drags CASA forward._
+**Riskiest assumption under test:** _reply-detection freshness. The 15-min
+polling floor applies ONLY to Composio's managed OAuth app; a custom Google
+OAuth client in the auth config polls at 1 minute (set
+COMPOSIO_POLL_INTERVAL_MINUTES). The trade to decide at phase 1: managed auth
+means Composio carries Google's CASA verification but the consent screen says
+Composio and polling is slow; our own OAuth app means 1-min polling, our
+branding, dedicated quota, and CASA lands on us. Ship managed to observe the
+loop, move to a custom app for production feel._
 
 **Standing founder debts (unchanged from 0006-0014):** Stripe prices + webhook
 in prod, Upstash env, pgvector HNSW index run once, Explorium top-up, Clerk
