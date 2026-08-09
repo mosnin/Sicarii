@@ -8,6 +8,19 @@
 > implementation. 12 gaps confirmed with file-level proof, 2 refuted.
 > Run after Card 0015 landed (post-integration, 796 tests green).
 
+## Fixed since this audit (2026-08-09, same day)
+
+- **Gap 5 (voice billing race) - FIXED.** The room_finished webhook now settles
+  on `creditsCharged` (null = unbilled), not on `endedAt`, so a worker-first
+  completion no longer suppresses billing. The decision was extracted to a pure
+  `src/lib/voice-billing.ts` with a regression test (`tests/voice-billing.test.ts`).
+- **Gap in the unverified tail (social monitors ignore the plan cap) - FIXED.**
+  Intent and social monitors now share one per-plan allotment, enforced in both
+  the social ops layer and the intent route, so neither can slip past the
+  other's cap (`tests/social-monitor-cap.test.ts`).
+
+Everything else below stands as found.
+
 ## The one-sentence answer
 
 **Scalar cannot send an email, and every autonomous-outreach claim hangs off

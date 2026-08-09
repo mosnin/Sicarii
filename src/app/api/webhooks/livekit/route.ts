@@ -25,13 +25,9 @@ import { ParticipantInfo_Kind } from "@livekit/protocol";
 import { prisma } from "@/lib/prisma";
 import { CREDIT_COSTS, spendCredits } from "@/lib/credits";
 import { getWebhookReceiver, isLiveKitConfigured, type WebhookEvent } from "@/lib/livekit";
+import { billingDecision, MAX_BILLABLE_MINUTES } from "@/lib/voice-billing";
 
 export const runtime = "nodejs";
-
-/** Upper bound on billable minutes for one call. A stuck room must not be able
- *  to drain a tenant's balance; anything past this is a bug to investigate, not
- *  a charge to make. */
-const MAX_BILLABLE_MINUTES = 180;
 
 export async function POST(req: NextRequest) {
   if (!isLiveKitConfigured()) {
@@ -115,43 +111,43 @@ async function onRoomFinished(event: WebhookEvent): Promise<void> {
   // A room we have no call row for is not ours to bill (an inbound call the
   // worker has not registered yet, or another product on the same project).
   if (!call) return;
-  // Already settled by a previous delivery that got past the claim (or by the
-  // worker). Never re-bill.
-  if (call.endedAt) return;
 
   const endedAt = toDate(event.createdAt) ?? new Date();
-  const answeredAt = call.answeredAt;
+  const decision = billingDecision(call, endedAt);
 
-  if (!answeredAt) {
-    // NOT ANSWERED. No setup fee, no minutes, no credits. If the dial already
-    // recorded a specific SIP outcome (busy, rejected) keep it; otherwise the
-    // honest default is NO_ANSWER.
-    const keep: string[] = ["BUSY", "NO_ANSWER", "FAILED", "VOICEMAIL"];
+  // Settle on billed-state, not on endedAt. The worker's completeCall writes
+  // endedAt (transcript, status, timings) but never touches creditsCharged, so
+  // an earlier gate on endedAt suppressed billing on every worker-first
+  // completion - a deterministic zero-charge. billingDecision gates on
+  // creditsCharged instead; see src/lib/voice-billing.ts.
+  if (decision.kind === "skip") return;
+
+  if (decision.kind === "unanswered") {
+    // No setup fee, no minutes, no credits, but creditsCharged is stamped to 0
+    // so the call reads as settled and a later delivery cannot re-open it.
     await prisma.voiceCall.update({
       where: { id: call.id },
-      data: {
-        status: keep.includes(call.status) ? call.status : "NO_ANSWER",
-        endedAt,
-        durationSeconds: 0,
-        creditsCharged: 0,
-      },
+      data: { status: decision.status, endedAt, durationSeconds: 0, creditsCharged: 0 },
     });
     return;
   }
 
-  // Billable talk time is answer to hangup, not room lifetime: the room exists
-  // while it rings, and nobody should pay for ringing.
-  const talkSeconds = Math.max(0, Math.round((endedAt.getTime() - answeredAt.getTime()) / 1000));
-  const minutes = Math.min(Math.ceil(talkSeconds / 60), MAX_BILLABLE_MINUTES);
-  if (talkSeconds > MAX_BILLABLE_MINUTES * 60) {
-    console.warn(`[livekit-webhook] call ${call.id} ran ${talkSeconds}s, capping billing at ${MAX_BILLABLE_MINUTES}m`);
+  if (decision.capped) {
+    console.warn(
+      `[livekit-webhook] call ${call.id} ran ${decision.talkSeconds}s, capping billing at ${MAX_BILLABLE_MINUTES}m`,
+    );
   }
 
-  const charged = await meter(call.userId, call.id, minutes);
+  const charged = await meter(call.userId, call.id, decision.minutes);
 
   await prisma.voiceCall.update({
     where: { id: call.id },
-    data: { status: "COMPLETED", endedAt, durationSeconds: talkSeconds, creditsCharged: charged },
+    data: {
+      status: "COMPLETED",
+      endedAt,
+      durationSeconds: decision.talkSeconds,
+      creditsCharged: charged,
+    },
   });
 }
 

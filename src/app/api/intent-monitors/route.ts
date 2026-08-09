@@ -45,12 +45,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "EXA_API_KEY is not configured" }, { status: 501 });
     }
 
-    // Plan limit: scheduled monitors are a paid-plan feature with a per-plan cap.
+    // Plan limit: scheduled monitors are a paid-plan feature with a per-plan
+    // cap, and intent + social monitors share one allotment (both are recurring
+    // web watches that spend credits unattended). Count both so neither type
+    // can be used to slip past the other's cap.
     const allowed = planFor(user.plan).monitors;
-    const existingCount = await prisma.intentMonitor.count({ where: { userId: user.id } });
-    if (existingCount >= allowed) {
+    const [intent, social] = await Promise.all([
+      prisma.intentMonitor.count({ where: { userId: user.id } }),
+      prisma.socialMonitor.count({ where: { userId: user.id } }),
+    ]);
+    if (intent + social >= allowed) {
       return NextResponse.json(
-        { error: `Your plan allows ${allowed} scheduled monitor${allowed === 1 ? "" : "s"}.` },
+        { error: `Your plan allows ${allowed} scheduled monitor${allowed === 1 ? "" : "s"} (intent and social combined).` },
         { status: 402 },
       );
     }

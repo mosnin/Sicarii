@@ -15,6 +15,7 @@ import { type SocialPlatform } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/op-error";
 import { clampListLimit } from "@/lib/crm-operations";
+import { planFor } from "@/lib/credits";
 import { MONITOR_RESULTS_CEILING } from "@/lib/social-discover";
 import { clampResultsLimit } from "@/lib/socq";
 
@@ -52,6 +53,26 @@ function cleanUrls(urls: string[] | undefined): string[] {
 export async function createSocialMonitor(userId: string, input: CreateMonitorInput) {
   const name = input.name?.trim();
   if (!name) throw new OpError("A monitor needs a name.", 400);
+
+  // Scheduled monitors are a paid-plan feature with a per-plan cap, and social
+  // monitors and intent monitors both draw on the same `monitors` allotment:
+  // they are the same scarce thing (a recurring web watch that spends credits
+  // unattended), so counting them separately would let a free user (0 monitors)
+  // stand up unlimited social watches, which is exactly the bypass this closes.
+  // Enforced in the ops layer so both the REST route and the MCP tool are
+  // covered, unlike the intent path which only guards at its route.
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
+  const allowed = planFor(user?.plan).monitors;
+  const [social, intent] = await Promise.all([
+    prisma.socialMonitor.count({ where: { userId } }),
+    prisma.intentMonitor.count({ where: { userId } }),
+  ]);
+  if (social + intent >= allowed) {
+    throw new OpError(
+      `Your plan allows ${allowed} scheduled monitor${allowed === 1 ? "" : "s"} (intent and social combined). Upgrade or retire one first.`,
+      402,
+    );
+  }
 
   const sourceUrls = cleanUrls(input.sourceUrls);
   const query = input.query?.trim() || null;
