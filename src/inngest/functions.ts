@@ -39,6 +39,7 @@ import {
 import { registerSocialTaskHandlers } from "@/lib/social-tasks";
 import { VOICE_FOLLOW_UP_KIND, handleVoiceFollowUp } from "@/lib/internal-voice";
 import { SEQUENCE_STEP_KIND, runSequenceStep } from "@/lib/sequences";
+import { PHONE_RENEWAL_KIND, handleNumberRenewal, seedDueRenewals } from "@/lib/telephony/renewal";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -357,12 +358,18 @@ export function registerCoreTaskHandlers(): void {
     if (!enrollmentId) return { outcome: "No enrollmentId on task; skipped." };
     return runSequenceStep(task.userId, enrollmentId);
   });
+  registerTaskHandler(PHONE_RENEWAL_KIND, async (task) => {
+    const numberId = (task.payload as { ref?: string } | null)?.ref ?? task.contactId;
+    if (!numberId) return { outcome: "No number id on task; skipped." };
+    return handleNumberRenewal(numberId);
+  });
 }
 
 export interface SeedSummary {
   intentMonitors: number;
   researchSchedules: number;
   autopilotPlans: number;
+  numberRenewals: number;
 }
 
 /**
@@ -375,7 +382,7 @@ export interface SeedSummary {
  * schedule that is due but not yet run never queues twice.
  */
 export async function seedDueTasks(now: Date = new Date()): Promise<SeedSummary> {
-  const summary: SeedSummary = { intentMonitors: 0, researchSchedules: 0, autopilotPlans: 0 };
+  const summary: SeedSummary = { intentMonitors: 0, researchSchedules: 0, autopilotPlans: 0, numberRenewals: 0 };
 
   // Same guard the old cron had: with no Exa key there is nothing to run, so
   // don't queue work that can only fail.
@@ -428,6 +435,9 @@ export async function seedDueTasks(now: Date = new Date()): Promise<SeedSummary>
     }).catch((e) => { console.error("[seed] autopilot plan", p.id, e); return null; });
     if (res && !res.deduped) summary.autopilotPlans++;
   }
+
+  // Phone-number monthly rent (independent of the Exa/provider gates above).
+  summary.numberRenewals = await seedDueRenewals(now);
 
   return summary;
 }

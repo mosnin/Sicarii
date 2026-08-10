@@ -300,6 +300,39 @@ export async function spendCredits(
   }
 }
 
+/**
+ * Debit an ARBITRARY amount of credits (not a fixed CREDIT_COSTS action).
+ * Returns whether it succeeded rather than throwing, because the callers that
+ * need this - recurring charges like a phone number's monthly rent - must
+ * handle "insufficient funds" as a business event (grace, dunning), not a 402.
+ * `label` is the ledger action string. Atomic conditional decrement, same as
+ * spendCredits.
+ */
+export async function spendCreditsAmount(
+  userId: string,
+  amount: number,
+  label: string,
+  opts: { ref?: string } = {},
+): Promise<boolean> {
+  const cost = Math.max(0, Math.trunc(amount));
+  if (cost === 0) return true;
+  await maybeReset(userId);
+  const { count } = await prisma.user.updateMany({
+    where: { id: userId, creditsRemaining: { gte: cost } },
+    data: { creditsRemaining: { decrement: cost } },
+  });
+  if (count === 0) return false;
+  try {
+    const after = await prisma.user.findUnique({ where: { id: userId }, select: { creditsRemaining: true } });
+    await prisma.creditLedger.create({
+      data: { userId, delta: -cost, balanceAfter: after?.creditsRemaining ?? 0, action: label, ref: opts.ref },
+    });
+  } catch (e) {
+    console.warn("[credits] ledger write failed", e);
+  }
+  return true;
+}
+
 // Monthly list price (USD) for each paid plan. The single source of truth for
 // what a plan costs, used by the x402 subscribe path (Stripe mirrors these in
 // its own Price config). Kept next to PLANS so price and allotment move

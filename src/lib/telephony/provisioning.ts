@@ -301,9 +301,16 @@ async function buyThenWire(
     providerNumberId = purchased.providerNumberId;
     // Persist the carrier handle IMMEDIATELY. From here on a crash leaves a row
     // that knows exactly what we own and can be released.
+    const purchasedAt = new Date();
     row = await prisma.phoneNumber.update({
       where: { id: row.id },
-      data: { providerNumberId, livekitTrunkId: trunkId, purchasedAt: new Date() },
+      // First rent is due 30 days out; the renewal task advances it from here.
+      data: {
+        providerNumberId,
+        livekitTrunkId: trunkId,
+        purchasedAt,
+        nextRenewalAt: new Date(purchasedAt.getTime() + 30 * 24 * 60 * 60 * 1000),
+      },
     });
   }
 

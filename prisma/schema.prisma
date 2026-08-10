@@ -1868,6 +1868,11 @@ model PhoneNumber {
 
   monthlyCostCents Int?
   purchasedAt      DateTime?
+  // When the next monthly charge is due. Set to purchasedAt + 30d at purchase;
+  // the renewal task advances it 30d on each successful charge. A number costs
+  // the carrier every month, so billing it once at purchase was a straight
+  // revenue leak.
+  nextRenewalAt    DateTime?
   releasedAt       DateTime?
   lastError        String?
 
@@ -1878,6 +1883,7 @@ model PhoneNumber {
 
   @@unique([e164])
   @@index([userId, status])
+  @@index([status, nextRenewalAt])
   @@map("phone_numbers")
 }
 
