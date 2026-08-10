@@ -66,3 +66,34 @@ export function maybeCleanupIdempotency(sampleKey: string, sampleOneIn = 16): vo
     }
   })();
 }
+
+/**
+ * Delete a tenant and ALL of its data, atomically. The one place account
+ * deletion lives, so the user.deleted and organization.deleted webhook paths
+ * cannot drift.
+ *
+ * Most tables cascade from the User FK. Three do not, and each is a real
+ * retention bug if missed:
+ *   - Pipeline / Segment carry a scalar userId with no FK cascade.
+ *   - FieldProvenance has NO userId at all (it is keyed by recordType+recordId),
+ *     so its valueSnapshot copies of a person's data outlive the contact unless
+ *     deleted explicitly. We gather the tenant's record ids BEFORE the delete,
+ *     because once the contacts and entities cascade away the ids are gone.
+ *
+ * Fails loudly (throws) rather than swallowing a partial delete: a compliance
+ * action that reports success while retaining data is worse than a retry.
+ */
+export async function purgeTenant(userId: string): Promise<void> {
+  const [contacts, entities] = await Promise.all([
+    prisma.contact.findMany({ where: { userId }, select: { id: true } }),
+    prisma.entity.findMany({ where: { userId }, select: { id: true } }),
+  ]);
+  const recordIds = [...contacts.map((c) => c.id), ...entities.map((e) => e.id)];
+
+  await prisma.$transaction([
+    ...(recordIds.length ? [prisma.fieldProvenance.deleteMany({ where: { recordId: { in: recordIds } } })] : []),
+    prisma.pipeline.deleteMany({ where: { userId } }),
+    prisma.segment.deleteMany({ where: { userId } }),
+    prisma.user.delete({ where: { id: userId } }),
+  ]);
+}

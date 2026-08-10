@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { purgeTenant } from "@/lib/maintenance";
 
 export async function POST(req: Request) {
   try {
@@ -122,11 +123,7 @@ export async function POST(req: Request) {
       });
       if (ws && ws.accountType === "workspace") {
         try {
-          await prisma.$transaction([
-            prisma.pipeline.deleteMany({ where: { userId: ws.id } }),
-            prisma.segment.deleteMany({ where: { userId: ws.id } }),
-            prisma.user.delete({ where: { id: ws.id } }),
-          ]);
+          await purgeTenant(ws.id);
         } catch (err) {
           console.error(`[clerk] organization.deleted cleanup failed for ${ws.id}`, err);
           return NextResponse.json({ error: "Deletion failed, will retry" }, { status: 500 });
@@ -174,25 +171,17 @@ export async function POST(req: Request) {
     }
 
     if (type === "user.deleted") {
-      // Entity/Contact/ApiKey/Conversation/MemoryChunk/IntentMonitor/
-      // ResearchSchedule cascade via FK. Segment + Pipeline use a scalar userId
-      // with NO FK cascade, so they'd orphan (the user's deal data surviving
-      // account deletion). Delete them explicitly; PipelineEntry/ContactSegment
-      // cascade from their parent.
       const u = await prisma.user.findUnique({
         where: { clerkId: data.id as string },
         select: { id: true },
       });
       if (u) {
-        // Do NOT swallow failures here: account deletion is a compliance
-        // action, and a silent partial delete would leave user data retained
-        // while reporting success. Failing loudly (500) makes Clerk retry.
+        // Account deletion is a compliance action: purgeTenant fails loudly on
+        // a partial delete (500) so Clerk retries, rather than reporting success
+        // while retaining data. It also clears the non-cascading tables,
+        // including FieldProvenance's data snapshots (see purgeTenant).
         try {
-          await prisma.$transaction([
-            prisma.pipeline.deleteMany({ where: { userId: u.id } }),
-            prisma.segment.deleteMany({ where: { userId: u.id } }),
-            prisma.user.delete({ where: { id: u.id } }),
-          ]);
+          await purgeTenant(u.id);
         } catch (err) {
           console.error(`[clerk] user.deleted cleanup failed for ${u.id}`, err);
           return NextResponse.json({ error: "Deletion failed, will retry" }, { status: 500 });

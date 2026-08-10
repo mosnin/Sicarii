@@ -42,10 +42,25 @@
   connect Gmail (a choreographed "moment" surface, left to the founder) and the
   Pulse counting synced activity.
 
+- **Compliance sweep (gaps 10, 11, 12-export) - LARGELY FIXED.**
+  - Account deletion now clears FieldProvenance (its personal-data snapshots had
+    no user FK and survived deletion) via one shared `purgeTenant` helper both
+    the user.deleted and organization.deleted webhook paths call, atomically and
+    fail-loud (`tests/purge-tenant.test.ts`).
+  - Full account export: `/api/export/account` returns one complete JSON archive
+    of everything a tenant owns (contacts, entities, deals+money, custom fields,
+    facts, synced mail, meetings, social, suppressions, connection metadata with
+    no tokens), replacing the two flat CSVs as the "you own your data" surface.
+  - Subprocessors page now lists Composio (processes whole mailboxes), LiveKit,
+    the carriers, SocQ (dormant), Firecrawl, Apify, the email-finding waterfall,
+    and the public registries.
+  Still open on the sweep: third-party RESOURCE revocation on delete (Composio
+  connections/triggers, LiveKit numbers/trunks are released at the provider),
+  and a voice-recording retention window.
+
 Still open from the list below: deliverability warmup (17, partial - cap +
-window exist, warmup ramp does not), the compliance sweep (10, 11, 12-export),
-number renewal billing (14), sequences (15), and revenue attribution (18).
-Everything else below stands as found.
+window exist, warmup ramp does not), number renewal billing (14), sequences
+(15), and revenue attribution (18). Everything else below stands as found.
 
 ## The one-sentence answer
 
