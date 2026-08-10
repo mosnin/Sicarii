@@ -20,7 +20,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { purgeTenant } from "@/lib/maintenance";
+import { purgeTenant, redactOldVoiceCalls } from "@/lib/maintenance";
 
 beforeEach(() => {
   calls.length = 0;
@@ -46,5 +46,17 @@ describe("purgeTenant", () => {
     // leave data retained while the user row is gone.
     expect(calls.some((c) => c.op === "user.delete")).toBe(true);
     expect(calls.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("redactOldVoiceCalls", () => {
+  it("clears transcript/recording/prompt on calls past the retention window", async () => {
+    const captured: { where: unknown; data: Record<string, unknown> }[] = [];
+    const { prisma } = await import("@/lib/prisma");
+    // @ts-expect-error test shim
+    prisma.voiceCall = { updateMany: async (a: { where: unknown; data: Record<string, unknown> }) => { captured.push(a); return { count: 3 }; } };
+    const n = await redactOldVoiceCalls(new Date("2026-08-09T00:00:00Z"));
+    expect(n).toBe(3);
+    expect(captured[0].data).toMatchObject({ recordingUrl: null, systemPrompt: null });
   });
 });

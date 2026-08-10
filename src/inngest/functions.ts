@@ -40,6 +40,7 @@ import { registerSocialTaskHandlers } from "@/lib/social-tasks";
 import { VOICE_FOLLOW_UP_KIND, handleVoiceFollowUp } from "@/lib/internal-voice";
 import { SEQUENCE_STEP_KIND, runSequenceStep } from "@/lib/sequences";
 import { PHONE_RENEWAL_KIND, handleNumberRenewal, seedDueRenewals } from "@/lib/telephony/renewal";
+import { redactOldVoiceCalls } from "@/lib/maintenance";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -453,6 +454,10 @@ export async function runDueTasks(now: Date = new Date()): Promise<QueuePassResu
   registerCoreTaskHandlers();
   const seeded = await seedDueTasks(now);
   const dispatched = await dispatchTasks({ now });
+  // Data-retention sweep: drop voice-call content past its window. A no-op once
+  // caught up (the content filter matches nothing), so it is cheap to run each
+  // pass. Best-effort; never fails the queue.
+  await redactOldVoiceCalls(now).catch((e) => console.warn("[retention] voice redact failed", e));
   return { seeded, ...dispatched };
 }
 

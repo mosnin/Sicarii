@@ -8,6 +8,7 @@
 // fraction of deliveries (not every one) and capped so a single delete never
 // blocks the handler. Fire-and-forget: a failure here never affects the webhook.
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const RETENTION_DAYS = 60;
@@ -84,6 +85,15 @@ export function maybeCleanupIdempotency(sampleKey: string, sampleOneIn = 16): vo
  * action that reports success while retaining data is worse than a retry.
  */
 export async function purgeTenant(userId: string): Promise<void> {
+  // Revoke external resources FIRST, best-effort. These are network calls to
+  // Composio and LiveKit, so they run outside (and before) the atomic DB delete:
+  // a revocation failure must never block the data deletion, which is the actual
+  // compliance obligation. A leaked external resource is a cost to clean up, not
+  // a retained-data violation, so we log and proceed. Importing lazily keeps a
+  // heavy provider graph out of the webhook's hot path when there is nothing to
+  // revoke.
+  await revokeExternalResources(userId).catch((e) => console.error(`[purge] external revocation for ${userId}`, e));
+
   const [contacts, entities] = await Promise.all([
     prisma.contact.findMany({ where: { userId }, select: { id: true } }),
     prisma.entity.findMany({ where: { userId }, select: { id: true } }),
@@ -96,4 +106,56 @@ export async function purgeTenant(userId: string): Promise<void> {
     prisma.segment.deleteMany({ where: { userId } }),
     prisma.user.delete({ where: { id: userId } }),
   ]);
+}
+
+/**
+ * Best-effort teardown of a tenant's resources at third parties, before their
+ * rows are deleted. Each is independent and swallows its own failure: one dead
+ * provider must not strand the rest, and none may block the DB delete.
+ *   - Composio connected accounts (mailbox/calendar OAuth + their triggers)
+ *   - LiveKit phone numbers (release the DID + its dispatch rule/trunk)
+ * Dynamic imports so the provider clients are only loaded when there is
+ * actually something to revoke.
+ */
+export async function revokeExternalResources(userId: string): Promise<void> {
+  const [connections, numbers] = await Promise.all([
+    prisma.connectedAccount.findMany({ where: { userId }, select: { id: true } }),
+    prisma.phoneNumber.findMany({ where: { userId, status: "ACTIVE" }, select: { id: true } }),
+  ]);
+
+  if (connections.length) {
+    const { disconnectConnection } = await import("@/lib/connections");
+    for (const c of connections) {
+      await disconnectConnection(userId, c.id).catch((e) => console.error(`[purge] disconnect ${c.id}`, e));
+    }
+  }
+  if (numbers.length) {
+    const { releaseNumber } = await import("@/lib/telephony/provisioning");
+    for (const n of numbers) {
+      await releaseNumber(userId, n.id).catch((e) => console.error(`[purge] release number ${n.id}`, e));
+    }
+  }
+}
+
+/**
+ * Voice-recording retention. Call recordings, transcripts, the per-call system
+ * prompt, and model-usage detail are sensitive and have no reason to live
+ * forever. This clears them from calls older than the retention window (default
+ * 90 days, VOICE_RETENTION_DAYS), keeping the call's billing-relevant metadata
+ * (duration, status, timestamps) but dropping its content. Idempotent and
+ * bounded; run from the periodic dispatch pass.
+ */
+export async function redactOldVoiceCalls(now: Date = new Date()): Promise<number> {
+  const days = Number(process.env.VOICE_RETENTION_DAYS);
+  const window = Number.isFinite(days) && days > 0 ? Math.trunc(days) : 90;
+  const cutoff = new Date(now.getTime() - window * 24 * 60 * 60 * 1000);
+  const { count } = await prisma.voiceCall.updateMany({
+    where: {
+      endedAt: { lt: cutoff },
+      // Only rows that still hold content, so the sweep is a no-op once caught up.
+      OR: [{ transcript: { not: Prisma.DbNull } }, { recordingUrl: { not: null } }, { systemPrompt: { not: null } }],
+    },
+    data: { transcript: Prisma.DbNull, recordingUrl: null, systemPrompt: null, modelUsage: Prisma.DbNull },
+  });
+  return count;
 }
