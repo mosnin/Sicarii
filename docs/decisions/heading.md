@@ -3,13 +3,27 @@
 > The one thing to push right now. Surfaced first by the Ratchet hook each
 > session. Keep it to a glance; update it on every RECORD. (Volatile - the *aim*.)
 
-**Binding constraint right now:** _Card 0015 (platform foundation) is built and
-TESTED (733 tests, tsc clean) but nothing in it has touched reality: no db
-push, no live webhook, no deployed voice worker. The gap between "the code
-exists" and "a tenant's reply moved a contact to REPLIED on its own" is the
-whole product right now._
+**Binding constraint right now:** _The product is now feature-complete against
+its own claims and hardened: 782 tests, tsc + lint clean. The autonomous outreach
+loop exists end to end in code (send -> sequences -> stop-on-reply, all through
+one compliance chokepoint), the reply loop is visible on the record pages, the
+compliance sweep is done, and the money paths (voice billing, number rent,
+revenue-weighted bandit) are correct under an adversarial review. What remains is
+entirely REALITY: no db push, no live Composio webhook, no deployed voice worker,
+no SocQ terms. The gap between "the code is right" and "a tenant watched it work"
+is the whole product now._
 
-**The cycle in flight: 0015 - Platform foundation** (`0015-platform-foundation.md`)
+**The cycle in flight: 0016 - Autonomy + polish + hardening** (see
+`engineering/claims-audit-2026-08-09.md` for the full close-out)
+
+Card 0015 (platform foundation) shipped; the follow-on loop closed every
+confirmed gap from the 08-09 claims audit: the send path (compliance-complete),
+suppression management, sequences (the cadence engine with stop-on-reply),
+number renewal billing, deliverability warmup, revenue attribution, the
+compliance sweep (honest deletion + full export + current subprocessors +
+external revocation + voice retention), the operator-facing reply/meeting/
+signature UI, the sequences + suppression UIs, and a hardening pass that fixed
+two blockers and three majors found by adversarial review.
 
 | # | Phase | Owner | Status |
 |---|-------|-------|--------|
