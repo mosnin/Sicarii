@@ -16,6 +16,7 @@ import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { CurrencySettings } from "@/components/dashboard/currency-settings";
 import { ConnectionsManager } from "./connections";
 import { CustomFieldsManager } from "./fields";
+import { SuppressionManager } from "./suppressions";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
 import { getDbUser } from "@/lib/server-user";
@@ -156,6 +157,11 @@ export default async function SettingsPage() {
       {/* Custom fields - operator-defined schema the agent can fill */}
       <FloatIn delay={0.134}>
         <CustomFieldsManager />
+      </FloatIn>
+
+      {/* Suppression - the opt-out ledger */}
+      <FloatIn delay={0.136}>
+        <SuppressionManager />
       </FloatIn>
 
       {/* Currency - what every deal total is denominated in */}

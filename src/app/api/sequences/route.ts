@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { OpError } from "@/lib/op-error";
-import { createSequence, listSequences } from "@/lib/sequences";
+import { createSequence, listSequences, setSequenceActive } from "@/lib/sequences";
 
 export const runtime = "nodejs";
 
@@ -39,5 +39,16 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     if (e instanceof z.ZodError) return NextResponse.json({ error: e.issues }, { status: 400 });
     return fail(e, "create");
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const user = await getAuthenticatedUser();
+    const { id, active } = z.object({ id: z.string().min(1), active: z.boolean() }).parse(await req.json());
+    return NextResponse.json({ sequence: await setSequenceActive(user.id, id, active) });
+  } catch (e) {
+    if (e instanceof z.ZodError) return NextResponse.json({ error: e.issues }, { status: 400 });
+    return fail(e, "update");
   }
 }

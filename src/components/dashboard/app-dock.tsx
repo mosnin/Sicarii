@@ -48,6 +48,7 @@ const launchpadTiles: Tile[] = [
   { label: "Agent", href: "/agent", description: "Talk to your agent - search, enrich, and orchestrate your pipeline in plain language.", highlight: true },
   { label: "Radar", href: "/radar", description: "Scheduled scans that watch for new prospects and intent signals while you sleep." },
   { label: "Field", href: "/field", description: "Build segments and run outreach pipelines - track every deal from new to won." },
+  { label: "Sequences", href: "/sequences", description: "Multi-step email cadences that send themselves and stop the moment someone replies." },
   { label: "Skills", href: "/skills", description: "Ready-made agent playbooks - discover, enrich, clean, and monitor on demand." },
   { label: "Product Context", href: "/product-context", description: "Ground your agents in your product - positioning, ICP, and message fit." },
   { label: "Settings", href: "/settings", description: "Account, API keys, workspace, and integration preferences." },

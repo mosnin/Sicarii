@@ -22,6 +22,7 @@ import { QuickNote } from "./quick-note";
 import { MatchEntity } from "./match-entity";
 import { SocialsEditor } from "./socials";
 import { LogSocialMessage } from "./log-social";
+import { EnrollInSequence } from "./enroll-sequence";
 import { ShareToTeam } from "./share-to-team";
 import { listUserWorkspaces } from "@/lib/workspace";
 import { getProvenanceMap } from "@/lib/provenance";
@@ -345,6 +346,7 @@ export default async function ContactDetailPage({
             </CardHeader>
             <CardContent className="space-y-4">
               <LogSocialMessage contactId={contact.id} />
+              <EnrollInSequence contactId={contact.id} />
               {conversations.length === 0 ? (
                 <EmptyState
                   icon={Inbox}
