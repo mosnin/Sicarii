@@ -27,12 +27,32 @@ import { buildUnsubscribe } from "@/lib/unsubscribe";
 import { ensureCredits, spendCredits } from "@/lib/credits";
 import { logOutreach } from "@/lib/crm-operations";
 
-/** Daily outbound cap per tenant mailbox. Unattended sending without a ceiling
- *  is how a warm domain becomes a cold one in a week. Override per deploy with
- *  EMAIL_DAILY_CAP; the default is deliberately conservative. */
-function dailyCap(): number {
+/** The fully-warmed daily ceiling per mailbox. Override with EMAIL_DAILY_CAP. */
+function configuredCap(): number {
   const raw = Number(process.env.EMAIL_DAILY_CAP);
   return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 100;
+}
+
+/**
+ * Warmup-aware daily cap. A brand-new mailbox that suddenly sends its full
+ * ceiling looks like spam to the receiving providers and burns the sending
+ * domain's reputation, which is slow and expensive to recover. So the cap
+ * starts low and ramps: EMAIL_WARMUP_START on day 0, growing EMAIL_WARMUP_STEP
+ * per day since the mailbox connected, up to the configured ceiling. A mailbox
+ * with no known connect date is treated as fully warmed (conservative for an
+ * existing install, and the only safe default when the date is missing).
+ *
+ * Exported and pure so the ramp is unit-testable without the send path.
+ */
+export function warmupDailyCap(connectedAt: Date | null, now: Date = new Date()): number {
+  const ceiling = configuredCap();
+  if (!connectedAt) return ceiling;
+  const start = Number(process.env.EMAIL_WARMUP_START);
+  const step = Number(process.env.EMAIL_WARMUP_STEP);
+  const base = Number.isFinite(start) && start > 0 ? Math.trunc(start) : 20;
+  const perDay = Number.isFinite(step) && step > 0 ? Math.trunc(step) : 10;
+  const days = Math.max(0, Math.floor((now.getTime() - connectedAt.getTime()) / (24 * 60 * 60 * 1000)));
+  return Math.min(ceiling, base + days * perDay);
 }
 
 /** Send-window guard in the mailbox owner's configured hours. Kept simple: a
@@ -121,7 +141,8 @@ export async function sendOutboundEmail(userId: string, input: SendEmailInput): 
     const now = new Date();
     const windowReason = outsideSendWindow(now);
     if (windowReason) throw new SendWindowError(windowReason);
-    const cap = dailyCap();
+    // Warmup ramp: the cap grows from a low base over the mailbox's first weeks.
+    const cap = warmupDailyCap(mailbox.connectedAt ?? mailbox.createdAt ?? null, now);
     const sentToday = await prisma.emailMessage.count({
       where: { userId, direction: "OUTBOUND", sentAt: { gte: startOfUtcDay(now) } },
     });

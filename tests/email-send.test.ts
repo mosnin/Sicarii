@@ -64,7 +64,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { sendOutboundEmail } from "@/lib/email-send";
+import { sendOutboundEmail, warmupDailyCap } from "@/lib/email-send";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -129,3 +129,25 @@ describe("sendOutboundEmail gate ordering", () => {
     expect(spendCredits).not.toHaveBeenCalled();
   });
 });
+
+describe("warmupDailyCap", () => {
+  const CONNECT = new Date("2026-08-01T00:00:00Z");
+  beforeEach(() => {
+    process.env.EMAIL_DAILY_CAP = "500";
+    process.env.EMAIL_WARMUP_START = "20";
+    process.env.EMAIL_WARMUP_STEP = "10";
+  });
+
+  it("starts low on day 0 and ramps by the daily step", () => {
+    expect(warmupDailyCap(CONNECT, new Date("2026-08-01T09:00:00Z"))).toBe(20); // day 0
+    expect(warmupDailyCap(CONNECT, new Date("2026-08-03T09:00:00Z"))).toBe(40); // day 2: 20 + 2*10
+  });
+
+  it("never exceeds the configured ceiling once warmed", () => {
+    expect(warmupDailyCap(CONNECT, new Date("2027-01-01T00:00:00Z"))).toBe(500);
+  });
+
+  it("treats an unknown connect date as fully warmed", () => {
+    expect(warmupDailyCap(null)).toBe(500);
+  });
+})
