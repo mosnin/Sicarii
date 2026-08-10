@@ -25,6 +25,7 @@ import { Prisma, type AgentTask } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/op-error";
 import { attributeReply } from "@/lib/variant-operations";
+import { stopEnrollmentsForContact } from "@/lib/sequences";
 import {
   executeAllowedTool,
   getAllowedToolSchema,
@@ -1022,6 +1023,11 @@ async function applyInboundReply(
   // Attribution writes its own row atomically and must never fail the ingest
   // just because there is nothing to attribute (see variant-operations.ts).
   await attributeReply(contactId);
+
+  // Stop-on-reply: a reply is the goal, so any active sequence for this contact
+  // stops now rather than sending the next scheduled touch over their answer.
+  // Best-effort - a stop failure must not fail the ingest.
+  await stopEnrollmentsForContact(ctx.userId, contactId, "replied").catch(() => {});
   return "replied";
 }
 

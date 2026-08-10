@@ -58,9 +58,22 @@
   connections/triggers, LiveKit numbers/trunks are released at the provider),
   and a voice-recording retention window.
 
+- **Sequences (gaps 15, 16) - BUILT.** `src/lib/sequences.ts` is a real cadence
+  engine: an ordered multi-step Sequence, enrollment per contact, and a
+  `sequence_step` task on the leased queue that fires each due step through the
+  send chokepoint (so suppression, cap, window, and the unsubscribe link are
+  enforced on every automated touch). Stop-on-reply is wired into the reply
+  path (`applyInboundReply` calls `stopEnrollmentsForContact`) and enforced
+  again at send time; a suppressed contact stops cleanly; a cap/window refusal
+  defers to tomorrow instead of killing the cadence. MCP: create_sequence,
+  list_sequences, enroll_in_sequence, set_sequence_active. This is what turns
+  the one-shot send into "outreach that works while you are away."
+  Owed: `prisma db push` (3 new tables), and a UI to build/monitor sequences.
+
 Still open from the list below: deliverability warmup (17, partial - cap +
-window exist, warmup ramp does not), number renewal billing (14), sequences
-(15), and revenue attribution (18). Everything else below stands as found.
+window exist, warmup ramp does not), number renewal billing (14), and revenue
+attribution (18, the bandit still optimizes reply rate not deal outcomes).
+Everything else below stands as found.
 
 ## The one-sentence answer
 

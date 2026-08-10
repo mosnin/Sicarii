@@ -13,6 +13,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { sendOutboundEmail } from "@/lib/email-send";
 import { addSuppression, removeSuppression, listSuppressions } from "@/lib/suppression";
+import { createSequence, listSequences, enrollContact, setSequenceActive } from "@/lib/sequences";
 
 export interface ToolResult {
   // The SDK's CallToolResult carries an index signature; without it a Promise
@@ -87,5 +88,51 @@ export function registerEmailTools(server: McpServer, ctx: EmailToolContext): vo
     { limit: z.number().int().min(1).max(500).optional() },
     { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async (a, extra) => ctx.run(() => listSuppressions(ctx.userIdFrom(extra), { limit: a.limit })),
+  );
+
+  /* ------------------------------ sequences ----------------------------- */
+
+  server.tool(
+    "create_sequence",
+    "Create a multi-step outreach cadence: an ordered list of email steps, each with a delay in days before it fires (step 1's delay is measured from enrollment). Once you enroll a contact, Scalar sends each step on schedule through the same safe path as send_email (suppression, daily cap, unsubscribe link all enforced), and STOPS the cadence automatically the moment the contact replies. Write each step's subject and body as a template grounded in what you know; keep it to a few steps. This is how you run outreach that works while the operator is away.",
+    {
+      name: z.string().min(1).max(200),
+      steps: z
+        .array(
+          z.object({
+            delayDays: z.number().int().min(0).max(365),
+            subject: z.string().min(1).max(300),
+            body: z.string().min(1).max(20000),
+          }),
+        )
+        .min(1)
+        .max(20),
+    },
+    { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    async (a, extra) => ctx.gated(extra, "create_sequence", 60, (userId) => createSequence(userId, a)),
+  );
+
+  server.tool(
+    "list_sequences",
+    "List this operator's outreach sequences with their steps and how many contacts are enrolled in each.",
+    {},
+    { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    async (_a, extra) => ctx.run(() => listSequences(ctx.userIdFrom(extra))),
+  );
+
+  server.tool(
+    "enroll_in_sequence",
+    "Enroll a contact into a sequence, which starts the cadence. Idempotent: a contact already in the sequence is left as-is, never given a second overlapping cadence. Refuses if the contact has no email or is suppressed. The cadence stops itself when the contact replies, so you never chase a reply.",
+    { sequenceId: z.string(), contactId: z.string() },
+    { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    async (a, extra) => ctx.gated(extra, "enroll_in_sequence", 120, (userId) => enrollContact(userId, a.sequenceId, a.contactId)),
+  );
+
+  server.tool(
+    "set_sequence_active",
+    "Pause or resume a sequence. A paused sequence sends no further steps and accepts no new enrollments until resumed.",
+    { sequenceId: z.string(), active: z.boolean() },
+    { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    async (a, extra) => ctx.gated(extra, "set_sequence_active", 120, (userId) => setSequenceActive(userId, a.sequenceId, a.active)),
   );
 }

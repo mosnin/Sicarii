@@ -38,6 +38,7 @@ import {
 } from "@/lib/mailbox-ingest";
 import { registerSocialTaskHandlers } from "@/lib/social-tasks";
 import { VOICE_FOLLOW_UP_KIND, handleVoiceFollowUp } from "@/lib/internal-voice";
+import { SEQUENCE_STEP_KIND, runSequenceStep } from "@/lib/sequences";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -351,6 +352,11 @@ export function registerCoreTaskHandlers(): void {
   registerTaskHandler(CALENDAR_INGEST_KIND, handleCalendarIngest);
   registerSocialTaskHandlers();
   registerTaskHandler(VOICE_FOLLOW_UP_KIND, async (task) => handleVoiceFollowUp(task));
+  registerTaskHandler(SEQUENCE_STEP_KIND, async (task) => {
+    const enrollmentId = (task.payload as { enrollmentId?: string } | null)?.enrollmentId;
+    if (!enrollmentId) return { outcome: "No enrollmentId on task; skipped." };
+    return runSequenceStep(task.userId, enrollmentId);
+  });
 }
 
 export interface SeedSummary {

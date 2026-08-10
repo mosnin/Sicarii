@@ -128,6 +128,10 @@ model User {
   phoneNumbers PhoneNumber[]
   voiceCalls   VoiceCall[]
 
+  // Sequences: cadences this tenant owns and the contacts enrolled in them.
+  sequences           Sequence[]
+  sequenceEnrollments SequenceEnrollment[]
+
   // Per-tenant FX rates backing every deal total.
   exchangeRates ExchangeRate[]
 
@@ -369,6 +373,7 @@ model Contact {
   socialProfiles    SocialProfile[]
   socialPosts       SocialPost[]
   voiceCalls        VoiceCall[]
+  sequenceEnrollments SequenceEnrollment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1937,4 +1942,100 @@ model VoiceCall {
   @@index([contactId, createdAt])
   @@index([status])
   @@map("voice_calls")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SEQUENCES - the autonomy backbone for outreach
+// ═══════════════════════════════════════════════════════════════════════════
+// A Sequence is an ordered multi-step cadence (touch 1, wait N days, touch 2,
+// ...). Enrolling a contact is what turns the one-shot send path into
+// self-driving outreach: the leased task queue advances each enrollment on its
+// own schedule and sends through the SAME chokepoint (src/lib/email-send.ts),
+// so suppression, the daily cap, and the unsubscribe link are enforced on every
+// automated touch exactly as on a manual one. An enrollment stops the instant
+// the contact replies or is suppressed - a reply is the goal, not a step to
+// talk over.
+
+enum SequenceStepChannel {
+  EMAIL
+}
+
+model Sequence {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name   String
+  active Boolean @default(true)
+
+  steps       SequenceStep[]
+  enrollments SequenceEnrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, active])
+  @@map("sequences")
+}
+
+model SequenceStep {
+  id         String   @id @default(uuid())
+  sequenceId String
+  sequence   Sequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  // 0-based position in the cadence.
+  order   Int
+  channel SequenceStepChannel @default(EMAIL)
+
+  // Days to wait AFTER the prior step before this one fires. Step 0's delay is
+  // the wait after enrollment. Business-day awareness and per-contact timezone
+  // are handled by the send window in email-send.ts, not duplicated here.
+  delayDays Int @default(0)
+
+  subject String
+  body    String @db.Text
+
+  @@unique([sequenceId, order])
+  @@index([sequenceId])
+  @@map("sequence_steps")
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  STOPPED
+  FAILED
+}
+
+model SequenceEnrollment {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sequenceId String
+  sequence   Sequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  contactId  String
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  status EnrollmentStatus @default(ACTIVE)
+  // Which step fires next (0-based). Advanced after each send.
+  currentStep Int              @default(0)
+  nextStepAt  DateTime?
+  // Why an enrollment left ACTIVE: "replied", "suppressed", "completed",
+  // "no email", a send error. Shown to the operator, so the agent never has to
+  // guess why a contact stopped receiving touches.
+  stoppedReason String?
+
+  lastStepAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One active enrollment per (contact, sequence): re-enrolling a contact
+  // already in a sequence is a no-op, not a second cadence talking over itself.
+  @@unique([sequenceId, contactId])
+  @@index([status, nextStepAt])
+  @@index([userId, status])
+  @@index([contactId])
+  @@map("sequence_enrollments")
 }
