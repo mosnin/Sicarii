@@ -75,6 +75,40 @@ window exist, warmup ramp does not), number renewal billing (14), and revenue
 attribution (18, the bandit still optimizes reply rate not deal outcomes).
 Everything else below stands as found.
 
+## Hardening pass (2026-08-09) - adversarial review of the new surfaces, fixes applied
+
+Two review agents (send/sequence/suppression, and billing/money) audited the
+work above. Findings, all now fixed:
+
+- **BLOCKER (cadence dead after step 1):** sequence-step tasks deduped on
+  (userId, kind, contactId) against the still-open current-step task, so step 2
+  was never queued. Fixed with a per-step ref (`enrollmentId:stepOrder`).
+- **BLOCKER (phone rent double-charge):** charge and date-advance were not
+  atomic and the charge was not idempotent, so a crash-then-retry billed twice.
+  Fixed with an atomic claim (conditional nextRenewalAt advance) that hands each
+  cycle to exactly one caller; also closes the concurrent-dispatcher race.
+- **MAJOR (LiveKit numbers never renewed):** nextRenewalAt was set only on the
+  carrier path, so LiveKit numbers were never seeded for rent. Set in activate()
+  now, covering both paths.
+- **MAJOR (win double-attribution):** a LOST->WON re-win on a multi-send contact
+  credited a second, wrong variant. attributeWin is now at-most-once per contact.
+- **MAJOR (sequence double-send on a >120s send + redelivery):** closed with an
+  atomic step-claim BEFORE the send (advance-then-send: at-most-once, a crash
+  skips one touch rather than double-emailing).
+- **MAJOR (unsubscribe links break on Clerk key rotation):** dropped
+  CLERK_SECRET_KEY from the token-signing fallback; a dedicated UNSUBSCRIBE_SECRET
+  is the prod path.
+- **MINORs fixed:** delivered-but-uncharged email no longer reported as a failure
+  (post-send debit is best-effort); enrollment double-click returns
+  alreadyEnrolled instead of a 500; unsubscribe POST fails to 400 on malformed
+  input; subject CR/LF stripped; fractional cap/warmup env values can no longer
+  truncate to 0 and lock out sending.
+
+Confirmed clean by the reviewers: no suppression bypass on any send path,
+unsubscribe tokens unforgeable, tenant isolation holds throughout, failures are
+never charged, the bandit math stays a valid Beta and is provably identical to
+the reply-only version when wins=0, and the deletion/retention paths are correct.
+
 ## The one-sentence answer
 
 **Scalar cannot send an email, and every autonomous-outreach claim hangs off

@@ -96,8 +96,9 @@ describe("runSequenceStep", () => {
   it("defers (does not fail) when the daily cap refuses, keeping the enrollment ACTIVE", async () => {
     send.mockRejectedValueOnce(Object.assign(new Error("cap"), { status: 429 }));
     const r = await runSequenceStep("u1", "en1");
-    expect(enrollment.status).toBe("ACTIVE");
-    expect(enqueue).toHaveBeenCalledOnce(); // rescheduled for tomorrow
+    expect(enrollment.status).toBe("ACTIVE"); // rolled back, not failed
+    expect(enrollment.currentStep).toBe(0); // claim rolled back to this step
+    expect(enqueue).toHaveBeenCalled(); // a retry task is scheduled
     expect(r.outcome).toContain("deferred");
   });
 
@@ -117,3 +118,26 @@ describe("stopEnrollmentsForContact", () => {
     expect(enrollment.stoppedReason).toBe("replied");
   });
 });
+
+describe("runSequenceStep idempotency (the double-send / dead-cadence fixes)", () => {
+  it("schedules the next step with a per-step ref so it cannot dedupe against the current task", async () => {
+    await runSequenceStep("u1", "en1");
+    const call = enqueue.mock.calls.find(Boolean);
+    expect(call).toBeTruthy();
+    // enqueueTask(userId, { ref })
+    const arg = call![1] as { ref?: string; payload?: { stepOrder?: number } };
+    expect(arg.ref).toBe("en1:1"); // enrollmentId:nextStep, unique per step
+  });
+
+  it("skips without sending when the step was already claimed by another run", async () => {
+    // Simulate the claim losing the race: updateMany reports 0 rows advanced.
+    const { prisma } = await import("@/lib/prisma");
+    const orig = prisma.sequenceEnrollment.updateMany;
+    // @ts-expect-error test shim
+    prisma.sequenceEnrollment.updateMany = async () => ({ count: 0 });
+    const r = await runSequenceStep("u1", "en1");
+    expect(send).not.toHaveBeenCalled();
+    expect(r.outcome).toContain("already claimed");
+    prisma.sequenceEnrollment.updateMany = orig;
+  });
+})

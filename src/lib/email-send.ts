@@ -24,13 +24,15 @@ import { getConnection } from "@/lib/connections";
 import { executeSendEmail, isComposioConfigured } from "@/lib/composio";
 import { assertNotSuppressed } from "@/lib/suppression";
 import { buildUnsubscribe } from "@/lib/unsubscribe";
-import { ensureCredits, spendCredits } from "@/lib/credits";
+import { ensureCredits, spendCreditsAmount, CREDIT_COSTS } from "@/lib/credits";
 import { logOutreach } from "@/lib/crm-operations";
 
-/** The fully-warmed daily ceiling per mailbox. Override with EMAIL_DAILY_CAP. */
+/** The fully-warmed daily ceiling per mailbox. Override with EMAIL_DAILY_CAP.
+ *  Guard on the TRUNCATED value so a fractional env like "0.5" cannot pass a
+ *  raw > 0 check and then truncate to 0, locking out all sending. */
 function configuredCap(): number {
-  const raw = Number(process.env.EMAIL_DAILY_CAP);
-  return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 100;
+  const n = Math.trunc(Number(process.env.EMAIL_DAILY_CAP));
+  return Number.isFinite(n) && n > 0 ? n : 100;
 }
 
 /**
@@ -47,10 +49,10 @@ function configuredCap(): number {
 export function warmupDailyCap(connectedAt: Date | null, now: Date = new Date()): number {
   const ceiling = configuredCap();
   if (!connectedAt) return ceiling;
-  const start = Number(process.env.EMAIL_WARMUP_START);
-  const step = Number(process.env.EMAIL_WARMUP_STEP);
-  const base = Number.isFinite(start) && start > 0 ? Math.trunc(start) : 20;
-  const perDay = Number.isFinite(step) && step > 0 ? Math.trunc(step) : 10;
+  const start = Math.trunc(Number(process.env.EMAIL_WARMUP_START));
+  const step = Math.trunc(Number(process.env.EMAIL_WARMUP_STEP));
+  const base = Number.isFinite(start) && start > 0 ? start : 20;
+  const perDay = Number.isFinite(step) && step > 0 ? step : 10;
   const days = Math.max(0, Math.floor((now.getTime() - connectedAt.getTime()) / (24 * 60 * 60 * 1000)));
   return Math.min(ceiling, base + days * perDay);
 }
@@ -125,7 +127,9 @@ export async function sendOutboundEmail(userId: string, input: SendEmailInput): 
 
   const to = input.to?.trim();
   if (!to || !to.includes("@")) throw new OpError("A valid recipient email is required.", 400);
-  const subject = input.subject?.trim() || "(no subject)";
+  // Strip CR/LF from the subject: cheap defense against header injection even
+  // though the send is via the Gmail API JSON field, not raw SMTP.
+  const subject = (input.subject?.replace(/[\r\n]+/g, " ").trim()) || "(no subject)";
   const body = input.body?.trim();
   if (!body) throw new OpError("An email body is required.", 400);
 
@@ -188,8 +192,13 @@ export async function sendOutboundEmail(userId: string, input: SendEmailInput): 
     (typeof result.data?.message_id === "string" && (result.data.message_id as string)) ||
     null;
 
-  // Debit only now, on a confirmed send.
-  await spendCredits(userId, "email_send", { ref: input.contactId ?? to });
+  // Debit on the confirmed send, but NEVER throw here: the email has physically
+  // gone out, so a shortfall (the balance drained between the pre-flight
+  // ensureCredits above and now, under concurrency) must not lose the record or
+  // report a delivered send as a failure. spendCreditsAmount returns a boolean;
+  // an uncovered debit is logged, not raised. The pre-flight is the real gate.
+  const debited = await spendCreditsAmount(userId, CREDIT_COSTS.email_send, "email_send", { ref: input.contactId ?? to });
+  if (!debited) console.warn(`[email-send] delivered but could not debit ${CREDIT_COSTS.email_send} credits for ${userId}`);
 
   // Record the sent message so it shows in the same synced store as inbound
   // mail, and advance the contact's pipeline state for real. An outbound send

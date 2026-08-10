@@ -35,7 +35,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token") ?? (await req.text().catch(() => "")).match(/token=([^&]+)/)?.[1] ?? null;
-  const ok = await apply(token ? decodeURIComponent(token) : null);
+  const raw = req.nextUrl.searchParams.get("token") ?? (await req.text().catch(() => "")).match(/token=([^&]+)/)?.[1] ?? null;
+  // decodeURIComponent throws URIError on malformed input (e.g. a bare "%").
+  // This is a public route, so fail to a clean 400 rather than an unhandled 500.
+  let token: string | null = null;
+  try {
+    token = raw ? decodeURIComponent(raw) : null;
+  } catch {
+    token = null;
+  }
+  const ok = await apply(token);
   return NextResponse.json({ ok }, { status: ok ? 200 : 400 });
 }

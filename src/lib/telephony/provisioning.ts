@@ -360,6 +360,10 @@ interface ActivateInput {
 }
 
 async function activate(userId: string, rowId: string, data: ActivateInput): Promise<PhoneNumber> {
+  // Both provider paths (LiveKit's wire-then-buy and the carriers' buy-then-wire)
+  // land here, so nextRenewalAt is set HERE, not only in buyThenWire - otherwise
+  // LiveKit numbers would never be seeded for monthly rent and never charge.
+  const purchasedAt = new Date();
   const row = await prisma.phoneNumber.update({
     where: { id: rowId },
     data: {
@@ -372,7 +376,8 @@ async function activate(userId: string, rowId: string, data: ActivateInput): Pro
       spamScore: data.spamScore,
       areaCode: data.areaCode,
       status: "ACTIVE",
-      purchasedAt: new Date(),
+      purchasedAt,
+      nextRenewalAt: new Date(purchasedAt.getTime() + 30 * 24 * 60 * 60 * 1000),
       releasedAt: null,
       lastError: null,
     },

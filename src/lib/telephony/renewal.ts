@@ -47,31 +47,47 @@ export async function seedDueRenewals(now: Date = new Date()): Promise<number> {
   return seeded;
 }
 
-/** Charge one number's monthly rent. Idempotent-ish: re-running before the
- *  advanced nextRenewalAt is due is a no-op. */
+/**
+ * Charge one number's monthly rent, EXACTLY once per cycle.
+ *
+ * The charge and the date-advance were previously two writes: a crash between
+ * them left finishedAt null, the task retried, and the number was charged
+ * twice. And two concurrent dispatchers could both pass a check-then-act guard.
+ * Both holes are closed by CLAIMING the renewal first: a single conditional
+ * updateMany advances nextRenewalAt only if it is still due, which atomically
+ * hands the cycle to exactly one caller (a redelivery or a concurrent dispatcher
+ * finds count === 0 and stops). Only the claimer then charges. If the process
+ * dies after claiming but before charging, we UNDER-bill by one cycle - the safe
+ * direction with money - rather than double-charge.
+ */
 export async function handleNumberRenewal(numberId: string): Promise<{ outcome: string }> {
+  const now = new Date();
   const num = await prisma.phoneNumber.findUnique({ where: { id: numberId } });
   if (!num || num.status !== "ACTIVE") return { outcome: "Number is not active; no rent charged." };
   if (!num.monthlyCostCents || num.monthlyCostCents <= 0) return { outcome: "Number has no monthly cost." };
-  // Guard against a redelivery after the charge already advanced the date.
-  if (num.nextRenewalAt && num.nextRenewalAt > new Date()) return { outcome: "Already renewed this cycle." };
 
-  const paid = await spendCreditsAmount(num.userId, num.monthlyCostCents, "phone_number_renewal", { ref: numberId });
+  // Claim the cycle. Advancing the date IS the idempotency guard: only the
+  // caller that flips a due row wins; everyone else sees count === 0.
+  const claim = await prisma.phoneNumber.updateMany({
+    where: { id: numberId, status: "ACTIVE", nextRenewalAt: { lte: now } },
+    data: { nextRenewalAt: new Date(now.getTime() + RENEWAL_PERIOD_MS), lastError: null },
+  });
+  if (claim.count === 0) return { outcome: "Already renewed this cycle." };
+
+  const paid = await spendCreditsAmount(num.userId, num.monthlyCostCents, "phone_number_renewal", {
+    // Ref carries the cycle it paid for, so the ledger reads honestly.
+    ref: `${numberId}:${now.toISOString().slice(0, 7)}`,
+  });
   if (!paid) {
-    // Grace: retry in a few days rather than releasing the number now. If it is
-    // still unpaid past the grace window, a founder-owned policy should release
-    // it (release() exists in provisioning.ts) - not done automatically here.
-    const retryAt = new Date(Date.now() + GRACE_MS);
+    // Unpaid: pull the claimed date back into a short grace window so it retries
+    // soon, rather than releasing a working number now. Sustained non-payment
+    // release is a founder policy (releaseNumber exists), not an auto-teardown.
     await prisma.phoneNumber.update({
       where: { id: numberId },
-      data: { nextRenewalAt: retryAt, lastError: "Rent unpaid: insufficient credits, in grace." },
+      data: { nextRenewalAt: new Date(now.getTime() + GRACE_MS), lastError: "Rent unpaid: insufficient credits, in grace." },
     });
     return { outcome: "Insufficient credits; number in grace, retrying in 3 days." };
   }
 
-  await prisma.phoneNumber.update({
-    where: { id: numberId },
-    data: { nextRenewalAt: new Date(Date.now() + RENEWAL_PERIOD_MS), lastError: null },
-  });
   return { outcome: `Charged ${num.monthlyCostCents} credits for ${num.e164}; next renewal in 30 days.` };
 }

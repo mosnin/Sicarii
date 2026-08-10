@@ -12,6 +12,15 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     phoneNumber: {
       findUnique: async () => ({ ...num }),
+      // The claim: advance nextRenewalAt only if still due. Returns count 1 when
+      // the row is due, 0 when it was already advanced (redelivery/concurrent).
+      updateMany: async ({ where, data }: { where: { nextRenewalAt?: { lte: Date } }; data: Record<string, unknown> }) => {
+        const due = !num.nextRenewalAt || (num.nextRenewalAt as Date) <= (where.nextRenewalAt?.lte ?? new Date());
+        if (!due) return { count: 0 };
+        Object.assign(num, data);
+        updates.push(data);
+        return { count: 1 };
+      },
       update: async ({ data }: { data: Record<string, unknown> }) => {
         Object.assign(num, data);
         updates.push(data);

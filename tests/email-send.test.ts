@@ -41,6 +41,8 @@ vi.mock("@/lib/suppression", () => ({
 vi.mock("@/lib/credits", () => ({
   ensureCredits: (...a: unknown[]) => ensureCredits(...(a as [])),
   spendCredits: (...a: unknown[]) => spendCredits(...(a as [])),
+  spendCreditsAmount: (...a: unknown[]) => spendCredits(...(a as [])).then(() => true),
+  CREDIT_COSTS: { email_send: 4 },
 }));
 vi.mock("@/lib/crm-operations", () => ({
   logOutreach: (...a: unknown[]) => logOutreach(...(a as [])),

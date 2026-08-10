@@ -17,9 +17,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 function secret(): string | null {
   const explicit = process.env.UNSUBSCRIBE_SECRET?.trim();
   if (explicit) return explicit;
-  // Derive from a server secret so no extra config is required, and it is
-  // stable across redeploys. Fails closed (null) only on real misconfiguration.
-  const base = (process.env.MCP_OAUTH_SECRET || process.env.CLERK_SECRET_KEY)?.trim();
+  // Fall back to MCP_OAUTH_SECRET only. Deliberately NOT CLERK_SECRET_KEY:
+  // rotating the auth key is a routine security op, and it would invalidate
+  // every unsubscribe token ever minted, breaking one-click links that must
+  // work forever. Set a dedicated, never-rotated UNSUBSCRIBE_SECRET in prod;
+  // this fallback keeps dev working without config.
+  const base = process.env.MCP_OAUTH_SECRET?.trim();
   return base || null;
 }
 

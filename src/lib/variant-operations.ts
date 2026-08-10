@@ -184,6 +184,13 @@ export async function attributeWin(contactId: string): Promise<void> {
     WHERE id = (
       SELECT id FROM variant_sends
       WHERE "contactId" = ${contactId} AND won = false
+        -- At most ONE win per contact, ever. A deal that goes LOST then WON
+        -- again, or a contact with several sends, must not manufacture a second
+        -- win on an earlier touch. If any send for this contact is already a
+        -- win, attribute nothing.
+        AND NOT EXISTS (
+          SELECT 1 FROM variant_sends w WHERE w."contactId" = ${contactId} AND w.won = true
+        )
       ORDER BY "sentAt" DESC
       LIMIT 1
     )

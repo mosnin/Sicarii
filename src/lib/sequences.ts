@@ -6,7 +6,7 @@
 // contact replies or is suppressed, their enrollment stops - a reply is the
 // goal, never a step to talk over.
 
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/op-error";
 import { enqueueTask } from "@/lib/tasks";
@@ -114,20 +114,46 @@ export async function enrollContact(userId: string, sequenceId: string, contactI
   }
 
   const nextStepAt = addDays(new Date(), sequence.steps[0].delayDays);
-  const enrollment = await prisma.sequenceEnrollment.create({
-    data: { userId, sequenceId, contactId, currentStep: 0, nextStepAt, status: "ACTIVE" },
-  });
-  await scheduleNextStep(userId, enrollment.id, contactId, nextStepAt);
+  let enrollment;
+  try {
+    enrollment = await prisma.sequenceEnrollment.create({
+      data: { userId, sequenceId, contactId, currentStep: 0, nextStepAt, status: "ACTIVE" },
+    });
+  } catch (e) {
+    // A concurrent enroll (double-click) races the existence check above and
+    // trips the (sequenceId, contactId) unique constraint. That is the
+    // idempotent outcome, not an error: return the existing enrollment.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      const existing = await prisma.sequenceEnrollment.findUnique({
+        where: { sequenceId_contactId: { sequenceId, contactId } },
+      });
+      if (existing) return { enrollment: existing, alreadyEnrolled: true };
+    }
+    throw e;
+  }
+  await scheduleNextStep(userId, enrollment.id, contactId, 0, nextStepAt);
   return { enrollment, alreadyEnrolled: false };
 }
 
-async function scheduleNextStep(userId: string, enrollmentId: string, contactId: string, dueAt: Date) {
+async function scheduleNextStep(
+  userId: string,
+  enrollmentId: string,
+  contactId: string,
+  stepOrder: number,
+  dueAt: Date,
+) {
   await enqueueTask(userId, {
     kind: SEQUENCE_STEP_KIND,
     contactId,
     reason: "Send the next step of an outreach sequence.",
     dueAt,
-    payload: { enrollmentId },
+    // Ref is unique per (enrollment, step). Without it the queue dedupes on
+    // (userId, kind, contactId) and the next step would collide with the
+    // CURRENT step's still-open task (it is only completed after the handler
+    // returns), silently killing the cadence after step 1. It also keeps two
+    // sequences for the same contact from colliding.
+    ref: `${enrollmentId}:${stepOrder}`,
+    payload: { enrollmentId, stepOrder },
   });
 }
 
@@ -192,6 +218,31 @@ export async function runSequenceStep(userId: string, enrollmentId: string): Pro
     return { outcome: `Contact suppressed (${suppressed.reason}); enrollment stopped.` };
   }
 
+  const currentStep = enrollment.currentStep;
+  const next = enrollment.sequence.steps.find((s) => s.order === currentStep + 1);
+  const nextAt = next ? addDays(new Date(), next.delayDays) : null;
+
+  // CLAIM the step before sending. This single conditional update is the
+  // idempotency guard: it advances the enrollment past this step only if it is
+  // still sitting on it and ACTIVE. A redelivered task (the dispatcher does not
+  // cancel a slow send, it re-queues after the lease) or a concurrent dispatcher
+  // finds currentStep already advanced, count === 0, and does not send again.
+  // The claim also schedules the next step, so the cadence never stalls even if
+  // this send later throws. Advancing before the external send trades an
+  // at-most-once guarantee (a crash mid-send skips one touch) for never
+  // double-emailing a prospect, which is the right trade for outbound.
+  const claim = await prisma.sequenceEnrollment.updateMany({
+    where: { id: enrollmentId, userId, status: "ACTIVE", currentStep },
+    data: {
+      currentStep: currentStep + 1,
+      lastStepAt: new Date(),
+      nextStepAt: nextAt,
+      status: next ? "ACTIVE" : "COMPLETED",
+    },
+  });
+  if (claim.count === 0) return { outcome: "Step already claimed by another run; skipped." };
+  if (next && nextAt) await scheduleNextStep(userId, enrollmentId, enrollment.contactId, currentStep + 1, nextAt);
+
   try {
     await sendOutboundEmail(userId, {
       to: email,
@@ -200,39 +251,31 @@ export async function runSequenceStep(userId: string, enrollmentId: string): Pro
       contactId: enrollment.contactId,
     });
   } catch (e) {
-    // A daily-cap or send-window refusal is transient: leave the enrollment
-    // ACTIVE and reschedule for tomorrow rather than killing the cadence. Any
-    // other error stops it so a broken enrollment does not retry forever.
-    // Duck-type the status: an OpError crossing a module/bundle boundary can
-    // fail instanceof, and the status is what actually matters here.
+    // Duck-type the status: an OpError crossing a module boundary can fail
+    // instanceof, and the status is what matters here.
     const status = typeof (e as { status?: unknown })?.status === "number" ? (e as { status: number }).status : 0;
     if (status === 429 || status === 425) {
+      // A cap/window refusal is transient. Roll the claim back to this step and
+      // retry tomorrow rather than losing the touch, but only if the reply/stop
+      // path has not since stopped the enrollment (never resurrect a STOPPED
+      // one). scheduleNextStep for the retry keeps its per-step ref.
       const retryAt = addDays(new Date(), 1);
-      await prisma.sequenceEnrollment.update({ where: { id: enrollmentId }, data: { nextStepAt: retryAt } });
-      await scheduleNextStep(userId, enrollmentId, enrollment.contactId, retryAt);
+      const rolled = await prisma.sequenceEnrollment.updateMany({
+        where: { id: enrollmentId, status: { in: ["ACTIVE", "COMPLETED"] } },
+        data: { status: "ACTIVE", currentStep, nextStepAt: retryAt },
+      });
+      if (rolled.count > 0) await scheduleNextStep(userId, enrollmentId, enrollment.contactId, currentStep, retryAt);
       return { outcome: "Send deferred (cap or window); retrying tomorrow." };
     }
-    await prisma.sequenceEnrollment.update({
-      where: { id: enrollmentId },
+    // A non-transient failure stops the enrollment so it does not retry forever.
+    await prisma.sequenceEnrollment.updateMany({
+      where: { id: enrollmentId, status: { in: ["ACTIVE", "COMPLETED"] } },
       data: { status: "FAILED", stoppedReason: e instanceof Error ? e.message.slice(0, 300) : "send failed", nextStepAt: null },
     });
     return { outcome: "Send failed; enrollment stopped." };
   }
 
-  // Advance. If a next step exists, schedule it; otherwise complete.
-  const next = enrollment.sequence.steps.find((s) => s.order === enrollment.currentStep + 1);
-  if (!next) {
-    await prisma.sequenceEnrollment.update({
-      where: { id: enrollmentId },
-      data: { status: "COMPLETED", currentStep: enrollment.currentStep + 1, lastStepAt: new Date(), nextStepAt: null },
-    });
-    return { outcome: `Sent final step ${step.order + 1}; enrollment completed.` };
-  }
-  const nextAt = addDays(new Date(), next.delayDays);
-  await prisma.sequenceEnrollment.update({
-    where: { id: enrollmentId },
-    data: { currentStep: enrollment.currentStep + 1, lastStepAt: new Date(), nextStepAt: nextAt },
-  });
-  await scheduleNextStep(userId, enrollmentId, enrollment.contactId, nextAt);
-  return { outcome: `Sent step ${step.order + 1}; next step scheduled.` };
+  return next
+    ? { outcome: `Sent step ${step.order + 1}; next step scheduled.` }
+    : { outcome: `Sent final step ${step.order + 1}; enrollment completed.` };
 }
