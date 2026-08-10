@@ -88,7 +88,7 @@ export async function selectVariant(
       segmentId: input.segmentId ?? null,
       active: true,
     },
-    select: { id: true, text: true, kind: true, segmentId: true, sends: true, replies: true },
+    select: { id: true, text: true, kind: true, segmentId: true, sends: true, replies: true, wins: true },
   });
   if (candidates.length === 0) {
     throw new OpError(
@@ -96,7 +96,7 @@ export async function selectVariant(
       404,
     );
   }
-  const arms: VariantArm[] = candidates.map((c) => ({ id: c.id, sends: c.sends, replies: c.replies }));
+  const arms: VariantArm[] = candidates.map((c) => ({ id: c.id, sends: c.sends, replies: c.replies, wins: c.wins }));
   const pickedId = selectByThompsonSampling(arms, rng);
   return candidates.find((c) => c.id === pickedId)!;
 }
@@ -117,6 +117,7 @@ export async function listVariantStats(userId: string, opts: { segmentId?: strin
   const withRate = variants.map((v) => ({
     ...v,
     replyRate: v.sends > 0 ? v.replies / v.sends : 0,
+    winRate: v.sends > 0 ? v.wins / v.sends : 0,
   }));
 
   // groupKey -> id of the current highest-reply-rate variant with sends > 0.
@@ -165,5 +166,33 @@ export async function attributeReply(contactId: string): Promise<void> {
   await prisma.outreachVariant.update({
     where: { id: variantId },
     data: { replies: { increment: 1 } },
+  });
+}
+
+/**
+ * Attribute a WON deal back to the variant that most recently reached out to
+ * this contact, and increment that variant's win count - the signal the bandit
+ * weights highest. Mirrors attributeReply: same race-safe "most recent send
+ * not yet marked" pattern, on the `won` flag, so a contact is counted as a win
+ * for a variant at most once. No-op when the contact was never sent a variant.
+ * Called when a pipeline entry reaches WON.
+ */
+export async function attributeWin(contactId: string): Promise<void> {
+  const rows = await prisma.$queryRaw<{ variantId: string }[]>(Prisma.sql`
+    UPDATE variant_sends
+    SET won = true, "wonAt" = NOW()
+    WHERE id = (
+      SELECT id FROM variant_sends
+      WHERE "contactId" = ${contactId} AND won = false
+      ORDER BY "sentAt" DESC
+      LIMIT 1
+    )
+    RETURNING "variantId"
+  `);
+  const variantId = rows[0]?.variantId;
+  if (!variantId) return;
+  await prisma.outreachVariant.update({
+    where: { id: variantId },
+    data: { wins: { increment: 1 } },
   });
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { OpError } from "@/lib/op-error";
 import { baseCurrencyOf, normalizeCurrency } from "@/lib/currency";
+import { attributeWin } from "@/lib/variant-operations";
 import { moneyUpdate, serializeMoney } from "@/lib/conversion";
 
 const STAGES = ["NEW", "ENRICHED", "PROSPECTING", "ENGAGING", "REPLYING", "WON", "LOST"] as const;
@@ -138,6 +139,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         lastActivityAt: new Date(),
       },
     });
+
+    // Revenue attribution: a deal reaching WON (from any other stage) is the
+    // bandit's true reward. Credit the variant that last reached out to this
+    // contact so selection optimizes for what CLOSES, not just what replies.
+    // Best-effort - it must never fail the stage update.
+    if (rest.stage === "WON" && entry.stage !== "WON") {
+      await attributeWin(entry.contactId).catch((e) => console.warn("[pipeline] attributeWin failed", e));
+    }
+
     return NextResponse.json({ entry: { ...updated, money: serializeMoney(updated) } });
   } catch (e) {
     if (e instanceof NextResponse) return e;

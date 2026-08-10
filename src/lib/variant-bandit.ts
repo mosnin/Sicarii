@@ -45,7 +45,20 @@ export interface VariantArm {
   id: string;
   sends: number;
   replies: number;
+  /** Deals WON that trace back to this variant. Optional and defaults to 0, so
+   *  an early bandit with no wins behaves exactly as the reply-only version. */
+  wins?: number;
 }
+
+/** A won deal counts as this many replies of positive evidence. A reply is a
+ *  weak, early signal that a message resonates; a won deal is the actual
+ *  objective, so it should pull the posterior far harder. This blends into the
+ *  SAME reply posterior rather than a parallel one: the success count becomes
+ *  replies + WIN_WEIGHT*wins, capped at sends so the Beta stays valid. The
+ *  cap-and-blend is deliberately backward-compatible - a variant with zero
+ *  wins scores exactly as the reply-only bandit did, so the tuned exploration
+ *  behavior is unchanged until real deals start landing. */
+export const WIN_WEIGHT = 5;
 
 export type Rng = () => number;
 
@@ -114,8 +127,15 @@ export function selectByThompsonSampling(arms: VariantArm[], rng: Rng = Math.ran
   let bestId = arms[0].id;
   let bestSample = -Infinity;
   for (const arm of arms) {
-    const alpha = arm.replies + 1;
-    const beta = Math.max(arm.sends - arm.replies, 0) + 1;
+    // Blend wins into the success count: a won deal is worth WIN_WEIGHT replies
+    // of evidence, capped at sends so the Beta stays valid. With zero wins this
+    // is exactly the reply-only posterior, so untried and not-yet-won arms
+    // explore precisely as before; a variant that starts closing deals sees its
+    // posterior concentrate high fast.
+    const wins = arm.wins ?? 0;
+    const successes = Math.min(arm.sends, arm.replies + WIN_WEIGHT * wins);
+    const alpha = successes + 1;
+    const beta = Math.max(arm.sends - successes, 0) + 1;
     const sample = sampleBeta(alpha, beta, rng);
     if (sample > bestSample) {
       bestSample = sample;

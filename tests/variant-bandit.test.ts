@@ -132,3 +132,29 @@ describe("selectByThompsonSampling", () => {
     expect(counts.mid).toBeGreaterThan(counts.lo);
   });
 });
+
+describe("revenue attribution: wins outweigh replies", () => {
+  it("prefers a deal-closing variant over one with a higher reply rate but no wins", () => {
+    // 'replies' gets replies but never closes; 'closer' replies less often but
+    // actually wins deals. The bandit should favor what CLOSES.
+    const arms: VariantArm[] = [
+      { id: "replies", sends: 100, replies: 60, wins: 0 },
+      { id: "closer", sends: 100, replies: 30, wins: 12 },
+    ];
+    const counts = countPicks(arms, 7, 400);
+    expect(counts.closer).toBeGreaterThan(counts.replies);
+    expect(counts.closer / 400).toBeGreaterThan(0.7);
+  });
+
+  it("is identical to the reply-only bandit when no variant has wins", () => {
+    const withWinsField: VariantArm[] = [
+      { id: "a", sends: 50, replies: 25, wins: 0 },
+      { id: "b", sends: 50, replies: 10, wins: 0 },
+    ];
+    const withoutWinsField: VariantArm[] = [
+      { id: "a", sends: 50, replies: 25 },
+      { id: "b", sends: 50, replies: 10 },
+    ];
+    expect(countPicks(withWinsField, 99, 200)).toEqual(countPicks(withoutWinsField, 99, 200));
+  });
+})

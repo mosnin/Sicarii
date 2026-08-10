@@ -865,9 +865,12 @@ model OutreachVariant {
   text String @db.Text
 
   // The bandit's running counts. Incremented by recordVariantSend /
-  // attributeReply, never written directly by a caller.
+  // attributeReply / attributeWin, never written directly by a caller. `wins`
+  // is deals WON that trace back to this variant's send - the true objective,
+  // so the bandit optimizes conversions once deals land, not just replies.
   sends   Int     @default(0)
   replies Int     @default(0)
+  wins    Int     @default(0)
   active  Boolean @default(true)
 
   createdAt DateTime @default(now())
@@ -897,8 +900,11 @@ model VariantSend {
   sentAt    DateTime  @default(now())
   replied   Boolean   @default(false)
   repliedAt DateTime?
+  won       Boolean   @default(false)
+  wonAt     DateTime?
 
   @@index([contactId, replied, sentAt])
+  @@index([contactId, won, sentAt])
   @@index([variantId])
   @@map("variant_sends")
 }
