@@ -34,9 +34,10 @@ then one live org round-trip (create, invite, switch, share, agent write).
 
 **Parallel cycle shipped: 0015 - Admin, lists, native workspaces**
 (`0015-admin-workspaces-lists.md`). `/admin` desk (credits, plans, refunds),
-CRM lists/segments on the CRM page, Scalar-native workspaces (`ws_`) with a
-plan cap (free = 0). Admins unlimited. Owed: `ADMIN_EMAILS` + `db push` + one
-live workspace/list/refund pass.
+CRM lists/segments on the CRM page, Scalar-native workspaces (`ws_`) switched
+from the sidebar (the whole platform for one business; not Clerk orgs, not
+Settings). Admins unlimited. Owed: `ADMIN_EMAILS` + `db push` + one live
+workspace/list/refund pass.
 
 **Parallel cycle shipped: 0007 - x402 agent payments** (`0007-x402-agent-payments.md`).
 The CRM your agents run now lets the agents pay for it: USDC top-ups
