@@ -13,6 +13,11 @@ export default async function DashboardLayout({
   const ctx = await getDashboardAuth();
   const user = ctx?.account ?? null;
   const isStaff = ctx?.isStaff ?? false;
+  const homeName = ctx
+    ? [ctx.actor.firstName, ctx.actor.lastName].filter(Boolean).join(" ") || "Home"
+    : "Home";
+  const workspaceName =
+    user?.accountType === "workspace" ? (user.firstName ?? "Workspace") : homeName;
 
   // Live radar count for the AgentIsland HUD; non-critical chrome, never fail
   // the layout over it.
@@ -30,8 +35,9 @@ export default async function DashboardLayout({
   return (
     <DashboardShell
       isStaff={isStaff}
-      workspaceName={user?.accountType === "workspace" ? (user.firstName ?? "Workspace") : "Personal"}
-      isWorkspace={user?.accountType === "workspace"}
+      workspaceName={workspaceName}
+      workspaceId={user?.accountType === "workspace" ? user.id : null}
+      homeName={homeName}
     >
       {user && (
         <AgentIsland

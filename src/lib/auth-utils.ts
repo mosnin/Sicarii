@@ -4,22 +4,19 @@ import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 import { authenticateApiKey, bearerFromRequest } from "@/lib/api-auth";
 import { ensureAdminRole } from "@/lib/admin";
-import {
-  readWorkspaceCookie,
-  resolveCookieWorkspace,
-  resolveWorkspace,
-} from "@/lib/workspace";
+import { readWorkspaceCookie, resolveCookieWorkspace } from "@/lib/workspace";
 
 export type DbUser = User;
 
-/** The full auth context: the ACCOUNT queries scope to (personal row, or the
- *  workspace row when a Clerk org is the active context) plus the human ACTOR
- *  (always the personal row). account.id === actor.id in personal context. */
+/** The full auth context: the ACCOUNT queries scope to (the home account, or
+ *  the active Scalar workspace) plus the human ACTOR (always the personal
+ *  row). account.id === actor.id on the home account. Workspaces are Scalar-
+ *  native; Clerk Organizations are not the switcher. */
 export interface AuthContext {
   account: DbUser;
   actor: DbUser;
-  /** Our role string in the active workspace ("admin" | "member"), or null in
-   *  personal context. */
+  /** Our role string in the active workspace ("admin" | "member"), or null on
+   *  the home account. */
   workspaceRole: string | null;
 }
 
@@ -52,21 +49,11 @@ async function personalRow(clerkId: string): Promise<DbUser> {
  * when signed out; callers catch `NextResponse` in their error handler.
  */
 export async function getAuthContext(): Promise<AuthContext> {
-  const { userId: clerkId, orgId, orgRole } = await auth();
+  const { userId: clerkId } = await auth();
   if (!clerkId) {
     throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const actor = await ensureAdminRole(await personalRow(clerkId));
-  if (orgId) {
-    // Clerk org wins when set (OrganizationSwitcher / existing Teams v1).
-    const workspace = await resolveWorkspace({ orgId, actor, orgRole });
-    return {
-      account: workspace,
-      actor,
-      workspaceRole: orgRole === "org:admin" || orgRole === "admin" ? "admin" : "member",
-    };
-  }
-
   const cookieId = await readWorkspaceCookie();
   if (cookieId) {
     const viaCookie = await resolveCookieWorkspace(actor, cookieId);
@@ -79,11 +66,9 @@ export async function getAuthContext(): Promise<AuthContext> {
 }
 
 /**
- * Get the authenticated DB account the request should scope to: the personal
- * row, or the workspace row when a team is the active Clerk context. Existing
- * call sites keep working unchanged - in team context they transparently
- * operate on the shared workspace data. Throws a NextResponse 401 when there
- * is no signed-in session.
+ * Get the authenticated DB account the request should scope to: the home
+ * account, or the Scalar workspace selected in the sidebar switcher.
+ * Throws a NextResponse 401 when there is no signed-in session.
  */
 export async function getAuthenticatedUser(): Promise<DbUser> {
   const ctx = await getAuthContext();

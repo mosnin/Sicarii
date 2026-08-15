@@ -81,8 +81,11 @@ Deep context and all decisions are indexed in `@docs/README.md`.
 - **Run (dev):** `pnpm dev` · **Build:** `pnpm build` · **Start:** `pnpm start`
   · **Lint:** `pnpm lint`.
 - **Platform admin:** `User.role = admin` (bootstrap via `ADMIN_EMAILS`). Unlimited
-  credits, `/admin` desk for users / refunds / comps. Native workspaces are
-  created in Settings (`ws_` rows); cookie `scalar_workspace` selects them.
+  credits, `/admin` desk for users / refunds / comps.
+- **Workspaces:** a workspace is the whole platform for one business (own CRM,
+  lists, pipelines, meter). Switch from the sidebar/header dropdown. Create
+  another business from that same menu. Cookie `scalar_workspace` is the
+  active context. Not Clerk Organizations.
 - **Conventions:** import alias `@/*` → `src/*`. Route groups: `(auth)`,
   `(dashboard)`. Theme tokens live in `src/app/globals.css`
   (**baby-blue + white, light by default**; legacy `orange`/`brand` Tailwind

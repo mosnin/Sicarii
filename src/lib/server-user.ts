@@ -1,12 +1,8 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 import { ensureAdminRole, isPlatformAdmin } from "@/lib/admin";
-import {
-  readWorkspaceCookie,
-  resolveCookieWorkspace,
-  resolveWorkspace,
-} from "@/lib/workspace";
+import { readWorkspaceCookie, resolveCookieWorkspace } from "@/lib/workspace";
 
 export type DashboardAuth = {
   account: User;
@@ -29,16 +25,6 @@ export async function getDbUser(): Promise<User | null> {
 
 async function resolveDashboardAuth(personal: User): Promise<DashboardAuth> {
   const actor = await ensureAdminRole(personal);
-  const { orgId, orgRole } = await auth();
-  if (orgId) {
-    const workspace = await resolveWorkspace({ orgId, actor, orgRole });
-    return {
-      account: workspace,
-      actor,
-      workspaceRole: orgRole === "org:admin" || orgRole === "admin" ? "admin" : "member",
-      isStaff: isPlatformAdmin(actor),
-    };
-  }
   const cookieId = await readWorkspaceCookie();
   if (cookieId) {
     const viaCookie = await resolveCookieWorkspace(actor, cookieId);

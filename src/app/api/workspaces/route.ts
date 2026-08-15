@@ -21,7 +21,9 @@ export async function GET() {
       listUserWorkspaces(ctx.actor.id),
       workspaceQuota(ctx.actor),
     ]);
+    const homeName = [ctx.actor.firstName, ctx.actor.lastName].filter(Boolean).join(" ") || "Home";
     return NextResponse.json({
+      home: { name: homeName, id: ctx.actor.id },
       workspaces,
       quota: {
         used: quota.used,

@@ -8,8 +8,9 @@
 //   1. Clerk Organization (clerkId = org_...) - mirrored by webhook / first sight
 //   2. Scalar-native (clerkId = ws_<uuid>) - created in-app for a second business
 //
-// Active context: Clerk orgId wins when set; otherwise the scalar_workspace
-// cookie (a users.id the human belongs to). Personal context is the default.
+// Active context: the scalar_workspace cookie (a users.id the human belongs
+// to). The home account is the default. Clerk Organizations are not the
+// switcher - a workspace is the whole Scalar platform for one business.
 
 import { randomUUID } from "crypto";
 import { cookies } from "next/headers";

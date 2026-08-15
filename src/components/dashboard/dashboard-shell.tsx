@@ -46,7 +46,7 @@ import {
 } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import {
   Home,
@@ -465,14 +465,16 @@ function Dock({
 function Sidebar({
   isStaff,
   workspaceName,
-  isWorkspace,
+  workspaceId,
+  homeName,
   onCloseSidebar,
   onOpenLaunchpad,
   launchpadOpen,
 }: {
   isStaff: boolean;
   workspaceName?: string;
-  isWorkspace?: boolean;
+  workspaceId?: string | null;
+  homeName?: string;
   onCloseSidebar: () => void;
   onOpenLaunchpad: () => void;
   launchpadOpen: boolean;
@@ -498,14 +500,14 @@ function Sidebar({
 
       {/* All nav content sits on top of the ASCII field */}
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
-        {/* ── Logo / wordmark ── */}
-        <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border/40 px-4 dark:border-white/[0.06]">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <LogoMark className="h-6 w-6" />
-            <span className="font-brand text-base font-bold text-foreground">
-              Scalar
-            </span>
-          </Link>
+        {/* ── Current business: switching this reloads the whole platform ── */}
+        <div className="flex h-14 shrink-0 items-center border-b border-border/40 px-3 dark:border-white/[0.06]">
+          <WorkspaceSwitcher
+            variant="sidebar"
+            activeName={workspaceName ?? homeName ?? "Home"}
+            activeId={workspaceId ?? null}
+            homeName={homeName ?? "Home"}
+          />
         </div>
 
         {/* ── Nav items ── */}
@@ -585,20 +587,9 @@ function Sidebar({
             <span>Collapse</span>
           </button>
 
-          {/* User + workspace + theme */}
-          <div className="flex flex-col gap-2 px-3 py-2">
-            <WorkspaceSwitcher
-              activeName={workspaceName ?? "Personal"}
-              isWorkspace={Boolean(isWorkspace)}
-            />
-            <div className="flex items-center gap-2">
-              <UserButton />
-              <OrganizationSwitcher
-                afterSelectOrganizationUrl="/dashboard"
-                afterSelectPersonalUrl="/dashboard"
-              />
-              <ThemeToggle />
-            </div>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <UserButton />
+            <ThemeToggle />
           </div>
         </div>
       </div>
@@ -827,12 +818,14 @@ function Launchpad({
 export function DashboardShell({
   isStaff,
   workspaceName,
-  isWorkspace,
+  workspaceId,
+  homeName,
   children,
 }: {
   isStaff: boolean;
   workspaceName?: string;
-  isWorkspace?: boolean;
+  workspaceId?: string | null;
+  homeName?: string;
   children: React.ReactNode;
 }) {
   const prefersReduced = useReducedMotion();
@@ -908,21 +901,13 @@ export function DashboardShell({
           >
             <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-5 lg:px-8">
               <div className="flex h-12 items-center justify-between gap-2">
-                <Link href="/dashboard" className="flex items-center gap-2">
-                  <LogoMark className="h-6 w-6" />
-                  <span className="font-brand text-base font-bold text-foreground hidden sm:inline">
-                    Scalar
-                  </span>
-                </Link>
+                <WorkspaceSwitcher
+                  variant="header"
+                  activeName={workspaceName ?? homeName ?? "Home"}
+                  activeId={workspaceId ?? null}
+                  homeName={homeName ?? "Home"}
+                />
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  <WorkspaceSwitcher
-                    activeName={workspaceName ?? "Personal"}
-                    isWorkspace={Boolean(isWorkspace)}
-                  />
-                  <OrganizationSwitcher
-                    afterSelectOrganizationUrl="/dashboard"
-                    afterSelectPersonalUrl="/dashboard"
-                  />
                   <ThemeToggle />
                   <UserButton />
                 </div>
@@ -947,7 +932,8 @@ export function DashboardShell({
                 key="sidebar"
                 isStaff={isStaff}
                 workspaceName={workspaceName}
-                isWorkspace={isWorkspace}
+                workspaceId={workspaceId}
+                homeName={homeName}
                 onCloseSidebar={closeSidebar}
                 onOpenLaunchpad={openLaunchpad}
                 launchpadOpen={launchpadOpen}

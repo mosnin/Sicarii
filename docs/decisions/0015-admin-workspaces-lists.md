@@ -14,12 +14,13 @@ Three surfaces, one posture: Scalar stays a quiet CRM, not a second product.
    Named lists (manual membership) and smart lists (saved filters: industry,
    tag, status, search) sit beside the contact table. Field's prompt-built
    segments stay; they show up here too.
-3. **Scalar-native workspaces.** A workspace is still a synthetic `users` row
-   (Teams v1). You can now create one in-app (`ws_<uuid>`) for another business
-   without Clerk Organizations. Cookie `scalar_workspace` selects it when no
-   Clerk org is active. Free = personal only; paid plans unlock more; platform
-   admins have no cap. Each workspace keeps its own contacts, lists, pipelines,
-   and meter.
+3. **Scalar-native workspaces.** A workspace is the whole platform for one
+   business, not a Settings page and not a Clerk Organization. Synthetic
+   `users` row (`ws_<uuid>`). The sidebar/header dropdown is the switcher:
+   pick a business and the same nav reloads against that company's data.
+   Create the next business from that menu. Cookie `scalar_workspace` is the
+   only active context. Free = home account only; paid plans unlock more;
+   platform admins have no cap.
 
 ## The gates
 
