@@ -90,6 +90,110 @@ export async function createCheckoutSession(opts: {
   return { url: data.url };
 }
 
+type StripeCharge = {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  created: number;
+  refunded: boolean;
+  amount_refunded: number;
+  description: string | null;
+  payment_intent: string | null;
+};
+
+/**
+ * Recent charges for a Stripe customer. Used by the admin billing desk so
+ * support can see what to refund without leaving Scalar.
+ */
+export async function listCustomerCharges(
+  customerId: string,
+  limit = 20,
+): Promise<{ charges: StripeCharge[] } | { error: string; status: number }> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return { error: "Billing is not configured yet.", status: 501 };
+
+  const res = await fetchWithTimeout(
+    `${STRIPE_API}/charges?${encodeForm({ customer: customerId, limit: String(Math.min(limit, 50)) })}`,
+    { headers: { Authorization: `Bearer ${key}` } },
+  );
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("Stripe list charges failed", res.status, detail.slice(0, 500));
+    return { error: "Couldn't load charges.", status: 502 };
+  }
+  const data = (await res.json().catch(() => null)) as { data?: StripeCharge[] } | null;
+  return { charges: data?.data ?? [] };
+}
+
+/**
+ * Issue a Stripe refund. amountCents omitted = full refund. Idempotent on
+ * Stripe's side when the same charge is already fully refunded (they return
+ * the existing refund or an error we surface).
+ */
+export async function createRefund(opts: {
+  chargeId?: string;
+  paymentIntentId?: string;
+  amountCents?: number;
+  reason?: "duplicate" | "fraudulent" | "requested_by_customer";
+}): Promise<{ refundId: string; status: string } | { error: string; status: number }> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return { error: "Billing is not configured yet.", status: 501 };
+  if (!opts.chargeId && !opts.paymentIntentId) {
+    return { error: "chargeId or paymentIntentId is required", status: 400 };
+  }
+
+  const params: Record<string, string> = {
+    reason: opts.reason ?? "requested_by_customer",
+  };
+  if (opts.chargeId) params.charge = opts.chargeId;
+  if (opts.paymentIntentId) params.payment_intent = opts.paymentIntentId;
+  if (opts.amountCents && opts.amountCents > 0) params.amount = String(opts.amountCents);
+
+  const res = await fetchWithTimeout(`${STRIPE_API}/refunds`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: encodeForm(params),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("Stripe refund failed", res.status, detail.slice(0, 500));
+    return { error: "Couldn't issue the refund. Check the charge in Stripe.", status: 502 };
+  }
+  const data = (await res.json().catch(() => null)) as { id?: string; status?: string } | null;
+  if (!data?.id) return { error: "Stripe returned no refund id.", status: 502 };
+  return { refundId: data.id, status: data.status ?? "pending" };
+}
+
+/** Hosted Stripe billing portal so support can hand a customer a manage-billing link. */
+export async function createBillingPortalSession(opts: {
+  customerId: string;
+  returnUrl: string;
+}): Promise<{ url: string } | { error: string; status: number }> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return { error: "Billing is not configured yet.", status: 501 };
+
+  const res = await fetchWithTimeout(`${STRIPE_API}/billing_portal/sessions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: encodeForm({ customer: opts.customerId, return_url: opts.returnUrl }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("Stripe portal failed", res.status, detail.slice(0, 500));
+    return { error: "Couldn't open the billing portal.", status: 502 };
+  }
+  const data = (await res.json().catch(() => null)) as { url?: string } | null;
+  if (!data?.url) return { error: "Couldn't open the billing portal.", status: 502 };
+  return { url: data.url };
+}
+
 /**
  * Verify a Stripe webhook signature (the `Stripe-Signature: t=...,v1=...`
  * header). Reproduces stripe.webhooks.constructEvent: HMAC-SHA256 of

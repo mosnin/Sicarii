@@ -31,9 +31,30 @@ export async function getSegment(userId: string, id: string) {
   return segment;
 }
 
-export async function createSegment(userId: string, input: { name: string; goal?: string; contactIds?: string[] }) {
+export async function createSegment(
+  userId: string,
+  input: {
+    name: string;
+    goal?: string;
+    contactIds?: string[];
+    kind?: "list" | "smart";
+    rules?: { status?: string; industry?: string; tag?: string; q?: string } | null;
+    source?: string;
+  },
+) {
   if (!input.name?.trim()) throw new OpError("Segment name is required", 400);
-  const segment = await prisma.segment.create({ data: { userId, name: input.name.trim(), goal: input.goal, source: "manual" } });
+  const kind = input.kind === "smart" ? "smart" : "list";
+  const source = input.source ?? (input.rules ? "filter" : "manual");
+  const segment = await prisma.segment.create({
+    data: {
+      userId,
+      name: input.name.trim(),
+      goal: input.goal,
+      source,
+      kind,
+      rules: input.rules ?? undefined,
+    },
+  });
   if (input.contactIds?.length) {
     const owned = await prisma.contact.findMany({ where: { userId, id: { in: input.contactIds } }, select: { id: true } });
     await prisma.contactSegment.createMany({
@@ -71,6 +92,22 @@ export async function removeSegmentMember(userId: string, segmentId: string, con
   return { ok: true };
 }
 
+export async function addSegmentMembers(userId: string, segmentId: string, contactIds: string[]) {
+  const segment = await prisma.segment.findUnique({ where: { id: segmentId } });
+  if (!segment || segment.userId !== userId) throw new OpError("Segment not found", 404);
+  if (!contactIds.length) throw new OpError("No contacts to add", 400);
+  const owned = await prisma.contact.findMany({
+    where: { userId, id: { in: contactIds } },
+    select: { id: true },
+  });
+  if (owned.length === 0) throw new OpError("No contacts to add", 400);
+  const res = await prisma.contactSegment.createMany({
+    data: owned.map((c) => ({ segmentId, contactId: c.id })),
+    skipDuplicates: true,
+  });
+  return { added: res.count };
+}
+
 // Smart segment: vector-match the closest eligible prospects to a goal.
 // Embeds up to ~200 candidate contacts plus the goal via OpenAI in one call
 // (see buildSegmentMatches / src/lib/segment-build.ts) - gate on credits
@@ -90,7 +127,13 @@ export async function buildSmartSegment(userId: string, input: { goal: string; q
   if (matches.length === 0) throw new OpError("Couldn't match any prospects to that goal", 422);
 
   const segment = await prisma.segment.create({
-    data: { userId, name: input.name || input.goal.slice(0, 80), goal: input.goal, source: "prompt" },
+    data: {
+      userId,
+      name: input.name || input.goal.slice(0, 80),
+      goal: input.goal,
+      source: "prompt",
+      kind: "smart",
+    },
   });
   await prisma.contactSegment.createMany({
     data: matches.map((m) => ({ segmentId: segment.id, contactId: m.contactId, score: m.score })),

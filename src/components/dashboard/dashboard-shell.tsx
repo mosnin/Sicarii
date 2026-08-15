@@ -62,7 +62,9 @@ import {
   PanelLeftClose,
   Settings,
   Gauge,
+  Shield,
 } from "lucide-react";
+import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 
 // ── MobileNavContext ──────────────────────────────────────────────────────────
 
@@ -89,7 +91,7 @@ type NavItem = {
 // The agent is Scalar; render the brand logo as its nav icon.
 const ScalarLogoIcon: NavIcon = ({ className }) => <LogoMark className={className} />;
 
-export const NAV_ITEMS: NavItem[] = [
+const BASE_NAV: NavItem[] = [
   { label: "Home", href: "/dashboard", icon: Home },
   { label: "Discover", href: "/discover", icon: Telescope },
   { label: "Radar", href: "/radar", icon: Radar },
@@ -100,6 +102,17 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Context", href: "/product-context", icon: BookOpen },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
+
+export const NAV_ITEMS: NavItem[] = BASE_NAV;
+
+function navFor(isStaff: boolean): NavItem[] {
+  if (!isStaff) return BASE_NAV;
+  return [
+    ...BASE_NAV.slice(0, -1),
+    { label: "Admin", href: "/admin", icon: Shield },
+    BASE_NAV[BASE_NAV.length - 1],
+  ];
+}
 
 // ── Launchpad data ───────────────────────────────────────────────────────────
 
@@ -172,7 +185,17 @@ const LAUNCHPAD_TILES: Tile[] = [
     description:
       "Account, API keys, workspace, and integration preferences.",
   },
+  {
+    label: "Admin",
+    href: "/admin",
+    description:
+      "Users, credits, refunds, and billing help. Staff only.",
+  },
 ];
+
+function launchpadTiles(isStaff: boolean): Tile[] {
+  return isStaff ? LAUNCHPAD_TILES : LAUNCHPAD_TILES.filter((t) => t.href !== "/admin");
+}
 
 const CAPABILITIES = ["Discover", "Enrich", "Converse", "Close"];
 
@@ -298,7 +321,7 @@ function Dock({
   onOpenLaunchpad: () => void;
   launchpadOpen: boolean;
 }) {
-  void isStaff;
+  const items = navFor(isStaff);
   const pathname = usePathname();
   const mouseX = useMotionValue(Infinity);
 
@@ -359,7 +382,7 @@ function Dock({
         onMouseLeave={() => mouseX.set(Infinity)}
         className="flex items-end gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-2 shadow-xl shadow-black/10 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/80 dark:shadow-black/50 dark:ring-1 dark:ring-inset dark:ring-white/5"
       >
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <DockNavButton
             key={item.href}
             item={item}
@@ -441,16 +464,20 @@ function Dock({
 
 function Sidebar({
   isStaff,
+  workspaceName,
+  isWorkspace,
   onCloseSidebar,
   onOpenLaunchpad,
   launchpadOpen,
 }: {
   isStaff: boolean;
+  workspaceName?: string;
+  isWorkspace?: boolean;
   onCloseSidebar: () => void;
   onOpenLaunchpad: () => void;
   launchpadOpen: boolean;
 }) {
-  void isStaff;
+  const items = navFor(isStaff);
   const pathname = usePathname();
 
   return (
@@ -483,7 +510,7 @@ function Sidebar({
 
         {/* ── Nav items ── */}
         <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto py-4 px-2">
-          {NAV_ITEMS.map((item, i) => {
+          {items.map((item, i) => {
             const Icon = item.icon;
             const active = isActivePath(pathname, item.href);
             return (
@@ -559,13 +586,19 @@ function Sidebar({
           </button>
 
           {/* User + workspace + theme */}
-          <div className="flex items-center gap-2 px-3 py-2">
-            <UserButton />
-            <OrganizationSwitcher
-              afterSelectOrganizationUrl="/dashboard"
-              afterSelectPersonalUrl="/dashboard"
+          <div className="flex flex-col gap-2 px-3 py-2">
+            <WorkspaceSwitcher
+              activeName={workspaceName ?? "Personal"}
+              isWorkspace={Boolean(isWorkspace)}
             />
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <UserButton />
+              <OrganizationSwitcher
+                afterSelectOrganizationUrl="/dashboard"
+                afterSelectPersonalUrl="/dashboard"
+              />
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </div>
@@ -579,11 +612,14 @@ function Sidebar({
 function MobileBottomNav({
   onOpenLaunchpad,
   launchpadOpen,
+  isStaff,
 }: {
   onOpenLaunchpad: () => void;
   launchpadOpen: boolean;
+  isStaff: boolean;
 }) {
   const pathname = usePathname();
+  const items = navFor(isStaff);
 
   return (
     <nav
@@ -591,7 +627,7 @@ function MobileBottomNav({
       aria-label="Primary"
     >
       <div className="mx-auto flex max-w-md items-center justify-around gap-0.5 rounded-2xl border border-border/60 bg-background/90 px-1.5 py-1.5 shadow-xl shadow-black/10 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/85 dark:shadow-black/40">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(pathname, item.href);
           return (
@@ -646,9 +682,11 @@ function MobileBottomNav({
 function Launchpad({
   open,
   onClose,
+  isStaff,
 }: {
   open: boolean;
   onClose: () => void;
+  isStaff: boolean;
 }) {
   const pathname = usePathname();
 
@@ -719,7 +757,7 @@ function Launchpad({
             <div className="pointer-events-auto flex-1 overflow-y-auto">
               <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-10">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {LAUNCHPAD_TILES.map((tile, i) => {
+                  {launchpadTiles(isStaff).map((tile, i) => {
                     const active = isActivePath(pathname, tile.href);
                     return (
                       <Link
@@ -788,9 +826,13 @@ function Launchpad({
 
 export function DashboardShell({
   isStaff,
+  workspaceName,
+  isWorkspace,
   children,
 }: {
   isStaff: boolean;
+  workspaceName?: string;
+  isWorkspace?: boolean;
   children: React.ReactNode;
 }) {
   const prefersReduced = useReducedMotion();
@@ -873,8 +915,10 @@ export function DashboardShell({
                   </span>
                 </Link>
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  {/* Personal vs team context: switching orgs re-scopes every
-                      page to the shared workspace CRM. */}
+                  <WorkspaceSwitcher
+                    activeName={workspaceName ?? "Personal"}
+                    isWorkspace={Boolean(isWorkspace)}
+                  />
                   <OrganizationSwitcher
                     afterSelectOrganizationUrl="/dashboard"
                     afterSelectPersonalUrl="/dashboard"
@@ -902,6 +946,8 @@ export function DashboardShell({
               <Sidebar
                 key="sidebar"
                 isStaff={isStaff}
+                workspaceName={workspaceName}
+                isWorkspace={isWorkspace}
                 onCloseSidebar={closeSidebar}
                 onOpenLaunchpad={openLaunchpad}
                 launchpadOpen={launchpadOpen}
@@ -918,10 +964,10 @@ export function DashboardShell({
           </AnimatePresence>
 
           {/* ── Mobile bottom nav - mobile only ── */}
-          <MobileBottomNav onOpenLaunchpad={openLaunchpad} launchpadOpen={launchpadOpen} />
+          <MobileBottomNav isStaff={isStaff} onOpenLaunchpad={openLaunchpad} launchpadOpen={launchpadOpen} />
 
           {/* ── Launchpad overlay ── */}
-          <Launchpad open={launchpadOpen} onClose={closeLaunchpad} />
+          <Launchpad isStaff={isStaff} open={launchpadOpen} onClose={closeLaunchpad} />
         </div>
       </LayoutGroup>
     </MobileNavContext.Provider>

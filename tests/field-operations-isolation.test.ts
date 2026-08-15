@@ -28,6 +28,7 @@ vi.mock("@/lib/prisma", () => {
       },
       contactSegment: {
         deleteMany: forbid("contactSegment.deleteMany"),
+        createMany: forbid("contactSegment.createMany"),
       },
       pipeline: {
         findUnique: vi.fn().mockResolvedValue({ id: "p1", userId: owner, name: "Q3" }),
@@ -47,6 +48,7 @@ import {
   updateSegment,
   deleteSegment,
   removeSegmentMember,
+  addSegmentMembers,
   deletePipeline,
   removePipelineEntry,
 } from "@/lib/field-operations";
@@ -72,6 +74,10 @@ describe("field-operations tenant isolation", () => {
 
   it("removeSegmentMember denies a non-owner of the segment", async () => {
     await expectDenied(() => removeSegmentMember(ATTACKER, "s1", "c1"));
+  });
+
+  it("addSegmentMembers denies a non-owner of the segment", async () => {
+    await expectDenied(() => addSegmentMembers(ATTACKER, "s1", ["c1"]));
   });
 
   it("deletePipeline denies a non-owner", async () => {

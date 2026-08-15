@@ -15,6 +15,7 @@ import { AutoRadarToggle } from "@/components/dashboard/auto-radar-toggle";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
+import { WorkspaceManager } from "@/components/dashboard/workspace-manager";
 import { getDbUser } from "@/lib/server-user";
 import { getBilling } from "@/lib/credits";
 
@@ -117,6 +118,22 @@ export default async function SettingsPage() {
                 <BillingUpgrade />
               </div>
             )}
+          </CardContent>
+        </Card>
+      </FloatIn>
+
+      {/* Workspaces */}
+      <FloatIn delay={0.12}>
+        <Card id="workspaces">
+          <CardHeader>
+            <CardTitle className="text-base">Workspaces</CardTitle>
+            <CardDescription>
+              One workspace per business. Contacts, lists, and pipelines stay
+              isolated. Admins are not capped; everyone else uses their plan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WorkspaceManager />
           </CardContent>
         </Card>
       </FloatIn>

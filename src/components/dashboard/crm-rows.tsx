@@ -121,6 +121,7 @@ function CrmBrowser<T extends { id: string }>({
   hrefFor,
   renderRow,
   searchPlaceholder,
+  lists,
 }: {
   items: T[];
   kind: "contact" | "entity";
@@ -132,6 +133,7 @@ function CrmBrowser<T extends { id: string }>({
   hrefFor: (i: T) => string;
   renderRow: (i: T, score?: number) => React.ReactNode;
   searchPlaceholder: string;
+  lists?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -158,6 +160,8 @@ function CrmBrowser<T extends { id: string }>({
   const [modalOpen, setModalOpen] = useState(false);
   const [modalState, setModalState] = useState<"confirm" | "running" | "done">("confirm");
   const [resultText, setResultText] = useState<string | null>(null);
+  const [listId, setListId] = useState("");
+  const [addingToList, setAddingToList] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -242,6 +246,24 @@ function CrmBrowser<T extends { id: string }>({
       });
       if (res.ok) { exitSelect(); startTransition(() => router.refresh()); }
     } finally { setDeleting(false); }
+  }
+
+  async function addToList() {
+    if (!listId || selected.size === 0) return;
+    setAddingToList(true);
+    try {
+      const res = await fetch(`/api/segments/${listId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactIds: [...selected], op: "add" }),
+      });
+      if (res.ok) {
+        exitSelect();
+        startTransition(() => router.refresh());
+      }
+    } finally {
+      setAddingToList(false);
+    }
   }
 
   async function confirmEnrich() {
@@ -384,7 +406,25 @@ function CrmBrowser<T extends { id: string }>({
               {selected.size > 0 ? `${selected.size} selected` : "Select all"}
             </button>
             {selected.size > 0 && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {kind === "contact" && lists && lists.length > 0 && (
+                  <>
+                    <select
+                      value={listId}
+                      onChange={(e) => setListId(e.target.value)}
+                      className="h-8 rounded-full border border-border bg-background px-3 text-xs"
+                    >
+                      <option value="">Add to list…</option>
+                      {lists.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
+                    <Button size="sm" variant="outline" onClick={addToList} disabled={!listId || addingToList}>
+                      {addingToList ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                      Add
+                    </Button>
+                  </>
+                )}
                 <Button variant="glow" size="sm" onClick={() => { setResultText(null); setModalState("confirm"); setModalOpen(true); }}>
                   Enrich {selected.size}
                 </Button>
@@ -481,7 +521,13 @@ function RowCard({
 
 /* ================= Contacts ================= */
 
-export function ContactRows({ contacts }: { contacts: CrmContact[] }) {
+export function ContactRows({
+  contacts,
+  lists,
+}: {
+  contacts: CrmContact[];
+  lists?: { id: string; name: string }[];
+}) {
   const sortOptions: SortOption<CrmContact>[] = [
     { id: "recent", label: "Recently updated", cmp: (a, b) => b.updatedAt.localeCompare(a.updatedAt) },
     { id: "name", label: "Name A-Z", cmp: (a, b) => (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "") },
@@ -500,6 +546,7 @@ export function ContactRows({ contacts }: { contacts: CrmContact[] }) {
       searchText={(c) => [c.name, c.email, c.title, c.entity?.name, statusLabel(c.status)].filter(Boolean).join(" ")}
       sortOptions={sortOptions}
       hrefFor={(c) => `/crm/${c.id}`}
+      lists={lists}
       renderRow={(c, score) => (
         <>
           <CrmAvatar src={c.imageUrl} label={c.name || c.email} shape="circle" size={40} />

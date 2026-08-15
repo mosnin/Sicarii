@@ -3,7 +3,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 import { authenticateApiKey, bearerFromRequest } from "@/lib/api-auth";
-import { resolveWorkspace } from "@/lib/workspace";
+import { ensureAdminRole } from "@/lib/admin";
+import {
+  readWorkspaceCookie,
+  resolveCookieWorkspace,
+  resolveWorkspace,
+} from "@/lib/workspace";
 
 export type DbUser = User;
 
@@ -51,17 +56,26 @@ export async function getAuthContext(): Promise<AuthContext> {
   if (!clerkId) {
     throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const actor = await personalRow(clerkId);
-  if (!orgId) return { account: actor, actor, workspaceRole: null };
+  const actor = await ensureAdminRole(await personalRow(clerkId));
+  if (orgId) {
+    // Clerk org wins when set (OrganizationSwitcher / existing Teams v1).
+    const workspace = await resolveWorkspace({ orgId, actor, orgRole });
+    return {
+      account: workspace,
+      actor,
+      workspaceRole: orgRole === "org:admin" || orgRole === "admin" ? "admin" : "member",
+    };
+  }
 
-  // Team context: scope to the workspace account row. Clerk only sets orgId
-  // for orgs the user belongs to, so this is safe to provision from.
-  const workspace = await resolveWorkspace({ orgId, actor, orgRole });
-  return {
-    account: workspace,
-    actor,
-    workspaceRole: orgRole === "org:admin" || orgRole === "admin" ? "admin" : "member",
-  };
+  const cookieId = await readWorkspaceCookie();
+  if (cookieId) {
+    const viaCookie = await resolveCookieWorkspace(actor, cookieId);
+    if (viaCookie) {
+      return { account: viaCookie.account, actor, workspaceRole: viaCookie.workspaceRole };
+    }
+  }
+
+  return { account: actor, actor, workspaceRole: null };
 }
 
 /**
