@@ -33,6 +33,15 @@ Three surfaces, one posture: Scalar stays a quiet CRM, not a second product.
 
 **Tie-break:** none. **Founder call honored:** build the three together; same aesthetic.
 
+## Hardening (audit)
+
+- Tampered `scalar_workspace` / `list=` values that are not UUIDs are treated as missing. Prisma UUID columns throw P2023 on junk, which would 500 the dashboard.
+- Workspace create is one transaction: lock the actor row, re-check quota, insert user + membership. No orphan workspace, no parallel create past the cap.
+- Quota and the switcher only count `accountType = "workspace"` rows.
+- Unlimited credits are for that account's own `role` / `ADMIN_EMAILS`. A staff admin joining a customer workspace for support does not zero the customer's meter.
+- Admin refunds retrieve the charge/PI and refuse unless `customer` matches the target account's `stripeCustomerId`. Charge ids are shape-checked so a path cannot be stuffed into the Stripe URL.
+- Admin mutations are rate-limited. Rename is capped at 80 characters.
+
 ## Debts owed to reality
 
 - Set `ADMIN_EMAILS` (and optionally stamp `users.role = admin`) so the desk is reachable.

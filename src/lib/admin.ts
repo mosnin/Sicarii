@@ -41,23 +41,19 @@ export async function ensureAdminRole<T extends { id: string; role: string; emai
 }
 
 /**
- * An account skips the credit meter when it is a platform-admin personal
- * row, or a workspace that a platform admin belongs to (so support work
- * and the admin's own businesses are not billed). Rate limits still apply.
+ * An account skips the credit meter only when THAT account is a platform
+ * admin (personal row with role=admin / ADMIN_EMAILS, or a workspace the
+ * admin created for their own businesses, which we stamp role=admin).
+ * A customer workspace stays metered even if a staff admin joins it for
+ * support; otherwise one membership would zero the customer's bill.
+ * Rate limits still apply either way.
  */
 export async function accountIsUnlimited(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, email: true, accountType: true },
+    select: { role: true, email: true },
   });
-  if (!user) return false;
-  if (isPlatformAdmin(user)) return true;
-  if (user.accountType !== "workspace") return false;
-  const adminMember = await prisma.teamMember.findFirst({
-    where: { workspaceId: userId, user: { role: "admin" } },
-    select: { id: true },
-  });
-  return Boolean(adminMember);
+  return Boolean(user && isPlatformAdmin(user));
 }
 
 export function adminForbidden(): NextResponse {

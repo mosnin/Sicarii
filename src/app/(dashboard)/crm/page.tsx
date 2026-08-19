@@ -12,6 +12,7 @@ import { CrmListsNav } from "@/components/dashboard/crm-lists-nav";
 import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
 import { contactWhere, listIndustries, listTags, parseListRules } from "@/lib/crm-lists";
+import { isUuid } from "@/lib/ids";
 
 type Tab = "contacts" | "entities";
 
@@ -47,7 +48,8 @@ export default async function CrmPage({
     );
   }
 
-  const listId = params.list?.trim() || undefined;
+  const rawList = params.list?.trim() || undefined;
+  const listId = isUuid(rawList) ? rawList : undefined;
   const industry = params.industry?.trim() || undefined;
   const tag = params.tag?.trim() || undefined;
   const status = params.status?.trim() || undefined;

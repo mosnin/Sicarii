@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { isPlatformAdmin } from "@/lib/admin";
 import { planFor } from "@/lib/credits";
 import { OpError } from "@/lib/crm-operations";
+import { isUuid } from "@/lib/ids";
 
 export const WORKSPACE_COOKIE = "scalar_workspace";
 
@@ -35,7 +36,7 @@ export async function readWorkspaceCookie(): Promise<string | null> {
   try {
     const jar = await cookies();
     const value = jar.get(WORKSPACE_COOKIE)?.value?.trim();
-    return value || null;
+    return isUuid(value) ? value : null;
   } catch {
     return null;
   }
@@ -86,6 +87,7 @@ export async function resolveCookieWorkspace(
   actor: User,
   workspaceId: string,
 ): Promise<{ account: User; workspaceRole: string } | null> {
+  if (!isUuid(workspaceId) || workspaceId === actor.id) return null;
   const membership = await prisma.teamMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId: actor.id } },
     include: { workspace: true },
@@ -107,7 +109,7 @@ export type WorkspaceSummary = {
 /** The workspaces a human belongs to (id + display name + role), for pickers. */
 export async function listUserWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
   const rows = await prisma.teamMember.findMany({
-    where: { userId },
+    where: { userId, workspace: { accountType: "workspace" } },
     include: {
       workspace: {
         select: {
@@ -137,7 +139,9 @@ export async function workspaceQuota(actor: User): Promise<{
   allowed: number;
   unlimited: boolean;
 }> {
-  const used = await prisma.teamMember.count({ where: { userId: actor.id } });
+  const used = await prisma.teamMember.count({
+    where: { userId: actor.id, workspace: { accountType: "workspace" } },
+  });
   if (isPlatformAdmin(actor)) {
     return { used, allowed: Number.POSITIVE_INFINITY, unlimited: true };
   }
@@ -157,32 +161,44 @@ export async function createNativeWorkspace(actor: User, name: string): Promise<
     throw new OpError("Switch to your personal account to create a workspace", 400);
   }
 
-  const quota = await workspaceQuota(actor);
-  if (!quota.unlimited && quota.used >= quota.allowed) {
-    throw new OpError(
-      quota.allowed === 0
-        ? "Upgrade your plan to create workspaces for different businesses."
-        : `Your ${actor.plan} plan includes ${quota.allowed} workspace${quota.allowed === 1 ? "" : "s"}. Upgrade for more.`,
-      402,
-    );
-  }
-
   const unlimited = isPlatformAdmin(actor);
-  const workspace = await prisma.user.create({
-    data: {
-      clerkId: `ws_${randomUUID()}`,
-      accountType: "workspace",
-      email: "",
-      firstName: trimmed,
-      plan: unlimited ? "beta" : "free",
-      creditsRemaining: unlimited ? 100_000 : 200,
-      role: unlimited ? "admin" : "member",
-    },
+
+  // Quota + insert in one transaction so two parallel creates cannot sneak
+  // past the plan cap, and a failed membership insert cannot leave an orphan
+  // workspace row with no owner.
+  return prisma.$transaction(async (tx) => {
+    // Serialize creates for this human so two parallel posts cannot both
+    // read "under cap" and insert. Locks the actor row until commit.
+    await tx.$queryRaw`SELECT id FROM users WHERE id = ${actor.id}::uuid FOR UPDATE`;
+    const used = await tx.teamMember.count({
+      where: { userId: actor.id, workspace: { accountType: "workspace" } },
+    });
+    const allowed = unlimited ? Number.POSITIVE_INFINITY : planFor(actor.plan).workspaces;
+    if (!unlimited && used >= allowed) {
+      throw new OpError(
+        allowed === 0
+          ? "Upgrade your plan to create workspaces for different businesses."
+          : `Your ${actor.plan} plan includes ${allowed} workspace${allowed === 1 ? "" : "s"}. Upgrade for more.`,
+        402,
+      );
+    }
+
+    const workspace = await tx.user.create({
+      data: {
+        clerkId: `ws_${randomUUID()}`,
+        accountType: "workspace",
+        email: "",
+        firstName: trimmed,
+        plan: unlimited ? "beta" : "free",
+        creditsRemaining: unlimited ? 100_000 : 200,
+        role: unlimited ? "admin" : "member",
+      },
+    });
+    await tx.teamMember.create({
+      data: { workspaceId: workspace.id, userId: actor.id, role: "admin" },
+    });
+    return workspace;
   });
-  await prisma.teamMember.create({
-    data: { workspaceId: workspace.id, userId: actor.id, role: "admin" },
-  });
-  return workspace;
 }
 
 export async function renameWorkspace(
@@ -190,8 +206,10 @@ export async function renameWorkspace(
   workspaceId: string,
   name: string,
 ): Promise<User> {
+  if (!isUuid(workspaceId)) throw new OpError("Workspace not found", 404);
   const trimmed = name.trim();
   if (!trimmed) throw new OpError("Workspace name is required", 400);
+  if (trimmed.length > 80) throw new OpError("Workspace name is too long", 400);
   const membership = await prisma.teamMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId: actor.id } },
     include: { workspace: true },
@@ -209,6 +227,7 @@ export async function renameWorkspace(
 }
 
 export async function deleteNativeWorkspace(actor: User, workspaceId: string): Promise<void> {
+  if (!isUuid(workspaceId)) throw new OpError("Workspace not found", 404);
   const membership = await prisma.teamMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId: actor.id } },
     include: { workspace: true },

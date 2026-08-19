@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { addSegmentMembers, removeSegmentMember } from "@/lib/field-operations";
 import { OpError } from "@/lib/crm-operations";
+import { isUuid } from "@/lib/ids";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
@@ -17,6 +18,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const rate = await checkRateLimit(`segment-members:${user.id}`, 60, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     const { id } = await params;
+    if (!isUuid(id)) {
+      return NextResponse.json({ error: "List not found" }, { status: 404 });
+    }
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid members payload" }, { status: 400 });
 

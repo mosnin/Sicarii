@@ -126,21 +126,98 @@ export async function listCustomerCharges(
   return { charges: data?.data ?? [] };
 }
 
+export const STRIPE_CHARGE_ID_RE = /^(ch|py)_[A-Za-z0-9]+$/;
+export const STRIPE_PAYMENT_INTENT_ID_RE = /^pi_[A-Za-z0-9]+$/;
+
+export function isStripeChargeId(id: string): boolean {
+  return STRIPE_CHARGE_ID_RE.test(id);
+}
+
+export function isStripePaymentIntentId(id: string): boolean {
+  return STRIPE_PAYMENT_INTENT_ID_RE.test(id);
+}
+
+async function stripeGetJson<T>(
+  path: string,
+  key: string,
+): Promise<T | null> {
+  const res = await fetchWithTimeout(`${STRIPE_API}${path}`, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  if (!res.ok) return null;
+  return (await res.json().catch(() => null)) as T | null;
+}
+
+/**
+ * Resolve the Stripe customer on a charge or payment intent. Used so a refund
+ * cannot be aimed at some other customer's payment just because support has
+ * a valid-looking ch_/pi_ id.
+ */
+export async function customerForStripeRef(opts: {
+  chargeId?: string;
+  paymentIntentId?: string;
+  key: string;
+}): Promise<{ customer: string | null } | { error: string; status: number }> {
+  if (opts.chargeId) {
+    if (!isStripeChargeId(opts.chargeId)) {
+      return { error: "Invalid charge id", status: 400 };
+    }
+    const charge = await stripeGetJson<{ customer?: string | null }>(
+      `/charges/${encodeURIComponent(opts.chargeId)}`,
+      opts.key,
+    );
+    if (!charge) return { error: "Charge not found", status: 404 };
+    return { customer: charge.customer ?? null };
+  }
+  if (opts.paymentIntentId) {
+    if (!isStripePaymentIntentId(opts.paymentIntentId)) {
+      return { error: "Invalid payment intent id", status: 400 };
+    }
+    const pi = await stripeGetJson<{ customer?: string | null }>(
+      `/payment_intents/${encodeURIComponent(opts.paymentIntentId)}`,
+      opts.key,
+    );
+    if (!pi) return { error: "Payment intent not found", status: 404 };
+    return { customer: pi.customer ?? null };
+  }
+  return { error: "chargeId or paymentIntentId is required", status: 400 };
+}
+
 /**
  * Issue a Stripe refund. amountCents omitted = full refund. Idempotent on
  * Stripe's side when the same charge is already fully refunded (they return
- * the existing refund or an error we surface).
+ * the existing refund or an error we surface). When customerId is set, the
+ * charge/PI must belong to that customer or we refuse.
  */
 export async function createRefund(opts: {
   chargeId?: string;
   paymentIntentId?: string;
   amountCents?: number;
   reason?: "duplicate" | "fraudulent" | "requested_by_customer";
+  customerId?: string;
 }): Promise<{ refundId: string; status: string } | { error: string; status: number }> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return { error: "Billing is not configured yet.", status: 501 };
   if (!opts.chargeId && !opts.paymentIntentId) {
     return { error: "chargeId or paymentIntentId is required", status: 400 };
+  }
+  if (opts.chargeId && !isStripeChargeId(opts.chargeId)) {
+    return { error: "Invalid charge id", status: 400 };
+  }
+  if (opts.paymentIntentId && !isStripePaymentIntentId(opts.paymentIntentId)) {
+    return { error: "Invalid payment intent id", status: 400 };
+  }
+
+  if (opts.customerId) {
+    const owner = await customerForStripeRef({
+      chargeId: opts.chargeId,
+      paymentIntentId: opts.paymentIntentId,
+      key,
+    });
+    if ("error" in owner) return owner;
+    if (!owner.customer || owner.customer !== opts.customerId) {
+      return { error: "That charge does not belong to this account.", status: 403 };
+    }
   }
 
   const params: Record<string, string> = {

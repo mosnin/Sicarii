@@ -10,6 +10,8 @@ import {
 } from "@/lib/admin";
 import { addCredits, applyPlan, type PaidPlanName, PLAN_USD, PLANS } from "@/lib/credits";
 import { OpError } from "@/lib/crm-operations";
+import { isUuid } from "@/lib/ids";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   createBillingPortalSession,
   createRefund,
@@ -36,8 +38,8 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("refund"),
-    chargeId: z.string().min(1).optional(),
-    paymentIntentId: z.string().min(1).optional(),
+    chargeId: z.string().regex(/^(ch|py)_[A-Za-z0-9]+$/).max(128).optional(),
+    paymentIntentId: z.string().regex(/^pi_[A-Za-z0-9]+$/).max(128).optional(),
     amountCents: z.number().int().positive().optional(),
   }),
   z.object({
@@ -56,6 +58,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     await requireAdmin();
     const { id } = await params;
+    if (!isUuid(id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const user = await prisma.user.findUnique({
       where: { id },
       select: {
@@ -127,6 +130,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const ctx = await requireAdmin();
     const { id } = await params;
+    if (!isUuid(id)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const rate = await checkRateLimit(`admin-action:${ctx.actor.id}`, 30, 60_000);
+    if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     const target = await prisma.user.findUnique({ where: { id } });
     if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -186,10 +192,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     if (body.action === "refund") {
+      if (!target.stripeCustomerId) {
+        return NextResponse.json({ error: "This account has no Stripe customer" }, { status: 400 });
+      }
       const result = await createRefund({
         chargeId: body.chargeId,
         paymentIntentId: body.paymentIntentId,
         amountCents: body.amountCents,
+        customerId: target.stripeCustomerId,
       });
       if ("error" in result) {
         return NextResponse.json({ error: result.error }, { status: result.status });

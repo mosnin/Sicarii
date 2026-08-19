@@ -1,6 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { adminEmails, isPlatformAdmin } from "@/lib/admin";
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    user: { findUnique: vi.fn(), update: vi.fn() },
+    teamMember: { findFirst: vi.fn(), findMany: vi.fn() },
+    adminAction: { create: vi.fn() },
+  },
+}));
+
+import { accountIsUnlimited, adminEmails, isPlatformAdmin } from "@/lib/admin";
 import { contactWhere, parseListRules } from "@/lib/crm-lists";
+import { isUuid } from "@/lib/ids";
+import { prisma } from "@/lib/prisma";
 
 describe("isPlatformAdmin", () => {
   afterEach(() => {
@@ -55,6 +66,10 @@ describe("contactWhere / list rules", () => {
     expect(contactWhere("u1", { status: "DROP TABLE" }).status).toBeUndefined();
   });
 
+  it("ignores a non-uuid list id so Prisma never sees junk", () => {
+    expect(contactWhere("u1", { listId: "not-a-uuid" }).segments).toBeUndefined();
+  });
+
   it("parseListRules keeps only known keys", () => {
     expect(parseListRules({ status: "NEW", extra: "nope", industry: "SaaS" })).toEqual({
       status: "NEW",
@@ -62,5 +77,40 @@ describe("contactWhere / list rules", () => {
     });
     expect(parseListRules(null)).toBeNull();
     expect(parseListRules("x")).toBeNull();
+  });
+});
+
+describe("isUuid", () => {
+  it("accepts a hex uuid and rejects junk", () => {
+    expect(isUuid("11111111-1111-1111-1111-111111111111")).toBe(true);
+    expect(isUuid("not-a-uuid")).toBe(false);
+    expect(isUuid("")).toBe(false);
+    expect(isUuid(undefined)).toBe(false);
+  });
+});
+
+describe("accountIsUnlimited", () => {
+  afterEach(() => {
+    delete process.env.ADMIN_EMAILS;
+    vi.clearAllMocks();
+  });
+
+  it("is true only for that account's role or ADMIN_EMAILS", async () => {
+    (prisma.user.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      role: "admin",
+      email: "founder@scalar.dev",
+    });
+    expect(await accountIsUnlimited("acct-1")).toBe(true);
+    expect(prisma.teamMember.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("does not inherit unlimited credits from a staff membership on a customer workspace", async () => {
+    (prisma.user.findUnique as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      role: "member",
+      email: "customer@acme.com",
+    });
+    expect(await accountIsUnlimited("customer-ws")).toBe(false);
+    expect(prisma.teamMember.findFirst).not.toHaveBeenCalled();
+    expect(prisma.teamMember.findMany).not.toHaveBeenCalled();
   });
 });

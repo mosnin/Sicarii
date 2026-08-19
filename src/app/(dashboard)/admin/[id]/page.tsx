@@ -4,6 +4,7 @@ import { FloatIn } from "@/components/ui/float-in";
 import { AdminUserActions } from "@/components/dashboard/admin-console";
 import { getDashboardAuth } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
+import { isUuid } from "@/lib/ids";
 import { listCustomerCharges, stripeConfigured } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function AdminUserPage({
   const ctx = await getDashboardAuth();
   if (!ctx?.isStaff) redirect("/dashboard");
   const { id } = await params;
+  if (!isUuid(id)) notFound();
 
   const user = await prisma.user.findUnique({
     where: { id },

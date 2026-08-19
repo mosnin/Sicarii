@@ -4,6 +4,7 @@
 
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { isUuid } from "@/lib/ids";
 
 export const CONTACT_STATUSES = [
   "NEW",
@@ -63,7 +64,7 @@ export function contactWhere(
       { title: { contains: filters.q, mode: "insensitive" } },
     ];
   }
-  if (filters.listId) {
+  if (isUuid(filters.listId)) {
     where.segments = { some: { segmentId: filters.listId } };
   }
   return where;

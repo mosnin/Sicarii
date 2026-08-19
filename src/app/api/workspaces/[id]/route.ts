@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAuthContext } from "@/lib/auth-utils";
 import { deleteNativeWorkspace, renameWorkspace, WORKSPACE_COOKIE } from "@/lib/workspace";
 import { OpError } from "@/lib/crm-operations";
+import { isUuid } from "@/lib/ids";
 
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -12,6 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const ctx = await getAuthContext();
     const { id } = await params;
+    if (!isUuid(id)) return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     const parsed = patchSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Name is required" }, { status: 400 });
     const workspace = await renameWorkspace(ctx.actor, id, parsed.data.name);
@@ -27,6 +29,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const ctx = await getAuthContext();
     const { id } = await params;
+    if (!isUuid(id)) return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     await deleteNativeWorkspace(ctx.actor, id);
     const res = NextResponse.json({ ok: true });
     if (ctx.account.id === id) {
