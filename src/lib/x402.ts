@@ -25,6 +25,8 @@ import {
   type PaymentRequirements,
   type Resource,
 } from "x402/types";
+
+export type { PaymentPayload, PaymentRequirements };
 import { processPriceToAtomicAmount, safeBase64Decode } from "x402/shared";
 
 // 1 credit = $0.01. Keep this in lockstep with src/lib/credits.ts.
@@ -61,7 +63,7 @@ export function isX402Configured(): boolean {
 // knows it can pay its own way instead of stalling. Null when x402 is off.
 export function topUpHint(): string | null {
   if (!isX402Configured()) return null;
-  return "You can pay to continue: POST /api/x402/topup with an x402 payment client (USDC over HTTP 402).";
+  return "You can pay to continue: POST /api/x402/pay for one call or contact, or POST /api/x402/topup for a credit pack (USDC over HTTP 402).";
 }
 
 // Build the facilitator config. Testnet uses the public facilitator (undefined

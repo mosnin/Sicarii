@@ -94,6 +94,22 @@ export const CREDIT_COSTS = {
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
+export const OUT_OF_CREDITS_MESSAGE =
+  "Out of credits. Pay for this call with USDC, buy a credit pack, or wait for your plan reset.";
+
+export function outOfCreditsError(action: CreditAction, quantity = 1): OpError {
+  const qty = Math.max(1, quantity);
+  const need = CREDIT_COSTS[action] * qty;
+  const message =
+    qty === 1
+      ? OUT_OF_CREDITS_MESSAGE
+      : `Out of credits for this run (needs up to ${need} credits for ${qty} step${qty === 1 ? "" : "s"}). Pay for this call with USDC, buy a credit pack, or wait for your plan reset.`;
+  return new OpError(message, 402, {
+    code: "insufficient_credits",
+    detail: { sku: action, quantity: qty, need },
+  });
+}
+
 const RESET_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /**
@@ -115,10 +131,7 @@ export async function hasCredits(userId: string, action: CreditAction): Promise<
 
 export async function ensureCredits(userId: string, action: CreditAction): Promise<void> {
   if (!(await hasCredits(userId, action))) {
-    throw new OpError(
-      "Out of credits. Upgrade your plan or wait for your monthly reset.",
-      402,
-    );
+    throw outOfCreditsError(action);
   }
 }
 
@@ -143,10 +156,7 @@ export async function ensureCreditsForCount(
   });
   const need = CREDIT_COSTS[action] * Math.max(count, 0);
   if (!user || user.creditsRemaining < need) {
-    throw new OpError(
-      `Out of credits for this run (needs up to ${need} credits for ${count} step${count === 1 ? "" : "s"}). Upgrade your plan or wait for your monthly reset.`,
-      402,
-    );
+    throw outOfCreditsError(action, count);
   }
 }
 
@@ -248,10 +258,7 @@ export async function spendCredits(
     data: { creditsRemaining: { decrement: cost } },
   });
   if (count === 0) {
-    throw new OpError(
-      "Out of credits. Upgrade your plan or wait for your monthly reset.",
-      402,
-    );
+    throw outOfCreditsError(action);
   }
 
   // Best-effort audit trail; a ledger failure never fails the action.

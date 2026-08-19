@@ -97,11 +97,12 @@ social messages).
 
 Metered tools gate up front and return a structured
 `{"error": "insufficient_credits", "remedy": {...}}` when the meter is empty.
-Do not stall: `buy_credits` (or `buy_plan` for sustained work; plans include
-`team`) is a TWO-STEP x402 flow - call once with no `xPayment` to get a quote,
-sign the USDC payment with your x402 client, call again with `xPayment` set,
-then retry the call that failed. Idempotent on the on-chain nonce, so retries
-never double-charge. `get_usage` is the price list.
+Do not stall. A subscription is optional (it only includes a monthly
+allowance). Prefer `pay_for` with the sku in the error (one call or one
+contact). `buy_credits` is a pack; `buy_plan` is a 30-day allowance. Each
+is a TWO-STEP x402 flow: call once with no `xPayment` to get a quote, sign
+the USDC payment, call again with `xPayment` set, then retry the failed
+call. Idempotent on the on-chain nonce. `get_usage` is the price list.
 
 ## Pitfalls
 

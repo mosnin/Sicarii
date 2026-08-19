@@ -18,6 +18,17 @@ import {
   x402Network,
   USD_PER_CREDIT,
 } from "@/lib/x402";
+import { settleAndCredit } from "@/lib/x402-grant";
+import {
+  DEFAULT_PACK_CREDITS,
+  MAX_PACK_CREDITS,
+  MAX_SKU_QUANTITY,
+  MIN_PACK_CREDITS,
+  MIN_SKU_QUANTITY,
+  listUsageSkus,
+  resolveSku,
+  usageModelCopy,
+} from "@/lib/x402-skus";
 import {
   OpError,
   listEntities,
@@ -66,9 +77,9 @@ import {
   spendCredits,
   ensureCredits,
   getBilling,
-  addCredits,
   alreadyCredited,
   applyPlan,
+  planFor,
   PLANS,
   PLAN_USD,
   CREDIT_COSTS,
@@ -139,14 +150,21 @@ function opErrorMessage(e: OpError): string {
     // agent parses this, calls buy_credits (USDC over x402, no human), then
     // retries the exact call that failed.
     if (isX402Configured()) {
+      const sku = typeof e.detail?.sku === "string" ? e.detail.sku : undefined;
+      const quantity = typeof e.detail?.quantity === "number" ? e.detail.quantity : 1;
       return JSON.stringify({
         error: "insufficient_credits",
         message: e.message,
         code: 402,
+        sku,
+        need: e.detail?.need,
         remedy: {
-          reason: "Buy more usage yourself with USDC over x402, no human needed.",
-          tools: ["buy_credits", "buy_plan", "get_usage"],
-          suggestedCall: { tool: "buy_credits", args: { credits: 1000 } },
+          reason:
+            "Pay for this call or contact with USDC over x402. No subscription required. A plan only includes a monthly allowance; extra usage is the same meter.",
+          tools: ["pay_for", "buy_credits", "buy_plan", "get_usage"],
+          suggestedCall: sku
+            ? { tool: "pay_for", args: { sku, quantity } }
+            : { tool: "buy_credits", args: { credits: DEFAULT_PACK_CREDITS } },
           retryAfterPurchase: true,
         },
         paymentsConfigured: true,
@@ -222,19 +240,70 @@ async function buyCreditsViaMcp(
   }
   const payload = decodePaymentHeader(xPayment);
   if (!payload) throw new OpError("xPayment is not a valid base64 X-PAYMENT payload.", 400);
-  const verified = await verifyPayment(payload, requirements);
-  if (!verified.ok) throw new OpError(`Payment invalid: ${verified.reason}`, 402);
-  const ref = paymentRef(payload);
-  if (!ref) throw new OpError("Payment payload missing nonce - cannot process idempotently.", 400);
-  const prior = await alreadyCredited(userId, ref);
-  if (prior !== null) return { step: "settled", credited: 0, balance: prior, duplicate: true };
-  const settled = await settlePayment(payload, requirements);
-  if (!settled.ok) throw new OpError(`Settlement failed: ${settled.reason}`, 402);
-  const balance = await grantAfterSettle(
-    () => addCredits(userId, credits, { action: "topup_x402", ref }),
-    { transaction: settled.transaction, userId, ref, amount: String(credits) },
-  );
-  return { step: "settled", credited: credits, balance, network: x402Network(), transaction: settled.transaction };
+  const granted = await settleAndCredit({
+    userId,
+    credits,
+    payload,
+    requirements,
+    ledgerAction: "topup_x402",
+  });
+  if (!granted.ok) throw new OpError(granted.reason, 402);
+  return {
+    step: "settled",
+    credited: granted.credited,
+    balance: granted.balance,
+    duplicate: granted.duplicate,
+    network: x402Network(),
+    transaction: granted.transaction,
+  };
+}
+
+async function payForViaMcp(
+  userId: string,
+  skuId: string,
+  quantity: number,
+  xPayment?: string,
+): Promise<unknown> {
+  if (!isX402Configured()) throw new OpError("Agent payments are not configured yet.", 501);
+  const resolved = resolveSku(skuId, quantity);
+  const requirements = buildRequirements({
+    priceUsd: resolved.priceUsd,
+    resource: resourceUrl("/api/x402/pay"),
+    description: `${resolved.quantity}x ${resolved.sku.label}`,
+  });
+  if (!xPayment) {
+    return {
+      step: "quote",
+      sku: resolved.sku.id,
+      quantity: resolved.quantity,
+      credits: resolved.credits,
+      priceUsd: resolved.priceUsd,
+      ...paymentRequiredBody(
+        requirements,
+        "Sign this with your x402 client and call pay_for again with xPayment set.",
+      ),
+    };
+  }
+  const payload = decodePaymentHeader(xPayment);
+  if (!payload) throw new OpError("xPayment is not a valid base64 X-PAYMENT payload.", 400);
+  const granted = await settleAndCredit({
+    userId,
+    credits: resolved.credits,
+    payload,
+    requirements,
+    ledgerAction: `pay_${resolved.sku.id}`,
+  });
+  if (!granted.ok) throw new OpError(granted.reason, 402);
+  return {
+    step: "settled",
+    sku: resolved.sku.id,
+    quantity: resolved.quantity,
+    credited: granted.credited,
+    balance: granted.balance,
+    duplicate: granted.duplicate,
+    network: x402Network(),
+    transaction: granted.transaction,
+  };
 }
 
 async function buyPlanViaMcp(
@@ -905,12 +974,18 @@ const handler = createMcpHandler(
       async (_args, extra) =>
         run(async () => {
           const b = await getBilling(userIdFrom(extra));
-          return { ...b, usdPerCredit: USD_PER_CREDIT, paymentsConfigured: isX402Configured() };
+          return {
+            ...b,
+            includedCredits: planFor(b.plan).credits,
+            usdPerCredit: USD_PER_CREDIT,
+            paymentsConfigured: isX402Configured(),
+            model: usageModelCopy(),
+          };
         }),
     );
     server.tool(
       "get_usage",
-      "The Scalar price list: how many credits each metered action costs, the plans you can buy, top-up limits, and your current balance. Free and read-only. Use it to plan spend and pick what to buy when low.",
+      "The Scalar price list: included plan allowance, per-call and per-contact SKUs, packs, and your current balance. Free and read-only. Use it to pick pay_for (one call or contact) or buy_credits (a pack) when the meter is empty.",
       {},
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (_args, extra) =>
@@ -919,23 +994,42 @@ const handler = createMcpHandler(
           return {
             creditsRemaining: b.creditsRemaining,
             plan: b.plan,
+            includedCredits: planFor(b.plan).credits,
             usdPerCredit: USD_PER_CREDIT,
+            model: usageModelCopy(),
             actionCosts: CREDIT_COSTS,
+            skus: listUsageSkus().map((sku) => ({
+              ...sku,
+              usd: Math.round(sku.credits * USD_PER_CREDIT * 100) / 100,
+            })),
             plans: (Object.keys(PLAN_USD) as PaidPlanName[]).map((plan) => ({
               plan,
               usd: PLAN_USD[plan],
               credits: PLANS[plan].credits,
               period: "30 days",
             })),
-            topUp: { minCredits: 100, maxCredits: 100000 },
+            payFor: { minQuantity: MIN_SKU_QUANTITY, maxQuantity: MAX_SKU_QUANTITY },
+            topUp: { minCredits: MIN_PACK_CREDITS, maxCredits: MAX_PACK_CREDITS },
             paymentsConfigured: isX402Configured(),
           };
         }),
     );
     server.tool(
+      "pay_for",
+      "Pay for one call or one contact with USDC over x402. No subscription required. A plan only includes a monthly allowance; this buys extra usage on the same meter. sku is a contact bundle (contact = LinkedIn+email, contact_full adds phone) or a metered action (email, linkedin, phone, web_search, find_companies, ...). quantity defaults to 1. TWO STEPS: (1) call with { sku, quantity? } and NO xPayment to get a quote; (2) sign the USDC payment and call again with the same sku/quantity plus xPayment. Then retry the tool that failed. Credits are spent only if the lookup hits. Idempotent on the on-chain nonce.",
+      {
+        sku: z.string().min(1).max(64),
+        quantity: z.number().int().min(MIN_SKU_QUANTITY).max(MAX_SKU_QUANTITY).default(1),
+        xPayment: z.string().optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ sku, quantity, xPayment }, extra) =>
+        gated(extra, "x402_buy", 40, (userId) => payForViaMcp(userId, sku, quantity ?? 1, xPayment)),
+    );
+    server.tool(
       "buy_credits",
-      "Buy more Scalar usage credits with USDC over x402 (pay as you go, $0.01 per credit). TWO STEPS: (1) call with { credits } and NO xPayment to get a quote (the payment requirements); (2) have your x402 client sign a USDC payment for those requirements and call again with the same { credits } plus xPayment set to the base64 X-PAYMENT header. Returns the new balance. Call this when a tool returns insufficient_credits, then retry the failed call. Safe to retry: a settled payment is never charged twice (idempotent on the on-chain nonce).",
-      { credits: z.number().int().min(100).max(100000).default(1000), xPayment: z.string().optional() },
+      "Buy a credit pack with USDC over x402 (pay as you go, $0.01 per credit, minimum 100). Use pay_for when you only need one call or one contact. TWO STEPS: (1) call with { credits } and NO xPayment to get a quote; (2) sign the USDC payment and call again with the same { credits } plus xPayment. Then retry the failed call. Idempotent on the on-chain nonce.",
+      { credits: z.number().int().min(MIN_PACK_CREDITS).max(MAX_PACK_CREDITS).default(DEFAULT_PACK_CREDITS), xPayment: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ credits, xPayment }, extra) =>
         gated(extra, "x402_buy", 30, (userId) => buyCreditsViaMcp(userId, credits, xPayment)),
@@ -1181,7 +1275,7 @@ ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. En
 
 FOR SUSTAINED UNSUPERVISED WORK, PROPOSE A BUDGET INSTEAD OF RUNNING BLIND. If the operator wants you working on a schedule while they are away, call propose_autopilot_plan with a total credit ceiling split across discovery/enrichment/outreach - it is created as a draft and needs a human to approve it from the dashboard (you cannot approve your own plan). Once approved it runs on its cadence and hard-stops cleanly at its cap instead of erroring; check get_autopilot_status any time, and call pause_autopilot if you decide it should stop early.
 
-WHEN YOU RUN OUT OF CREDITS, PAY AND RETRY. Metered tools return a JSON error with "error":"insufficient_credits" carrying a remedy. Do not stall or ask the human. Instead: (1) call buy_credits with no xPayment to get a quote, (2) sign the USDC payment with your x402 client and call buy_credits again with xPayment set, (3) retry the exact call that failed. Top-ups are idempotent, so a retried payment never double-charges. For sustained work, buy_plan is cheaper per credit. Only escalate to the human if buy_credits reports that agent payments are not configured.
+WHEN YOU RUN OUT OF CREDITS, PAY AND RETRY. A subscription is optional: it only includes a monthly allowance. Extra usage (or all usage, if there is no plan) is paid on demand. Metered tools return a JSON error with "error":"insufficient_credits" carrying a remedy with the exact sku. Do not stall or ask the human. Instead: (1) call pay_for with that sku (or buy_credits for a pack, or buy_plan for a monthly allowance) and no xPayment to get a quote, (2) sign the USDC payment with your x402 client and call again with xPayment set, (3) retry the exact call that failed. Payments are idempotent, so a retried settlement never double-charges. Only escalate to the human if pay_for reports that agent payments are not configured.
 
 Be economical: every external call spends real money. Orient before you discover, dedupe by reading first, enrich only what you will act on, and always advance the record's state so your next session resumes cleanly.`,
   },

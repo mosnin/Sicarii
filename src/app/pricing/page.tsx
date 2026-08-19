@@ -94,7 +94,9 @@ const plans: Plan[] = [
 // every action is priced at roughly 3x its underlying provider cost, so usage
 // is always margin-positive. CRM reads/writes are free.
 const creditCosts: { action: string; credits: string }[] = [
-  { action: "Agent turn / CRM read & write", credits: "1" },
+  { action: "Agent turn / CRM read & write", credits: "free" },
+  { action: "One contact (LinkedIn + email)", credits: "11" },
+  { action: "One contact plus phone", credits: "23" },
   { action: "Web search", credits: "2" },
   { action: "Find a contact's LinkedIn", credits: "3" },
   { action: "Find a verified work email", credits: "8" },
@@ -140,9 +142,9 @@ export default function PricingPage() {
               <span className="text-gradient-orange">your pipeline</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-              A seat plus usage credits. You pay for the heavy lifting -
-              discovery, enrichment, agent runs - as you create value, not for
-              shelfware. Cancel anytime.
+              A plan includes a monthly allowance. Agents can also buy one
+              contact or one data call with USDC, no subscription required.
+              Extra usage is the same meter. Cancel anytime.
             </p>
           </div>
         </section>
@@ -206,8 +208,22 @@ export default function PricingPage() {
               ))}
             </div>
 
-            {/* Enterprise strip */}
             <div className="mt-6 rounded-3xl border border-border bg-card p-6 text-center sm:flex sm:items-center sm:justify-between sm:text-left">
+              <div>
+                <p className="font-brand text-lg text-foreground">Pay per call</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  No plan needed. Connected agents buy one contact or one data
+                  call with USDC (x402). A subscription just includes more of
+                  the same meter up front.
+                </p>
+              </div>
+              <p className="mt-4 font-brand text-sm text-primary sm:mt-0">
+                From $0.11 per contact
+              </p>
+            </div>
+
+            {/* Enterprise strip */}
+            <div className="mt-4 rounded-3xl border border-border bg-card p-6 text-center sm:flex sm:items-center sm:justify-between sm:text-left">
               <div>
                 <p className="font-brand text-lg text-foreground">Enterprise</p>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -246,14 +262,17 @@ export default function PricingPage() {
                 >
                   <span className="text-foreground">{row.action}</span>
                   <span className="font-brand text-primary">
-                    {row.credits} {row.credits === "1" ? "credit" : "credits"}
+                    {row.credits === "free"
+                      ? "free"
+                      : `${row.credits} ${row.credits === "1" ? "credit" : "credits"}`}
                   </span>
                 </div>
               ))}
             </div>
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              Run out? Top up anytime, or your plan resets monthly. You are only
-              charged when a lookup actually returns data, never for a miss.
+              Run out of the included allowance? Pay for the next call or
+              contact over x402, or buy a credit pack. You are only charged when
+              a lookup actually returns data, never for a miss.
             </p>
           </div>
         </section>

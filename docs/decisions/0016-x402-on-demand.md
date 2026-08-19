@@ -1,0 +1,40 @@
+# 0016 - x402 on-demand (pay per call or contact)
+
+**Date:** 2026-08-19 · **Status:** SHIPPED (code) · **Owner:** banker + vision
+(founder directive)
+
+## The decision
+
+A subscription is an included monthly allowance on the existing credit meter.
+It is not the only way in. A connected agent can buy **one call** or **one
+contact** with USDC over x402, then keep working. Extra usage after a plan
+runs dry is the same path: `pay_for` for the exact sku, or `buy_credits` for
+a pack.
+
+One meter. Purchased credits sit on it. The original tool still spends only
+when a lookup hits, so a miss never burns the payment.
+
+## The gates
+
+| Gate | Verdict | Rung | Evidence |
+|---|---|---|---|
+| Desirable | PASS | reasoned | Founder asked for pay-per-call and buy-contacts-on-demand, with a plan only granting included usage. |
+| Feasible | PASS | tested | Reuses x402 verify/settle + `addCredits` idempotency. SKU catalog is derived from `CREDIT_COSTS`. Unit tests cover prices, unknown skus, and the 402 sku hint. |
+| Deliverable | PASS | reasoned | No schema change. New route `POST /api/x402/pay`, MCP `pay_for`. Env-gated like the rest of x402. |
+| Viable | PASS | reasoned | Same $0.01/credit as packs and plans. Contact SKU is LinkedIn+email (11) or plus phone (23). Margin stays the 3x provider rule already on each action. |
+
+**Tie-break:** none. **Founder call honored:** on-demand first, subscription as
+allowance.
+
+## How it works
+
+- `src/lib/x402-skus.ts` - contact bundles + one SKU per metered action.
+- `src/lib/x402-grant.ts` - shared settle-then-credit (packs and per-call).
+- `POST /api/x402/pay` `{ sku, quantity? }` - HTTP 402 then grant.
+- MCP `pay_for` - two-step quote / settle, same resource URL as the HTTP route.
+- Out-of-credits errors carry `{ sku, quantity, need }` so the agent pays for
+  that call instead of guessing a 1000-credit pack.
+
+## Debts owed to reality
+
+- One live `pay_for` settlement on Base (the same Phase 0 debt as 0007).

@@ -55,6 +55,7 @@ describe("topUpHint", () => {
   it("points at the top-up endpoint when configured", () => {
     process.env.X402_PAY_TO = "0xabc";
     process.env.X402_NETWORK = "base-sepolia";
+    expect(topUpHint()).toContain("/api/x402/pay");
     expect(topUpHint()).toContain("/api/x402/topup");
   });
 });

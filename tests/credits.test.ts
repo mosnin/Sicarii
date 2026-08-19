@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
-import { PLANS, CREDIT_COSTS, planFor } from "@/lib/credits";
+import { PLANS, CREDIT_COSTS, planFor, outOfCreditsError } from "@/lib/credits";
 
 describe("credit constants", () => {
   it("every action has a positive credit cost", () => {
@@ -47,5 +47,15 @@ describe("planFor", () => {
     expect(planFor(null)).toBe(PLANS.free);
     expect(planFor(undefined)).toBe(PLANS.free);
     expect(planFor("enterprise-galaxy")).toBe(PLANS.free);
+  });
+});
+
+describe("outOfCreditsError", () => {
+  it("names the sku so an agent can pay for that call", () => {
+    const err = outOfCreditsError("email");
+    expect(err.status).toBe(402);
+    expect(err.code).toBe("insufficient_credits");
+    expect(err.detail).toEqual({ sku: "email", quantity: 1, need: CREDIT_COSTS.email });
+    expect(err.message).toMatch(/Pay for this call/);
   });
 });

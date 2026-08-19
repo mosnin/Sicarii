@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
 
     if (outOfCredits && enriched === 0) {
       return NextResponse.json(
-        { error: "Out of credits. Upgrade your plan or wait for your monthly reset." },
+        { error: "Out of credits. Pay for this call with USDC, buy a credit pack, or wait for your plan reset." },
         { status: 402 },
       );
     }
