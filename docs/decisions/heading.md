@@ -4,9 +4,9 @@
 > session. Keep it to a glance; update it on every RECORD. (Volatile - the *aim*.)
 
 **Binding constraint right now:** _The product is correct, honest, billable, and
-hardened (audits 2026-06-06 -> 09; PRs #19-#29) - and still **unfelt**. Nothing
-has been observed running end to end, and the product has zero choreographed
-moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
+hardened - and still **unfelt**. Admin desk + lists + native workspaces shipped
+in code (0015). Nothing has been observed running end to end. Current Vision
+score: 6/10 (idea 9, felt experience 4)._
 
 **The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
 
@@ -31,6 +31,13 @@ approved the build; Clerk Orgs + synthetic workspace accounts, share-to-team
 deep copy, workspace agent keys with Activity attribution, team plan $299/30d.
 Owed: enable Organizations in Clerk + org webhook events + STRIPE_PRICE_TEAM,
 then one live org round-trip (create, invite, switch, share, agent write).
+
+**Parallel cycle shipped: 0015 - Admin, lists, native workspaces**
+(`0015-admin-workspaces-lists.md`). `/admin` desk (credits, plans, refunds),
+CRM lists/segments on the CRM page, Scalar-native workspaces (`ws_`) switched
+from the sidebar (the whole platform for one business; not Clerk orgs, not
+Settings). Admins unlimited. Owed: `ADMIN_EMAILS` + `db push` + one live
+workspace/list/refund pass.
 
 **Parallel cycle shipped: 0007 - x402 agent payments** (`0007-x402-agent-payments.md`).
 The CRM your agents run now lets the agents pay for it: USDC top-ups

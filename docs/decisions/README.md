@@ -78,6 +78,8 @@ exponential growth into a plateau.
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
+| Admin desk live | 0015 · Feasible | `ADMIN_EMAILS` set, grant credits + refund a test charge | founder |
+| Native workspace + list | 0015 · Desirable | create a workspace, make a list, filter  the CRM | founder |
 
 ## Kills & falsifieds (do not re-open)
 

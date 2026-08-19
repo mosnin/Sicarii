@@ -1,17 +1,45 @@
 // Teams: resolve and provision workspace account rows.
 //
-// A team workspace IS a users row (accountType "workspace", clerkId = the Clerk
-// Organization id). Every existing userId-scoped query, the credit meter, API
-// keys, and OAuth then work for teams with no changes - see
-// docs/engineering/teams-plan-2026-07-11.md. This module is the one place that
-// maps a Clerk org to that row and keeps membership mirrored.
+// A team workspace IS a users row (accountType "workspace"). Every existing
+// userId-scoped query, the credit meter, API keys, and OAuth then work for
+// teams with no changes - see docs/engineering/teams-plan-2026-07-11.md.
+//
+// Two ways a workspace comes into being:
+//   1. Clerk Organization (clerkId = org_...) - mirrored by webhook / first sight
+//   2. Scalar-native (clerkId = ws_<uuid>) - created in-app for a second business
+//
+// Active context: the scalar_workspace cookie (a users.id the human belongs
+// to). The home account is the default. Clerk Organizations are not the
+// switcher - a workspace is the whole Scalar platform for one business.
 
-import { prisma } from "@/lib/prisma";
+import { randomUUID } from "crypto";
+import { cookies } from "next/headers";
 import type { User } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { isPlatformAdmin } from "@/lib/admin";
+import { planFor } from "@/lib/credits";
+import { OpError } from "@/lib/crm-operations";
+import { isUuid } from "@/lib/ids";
+
+export const WORKSPACE_COOKIE = "scalar_workspace";
 
 /** Map a Clerk org role ("org:admin" / "org:member") to our role string. */
 export function roleFromClerk(orgRole?: string | null): string {
   return orgRole === "org:admin" || orgRole === "admin" ? "admin" : "member";
+}
+
+export function isNativeWorkspace(clerkId: string): boolean {
+  return clerkId.startsWith("ws_");
+}
+
+export async function readWorkspaceCookie(): Promise<string | null> {
+  try {
+    const jar = await cookies();
+    const value = jar.get(WORKSPACE_COOKIE)?.value?.trim();
+    return isUuid(value) ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -54,16 +82,164 @@ export async function resolveWorkspace(opts: {
   return workspace;
 }
 
+/** Resolve a cookie-selected workspace the actor actually belongs to. */
+export async function resolveCookieWorkspace(
+  actor: User,
+  workspaceId: string,
+): Promise<{ account: User; workspaceRole: string } | null> {
+  if (!isUuid(workspaceId) || workspaceId === actor.id) return null;
+  const membership = await prisma.teamMember.findUnique({
+    where: { workspaceId_userId: { workspaceId, userId: actor.id } },
+    include: { workspace: true },
+  });
+  if (!membership || membership.workspace.accountType !== "workspace") return null;
+  return { account: membership.workspace, workspaceRole: membership.role };
+}
+
+export type WorkspaceSummary = {
+  workspaceId: string;
+  name: string;
+  role: string;
+  clerkId: string;
+  native: boolean;
+  plan: string;
+  creditsRemaining: number;
+};
+
 /** The workspaces a human belongs to (id + display name + role), for pickers. */
-export async function listUserWorkspaces(userId: string) {
+export async function listUserWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
   const rows = await prisma.teamMember.findMany({
-    where: { userId },
-    include: { workspace: { select: { id: true, firstName: true } } },
+    where: { userId, workspace: { accountType: "workspace" } },
+    include: {
+      workspace: {
+        select: {
+          id: true,
+          firstName: true,
+          clerkId: true,
+          plan: true,
+          creditsRemaining: true,
+        },
+      },
+    },
     orderBy: { createdAt: "asc" },
   });
   return rows.map((m) => ({
     workspaceId: m.workspace.id,
-    name: m.workspace.firstName ?? "Team workspace",
+    name: m.workspace.firstName ?? "Workspace",
     role: m.role,
+    clerkId: m.workspace.clerkId,
+    native: isNativeWorkspace(m.workspace.clerkId),
+    plan: m.workspace.plan,
+    creditsRemaining: m.workspace.creditsRemaining,
   }));
+}
+
+export async function workspaceQuota(actor: User): Promise<{
+  used: number;
+  allowed: number;
+  unlimited: boolean;
+}> {
+  const used = await prisma.teamMember.count({
+    where: { userId: actor.id, workspace: { accountType: "workspace" } },
+  });
+  if (isPlatformAdmin(actor)) {
+    return { used, allowed: Number.POSITIVE_INFINITY, unlimited: true };
+  }
+  return { used, allowed: planFor(actor.plan).workspaces, unlimited: false };
+}
+
+/**
+ * Create a Scalar-native workspace for another business. Isolated CRM,
+ * segments, pipelines, and its own credit meter. Free plans cannot create
+ * one (users pay); platform admins have no cap.
+ */
+export async function createNativeWorkspace(actor: User, name: string): Promise<User> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new OpError("Workspace name is required", 400);
+  if (trimmed.length > 80) throw new OpError("Workspace name is too long", 400);
+  if (actor.accountType !== "user") {
+    throw new OpError("Switch to your personal account to create a workspace", 400);
+  }
+
+  const unlimited = isPlatformAdmin(actor);
+
+  // Quota + insert in one transaction so two parallel creates cannot sneak
+  // past the plan cap, and a failed membership insert cannot leave an orphan
+  // workspace row with no owner.
+  return prisma.$transaction(async (tx) => {
+    // Serialize creates for this human so two parallel posts cannot both
+    // read "under cap" and insert. Locks the actor row until commit.
+    await tx.$queryRaw`SELECT id FROM users WHERE id = ${actor.id}::uuid FOR UPDATE`;
+    const used = await tx.teamMember.count({
+      where: { userId: actor.id, workspace: { accountType: "workspace" } },
+    });
+    const allowed = unlimited ? Number.POSITIVE_INFINITY : planFor(actor.plan).workspaces;
+    if (!unlimited && used >= allowed) {
+      throw new OpError(
+        allowed === 0
+          ? "Upgrade your plan to create workspaces for different businesses."
+          : `Your ${actor.plan} plan includes ${allowed} workspace${allowed === 1 ? "" : "s"}. Upgrade for more.`,
+        402,
+      );
+    }
+
+    const workspace = await tx.user.create({
+      data: {
+        clerkId: `ws_${randomUUID()}`,
+        accountType: "workspace",
+        email: "",
+        firstName: trimmed,
+        plan: unlimited ? "beta" : "free",
+        creditsRemaining: unlimited ? 100_000 : 200,
+        role: unlimited ? "admin" : "member",
+      },
+    });
+    await tx.teamMember.create({
+      data: { workspaceId: workspace.id, userId: actor.id, role: "admin" },
+    });
+    return workspace;
+  });
+}
+
+export async function renameWorkspace(
+  actor: User,
+  workspaceId: string,
+  name: string,
+): Promise<User> {
+  if (!isUuid(workspaceId)) throw new OpError("Workspace not found", 404);
+  const trimmed = name.trim();
+  if (!trimmed) throw new OpError("Workspace name is required", 400);
+  if (trimmed.length > 80) throw new OpError("Workspace name is too long", 400);
+  const membership = await prisma.teamMember.findUnique({
+    where: { workspaceId_userId: { workspaceId, userId: actor.id } },
+    include: { workspace: true },
+  });
+  if (!membership || membership.workspace.accountType !== "workspace") {
+    throw new OpError("Workspace not found", 404);
+  }
+  if (membership.role !== "admin" && !isPlatformAdmin(actor)) {
+    throw new OpError("Only a workspace admin can rename it", 403);
+  }
+  return prisma.user.update({
+    where: { id: workspaceId },
+    data: { firstName: trimmed },
+  });
+}
+
+export async function deleteNativeWorkspace(actor: User, workspaceId: string): Promise<void> {
+  if (!isUuid(workspaceId)) throw new OpError("Workspace not found", 404);
+  const membership = await prisma.teamMember.findUnique({
+    where: { workspaceId_userId: { workspaceId, userId: actor.id } },
+    include: { workspace: true },
+  });
+  if (!membership || membership.workspace.accountType !== "workspace") {
+    throw new OpError("Workspace not found", 404);
+  }
+  if (!isNativeWorkspace(membership.workspace.clerkId)) {
+    throw new OpError("Delete this team from Clerk Organizations instead", 400);
+  }
+  if (membership.role !== "admin" && !isPlatformAdmin(actor)) {
+    throw new OpError("Only a workspace admin can delete it", 403);
+  }
+  await prisma.user.delete({ where: { id: workspaceId } });
 }

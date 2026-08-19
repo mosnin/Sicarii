@@ -24,6 +24,15 @@ const createSchema = z.object({
   name: z.string().trim().min(1).max(120),
   goal: z.string().trim().max(2000).optional(),
   contactIds: z.array(z.string().uuid()).max(500).optional(),
+  kind: z.enum(["list", "smart"]).optional(),
+  rules: z
+    .object({
+      status: z.string().trim().max(40).optional(),
+      industry: z.string().trim().max(120).optional(),
+      tag: z.string().trim().max(50).optional(),
+      q: z.string().trim().max(200).optional(),
+    })
+    .optional(),
 });
 
 // POST /api/segments - create a segment manually (optionally with members).
@@ -34,10 +43,18 @@ export async function POST(req: NextRequest) {
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid segment" }, { status: 400 });
-    const { name, goal, contactIds } = parsed.data;
+    const { name, goal, contactIds, kind, rules } = parsed.data;
+    const resolvedKind = kind ?? (rules ? "smart" : "list");
 
     const segment = await prisma.segment.create({
-      data: { userId: user.id, name, goal, source: "manual" },
+      data: {
+        userId: user.id,
+        name,
+        goal,
+        source: rules ? "filter" : "manual",
+        kind: resolvedKind,
+        rules: rules ?? undefined,
+      },
     });
 
     if (contactIds?.length) {

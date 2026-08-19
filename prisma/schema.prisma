@@ -637,10 +637,19 @@ model Segment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // "list" = a named collection you put people in by hand (or from a
+  // selection). "smart" = a saved filter / prompt-built set. The CRM page
+  // treats both as first-class views so a 100k-contact book is not one pile.
+  kind    String  @default("list") // "list" | "smart"
+  // Saved filter for smart lists: { status?, industry?, tag?, q? }. Prompt-built
+  // segments keep their members in ContactSegment and may leave this null.
+  rules   Json?
+
   members  ContactSegment[]
   variants OutreachVariant[]
 
   @@index([userId])
+  @@index([userId, kind])
   @@map("segments")
 }
 
@@ -981,4 +990,21 @@ model AutopilotRun {
   @@index([planId, createdAt])
   @@index([userId])
   @@map("autopilot_runs")
+}
+
+// Append-only audit of platform-admin actions (credit grants, refunds, plan
+// comps, role changes). The actor is a human users.id; targetUserId is the
+// account that was touched (personal or workspace). No FK so a deleted user
+// still leaves a readable trail.
+model AdminAction {
+  id           String   @id @default(uuid())
+  adminId      String
+  targetUserId String?
+  action       String // "grant_credits" | "set_plan" | "refund" | "set_role"
+  detail       Json?
+  createdAt    DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@map("admin_actions")
 }

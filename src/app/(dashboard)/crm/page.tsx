@@ -1,9 +1,5 @@
 import Link from "next/link";
-import {
-  Users,
-  Building2,
-  Plus,
-} from "lucide-react";
+import { Users, Building2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,22 +8,32 @@ import { FloatIn } from "@/components/ui/float-in";
 import { ContactRows } from "@/components/dashboard/crm-rows";
 import { EntityRows } from "@/components/dashboard/crm-rows";
 import { CrmHeaderMenu } from "@/components/dashboard/crm-header-menu";
+import { CrmListsNav } from "@/components/dashboard/crm-lists-nav";
 import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
+import { contactWhere, listIndustries, listTags, parseListRules } from "@/lib/crm-lists";
+import { isUuid } from "@/lib/ids";
 
 type Tab = "contacts" | "entities";
 
-// Server-side page size for both lists.
 const PAGE = 500;
 
 export default async function CrmPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; page?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    page?: string;
+    list?: string;
+    industry?: string;
+    tag?: string;
+    status?: string;
+    q?: string;
+  }>;
 }) {
-  const { tab: tabParam, page: pageParam } = await searchParams;
-  const tab: Tab = tabParam === "entities" ? "entities" : "contacts";
-  const parsedPage = Number.parseInt(pageParam ?? "1", 10);
+  const params = await searchParams;
+  const tab: Tab = params.tab === "entities" ? "entities" : "contacts";
+  const parsedPage = Number.parseInt(params.page ?? "1", 10);
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const user = await getDbUser();
 
@@ -42,27 +48,60 @@ export default async function CrmPage({
     );
   }
 
-  const [contactCount, entityCount] = await Promise.all([
-    prisma.contact.count({ where: { userId: user.id } }),
-    prisma.entity.count({ where: { userId: user.id } }),
+  const rawList = params.list?.trim() || undefined;
+  const listId = isUuid(rawList) ? rawList : undefined;
+  const industry = params.industry?.trim() || undefined;
+  const tag = params.tag?.trim() || undefined;
+  const status = params.status?.trim() || undefined;
+  const q = params.q?.trim() || undefined;
+
+  let smartRules = null;
+  if (listId) {
+    const seg = await prisma.segment.findFirst({
+      where: { id: listId, userId: user.id },
+      select: { kind: true, rules: true },
+    });
+    if (seg?.kind === "smart") smartRules = parseListRules(seg.rules);
+  }
+
+  const contactFilters = smartRules
+    ? { ...smartRules, industry: industry ?? smartRules.industry, tag: tag ?? smartRules.tag, status: status ?? smartRules.status, q: q ?? smartRules.q }
+    : { listId, industry, tag, status, q };
+
+  const [contactCount, entityCount, lists, industries, tags] = await Promise.all([
+    prisma.contact.count({ where: contactWhere(user.id, contactFilters) }),
+    prisma.entity.count({
+      where: {
+        userId: user.id,
+        ...(industry ? { industry: { equals: industry, mode: "insensitive" } } : {}),
+      },
+    }),
+    prisma.segment.findMany({
+      where: { userId: user.id },
+      orderBy: { updatedAt: "desc" },
+      include: { _count: { select: { members: true } } },
+    }),
+    listIndustries(user.id),
+    listTags(user.id),
   ]);
+
+  const allContactCount = listId || industry || tag || status || q
+    ? await prisma.contact.count({ where: { userId: user.id } })
+    : contactCount;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <FloatIn delay={0} className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-brand text-2xl sm:text-3xl text-foreground">CRM</h1>
           <p className="text-muted-foreground mt-1">
-            Your context engine - businesses and the people inside them, owned and
-            enriched.
+            Lists and segments so a big book stays sorted by who they are, not
+            one pile.
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Link href="/discover">
-              Discover
-            </Link>
+            <Link href="/discover">Discover</Link>
           </Button>
           <Button variant="glow" asChild>
             <Link href={tab === "entities" ? "/crm/entity/new" : "/crm/new"}>
@@ -74,12 +113,11 @@ export default async function CrmPage({
         </div>
       </FloatIn>
 
-      {/* Tabs */}
       <FloatIn delay={0.06}>
         <div className="flex gap-1 border-b border-border">
           <TabLink href="/crm?tab=contacts" active={tab === "contacts"}>
             Contacts
-            <span className="text-muted-foreground">{contactCount}</span>
+            <span className="text-muted-foreground">{allContactCount}</span>
           </TabLink>
           <TabLink href="/crm?tab=entities" active={tab === "entities"}>
             Entities
@@ -90,9 +128,39 @@ export default async function CrmPage({
 
       <FloatIn delay={0.1}>
         {tab === "contacts" ? (
-          <ContactsList userId={user.id} page={page} />
+          <div className="flex flex-col gap-6 lg:flex-row">
+            <CrmListsNav
+              lists={lists.map((l) => ({
+                id: l.id,
+                name: l.name,
+                kind: l.kind,
+                source: l.source,
+                members: l._count.members,
+              }))}
+              industries={industries}
+              tags={tags}
+              active={{ list: listId, industry, tag, status }}
+            />
+            <div className="min-w-0 flex-1 space-y-4">
+              {(listId || industry || tag || status) && (
+                <p className="text-sm text-muted-foreground">
+                  Showing {contactCount.toLocaleString()}
+                  {listId ? " in this list" : ""}
+                  {industry ? ` in ${industry}` : ""}
+                  {tag ? ` tagged ${tag}` : ""}
+                  {status ? ` · ${status.toLowerCase()}` : ""}.
+                </p>
+              )}
+              <ContactsList
+                userId={user.id}
+                page={page}
+                filters={contactFilters}
+                lists={lists.map((l) => ({ id: l.id, name: l.name }))}
+              />
+            </div>
+          </div>
         ) : (
-          <EntitiesList userId={user.id} page={page} />
+          <EntitiesList userId={user.id} page={page} industry={industry} />
         )}
       </FloatIn>
 
@@ -100,15 +168,44 @@ export default async function CrmPage({
         tab={tab}
         page={page}
         count={tab === "contacts" ? contactCount : entityCount}
+        extra={
+          listId || industry || tag || status
+            ? {
+                list: listId,
+                industry,
+                tag,
+                status,
+              }
+            : undefined
+        }
       />
     </div>
   );
 }
 
-// Minimal pager, only shown once a list outgrows a single page.
-function Pager({ tab, page, count }: { tab: Tab; page: number; count: number }) {
+function Pager({
+  tab,
+  page,
+  count,
+  extra,
+}: {
+  tab: Tab;
+  page: number;
+  count: number;
+  extra?: { list?: string; industry?: string; tag?: string; status?: string };
+}) {
   if (count <= PAGE) return null;
   const totalPages = Math.ceil(count / PAGE);
+  const qs = (n: number) => {
+    const p = new URLSearchParams();
+    p.set("tab", tab);
+    p.set("page", String(n));
+    if (extra?.list) p.set("list", extra.list);
+    if (extra?.industry) p.set("industry", extra.industry);
+    if (extra?.tag) p.set("tag", extra.tag);
+    if (extra?.status) p.set("status", extra.status);
+    return `/crm?${p.toString()}`;
+  };
 
   return (
     <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
@@ -118,7 +215,7 @@ function Pager({ tab, page, count }: { tab: Tab; page: number; count: number }) 
       <div className="flex gap-2">
         <Button variant="outline" size="sm" asChild>
           <Link
-            href={`/crm?tab=${tab}&page=${Math.max(1, page - 1)}`}
+            href={qs(Math.max(1, page - 1))}
             aria-disabled={page <= 1}
             className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
           >
@@ -127,7 +224,7 @@ function Pager({ tab, page, count }: { tab: Tab; page: number; count: number }) 
         </Button>
         <Button variant="outline" size="sm" asChild>
           <Link
-            href={`/crm?tab=${tab}&page=${Math.min(totalPages, page + 1)}`}
+            href={qs(Math.min(totalPages, page + 1))}
             aria-disabled={page >= totalPages}
             className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
           >
@@ -155,7 +252,7 @@ function TabLink({
         "-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm transition-colors",
         active
           ? "border-primary text-foreground font-medium"
-          : "border-transparent text-muted-foreground hover:text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground",
       )}
     >
       {children}
@@ -163,12 +260,21 @@ function TabLink({
   );
 }
 
-async function ContactsList({ userId, page }: { userId: string; page: number }) {
+async function ContactsList({
+  userId,
+  page,
+  filters,
+  lists,
+}: {
+  userId: string;
+  page: number;
+  filters: Parameters<typeof contactWhere>[1];
+  lists: { id: string; name: string }[];
+}) {
   const contacts = await prisma.contact.findMany({
-    where: { userId },
+    where: contactWhere(userId, filters),
     orderBy: { updatedAt: "desc" },
-    include: { entity: { select: { id: true, name: true } } },
-    // The list row never renders the enrichment blob; skip pulling KBs per row.
+    include: { entity: { select: { id: true, name: true, industry: true } } },
     omit: { enrichment: true },
     skip: (page - 1) * PAGE,
     take: PAGE,
@@ -179,8 +285,12 @@ async function ContactsList({ userId, page }: { userId: string; page: number }) 
       <Card>
         <EmptyState
           icon={Users}
-          title="Let's find your people"
-          description="Tell Scalar who you sell to and it discovers real people into your CRM, verified and deduped. Or add one by hand."
+          title={filters?.listId || filters?.industry || filters?.tag ? "Nothing in this view" : "Let's find your people"}
+          description={
+            filters?.listId || filters?.industry || filters?.tag
+              ? "This list or filter is empty. Add people from All contacts, or discover new ones."
+              : "Tell Scalar who you sell to and it discovers real people into your CRM, verified and deduped. Or add one by hand."
+          }
           action={
             <div className="flex flex-col items-center gap-2 sm:flex-row">
               <Button variant="glow" asChild>
@@ -199,7 +309,6 @@ async function ContactsList({ userId, page }: { userId: string; page: number }) 
     );
   }
 
-  // Serialise dates so the client component receives plain strings.
   const rows = contacts.map((c) => ({
     id: c.id,
     name: c.name,
@@ -211,15 +320,25 @@ async function ContactsList({ userId, page }: { userId: string; page: number }) 
     entity: c.entity ?? null,
   }));
 
-  return <ContactRows contacts={rows} />;
+  return <ContactRows contacts={rows} lists={lists} />;
 }
 
-async function EntitiesList({ userId, page }: { userId: string; page: number }) {
+async function EntitiesList({
+  userId,
+  page,
+  industry,
+}: {
+  userId: string;
+  page: number;
+  industry?: string;
+}) {
   const entities = await prisma.entity.findMany({
-    where: { userId },
+    where: {
+      userId,
+      ...(industry ? { industry: { equals: industry, mode: "insensitive" } } : {}),
+    },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { contacts: true } } },
-    // The list row never renders the enrichment blob; skip pulling KBs per row.
     omit: { enrichment: true },
     skip: (page - 1) * PAGE,
     take: PAGE,
@@ -250,7 +369,6 @@ async function EntitiesList({ userId, page }: { userId: string; page: number }) 
     );
   }
 
-  // Serialise dates so the client component receives plain strings.
   const rows = entities.map((e) => ({
     id: e.id,
     name: e.name,
@@ -265,4 +383,3 @@ async function EntitiesList({ userId, page }: { userId: string; page: number }) 
 
   return <EntityRows entities={rows} />;
 }
-

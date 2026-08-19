@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { contactWhere } from "@/lib/crm-lists";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -47,24 +48,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
     const status = searchParams.get("status")?.trim();
+    const industry = searchParams.get("industry")?.trim();
+    const tag = searchParams.get("tag")?.trim();
+    const listId = searchParams.get("list")?.trim();
 
     const contacts = await prisma.contact.findMany({
-      where: {
-        userId: user.id,
-        ...(status &&
-        (CONTACT_STATUSES as readonly string[]).includes(status)
-          ? { status: status as (typeof CONTACT_STATUSES)[number] }
-          : {}),
-        ...(q
-          ? {
-              OR: [
-                { name: { contains: q, mode: "insensitive" } },
-                { email: { contains: q, mode: "insensitive" } },
-                { company: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
+      where: contactWhere(user.id, { q, status, industry, tag, listId }),
       orderBy: { updatedAt: "desc" },
       // The enrichment blob (often KBs per row) belongs to GET /api/contacts/[id];
       // shipping it 500x per list call bloats payloads for no consumer.

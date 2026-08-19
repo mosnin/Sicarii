@@ -19,7 +19,14 @@ describe("credit constants", () => {
     for (const [name, plan] of Object.entries(PLANS)) {
       expect(plan.credits, name).toBeGreaterThan(0);
       expect(plan.monitors, name).toBeGreaterThanOrEqual(0);
+      expect(plan.workspaces, name).toBeGreaterThanOrEqual(0);
     }
+  });
+
+  it("free cannot create extra workspaces; paid plans can", () => {
+    expect(PLANS.free.workspaces).toBe(0);
+    expect(PLANS.starter.workspaces).toBeGreaterThan(0);
+    expect(PLANS.pro.workspaces).toBeGreaterThan(PLANS.starter.workspaces);
   });
 
   it("free is the leanest paid-feature plan; beta covers existing users", () => {

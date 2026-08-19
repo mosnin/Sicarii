@@ -8,16 +8,20 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
+import { accountIsUnlimited } from "@/lib/admin";
 
 export const PLANS = {
-  free: { credits: 200, monitors: 0, seats: 1 },
-  starter: { credits: 3000, monitors: 1, seats: 1 },
-  pro: { credits: 12000, monitors: 10, seats: 1 },
-  business: { credits: 8000, monitors: 25, seats: 1 },
-  beta: { credits: 10000, monitors: 10, seats: 1 },
+  // workspaces = extra businesses a personal account may create (the personal
+  // CRM itself does not count). Free is personal-only; paid plans unlock more.
+  // Platform admins bypass the cap entirely (see src/lib/workspace.ts).
+  free: { credits: 200, monitors: 0, seats: 1, workspaces: 0 },
+  starter: { credits: 3000, monitors: 1, seats: 1, workspaces: 2 },
+  pro: { credits: 12000, monitors: 10, seats: 1, workspaces: 5 },
+  business: { credits: 8000, monitors: 25, seats: 1, workspaces: 8 },
+  beta: { credits: 10000, monitors: 10, seats: 1, workspaces: 5 },
   // Teams: one pooled credit meter on the workspace account, shared by every
   // member and every connected agent key. Seats are a soft cap in v1.
-  team: { credits: 30000, monitors: 25, seats: 5 },
+  team: { credits: 30000, monitors: 25, seats: 5, workspaces: 10 },
 } as const;
 
 export type PlanName = keyof typeof PLANS;
@@ -105,6 +109,7 @@ const RESET_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
  * only on success, so a genuine miss is never charged.
  */
 export async function hasCredits(userId: string, action: CreditAction): Promise<boolean> {
+  if (await accountIsUnlimited(userId)) return true;
   await maybeReset(userId);
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -136,6 +141,7 @@ export async function ensureCreditsForCount(
   action: CreditAction,
   count: number,
 ): Promise<void> {
+  if (await accountIsUnlimited(userId)) return;
   await maybeReset(userId);
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -238,6 +244,8 @@ export async function spendCredits(
   action: CreditAction,
   opts: { ref?: string } = {},
 ): Promise<void> {
+  if (await accountIsUnlimited(userId)) return;
+
   const cost = CREDIT_COSTS[action];
 
   await maybeReset(userId);

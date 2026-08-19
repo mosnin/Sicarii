@@ -80,8 +80,14 @@ Deep context and all decisions are indexed in `@docs/README.md`.
 - **Setup:** copy `.env.local.example` → `.env.local` and fill keys; `pnpm install`.
 - **Run (dev):** `pnpm dev` · **Build:** `pnpm build` · **Start:** `pnpm start`
   · **Lint:** `pnpm lint`.
+- **Platform admin:** `User.role = admin` (bootstrap via `ADMIN_EMAILS`). Unlimited
+  credits, `/admin` desk for users / refunds / comps.
+- **Workspaces:** a workspace is the whole platform for one business (own CRM,
+  lists, pipelines, meter). Switch from the sidebar/header dropdown. Create
+  another business from that same menu. Cookie `scalar_workspace` is the
+  active context. Not Clerk Organizations.
 - **Conventions:** import alias `@/*` → `src/*`. Route groups: `(auth)`,
-  `(dashboard)`, `(admin)`. Theme tokens live in `src/app/globals.css`
+  `(dashboard)`. Theme tokens live in `src/app/globals.css`
   (**baby-blue + white, light by default**; legacy `orange`/`brand` Tailwind
   utilities are aliased to baby blue - rename is a tracked debt). Logo: the `λ`
   mark via `LogoMark` (theme-swapped PNGs: blue light / white dark). The agent is
