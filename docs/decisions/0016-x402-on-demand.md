@@ -34,6 +34,9 @@ allowance.
 - MCP `pay_for` - two-step quote / settle, same resource URL as the HTTP route.
 - Out-of-credits errors carry `{ sku, quantity, need }` so the agent pays for
   that call instead of guessing a 1000-credit pack.
+- REST metered routes return the same 402 contract (`code`, `sku`, `pay.endpoint`)
+  so an HTTP agent can POST `/api/x402/pay` and retry. The in-app agent tells
+  the operator; it has no wallet of its own.
 
 ## Debts owed to reality
 

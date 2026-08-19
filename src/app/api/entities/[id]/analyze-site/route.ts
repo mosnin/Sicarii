@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
 import { OpError } from "@/lib/crm-operations";
+import { jsonFromOpError } from "@/lib/http-error";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 
 function host(input?: string | null): string | undefined {
@@ -125,9 +126,7 @@ export async function POST(
     return NextResponse.json({ ok: true, created, skipped, logo: Boolean(data.logoUrl) });
   } catch (e) {
     if (e instanceof NextResponse) return e;
-    if (e instanceof OpError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
-    }
+    if (e instanceof OpError) return jsonFromOpError(e);
     console.error("POST /api/entities/[id]/analyze-site", e);
     return NextResponse.json({ error: "Website analysis failed" }, { status: 502 });
   }

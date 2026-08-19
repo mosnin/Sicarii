@@ -37,6 +37,7 @@ import { proposeAutopilotPlan, getAutopilotStatus } from "@/lib/autopilot-operat
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats } from "@/lib/variant-operations";
 import { CREDIT_COSTS } from "@/lib/credits";
+import { insufficientCreditsPayload } from "@/lib/http-error";
 
 export const maxDuration = 60;
 
@@ -94,7 +95,10 @@ Response style - critical:
   no numbered lists, no [links](url), no headers. Just clear direct sentences.
 - When listing results, use natural language: "I found 3 companies: Acme (acme.com),
   Widget Co (widgetco.com), and FooBar (foobar.com)."
-- Keep responses short. One tight paragraph is almost always enough.`;
+- Keep responses short. One tight paragraph is almost always enough.
+- If a tool returns insufficient_credits, tell the operator plainly: a plan \
+includes a monthly allowance, and connected agents can pay per call or per \
+contact with USDC. Do not invent a payment. Do not stall in a loop.`;
 
 function uiMessageText(m: UIMessage): string {
   return (m.parts ?? [])
@@ -109,7 +113,10 @@ async function exec(fn: () => Promise<unknown>) {
   try {
     return await fn();
   } catch (e) {
-    if (e instanceof OpError) return { error: e.message };
+    if (e instanceof OpError) {
+      if (e.status === 402) return insufficientCreditsPayload(e);
+      return { error: e.message };
+    }
     console.error("agent tool error", e);
     return { error: "Internal error" };
   }

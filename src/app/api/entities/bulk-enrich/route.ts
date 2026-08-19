@@ -7,6 +7,8 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { OpError } from "@/lib/crm-operations";
+import { outOfCreditsError } from "@/lib/credits";
+import { jsonFromOpError } from "@/lib/http-error";
 import { spendCredits, hasCredits } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
@@ -71,10 +73,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (outOfCredits && enriched === 0) {
-      return NextResponse.json(
-        { error: "Out of credits. Pay for this call with USDC, buy a credit pack, or wait for your plan reset." },
-        { status: 402 },
-      );
+      return jsonFromOpError(outOfCreditsError("company_aspect"));
     }
     return NextResponse.json({ enriched, skipped, outOfCredits });
   } catch (e) {
