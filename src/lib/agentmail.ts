@@ -1,6 +1,6 @@
 // AgentMail client - per-user key (User.agentMailApiKey). Used to surface email
 // threads with a contact on their CRM page. Best-effort: response shapes vary,
-// so we match a contact by their email appearing anywhere in a thread.
+// so we match a contact by their email appearing as a whole address in a thread.
 // Docs: https://docs.agentmail.to  Base: https://api.agentmail.to/v0
 
 const BASE = "https://api.agentmail.to/v0";
@@ -28,6 +28,19 @@ export interface AgentMailThread {
 
 function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
+}
+
+// Whole-address match only. A raw `.includes(email)` on the stringified
+// thread treats `ed@x.com` as a hit inside `fred@x.com` (and `bob@co.com`
+// inside `bob@co.com.au`), which would surface another person's mail on
+// this contact's page.
+const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+
+export function threadMentionsEmail(thread: unknown, email: string): boolean {
+  const wanted = email.trim().toLowerCase();
+  if (!wanted || !wanted.includes("@")) return false;
+  const found: string[] = JSON.stringify(thread).toLowerCase().match(EMAIL_RE) ?? [];
+  return found.includes(wanted);
 }
 
 // Fetch threads (across the account's inboxes) that involve a given contact email.
@@ -58,8 +71,7 @@ export async function getThreadsForContact(
     const threads = (threadsRes.threads ?? threadsRes.data ?? []) as Record<string, unknown>[];
 
     for (const t of threads) {
-      // Match the contact by their email appearing anywhere in the thread.
-      if (!JSON.stringify(t).toLowerCase().includes(wanted)) continue;
+      if (!threadMentionsEmail(t, wanted)) continue;
       const last = (t.last_message ?? t.latest_message) as Record<string, unknown> | undefined;
       out.push({
         id: str(t.thread_id) ?? str(t.id) ?? "",
