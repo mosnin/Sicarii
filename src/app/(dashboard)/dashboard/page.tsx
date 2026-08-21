@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getDbUser } from "@/lib/server-user";
+import { getOptionalAuthContext } from "@/lib/auth-utils";
+import { humanFirstName } from "@/lib/org-scope";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
@@ -41,10 +42,12 @@ async function countNeedsAttention(
 }
 
 export default async function DashboardPage() {
-  const user = await getDbUser();
+  const ctx = await getOptionalAuthContext();
   // Behind auth.protect, but be explicit: a null user means no session - send to
   // sign-in rather than rendering a dashboard of zeros.
-  if (!user) redirect("/sign-in");
+  if (!ctx) redirect("/sign-in");
+  const user = ctx.account;
+  const greetName = humanFirstName(ctx.actor);
 
   // New users with no ICP and no data land on /welcome for the first-run
   // performance. Check is fast (two small queries) and skipped if not needed.
@@ -121,9 +124,9 @@ export default async function DashboardPage() {
 
   return (
     <>
-      <DashboardPreloader name={user?.firstName ?? ""} />
+      <DashboardPreloader name={greetName} />
       <DashboardOverview
-        firstName={user?.firstName}
+        firstName={greetName}
         totalContacts={totalContacts}
         totalCompanies={totalCompanies}
         enriched={enriched}

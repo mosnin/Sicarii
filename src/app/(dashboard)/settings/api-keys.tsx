@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useOrgScopeKey } from "@/components/dashboard/use-org-scope";
 
 type ApiKey = {
   id: string;
@@ -35,9 +36,12 @@ export function ApiKeysManager() {
     if (res.ok) setKeys((await res.json()).keys ?? []);
   }
 
+  const orgScope = useOrgScopeKey();
   useEffect(() => {
+    setKeys([]);
+    setCreated(null);
     load();
-  }, []);
+  }, [orgScope]);
 
   async function create() {
     if (!name.trim()) return;

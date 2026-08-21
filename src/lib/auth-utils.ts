@@ -16,6 +16,8 @@ export interface AuthContext {
   /** Our role string in the active workspace ("admin" | "member"), or null in
    *  personal context. */
   workspaceRole: string | null;
+  /** Active Clerk organization id, or null in personal context. */
+  orgId: string | null;
 }
 
 // Provision-on-first-sight for the personal row (the app never hard-depends on
@@ -47,21 +49,32 @@ async function personalRow(clerkId: string): Promise<DbUser> {
  * when signed out; callers catch `NextResponse` in their error handler.
  */
 export async function getAuthContext(): Promise<AuthContext> {
-  const { userId: clerkId, orgId, orgRole } = await auth();
+  const { userId: clerkId, orgId, orgRole, orgSlug } = await auth();
   if (!clerkId) {
     throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const actor = await personalRow(clerkId);
-  if (!orgId) return { account: actor, actor, workspaceRole: null };
+  if (!orgId) return { account: actor, actor, workspaceRole: null, orgId: null };
 
   // Team context: scope to the workspace account row. Clerk only sets orgId
   // for orgs the user belongs to, so this is safe to provision from.
-  const workspace = await resolveWorkspace({ orgId, actor, orgRole });
+  const workspace = await resolveWorkspace({ orgId, actor, orgRole, orgSlug });
   return {
     account: workspace,
     actor,
     workspaceRole: orgRole === "org:admin" || orgRole === "admin" ? "admin" : "member",
+    orgId,
   };
+}
+
+/** Same as getAuthContext, but returns null when signed out instead of throwing. */
+export async function getOptionalAuthContext(): Promise<AuthContext | null> {
+  try {
+    return await getAuthContext();
+  } catch (err) {
+    if (err instanceof NextResponse) return null;
+    throw err;
+  }
 }
 
 /**

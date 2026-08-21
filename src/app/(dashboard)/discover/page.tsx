@@ -40,6 +40,7 @@ import { FloatIn } from "@/components/ui/float-in";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { DiscoverWorking } from "@/components/dashboard/discover-working";
 import { cn } from "@/lib/utils";
+import { useOrgScopeKey } from "@/components/dashboard/use-org-scope";
 
 // ─── types ──────────────────────────────────────────────────────────────────
 
@@ -885,6 +886,11 @@ function CrmPicker({
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function DiscoverPage() {
+  const orgScope = useOrgScopeKey();
+  return <DiscoverBody key={orgScope} />;
+}
+
+function DiscoverBody() {
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const reduce = useReducedMotion();
   const { stage, active, values, records, rawText, error } = state;

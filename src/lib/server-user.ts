@@ -32,7 +32,7 @@ export async function getDbUser(): Promise<User | null> {
     },
   });
 
-  const { orgId, orgRole } = await auth();
+  const { orgId, orgRole, orgSlug } = await auth();
   if (!orgId) return personal;
-  return resolveWorkspace({ orgId, actor: personal, orgRole });
+  return resolveWorkspace({ orgId, actor: personal, orgRole, orgSlug });
 }
