@@ -2,8 +2,12 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { crmOrgScopeKey, shouldPaintCrmContacts } from "@/lib/crm-org-scope";
+
+const subscribeNoop = () => () => {};
+const clientTrue = () => true;
+const serverFalse = () => false;
 
 /**
  * Holds back the CRM tree until the Clerk org in the browser matches the org
@@ -19,12 +23,8 @@ export function CrmOrgGuard({
 }) {
   const { orgId, isLoaded } = useAuth();
   const router = useRouter();
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useSyncExternalStore(subscribeNoop, clientTrue, serverFalse);
   const lastRefresh = useRef("");
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
 
   useEffect(() => {
     if (!isLoaded) return;
