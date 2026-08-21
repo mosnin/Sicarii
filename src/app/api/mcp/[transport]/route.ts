@@ -77,7 +77,7 @@ import {
   spendCredits,
   ensureCredits,
   getBilling,
-  alreadyCredited,
+  alreadyCreditedAny,
   applyPlan,
   planFor,
   PLANS,
@@ -221,6 +221,9 @@ async function buyCreditsViaMcp(
   xPayment?: string,
 ): Promise<unknown> {
   if (!isX402Configured()) throw new OpError("Agent payments are not configured yet.", 501);
+  if (!Number.isInteger(credits) || credits < MIN_PACK_CREDITS || credits > MAX_PACK_CREDITS) {
+    throw new OpError(`credits must be between ${MIN_PACK_CREDITS} and ${MAX_PACK_CREDITS}`, 400);
+  }
   const priceUsd = Math.round(credits * USD_PER_CREDIT * 100) / 100;
   const requirements = buildRequirements({
     priceUsd,
@@ -335,8 +338,11 @@ async function buyPlanViaMcp(
   if (!verified.ok) throw new OpError(`Payment invalid: ${verified.reason}`, 402);
   const ref = paymentRef(payload);
   if (!ref) throw new OpError("Payment payload missing nonce - cannot process idempotently.", 400);
-  const seen = await alreadyCredited(userId, ref);
-  if (seen !== null) return { step: "settled", plan, duplicate: true };
+  const seen = await alreadyCreditedAny(ref);
+  if (seen) {
+    if (seen.userId !== userId) throw new OpError("This payment already credited another account.", 402);
+    return { step: "settled", plan, duplicate: true };
+  }
   const settled = await settlePayment(payload, requirements);
   if (!settled.ok) throw new OpError(`Settlement failed: ${settled.reason}`, 402);
   await grantAfterSettle(

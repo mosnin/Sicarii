@@ -36,15 +36,22 @@ export const USD_PER_CREDIT = 0.01;
 const X402_VERSION = 1;
 
 export function x402Network(): Network {
-  return (process.env.X402_NETWORK as Network) || "base";
+  return process.env.X402_NETWORK === "base-sepolia" ? "base-sepolia" : "base";
 }
 
 export function isMainnet(): boolean {
   return x402Network() === "base";
 }
 
+const PAY_TO_RE = /^0x[a-fA-F0-9]{40}$/;
+
+export function isX402PayTo(value: string | undefined | null): boolean {
+  return Boolean(value && PAY_TO_RE.test(value.trim()));
+}
+
 function payTo(): string | undefined {
-  return process.env.X402_PAY_TO?.trim() || undefined;
+  const value = process.env.X402_PAY_TO?.trim();
+  return isX402PayTo(value) ? value : undefined;
 }
 
 /**
@@ -88,6 +95,9 @@ export function buildRequirements(opts: {
   resource: string;
   description: string;
 }): PaymentRequirements {
+  if (!Number.isFinite(opts.priceUsd) || opts.priceUsd <= 0) {
+    throw new Error("x402 price error: invalid amount");
+  }
   const network = x402Network();
   const price = `$${opts.priceUsd.toFixed(2)}`;
   const atomic = processPriceToAtomicAmount(price, network);

@@ -14,6 +14,7 @@ import {
   isX402Configured,
   paymentRequiredBody,
   readPayment,
+  resourceUrl,
   USD_PER_CREDIT,
   x402Network,
 } from "@/lib/x402";
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     const resolved = resolveSku(body.sku, body.quantity ?? 1);
-    const resource = new URL(req.url).origin + "/api/x402/pay";
+    const resource = resourceUrl("/api/x402/pay");
     const requirements = buildRequirements({
       priceUsd: resolved.priceUsd,
       resource,

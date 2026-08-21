@@ -15,6 +15,7 @@ export const MAX_PACK_CREDITS = 100_000;
 export const DEFAULT_PACK_CREDITS = 1_000;
 export const MIN_SKU_QUANTITY = 1;
 export const MAX_SKU_QUANTITY = 500;
+export const SKU_ID_RE = /^[a-z][a-z0-9_]{0,62}$/;
 
 export type SkuKind = "action" | "contact" | "pack";
 
@@ -78,8 +79,11 @@ export function listUsageSkus(): UsageSku[] {
 }
 
 export function findSku(id: string): UsageSku | null {
-  if (id in CONTACT_SKUS) return CONTACT_SKUS[id as keyof typeof CONTACT_SKUS];
-  if (id in CREDIT_COSTS) {
+  // Object.hasOwn, not `in`: `__proto__` / `constructor` are inherited and
+  // must never resolve as a payable sku.
+  if (!SKU_ID_RE.test(id)) return null;
+  if (Object.hasOwn(CONTACT_SKUS, id)) return CONTACT_SKUS[id as keyof typeof CONTACT_SKUS];
+  if (Object.hasOwn(CREDIT_COSTS, id)) {
     const action = id as CreditAction;
     return {
       id: action,

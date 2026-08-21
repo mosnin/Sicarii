@@ -1,7 +1,7 @@
 // Shared verify / settle / credit grant for every x402 money-in path
 // (packs, per-call SKUs, MCP buy tools). One nonce, one credit.
 
-import { addCredits, alreadyCredited } from "@/lib/credits";
+import { addCredits, alreadyCreditedAny } from "@/lib/credits";
 import {
   grantAfterSettle,
   paymentRef,
@@ -35,9 +35,12 @@ export async function settleAndCredit(opts: {
   const ref = paymentRef(opts.payload);
   if (!ref) return { ok: false, reason: "Payment payload missing nonce." };
 
-  const prior = await alreadyCredited(opts.userId, ref);
-  if (prior !== null) {
-    return { ok: true, credited: 0, balance: prior, duplicate: true };
+  const prior = await alreadyCreditedAny(ref);
+  if (prior) {
+    if (prior.userId !== opts.userId) {
+      return { ok: false, reason: "This payment already credited another account." };
+    }
+    return { ok: true, credited: 0, balance: prior.balanceAfter, duplicate: true };
   }
 
   const settled = await settlePayment(opts.payload, opts.requirements);

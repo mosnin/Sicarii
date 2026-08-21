@@ -12,6 +12,7 @@ import {
   isX402Configured,
   paymentRequiredBody,
   readPayment,
+  resourceUrl,
   USD_PER_CREDIT,
   x402Network,
 } from "@/lib/x402";
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
     }
 
     const priceUsd = Math.round(requested * USD_PER_CREDIT * 100) / 100;
-    const resource = new URL(req.url).origin + "/api/x402/topup";
+    const resource = resourceUrl("/api/x402/topup");
     const requirements = buildRequirements({
       priceUsd,
       resource,

@@ -217,10 +217,19 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
               name: "x402 agent payments",
               status: "missing" as CheckStatus,
               vars,
-              detail: "Not set (optional). Without X402_PAY_TO, /api/x402/topup and /api/x402/subscribe return 501.",
+              detail: "Not set (optional). Without a valid X402_PAY_TO address, /api/x402/pay, /api/x402/topup, and /api/x402/subscribe return 501.",
             };
           }
-          const network = env.X402_NETWORK?.trim() || "base";
+          const payTo = env.X402_PAY_TO?.trim() ?? "";
+          if (!/^0x[a-fA-F0-9]{40}$/.test(payTo)) {
+            return {
+              name: "x402 agent payments",
+              status: "partial" as CheckStatus,
+              vars,
+              detail: "X402_PAY_TO is set but is not a 40-hex EVM address; payment routes stay 501.",
+            };
+          }
+          const network = env.X402_NETWORK?.trim() === "base-sepolia" ? "base-sepolia" : "base";
           const isMainnet = network === "base";
           if (isMainnet && !allSet(env, ["CDP_API_KEY_ID", "CDP_API_KEY_SECRET"])) {
             return {

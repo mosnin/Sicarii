@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveRequestUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { applyPlan, alreadyCredited, PLAN_USD, PLANS, type PaidPlanName } from "@/lib/credits";
+import { applyPlan, alreadyCreditedAny, PLAN_USD, PLANS, type PaidPlanName } from "@/lib/credits";
 import {
   buildRequirements,
   grantAfterSettle,
@@ -9,6 +9,7 @@ import {
   paymentRef,
   paymentRequiredBody,
   readPayment,
+  resourceUrl,
   settlePayment,
   verifyPayment,
   x402Network,
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     const priceUsd = PLAN_USD[plan];
-    const resource = new URL(req.url).origin + "/api/x402/subscribe";
+    const resource = resourceUrl("/api/x402/subscribe");
     const requirements = buildRequirements({
       priceUsd,
       resource,
@@ -97,8 +98,14 @@ export async function POST(req: NextRequest) {
         { status: 402 },
       );
     }
-    const prior = await alreadyCredited(user.id, ref);
-    if (prior !== null) {
+    const prior = await alreadyCreditedAny(ref);
+    if (prior) {
+      if (prior.userId !== user.id) {
+        return NextResponse.json(
+          paymentRequiredBody(requirements, "This payment already credited another account."),
+          { status: 402 },
+        );
+      }
       return NextResponse.json({ plan, duplicate: true });
     }
 

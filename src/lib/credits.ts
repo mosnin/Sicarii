@@ -310,6 +310,18 @@ export async function alreadyCredited(
   return row ? row.balanceAfter : null;
 }
 
+/** Any account already credited for this payment nonce, or null. A stolen
+ *  replay against a second user must not grant them a second meter bump. */
+export async function alreadyCreditedAny(
+  ref: string,
+): Promise<{ userId: string; balanceAfter: number } | null> {
+  const row = await prisma.creditLedger.findFirst({
+    where: { ref },
+    select: { userId: true, balanceAfter: true },
+  });
+  return row;
+}
+
 // A P2002 unique-constraint violation (the idempotency key already exists).
 function isUniqueViolation(e: unknown): boolean {
   return (

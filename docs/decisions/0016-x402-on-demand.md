@@ -38,6 +38,18 @@ allowance.
   so an HTTP agent can POST `/api/x402/pay` and retry. The in-app agent tells
   the operator; it has no wallet of its own.
 
+## Hardening (audit)
+
+- HTTP and MCP quotes share `resourceUrl()` (never `req.url.origin`). A Host
+  header or preview origin cannot mint a payment that settles against a
+  different resource.
+- SKU lookup uses `Object.hasOwn` plus an allowlist regex. Inherited keys
+  (`__proto__`, `constructor`) are not payable.
+- A payment nonce that already credited account A is refused for account B.
+- `X402_PAY_TO` must be a 40-hex EVM address. `X402_NETWORK` is only `base` or
+  `base-sepolia`.
+- Pack size is checked in the MCP buy path, not only by the tool schema.
+
 ## Debts owed to reality
 
 - One live `pay_for` settlement on Base (the same Phase 0 debt as 0007).

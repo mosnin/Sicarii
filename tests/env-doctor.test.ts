@@ -46,13 +46,24 @@ describe("runEnvDoctor", () => {
   });
 
   it("resolves x402 to PARTIAL when a mainnet wallet is set without CDP credentials", () => {
-    const report = runEnvDoctor({ X402_PAY_TO: "0xTreasury", X402_NETWORK: "base" });
+    const report = runEnvDoctor({
+      X402_PAY_TO: "0x0000000000000000000000000000000000000001",
+      X402_NETWORK: "base",
+    });
     expect(findCheck(report, "x402 agent payments").status).toBe("partial");
   });
 
   it("resolves x402 to PASS on testnet with just a wallet", () => {
-    const report = runEnvDoctor({ X402_PAY_TO: "0xTreasury", X402_NETWORK: "base-sepolia" });
+    const report = runEnvDoctor({
+      X402_PAY_TO: "0x0000000000000000000000000000000000000001",
+      X402_NETWORK: "base-sepolia",
+    });
     expect(findCheck(report, "x402 agent payments").status).toBe("pass");
+  });
+
+  it("resolves x402 to PARTIAL when the treasury is not a 40-hex address", () => {
+    const report = runEnvDoctor({ X402_PAY_TO: "0xTreasury", X402_NETWORK: "base-sepolia" });
+    expect(findCheck(report, "x402 agent payments").status).toBe("partial");
   });
 
   it("never includes a secret value anywhere in the serialized report", () => {

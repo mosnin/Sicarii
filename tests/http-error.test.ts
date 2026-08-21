@@ -24,7 +24,7 @@ describe("insufficientCreditsPayload", () => {
   });
 
   it("points at /api/x402/pay when agent payments are on", () => {
-    process.env.X402_PAY_TO = "0xabc";
+    process.env.X402_PAY_TO = "0x0000000000000000000000000000000000000001";
     process.env.X402_NETWORK = "base-sepolia";
     const paid = insufficientCreditsPayload(outOfCreditsError("linkedin", 2));
     expect(paid.pay?.endpoint).toContain("/api/x402/pay");
@@ -40,7 +40,7 @@ describe("jsonFromOpError", () => {
   });
 
   it("returns a 402 with the pay contract", async () => {
-    process.env.X402_PAY_TO = "0xabc";
+    process.env.X402_PAY_TO = "0x0000000000000000000000000000000000000001";
     process.env.X402_NETWORK = "base-sepolia";
     const res = jsonFromOpError(outOfCreditsError("phone"));
     expect(res.status).toBe(402);

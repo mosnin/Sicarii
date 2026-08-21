@@ -50,4 +50,11 @@ describe("usage SKUs", () => {
     expect(findSku("emails")).toBeNull();
     expect(findSku("contact_plus")).toBeNull();
   });
+
+  it("never treats inherited object keys as a payable sku", () => {
+    expect(findSku("__proto__")).toBeNull();
+    expect(findSku("constructor")).toBeNull();
+    expect(findSku("toString")).toBeNull();
+    expect(() => resolveSku("__proto__")).toThrow(/Unknown usage sku/);
+  });
 });
