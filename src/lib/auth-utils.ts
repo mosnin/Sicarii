@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 import { authenticateApiKey, bearerFromRequest } from "@/lib/api-auth";
 import { resolveWorkspace } from "@/lib/workspace";
+import { isOwnerAdmin, roleForEmail } from "@/lib/admin";
 
 export type DbUser = User;
 
@@ -22,9 +23,17 @@ export interface AuthContext {
 // the Clerk webhook having fired).
 async function personalRow(clerkId: string): Promise<DbUser> {
   const existing = await prisma.user.findUnique({ where: { clerkId } });
-  if (existing) return existing;
-  const clerk = await currentUser();
-  const email = clerk?.emailAddresses?.[0]?.emailAddress ?? "";
+  const clerk = existing ? null : await currentUser();
+  const email = existing?.email ?? clerk?.emailAddresses?.[0]?.emailAddress ?? "";
+  if (existing) {
+    if (existing.role !== "admin" && isOwnerAdmin({ email: existing.email })) {
+      return prisma.user.update({
+        where: { id: existing.id },
+        data: { role: "admin" },
+      });
+    }
+    return existing;
+  }
   return prisma.user.upsert({
     where: { clerkId },
     update: {},
@@ -38,6 +47,7 @@ async function personalRow(clerkId: string): Promise<DbUser> {
       // defaults (beta/10000) which are only for migrated existing users.
       plan: "free",
       creditsRemaining: 200,
+      role: roleForEmail(email),
     },
   });
 }

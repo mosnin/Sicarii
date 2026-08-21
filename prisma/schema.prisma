@@ -297,6 +297,11 @@ model Contact {
   source String? // how it was found: "discover:domain", "manual", "import", etc.
   tags   String[]      @default([])
   notes  String?
+  // Lead organization on THIS record (not a second CRM). `list` is a named
+  // static grouping (a folder). `ownerId` is the assigned human (a users.id
+  // in this tenant or a team member), distinct from userId which is the tenant.
+  list    String?
+  ownerId String?
   // Stamped by log_outreach when the agent reaches out; powers the
   // "who needs a follow-up" query (status is the qualitative state, this the
   // temporal one - updatedAt is polluted by every edit, so it can't be used).
@@ -327,6 +332,9 @@ model Contact {
   @@index([entityId])
   @@index([userId, updatedAt])
   @@index([userId, createdAt])
+  @@index([userId, list])
+  @@index([userId, ownerId])
+  @@index([userId, source])
   @@map("contacts")
 }
 

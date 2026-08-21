@@ -26,6 +26,7 @@ import { listUserWorkspaces } from "@/lib/workspace";
 import { getProvenanceMap } from "@/lib/provenance";
 import { FieldWithProvenance } from "@/components/dashboard/provenance-pill";
 import { VerifiedStrip } from "@/components/dashboard/verified-strip";
+import { LeadOrgEditor } from "@/components/dashboard/lead-org-editor";
 
 export default async function ContactDetailPage({
   params,
@@ -233,6 +234,11 @@ export default async function ContactDetailPage({
                 }}
               />
               {!contact.entity && <MatchEntity contactId={contact.id} />}
+              {contact.list && (
+                <p className="pt-2 text-sm text-muted-foreground">
+                  List: <span className="text-foreground">{contact.list}</span>
+                </p>
+              )}
               {contact.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-2">
                   {contact.tags.map((t) => (
@@ -242,6 +248,12 @@ export default async function ContactDetailPage({
                   ))}
                 </div>
               )}
+              <LeadOrgEditor
+                contactId={contact.id}
+                list={contact.list}
+                tags={contact.tags}
+                source={contact.source}
+              />
               {contact.notes && (
                 <div className="pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground mb-1">Notes</p>

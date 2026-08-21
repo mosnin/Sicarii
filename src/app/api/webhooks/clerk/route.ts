@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isOwnerAdmin, roleForEmail } from "@/lib/admin";
 
 export async function POST(req: Request) {
   try {
@@ -79,12 +80,14 @@ export async function POST(req: Request) {
           // plan and meter (the schema default "beta" covers pre-billing rows).
           plan: "free",
           creditsRemaining: 200,
+          role: roleForEmail(primaryEmail),
         },
         update: {
           email: primaryEmail,
           firstName: data.first_name as string | undefined,
           lastName: data.last_name as string | undefined,
           imageUrl: data.image_url as string | undefined,
+          ...(isOwnerAdmin({ email: primaryEmail }) ? { role: "admin" } : {}),
         },
       });
     }
