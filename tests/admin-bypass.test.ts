@@ -11,7 +11,10 @@ const contactFindUnique = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    user: { findUnique: (...a: unknown[]) => findUnique(...a) },
+    user: {
+      findUnique: (...a: unknown[]) => findUnique(...a),
+      updateMany: (...a: unknown[]) => updateMany(...a),
+    },
     contact: { findUnique: (...a: unknown[]) => contactFindUnique(...a) },
     creditLedger: { create: (...a: unknown[]) => ledgerCreate(...a) },
     $executeRaw: (...a: unknown[]) => executeRaw(...a),
@@ -28,7 +31,7 @@ import {
 import { hasCredits, ensureCredits, ensureCreditsForCount, spendCredits } from "@/lib/credits";
 import { getContact, OpError } from "@/lib/crm-operations";
 
-const OWNER_ENV = { OWNER_EMAILS: "owner@scalar.test, alt@scalar.test" } as NodeJS.ProcessEnv;
+const OWNER_ENV = { OWNER_EMAILS: "owner@scalar.test, alt@scalar.test" };
 
 beforeEach(() => {
   findUnique.mockReset();

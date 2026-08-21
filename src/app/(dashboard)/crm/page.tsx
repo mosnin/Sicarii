@@ -15,7 +15,7 @@ import { CrmHeaderMenu } from "@/components/dashboard/crm-header-menu";
 import { LeadFilters } from "@/components/dashboard/lead-filters";
 import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
-import { contactListWhere, leadFilterOptions } from "@/lib/lead-org";
+import { contactListWhere, leadFilterOptions, type ContactListFilters } from "@/lib/lead-org";
 
 type Tab = "contacts" | "entities";
 
@@ -227,7 +227,7 @@ async function ContactsList({
 }: {
   userId: string;
   page: number;
-  filters: Parameters<typeof contactListWhere>[1];
+  filters: ContactListFilters;
 }) {
   const contacts = await prisma.contact.findMany({
     where: contactListWhere(userId, filters),

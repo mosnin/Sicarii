@@ -17,8 +17,10 @@ export type OwnerAdminFields = {
   email?: string | null;
 };
 
+export type OwnerEnv = Record<string, string | undefined>;
+
 /** Normalized owner emails from OWNER_EMAILS (or OWNER_EMAIL). */
-export function ownerEmails(env: NodeJS.ProcessEnv = process.env): string[] {
+export function ownerEmails(env: OwnerEnv = process.env): string[] {
   const raw = env.OWNER_EMAILS ?? env.OWNER_EMAIL ?? "";
   return raw
     .split(",")
@@ -28,7 +30,7 @@ export function ownerEmails(env: NodeJS.ProcessEnv = process.env): string[] {
 
 export function isOwnerAdmin(
   user: OwnerAdminFields | null | undefined,
-  env: NodeJS.ProcessEnv = process.env,
+  env: OwnerEnv = process.env,
 ): boolean {
   if (!user) return false;
   if (user.role === "admin") return true;
@@ -40,7 +42,7 @@ export function isOwnerAdmin(
 export function roleForEmail(
   email: string | null | undefined,
   fallback = "member",
-  env: NodeJS.ProcessEnv = process.env,
+  env: OwnerEnv = process.env,
 ): string {
   if (isOwnerAdmin({ email, role: fallback }, env)) return "admin";
   return fallback;
@@ -53,7 +55,7 @@ export function roleForEmail(
 export function monitorCapFor(
   user: OwnerAdminFields & { plan?: string | null },
   planMonitors: number,
-  env: NodeJS.ProcessEnv = process.env,
+  env: OwnerEnv = process.env,
 ): number | null {
   if (isOwnerAdmin(user, env)) return null;
   return planMonitors;
@@ -63,7 +65,7 @@ export function isMonitorCapReached(
   user: OwnerAdminFields & { plan?: string | null },
   existingCount: number,
   planMonitors: number,
-  env: NodeJS.ProcessEnv = process.env,
+  env: OwnerEnv = process.env,
 ): boolean {
   const cap = monitorCapFor(user, planMonitors, env);
   if (cap === null) return false;
