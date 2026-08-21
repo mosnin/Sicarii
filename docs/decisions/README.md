@@ -78,6 +78,7 @@ exponential growth into a plateau.
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
+| x402 on-demand live | 0016 · Feasible | `prisma db push` for `x402_settlements`, then one `pay_for` / `/api/x402/pay` settlement on Base | founder + eng |
 
 ## Kills & falsifieds (do not re-open)
 

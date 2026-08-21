@@ -13,6 +13,7 @@ import {
 } from "@/lib/explorium";
 import { getCompanyOverview, getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
 import { OpError } from "@/lib/crm-operations";
+import { jsonFromOpError } from "@/lib/http-error";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 
@@ -166,9 +167,7 @@ export async function POST(
     return NextResponse.json({ entity: updated, enriched: type });
   } catch (e) {
     if (e instanceof NextResponse) return e;
-    if (e instanceof OpError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
-    }
+    if (e instanceof OpError) return jsonFromOpError(e);
     console.error("POST /api/entities/[id]/enrich", e);
     return NextResponse.json({ error: "Enrichment failed" }, { status: 502 });
   }

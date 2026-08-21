@@ -94,6 +94,26 @@ export const CREDIT_COSTS = {
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
+// Hard ceiling on a single credit grant (packs, SKUs, admin-less top-ups).
+// Kept here so addCredits cannot be asked for an unbounded increment.
+export const MAX_CREDIT_GRANT = 100_000;
+
+export const OUT_OF_CREDITS_MESSAGE =
+  "Out of credits. Pay for this call with USDC, buy a credit pack, or wait for your plan reset.";
+
+export function outOfCreditsError(action: CreditAction, quantity = 1): OpError {
+  const qty = Math.max(1, quantity);
+  const need = CREDIT_COSTS[action] * qty;
+  const message =
+    qty === 1
+      ? OUT_OF_CREDITS_MESSAGE
+      : `Out of credits for this run (needs up to ${need} credits for ${qty} step${qty === 1 ? "" : "s"}). Pay for this call with USDC, buy a credit pack, or wait for your plan reset.`;
+  return new OpError(message, 402, {
+    code: "insufficient_credits",
+    detail: { sku: action, quantity: qty, need },
+  });
+}
+
 const RESET_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /**
@@ -115,10 +135,7 @@ export async function hasCredits(userId: string, action: CreditAction): Promise<
 
 export async function ensureCredits(userId: string, action: CreditAction): Promise<void> {
   if (!(await hasCredits(userId, action))) {
-    throw new OpError(
-      "Out of credits. Upgrade your plan or wait for your monthly reset.",
-      402,
-    );
+    throw outOfCreditsError(action);
   }
 }
 
@@ -143,10 +160,7 @@ export async function ensureCreditsForCount(
   });
   const need = CREDIT_COSTS[action] * Math.max(count, 0);
   if (!user || user.creditsRemaining < need) {
-    throw new OpError(
-      `Out of credits for this run (needs up to ${need} credits for ${count} step${count === 1 ? "" : "s"}). Upgrade your plan or wait for your monthly reset.`,
-      402,
-    );
+    throw outOfCreditsError(action, count);
   }
 }
 
@@ -248,10 +262,7 @@ export async function spendCredits(
     data: { creditsRemaining: { decrement: cost } },
   });
   if (count === 0) {
-    throw new OpError(
-      "Out of credits. Upgrade your plan or wait for your monthly reset.",
-      402,
-    );
+    throw outOfCreditsError(action);
   }
 
   // Best-effort audit trail; a ledger failure never fails the action.
@@ -303,6 +314,18 @@ export async function alreadyCredited(
   return row ? row.balanceAfter : null;
 }
 
+/** Any account already credited for this payment nonce, or null. A stolen
+ *  replay against a second user must not grant them a second meter bump. */
+export async function alreadyCreditedAny(
+  ref: string,
+): Promise<{ userId: string; balanceAfter: number } | null> {
+  const row = await prisma.creditLedger.findFirst({
+    where: { ref },
+    select: { userId: true, balanceAfter: true },
+  });
+  return row;
+}
+
 // A P2002 unique-constraint violation (the idempotency key already exists).
 function isUniqueViolation(e: unknown): boolean {
   return (
@@ -329,6 +352,9 @@ export async function addCredits(
 ): Promise<number> {
   if (!Number.isInteger(credits) || credits <= 0) {
     throw new OpError("credits must be a positive integer", 400);
+  }
+  if (credits > MAX_CREDIT_GRANT) {
+    throw new OpError(`credits must be at most ${MAX_CREDIT_GRANT}`, 400);
   }
 
   // No ref => not a payment (no idempotency needed); plain increment.
@@ -402,6 +428,10 @@ export async function applyPlan(
     try {
       await prisma.$transaction(async (tx) => {
         await tx.idempotencyKey.create({ data: { key, userId } });
+        const before = await tx.user.findUnique({
+          where: { id: userId },
+          select: { creditsRemaining: true },
+        });
         await tx.$executeRaw`
           UPDATE users
           SET plan = ${plan},
@@ -409,8 +439,20 @@ export async function applyPlan(
               "creditsResetAt" = ${next}
           WHERE id = ${userId}
         `;
+        const after = await tx.user.findUnique({
+          where: { id: userId },
+          select: { creditsRemaining: true },
+        });
+        const balanceAfter = after?.creditsRemaining ?? credits;
+        const delta = balanceAfter - (before?.creditsRemaining ?? 0);
         await tx.creditLedger.create({
-          data: { userId, delta: credits, balanceAfter: credits, action: `plan_${plan}`, ref: opts.ref },
+          data: {
+            userId,
+            delta,
+            balanceAfter,
+            action: `plan_${plan}`,
+            ref: opts.ref,
+          },
         });
       });
     } catch (e) {
@@ -421,6 +463,10 @@ export async function applyPlan(
   }
 
   // No ref (should not happen for paid plans, but keep it correct): non-idempotent.
+  const before = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { creditsRemaining: true },
+  });
   await prisma.$executeRaw`
     UPDATE users
     SET plan = ${plan},
@@ -428,11 +474,16 @@ export async function applyPlan(
         "creditsResetAt" = ${next}
     WHERE id = ${userId}
   `;
+  const after = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { creditsRemaining: true },
+  });
+  const balanceAfter = after?.creditsRemaining ?? credits;
   await prisma.creditLedger.create({
     data: {
       userId,
-      delta: credits,
-      balanceAfter: credits,
+      delta: balanceAfter - (before?.creditsRemaining ?? 0),
+      balanceAfter,
       action: `plan_${plan}`,
       ref: opts.ref,
     },

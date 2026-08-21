@@ -11,9 +11,17 @@
 // unchanged.
 export class OpError extends Error {
   status: number;
-  constructor(message: string, status = 400) {
+  code?: string;
+  detail?: Record<string, unknown>;
+  constructor(
+    message: string,
+    status = 400,
+    opts?: { code?: string; detail?: Record<string, unknown> },
+  ) {
     super(message);
     this.name = "OpError";
     this.status = status;
+    this.code = opts?.code;
+    this.detail = opts?.detail;
   }
 }

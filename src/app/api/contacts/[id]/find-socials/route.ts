@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { OpError } from "@/lib/crm-operations";
+import { jsonFromOpError } from "@/lib/http-error";
 import { findContactSocials } from "@/lib/social-find";
 
 // POST /api/contacts/[id]/find-socials - search the web for the contact's
@@ -25,9 +26,7 @@ export async function POST(
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof NextResponse) return e;
-    if (e instanceof OpError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
-    }
+    if (e instanceof OpError) return jsonFromOpError(e);
     console.error("POST /api/contacts/[id]/find-socials", e);
     return NextResponse.json({ error: "Failed to find socials" }, { status: 500 });
   }

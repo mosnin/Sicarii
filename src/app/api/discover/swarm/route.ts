@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { OpError, swarmDiscover, listSwarmRuns } from "@/lib/crm-operations";
+import { jsonFromOpError } from "@/lib/http-error";
 
 export const maxDuration = 60;
 
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ result });
   } catch (e) {
     if (e instanceof NextResponse) return e;
-    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+    if (e instanceof OpError) return jsonFromOpError(e);
     console.error("POST /api/discover/swarm", e);
     return NextResponse.json({ error: "Swarm discovery failed. Please try again." }, { status: 500 });
   }

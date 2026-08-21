@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { OpError } from "@/lib/crm-operations";
+import { jsonFromOpError } from "@/lib/http-error";
 import { enrichContactField, type Field } from "@/lib/contact-enrich";
 
 // POST /api/contacts/[id]/enrich  body: { field: "linkedin" | "email" | "phone" }
@@ -31,9 +32,7 @@ export async function POST(
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof NextResponse) return e;
-    if (e instanceof OpError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
-    }
+    if (e instanceof OpError) return jsonFromOpError(e);
     console.error("POST /api/contacts/[id]/enrich", e);
     return NextResponse.json({ error: "Enrichment failed - please try again." }, { status: 502 });
   }
