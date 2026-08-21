@@ -53,6 +53,11 @@ exponential growth into a plateau.
 - **One relationship, one thread.** Conversation history is channel-labeled and
   merged (email + social + calls on one record), never siloed per channel; new
   channels mirror the ContactEmail model shape. _(Card 0008)_
+- **A send that did not happen must not look like a send.** Empty/unparseable
+  provider ids never stamp CONTACTED or lastContactedAt. Inbound email advances
+  the same pipeline and bandit attribution as inbound social. AgentMail thread
+  match is a whole address, never a substring. `log_outreach` cannot downgrade
+  status.
 - **Discovery saves only what it can verify.** find_socials auto-saves a profile
   only on name AND company match; everything else is a candidate for review.
   Null over wrong, on every enrichment path. _(Cards 0003, 0008)_

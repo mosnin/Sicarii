@@ -89,16 +89,11 @@ competing direction to choose between.
 
 ## Debts owed to reality
 
-- **No live reply-detection round-trip yet.** The only place an INBOUND
-  message flips a contact to REPLIED in this codebase is `saveSocialMessage`
-  (social DMs/comments). There is no email-inbound-reply webhook, so a
-  variant used via `log_outreach` for an EMAIL touch can record a `sends`
-  count but will never see its `replies` incremented unless the agent also
-  logs the inbound email reply as a `saveSocialMessage`-style event or a
-  future email-reply detector is wired to call `attributeReply`. This is a
-  real, named gap, not silently swept under "additive" - email is likely the
-  primary outreach channel, so this materially limits the bandit's coverage
-  until email reply detection exists.
+- **No live AgentMail inbound webhook yet.** `saveEmail` now mirrors
+  `saveSocialMessage`: an INBOUND email advances CONTACTED to REPLIED and
+  calls `attributeReply`. That closes the agent-logged email path. A live
+  AgentMail inbound-reply webhook (auto-detect without the agent calling
+  `save_email_context`) is still owed.
 - **`prisma/supabase-setup.sql` was already stale before this change** (it is
   missing `segments`, `pipelines`, `activities`, `credit_ledger`, and several
   other tables that exist in `schema.prisma`) - a pre-existing debt, not
