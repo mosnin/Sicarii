@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { ScalarAvatar } from "@/components/dashboard/scalar-avatar";
 import { ThinkingIndicator } from "@/components/dashboard/thinking-indicator";
 import { useMobileNav } from "@/components/dashboard/dashboard-shell";
+import { useOrgScopeKey } from "@/components/dashboard/use-org-scope";
 import { useRouter } from "next/navigation";
 import { ItemCarousel } from "@/components/tool-ui/item-carousel";
 import { safeParseSerializableItemCarousel } from "@/components/tool-ui/item-carousel/schema";
@@ -351,6 +352,11 @@ function GrowingTextarea({
 // ---------------------------------------------------------------------------
 
 export default function AgentPage() {
+  const orgScope = useOrgScopeKey();
+  return <AgentBody key={orgScope} />;
+}
+
+function AgentBody() {
   // Fresh conversation per page load; long-term memory comes from recall.
   const [conversationId] = useState(() =>
     typeof crypto !== "undefined" ? crypto.randomUUID() : "new",

@@ -15,7 +15,7 @@ import { AutoRadarToggle } from "@/components/dashboard/auto-radar-toggle";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
-import { getDbUser } from "@/lib/server-user";
+import { getOptionalAuthContext } from "@/lib/auth-utils";
 import { getBilling } from "@/lib/credits";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,9 @@ export const dynamic = "force-dynamic";
 const PAID_PLANS = ["starter", "pro", "business"];
 
 export default async function SettingsPage() {
-  const user = await getDbUser();
+  const ctx = await getOptionalAuthContext();
+  const user = ctx?.account ?? null;
+  const actor = ctx?.actor ?? null;
   const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
   const agentPhoneLast4 = user?.agentPhoneApiKey ? user.agentPhoneApiKey.slice(-4) : null;
   const billing = user ? await getBilling(user.id) : null;
@@ -54,19 +56,24 @@ export default async function SettingsPage() {
         <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Account</CardTitle>
-            <CardDescription>Your profile information from Clerk.</CardDescription>
+            <CardDescription>
+              Your profile information from Clerk.
+              {user?.accountType === "workspace"
+                ? " Billing and keys below belong to the active team, not this personal profile."
+                : ""}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="divide-y divide-border">
               <div className="flex items-center justify-between py-3 text-sm">
                 <span className="text-muted-foreground">Name</span>
                 <span className="font-medium">
-                  {user?.firstName} {user?.lastName}
+                  {actor?.firstName} {actor?.lastName}
                 </span>
               </div>
               <div className="flex items-center justify-between py-3 text-sm">
                 <span className="text-muted-foreground">Email</span>
-                <span className="font-medium">{user?.email}</span>
+                <span className="font-medium">{actor?.email}</span>
               </div>
             </div>
           </CardContent>

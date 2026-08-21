@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { FloatIn } from "@/components/ui/float-in";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import { cn } from "@/lib/utils";
+import { useOrgScopeKey } from "@/components/dashboard/use-org-scope";
 
 type Tab = "segments" | "pipelines";
 
@@ -21,6 +22,11 @@ const stageLabel: Record<Stage, string> = {
 };
 
 export default function FieldPage() {
+  const orgScope = useOrgScopeKey();
+  return <FieldBody key={orgScope} />;
+}
+
+function FieldBody() {
   const [tab, setTab] = useState<Tab>("segments");
 
   return (

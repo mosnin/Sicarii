@@ -33,7 +33,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { LogoMark } from "@/components/brand/logo-mark";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   motion,
   AnimatePresence,
@@ -46,7 +46,8 @@ import {
 } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
+import { UserButton, OrganizationSwitcher, useAuth } from "@clerk/nextjs";
+import { orgScopeKey } from "@/lib/org-scope";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import {
   Home,
@@ -564,6 +565,8 @@ function Sidebar({
             <OrganizationSwitcher
               afterSelectOrganizationUrl="/dashboard"
               afterSelectPersonalUrl="/dashboard"
+              afterCreateOrganizationUrl="/dashboard"
+              afterLeaveOrganizationUrl="/dashboard"
             />
             <ThemeToggle />
           </div>
@@ -786,11 +789,33 @@ function Launchpad({
 
 // ── DashboardShell (main export) ─────────────────────────────────────────────
 
+function OrgScopeSync() {
+  const { orgId } = useAuth();
+  const router = useRouter();
+  const prev = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const next = orgScopeKey(orgId);
+    if (prev.current === undefined) {
+      prev.current = next;
+      return;
+    }
+    if (prev.current !== next) {
+      prev.current = next;
+      router.refresh();
+    }
+  }, [orgId, router]);
+
+  return null;
+}
+
 export function DashboardShell({
   isStaff,
+  orgScopeKey: scopeKey = "personal",
   children,
 }: {
   isStaff: boolean;
+  orgScopeKey?: string;
   children: React.ReactNode;
 }) {
   const prefersReduced = useReducedMotion();
@@ -848,6 +873,7 @@ export function DashboardShell({
 
   return (
     <MobileNavContext.Provider value={{ navOpen: false }}>
+      <OrgScopeSync />
       <LayoutGroup>
         <div className="min-h-screen bg-background dark:bg-charcoal-dark">
           {/* ── Floating top header ── */}
@@ -878,6 +904,8 @@ export function DashboardShell({
                   <OrganizationSwitcher
                     afterSelectOrganizationUrl="/dashboard"
                     afterSelectPersonalUrl="/dashboard"
+                    afterCreateOrganizationUrl="/dashboard"
+                    afterLeaveOrganizationUrl="/dashboard"
                   />
                   <ThemeToggle />
                   <UserButton />
@@ -893,7 +921,14 @@ export function DashboardShell({
             transition={contentTransition}
             className="pb-20 pt-6 lg:pb-36"
           >
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              {/* Remount island + page when the active Clerk org changes so
+                  client state (Radar, Discover, Field, API keys, agent chat)
+                  cannot keep showing the previous tenant. */}
+              <div key={scopeKey} className="contents">
+                {children}
+              </div>
+            </div>
           </motion.main>
 
           {/* ── Nav - dock (desktop) or sidebar (desktop) or mobile panel ── */}

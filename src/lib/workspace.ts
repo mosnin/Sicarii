@@ -8,6 +8,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
+import { workspaceCreateName, workspaceDisplayName } from "@/lib/org-scope";
 
 /** Map a Clerk org role ("org:admin" / "org:member") to our role string. */
 export function roleFromClerk(orgRole?: string | null): string {
@@ -25,19 +26,23 @@ export function roleFromClerk(orgRole?: string | null): string {
 export async function resolveWorkspace(opts: {
   orgId: string;
   orgName?: string | null;
+  orgSlug?: string | null;
   actor: User; // the personal account row of the signed-in human
   orgRole?: string | null;
 }): Promise<User> {
-  const { orgId, orgName, actor, orgRole } = opts;
+  const { orgId, orgName, orgSlug, actor, orgRole } = opts;
+  const createName = workspaceCreateName({ orgName, orgSlug });
   const workspace = await prisma.user.upsert({
     where: { clerkId: orgId },
-    // Keep the display name fresh; never touch plan or meter on update.
-    update: { ...(orgName ? { firstName: orgName } : {}) },
+    // Keep the display name fresh when Clerk gave us the real org name.
+    // Never overwrite a webhook-set name with a slug, and never touch plan
+    // or meter on update.
+    update: { ...(orgName?.trim() ? { firstName: orgName.trim() } : {}) },
     create: {
       clerkId: orgId,
       accountType: "workspace",
       email: "",
-      firstName: orgName ?? "Team workspace",
+      firstName: createName,
       plan: "free",
       creditsRemaining: 200,
     },
@@ -58,12 +63,15 @@ export async function resolveWorkspace(opts: {
 export async function listUserWorkspaces(userId: string) {
   const rows = await prisma.teamMember.findMany({
     where: { userId },
-    include: { workspace: { select: { id: true, firstName: true } } },
+    include: { workspace: { select: { id: true, firstName: true, clerkId: true } } },
     orderBy: { createdAt: "asc" },
   });
   return rows.map((m) => ({
     workspaceId: m.workspace.id,
-    name: m.workspace.firstName ?? "Team workspace",
+    name: workspaceDisplayName({
+      firstName: m.workspace.firstName,
+      fallback: m.workspace.clerkId,
+    }),
     role: m.role,
   }));
 }

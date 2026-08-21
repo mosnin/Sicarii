@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useOrgScopeKey } from "@/components/dashboard/use-org-scope";
 import { motion, AnimatePresence } from "motion/react";
 
 type EntityHit = { id: string; name: string; domain: string | null; industry: string | null };
@@ -15,6 +16,14 @@ export function GlobalSearch() {
   const [entities, setEntities] = useState<EntityHit[]>([]);
   const [contacts, setContacts] = useState<ContactHit[]>([]);
   const boxRef = useRef<HTMLDivElement>(null);
+  const orgScope = useOrgScopeKey();
+
+  useEffect(() => {
+    setQ("");
+    setEntities([]);
+    setContacts([]);
+    setOpen(false);
+  }, [orgScope]);
 
   // Debounced search.
   useEffect(() => {

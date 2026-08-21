@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { FloatIn } from "@/components/ui/float-in";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import { cn } from "@/lib/utils";
+import { useOrgScopeKey } from "@/components/dashboard/use-org-scope";
 
 type Monitor = {
   id: string; name: string; query: string; frequency: string; active: boolean;
@@ -17,6 +18,11 @@ type Monitor = {
 const FREQ = ["hourly", "daily", "weekly"] as const;
 
 export default function RadarPage() {
+  const orgScope = useOrgScopeKey();
+  return <RadarBody key={orgScope} />;
+}
+
+function RadarBody() {
   const [items, setItems] = useState<Monitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
