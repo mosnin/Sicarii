@@ -56,6 +56,10 @@ exponential growth into a plateau.
 - **Discovery saves only what it can verify.** find_socials auto-saves a profile
   only on name AND company match; everything else is a candidate for review.
   Null over wrong, on every enrichment path. _(Cards 0003, 0008)_
+- **Scheduled research merges, it never replaces.** A targeted research run
+  appends into `notes`, writes an Activity, and only promotes `NEW` to
+  `ENRICHED`. Existing notes and later pipeline states (WON, CONTACTED, …)
+  survive every tick.
 
 ## Open debts (owed to reality)
 
