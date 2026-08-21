@@ -211,7 +211,14 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
           };
         })(),
         (() => {
-          const vars = ["X402_PAY_TO", "X402_NETWORK", "CDP_API_KEY_ID", "CDP_API_KEY_SECRET"];
+          const vars = [
+            "X402_PAY_TO",
+            "X402_NETWORK",
+            "CDP_API_KEY_ID",
+            "CDP_API_KEY_SECRET",
+            "X402_RESOURCE_BASE",
+            "NEXT_PUBLIC_APP_URL",
+          ];
           if (!isSet(env, "X402_PAY_TO")) {
             return {
               name: "x402 agent payments",
@@ -239,11 +246,21 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
               detail: "X402_PAY_TO is set for mainnet (base) but CDP_API_KEY_ID/CDP_API_KEY_SECRET are missing; settlement will fail.",
             };
           }
+          const resourceBase = (env.X402_RESOURCE_BASE || env.NEXT_PUBLIC_APP_URL || "").trim();
+          if (resourceBase && !/^https?:\/\//i.test(resourceBase)) {
+            return {
+              name: "x402 agent payments",
+              status: "partial" as CheckStatus,
+              vars,
+              detail:
+                "X402_RESOURCE_BASE / NEXT_PUBLIC_APP_URL must be an http(s) origin; quotes would otherwise fall back to https://tryscalar.xyz.",
+            };
+          }
           return {
             name: "x402 agent payments",
             status: "pass" as CheckStatus,
             vars,
-            detail: `Configured for ${network}.`,
+            detail: `Configured for ${network}. Quotes use ${resourceBase.replace(/\/$/, "") || "https://tryscalar.xyz"}.`,
           };
         })(),
       ],

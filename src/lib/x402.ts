@@ -152,11 +152,15 @@ export function decodePaymentHeader(header: string): PaymentPayload | null {
  *  HTTP endpoint are interchangeable: the same on-chain nonce settles either
  *  way, so a cross-transport replay is caught by alreadyCredited. */
 export function resourceUrl(path: string): string {
-  const base =
-    process.env.X402_RESOURCE_BASE?.replace(/\/$/, "") ||
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+  const raw =
+    process.env.X402_RESOURCE_BASE?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     "https://tryscalar.xyz";
-  return base + path;
+  const base = raw.replace(/\/$/, "");
+  // Only an http(s) origin can be a payment resource. Anything else (a bare
+  // host, a sneaky scheme) would mint a quote that no honest client can settle.
+  const origin = /^https?:\/\//i.test(base) ? base : "https://tryscalar.xyz";
+  return origin + path;
 }
 
 /**

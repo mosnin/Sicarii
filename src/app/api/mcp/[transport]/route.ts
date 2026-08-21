@@ -8,17 +8,13 @@ import {
   topUpHint,
   isX402Configured,
   buildRequirements,
-  grantAfterSettle,
   paymentRequiredBody,
-  paymentRef,
-  verifyPayment,
-  settlePayment,
   decodePaymentHeader,
   resourceUrl,
   x402Network,
   USD_PER_CREDIT,
 } from "@/lib/x402";
-import { settleAndCredit } from "@/lib/x402-grant";
+import { settleAndApplyPlan, settleAndCredit } from "@/lib/x402-grant";
 import {
   DEFAULT_PACK_CREDITS,
   MAX_PACK_CREDITS,
@@ -77,8 +73,6 @@ import {
   spendCredits,
   ensureCredits,
   getBilling,
-  alreadyCreditedAny,
-  applyPlan,
   planFor,
   PLANS,
   PLAN_USD,
@@ -334,22 +328,17 @@ async function buyPlanViaMcp(
   }
   const payload = decodePaymentHeader(xPayment);
   if (!payload) throw new OpError("xPayment is not a valid base64 X-PAYMENT payload.", 400);
-  const verified = await verifyPayment(payload, requirements);
-  if (!verified.ok) throw new OpError(`Payment invalid: ${verified.reason}`, 402);
-  const ref = paymentRef(payload);
-  if (!ref) throw new OpError("Payment payload missing nonce - cannot process idempotently.", 400);
-  const seen = await alreadyCreditedAny(ref);
-  if (seen) {
-    if (seen.userId !== userId) throw new OpError("This payment already credited another account.", 402);
-    return { step: "settled", plan, duplicate: true };
-  }
-  const settled = await settlePayment(payload, requirements);
-  if (!settled.ok) throw new OpError(`Settlement failed: ${settled.reason}`, 402);
-  await grantAfterSettle(
-    () => applyPlan(userId, plan, { ref }),
-    { transaction: settled.transaction, userId, ref, amount: `plan:${plan}` },
-  );
-  return { step: "settled", plan, credits: PLANS[plan].credits, period: "30 days", network: x402Network(), transaction: settled.transaction };
+  const granted = await settleAndApplyPlan({ userId, plan, payload, requirements });
+  if (!granted.ok) throw new OpError(granted.reason, 402);
+  return {
+    step: "settled",
+    plan,
+    credits: PLANS[plan].credits,
+    period: "30 days",
+    duplicate: granted.duplicate,
+    network: x402Network(),
+    transaction: granted.transaction,
+  };
 }
 
 const handler = createMcpHandler(

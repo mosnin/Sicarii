@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
-import { PLANS, CREDIT_COSTS, planFor, outOfCreditsError } from "@/lib/credits";
+import { PLANS, CREDIT_COSTS, MAX_CREDIT_GRANT, planFor, outOfCreditsError } from "@/lib/credits";
 
 describe("credit constants", () => {
   it("every action has a positive credit cost", () => {
@@ -29,11 +29,32 @@ describe("credit constants", () => {
   });
 });
 
+describe("scheduled research miss policy", () => {
+  it("does not debit an intent monitor before the lookup returns", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/lib/radar-run.ts"), "utf8");
+    expect(src).toContain("ensureCredits(monitor.userId, \"monitor_run\")");
+    expect(src).toContain("if (items.length > 0)");
+    expect(src).toContain("spendCredits(monitor.userId, \"monitor_run\"");
+    const gate = src.indexOf("ensureCredits(monitor.userId, \"monitor_run\")");
+    const lookup = src.lastIndexOf("exaIntentSearch(monitor.query");
+    const debit = src.lastIndexOf("spendCredits(monitor.userId, \"monitor_run\"");
+    expect(gate).toBeGreaterThan(-1);
+    expect(gate).toBeLessThan(lookup);
+    expect(lookup).toBeLessThan(debit);
+  });
+});
+
 describe("agent credit policy", () => {
   it("does not debit credits before the agent knows which tools ran", () => {
     const route = readFileSync(resolve(process.cwd(), "src/app/api/agent/route.ts"), "utf8");
     expect(route).not.toContain("spendCredits");
     expect(route).not.toContain("agent_turn");
+  });
+});
+
+describe("MAX_CREDIT_GRANT", () => {
+  it("caps a single grant at the pack ceiling", () => {
+    expect(MAX_CREDIT_GRANT).toBe(100_000);
   });
 });
 

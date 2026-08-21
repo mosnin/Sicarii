@@ -6,12 +6,12 @@
 // Paying a SKU grants credits. The original tool still spends only on a hit
 // (never a miss), so a failed lookup leaves the purchased credits on the meter.
 
-import { CREDIT_COSTS, type CreditAction } from "@/lib/credits";
+import { CREDIT_COSTS, MAX_CREDIT_GRANT, type CreditAction } from "@/lib/credits";
 import { OpError } from "@/lib/op-error";
 import { USD_PER_CREDIT } from "@/lib/x402";
 
 export const MIN_PACK_CREDITS = 100;
-export const MAX_PACK_CREDITS = 100_000;
+export const MAX_PACK_CREDITS = MAX_CREDIT_GRANT;
 export const DEFAULT_PACK_CREDITS = 1_000;
 export const MIN_SKU_QUANTITY = 1;
 export const MAX_SKU_QUANTITY = 500;

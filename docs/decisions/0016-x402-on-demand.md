@@ -49,7 +49,21 @@ allowance.
 - `X402_PAY_TO` must be a 40-hex EVM address. `X402_NETWORK` is only `base` or
   `base-sepolia`.
 - Pack size is checked in the MCP buy path, not only by the tool schema.
+- A settled nonce is written to `X402Settlement` before the credit/plan grant.
+  A retry after a post-settle DB blip skips settle (the nonce is spent) and
+  still grants. A nonce that credited account A is refused for account B even
+  after A is deleted (no User FK cascade on the settlement row).
+- HTTP subscribe and MCP `buy_plan` share `settleAndApplyPlan` with the same
+  recover-after-settle path as packs and per-call SKUs.
+- `addCredits` rejects a grant above `MAX_CREDIT_GRANT`. `applyPlan` records
+  the actual GREATEST balance, not the allotment.
+- `planForPriceId` includes the team plan so a portal switch cannot miss it.
+- `resourceUrl` only accepts an http(s) origin.
+- Intent monitors and research schedules debit only on a hit.
 
 ## Debts owed to reality
 
 - One live `pay_for` settlement on Base (the same Phase 0 debt as 0007).
+- If settle succeeds and the settlement row never writes, a retry still cannot
+  auto-grant (the nonce is spent and we have no marker). That case is logged
+  CRITICAL `settled_but_unrecorded` with the tx hash for manual reconcile.

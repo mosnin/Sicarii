@@ -137,6 +137,23 @@ model CreditLedger {
   @@map("credit_ledger")
 }
 
+// Durable record that an x402 nonce settled on-chain. Written AFTER settle and
+// BEFORE the credit/plan grant so a retried client (or a post-settle DB blip)
+// can skip a second settle and still receive the grant. No User FK: this row
+// must survive account deletion so the nonce stays globally consumed even if
+// the ledger was cascaded away.
+model X402Settlement {
+  ref         String   @id
+  userId      String
+  transaction String
+  kind        String // "credits" | "plan"
+  amount      String
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@map("x402_settlements")
+}
+
 // A chat with the Scalar agent. A fresh one is created on each page load; long-term
 // continuity comes from vector recall over memory_chunks, not from replaying history.
 model Conversation {

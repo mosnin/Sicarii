@@ -41,8 +41,9 @@ mainnet settlement is owed to reality (the x402 sibling of Phase 0).
 **Parallel cycle shipped: 0016 - x402 on-demand** (`0016-x402-on-demand.md`).
 A plan is an included monthly allowance. Agents pay per call or per contact
 (`POST /api/x402/pay`, MCP `pay_for`) with no subscription required. Extra
-usage after the allotment is the same meter. Owed: one live `pay_for`
-settlement.
+usage after the allotment is the same meter. A settled nonce is recorded
+before the grant so a retry cannot lose paid credits. Owed: one live
+`pay_for` settlement and `prisma db push` for `x402_settlements`.
 
 **Riskiest assumption under test:** _that the enrichment loop, observed live,
 feels like quiet leverage. If it works but feels flat, we fix the loop before

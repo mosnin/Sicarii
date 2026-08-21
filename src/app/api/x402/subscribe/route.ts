@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveRequestUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { applyPlan, alreadyCreditedAny, PLAN_USD, PLANS, type PaidPlanName } from "@/lib/credits";
+import { PLAN_USD, PLANS, type PaidPlanName } from "@/lib/credits";
+import { settleAndApplyPlan } from "@/lib/x402-grant";
 import {
   buildRequirements,
-  grantAfterSettle,
   isX402Configured,
-  paymentRef,
   paymentRequiredBody,
   readPayment,
   resourceUrl,
-  settlePayment,
-  verifyPayment,
   x402Network,
 } from "@/lib/x402";
 
@@ -80,58 +77,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(paymentRequiredBody(requirements), { status: 402 });
     }
 
-    const verified = await verifyPayment(payload, requirements);
-    if (!verified.ok) {
-      return NextResponse.json(
-        paymentRequiredBody(requirements, `Payment invalid: ${verified.reason}`),
-        { status: 402 },
-      );
+    const granted = await settleAndApplyPlan({
+      userId: user.id,
+      plan,
+      payload,
+      requirements,
+    });
+    if (!granted.ok) {
+      return NextResponse.json(paymentRequiredBody(requirements, granted.reason), {
+        status: 402,
+      });
     }
 
-    // Idempotency: if this payment already applied, return success without
-    // settling again (a benign client retry, never a second charge). Reject
-    // payloads with no nonce - they can't be idempotency-keyed safely.
-    const ref = paymentRef(payload);
-    if (!ref) {
-      return NextResponse.json(
-        paymentRequiredBody(requirements, "Payment payload missing nonce."),
-        { status: 402 },
-      );
-    }
-    const prior = await alreadyCreditedAny(ref);
-    if (prior) {
-      if (prior.userId !== user.id) {
-        return NextResponse.json(
-          paymentRequiredBody(requirements, "This payment already credited another account."),
-          { status: 402 },
-        );
-      }
-      return NextResponse.json({ plan, duplicate: true });
-    }
-
-    const settled = await settlePayment(payload, requirements);
-    if (!settled.ok) {
-      return NextResponse.json(
-        paymentRequiredBody(requirements, `Settlement failed: ${settled.reason}`),
-        { status: 402 },
-      );
-    }
-
-    // applyPlan is idempotent on ref; grantAfterSettle retries + reconciliation-
-    // logs so a post-settle failure can never silently lose the paid plan.
-    await grantAfterSettle(
-      () => applyPlan(user.id, plan, { ref }),
-      { transaction: settled.transaction, userId: user.id, ref, amount: `plan:${plan}` },
-    );
     return NextResponse.json(
       {
         plan,
         credits: PLANS[plan].credits,
         period: "30 days",
+        duplicate: granted.duplicate,
         network: x402Network(),
-        transaction: settled.transaction,
+        transaction: granted.transaction,
       },
-      { headers: { "X-PAYMENT-RESPONSE": settled.responseHeader } },
+      granted.responseHeader
+        ? { headers: { "X-PAYMENT-RESPONSE": granted.responseHeader } }
+        : undefined,
     );
   } catch (e) {
     console.error("POST /api/x402/subscribe", e);

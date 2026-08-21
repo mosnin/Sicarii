@@ -5,6 +5,7 @@ import {
   isX402PayTo,
   paymentRequiredBody,
   paymentRef,
+  resourceUrl,
   topUpHint,
   x402Network,
 } from "@/lib/x402";
@@ -125,6 +126,24 @@ describe("paymentRef", () => {
     // payments collide on one idempotency key. Null forces a 400 upstream.
     expect(paymentRef({} as never)).toBeNull();
     expect(paymentRef({ payload: { authorization: {} } } as never)).toBeNull();
+  });
+});
+
+describe("resourceUrl", () => {
+  afterEach(() => {
+    delete process.env.X402_RESOURCE_BASE;
+    delete process.env.NEXT_PUBLIC_APP_URL;
+  });
+
+  it("prefers X402_RESOURCE_BASE over the public app URL", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://app.example";
+    process.env.X402_RESOURCE_BASE = "https://pay.example/";
+    expect(resourceUrl("/api/x402/pay")).toBe("https://pay.example/api/x402/pay");
+  });
+
+  it("rejects a non-http origin and falls back to the live host", () => {
+    process.env.X402_RESOURCE_BASE = "javascript:alert(1)";
+    expect(resourceUrl("/api/x402/pay")).toBe("https://tryscalar.xyz/api/x402/pay");
   });
 });
 

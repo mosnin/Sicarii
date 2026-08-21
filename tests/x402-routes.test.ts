@@ -12,6 +12,17 @@ const files = [
   "src/app/api/x402/subscribe/route.ts",
 ];
 
+describe("x402 plan purchase shares the grant helper", () => {
+  it("HTTP subscribe and MCP buy_plan both call settleAndApplyPlan", () => {
+    const http = readFileSync(resolve(process.cwd(), "src/app/api/x402/subscribe/route.ts"), "utf8");
+    const mcp = readFileSync(resolve(process.cwd(), "src/app/api/mcp/[transport]/route.ts"), "utf8");
+    expect(http).toContain("settleAndApplyPlan");
+    expect(mcp).toContain("settleAndApplyPlan");
+    expect(http).not.toContain("settlePayment(");
+    expect(mcp).not.toMatch(/await settlePayment\(/);
+  });
+});
+
 describe("x402 HTTP resource URLs", () => {
   for (const file of files) {
     it(`${file} quotes against resourceUrl()`, () => {

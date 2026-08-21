@@ -94,6 +94,10 @@ export const CREDIT_COSTS = {
 
 export type CreditAction = keyof typeof CREDIT_COSTS;
 
+// Hard ceiling on a single credit grant (packs, SKUs, admin-less top-ups).
+// Kept here so addCredits cannot be asked for an unbounded increment.
+export const MAX_CREDIT_GRANT = 100_000;
+
 export const OUT_OF_CREDITS_MESSAGE =
   "Out of credits. Pay for this call with USDC, buy a credit pack, or wait for your plan reset.";
 
@@ -349,6 +353,9 @@ export async function addCredits(
   if (!Number.isInteger(credits) || credits <= 0) {
     throw new OpError("credits must be a positive integer", 400);
   }
+  if (credits > MAX_CREDIT_GRANT) {
+    throw new OpError(`credits must be at most ${MAX_CREDIT_GRANT}`, 400);
+  }
 
   // No ref => not a payment (no idempotency needed); plain increment.
   if (!opts.ref) {
@@ -421,6 +428,10 @@ export async function applyPlan(
     try {
       await prisma.$transaction(async (tx) => {
         await tx.idempotencyKey.create({ data: { key, userId } });
+        const before = await tx.user.findUnique({
+          where: { id: userId },
+          select: { creditsRemaining: true },
+        });
         await tx.$executeRaw`
           UPDATE users
           SET plan = ${plan},
@@ -428,8 +439,20 @@ export async function applyPlan(
               "creditsResetAt" = ${next}
           WHERE id = ${userId}
         `;
+        const after = await tx.user.findUnique({
+          where: { id: userId },
+          select: { creditsRemaining: true },
+        });
+        const balanceAfter = after?.creditsRemaining ?? credits;
+        const delta = balanceAfter - (before?.creditsRemaining ?? 0);
         await tx.creditLedger.create({
-          data: { userId, delta: credits, balanceAfter: credits, action: `plan_${plan}`, ref: opts.ref },
+          data: {
+            userId,
+            delta,
+            balanceAfter,
+            action: `plan_${plan}`,
+            ref: opts.ref,
+          },
         });
       });
     } catch (e) {
@@ -440,6 +463,10 @@ export async function applyPlan(
   }
 
   // No ref (should not happen for paid plans, but keep it correct): non-idempotent.
+  const before = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { creditsRemaining: true },
+  });
   await prisma.$executeRaw`
     UPDATE users
     SET plan = ${plan},
@@ -447,11 +474,16 @@ export async function applyPlan(
         "creditsResetAt" = ${next}
     WHERE id = ${userId}
   `;
+  const after = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { creditsRemaining: true },
+  });
+  const balanceAfter = after?.creditsRemaining ?? credits;
   await prisma.creditLedger.create({
     data: {
       userId,
-      delta: credits,
-      balanceAfter: credits,
+      delta: balanceAfter - (before?.creditsRemaining ?? 0),
+      balanceAfter,
       action: `plan_${plan}`,
       ref: opts.ref,
     },

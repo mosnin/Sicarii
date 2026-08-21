@@ -66,6 +66,15 @@ describe("runEnvDoctor", () => {
     expect(findCheck(report, "x402 agent payments").status).toBe("partial");
   });
 
+  it("resolves x402 to PARTIAL when the quote origin is not http(s)", () => {
+    const report = runEnvDoctor({
+      X402_PAY_TO: "0x0000000000000000000000000000000000000001",
+      X402_NETWORK: "base-sepolia",
+      X402_RESOURCE_BASE: "not-a-url",
+    });
+    expect(findCheck(report, "x402 agent payments").status).toBe("partial");
+  });
+
   it("never includes a secret value anywhere in the serialized report", () => {
     const secret = "sk_live_super_secret_value_12345";
     const report = runEnvDoctor({ CLERK_SECRET_KEY: secret, STRIPE_SECRET_KEY: secret });
