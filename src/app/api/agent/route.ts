@@ -30,6 +30,7 @@ import {
   updateContact,
   saveSocialMessage,
   searchCrm,
+  CONTACT_STATUSES,
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
@@ -290,14 +291,35 @@ export async function POST(req: Request) {
       execute: ({ id }) => exec(() => enrichEntity(userId, id)),
     }),
     list_contacts: tool({
-      description: "List people (contacts). Optional search query and status.",
+      description:
+        "List people (contacts). Filter by query, status, source, tag, list, ownerId, segmentId, pipelineId, or pipeline stage.",
       inputSchema: z.object({
         query: z.string().optional(),
         status: z.string().optional(),
+        source: z.string().optional(),
+        tag: z.string().optional(),
+        list: z.string().optional(),
+        ownerId: z.string().optional(),
+        segmentId: z.string().optional(),
+        pipelineId: z.string().optional(),
+        stage: z.string().optional(),
         limit: z.number().int().min(1).max(200).optional(),
       }),
-      execute: ({ query, status, limit }) =>
-        exec(() => listContacts(userId, { q: query, status, limit })),
+      execute: ({ query, status, source, tag, list, ownerId, segmentId, pipelineId, stage, limit }) =>
+        exec(() =>
+          listContacts(userId, {
+            q: query,
+            status,
+            source,
+            tag,
+            list,
+            ownerId,
+            segmentId,
+            pipelineId,
+            stage,
+            limit,
+          }),
+        ),
     }),
     get_contact: tool({
       description: "Get one contact by id, with linked entity and saved emails.",
@@ -318,6 +340,9 @@ export async function POST(req: Request) {
         instagram: z.string().optional(),
         twitter: z.string().optional(),
         source: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        list: z.string().optional(),
+        ownerId: z.string().optional(),
         notes: z.string().optional(),
         entityId: z.string().optional(),
       }),
@@ -325,7 +350,7 @@ export async function POST(req: Request) {
         exec(() => createContact(userId, { ...args, source: args.source || "agent" })),
     }),
     update_contact: tool({
-      description: "Update fields on a contact (including status, entity, social profiles).",
+      description: "Update fields on a contact (including status, entity, social profiles, list, owner, tags, source).",
       inputSchema: z.object({
         id: z.string(),
         name: z.string().optional(),
@@ -336,6 +361,11 @@ export async function POST(req: Request) {
         facebook: z.string().optional(),
         instagram: z.string().optional(),
         twitter: z.string().optional(),
+        status: z.enum(CONTACT_STATUSES).optional(),
+        source: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        list: z.string().optional(),
+        ownerId: z.string().optional(),
         notes: z.string().optional(),
         entityId: z.string().optional(),
       }),

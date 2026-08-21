@@ -1,19 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
-
-const CONTACT_STATUSES = [
-  "NEW",
-  "ENRICHED",
-  "CONTACTED",
-  "REPLIED",
-  "QUALIFIED",
-  "WON",
-  "LOST",
-  "ARCHIVED",
-] as const;
+import { CONTACT_STATUSES } from "@/lib/lead-org";
+import { updateContact, deleteContact, OpError } from "@/lib/crm-operations";
 
 const updateContactSchema = z.object({
   name: z.string().trim().max(200).nullable().optional(),
@@ -31,6 +21,8 @@ const updateContactSchema = z.object({
   source: z.string().trim().max(100).nullable().optional(),
   tags: z.array(z.string().trim().min(1).max(50)).max(50).optional(),
   notes: z.string().trim().max(10000).nullable().optional(),
+  list: z.string().trim().max(80).nullable().optional(),
+  ownerId: z.string().uuid().nullable().optional(),
   enrichment: z.record(z.string(), z.unknown()).nullable().optional(),
   entityId: z.string().uuid().nullable().optional(),
 });
@@ -86,28 +78,14 @@ export async function PATCH(
       );
     }
 
-    const { enrichment, entityId, ...rest } = parsed.data;
-
-    // If (re)assigning an entity, it must belong to this user.
-    if (entityId) {
-      const entity = await prisma.entity.findUnique({ where: { id: entityId } });
-      if (!entity || entity.userId !== user.id) {
-        return NextResponse.json({ error: "Invalid entity" }, { status: 400 });
-      }
-    }
-
-    const data: Prisma.ContactUncheckedUpdateInput = { ...rest };
-    if (entityId !== undefined) data.entityId = entityId;
-    if (enrichment !== undefined) {
-      data.enrichment =
-        enrichment === null ? Prisma.DbNull : (enrichment as Prisma.InputJsonValue);
-    }
-
-    const contact = await prisma.contact.update({ where: { id }, data });
+    const contact = await updateContact(user.id, id, parsed.data);
 
     return NextResponse.json({ contact });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
     console.error("PATCH /api/contacts/[id]", e);
     return NextResponse.json({ error: "Failed to update contact" }, { status: 500 });
   }
@@ -124,10 +102,13 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    await prisma.contact.delete({ where: { id } });
+    await deleteContact(user.id, id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
     console.error("DELETE /api/contacts/[id]", e);
     return NextResponse.json({ error: "Failed to delete contact" }, { status: 500 });
   }

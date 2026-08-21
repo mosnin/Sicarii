@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { createExaMonitor, deleteExaMonitor, isExaConfigured, exaWebhookToken } from "@/lib/exa";
 import { planFor } from "@/lib/credits";
+import { isMonitorCapReached } from "@/lib/admin";
 
 // GET /api/intent-monitors - list all monitors for the current user.
 export async function GET() {
@@ -46,9 +47,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Plan limit: scheduled monitors are a paid-plan feature with a per-plan cap.
+    // Owner/admin accounts skip the cap; tenant isolation is unchanged.
     const allowed = planFor(user.plan).monitors;
     const existingCount = await prisma.intentMonitor.count({ where: { userId: user.id } });
-    if (existingCount >= allowed) {
+    if (isMonitorCapReached(user, existingCount, allowed)) {
       return NextResponse.json(
         { error: `Your plan allows ${allowed} scheduled monitor${allowed === 1 ? "" : "s"}.` },
         { status: 402 },

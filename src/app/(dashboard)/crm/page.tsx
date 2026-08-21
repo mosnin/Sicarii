@@ -12,8 +12,10 @@ import { FloatIn } from "@/components/ui/float-in";
 import { ContactRows } from "@/components/dashboard/crm-rows";
 import { EntityRows } from "@/components/dashboard/crm-rows";
 import { CrmHeaderMenu } from "@/components/dashboard/crm-header-menu";
+import { LeadFilters } from "@/components/dashboard/lead-filters";
 import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
+import { contactListWhere, leadFilterOptions } from "@/lib/lead-org";
 
 type Tab = "contacts" | "entities";
 
@@ -23,12 +25,33 @@ const PAGE = 500;
 export default async function CrmPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; page?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    page?: string;
+    status?: string;
+    source?: string;
+    tag?: string;
+    list?: string;
+    ownerId?: string;
+    segmentId?: string;
+    stage?: string;
+  }>;
 }) {
-  const { tab: tabParam, page: pageParam } = await searchParams;
+  const {
+    tab: tabParam,
+    page: pageParam,
+    status,
+    source,
+    tag,
+    list,
+    ownerId,
+    segmentId,
+    stage,
+  } = await searchParams;
   const tab: Tab = tabParam === "entities" ? "entities" : "contacts";
   const parsedPage = Number.parseInt(pageParam ?? "1", 10);
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const leadFilters = { status, source, tag, list, ownerId, segmentId, stage };
   const user = await getDbUser();
 
   if (!user) {
@@ -42,9 +65,11 @@ export default async function CrmPage({
     );
   }
 
-  const [contactCount, entityCount] = await Promise.all([
-    prisma.contact.count({ where: { userId: user.id } }),
+  const contactWhere = contactListWhere(user.id, leadFilters);
+  const [contactCount, entityCount, filterOptions] = await Promise.all([
+    prisma.contact.count({ where: contactWhere }),
     prisma.entity.count({ where: { userId: user.id } }),
+    tab === "contacts" ? leadFilterOptions(user.id) : Promise.resolve(null),
   ]);
 
   return (
@@ -90,7 +115,12 @@ export default async function CrmPage({
 
       <FloatIn delay={0.1}>
         {tab === "contacts" ? (
-          <ContactsList userId={user.id} page={page} />
+          <div className="space-y-4">
+            {filterOptions && (
+              <LeadFilters values={leadFilters} options={filterOptions} />
+            )}
+            <ContactsList userId={user.id} page={page} filters={leadFilters} />
+          </div>
         ) : (
           <EntitiesList userId={user.id} page={page} />
         )}
@@ -100,13 +130,40 @@ export default async function CrmPage({
         tab={tab}
         page={page}
         count={tab === "contacts" ? contactCount : entityCount}
+        extra={tab === "contacts" ? leadFilters : undefined}
       />
     </div>
   );
 }
 
 // Minimal pager, only shown once a list outgrows a single page.
-function Pager({ tab, page, count }: { tab: Tab; page: number; count: number }) {
+function pagerHref(
+  tab: Tab,
+  page: number,
+  extra?: Record<string, string | undefined>,
+) {
+  const params = new URLSearchParams();
+  params.set("tab", tab);
+  params.set("page", String(page));
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      if (value) params.set(key, value);
+    }
+  }
+  return `/crm?${params.toString()}`;
+}
+
+function Pager({
+  tab,
+  page,
+  count,
+  extra,
+}: {
+  tab: Tab;
+  page: number;
+  count: number;
+  extra?: Record<string, string | undefined>;
+}) {
   if (count <= PAGE) return null;
   const totalPages = Math.ceil(count / PAGE);
 
@@ -118,7 +175,7 @@ function Pager({ tab, page, count }: { tab: Tab; page: number; count: number }) 
       <div className="flex gap-2">
         <Button variant="outline" size="sm" asChild>
           <Link
-            href={`/crm?tab=${tab}&page=${Math.max(1, page - 1)}`}
+            href={pagerHref(tab, Math.max(1, page - 1), extra)}
             aria-disabled={page <= 1}
             className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
           >
@@ -127,7 +184,7 @@ function Pager({ tab, page, count }: { tab: Tab; page: number; count: number }) 
         </Button>
         <Button variant="outline" size="sm" asChild>
           <Link
-            href={`/crm?tab=${tab}&page=${Math.min(totalPages, page + 1)}`}
+            href={pagerHref(tab, Math.min(totalPages, page + 1), extra)}
             aria-disabled={page >= totalPages}
             className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
           >
@@ -163,9 +220,17 @@ function TabLink({
   );
 }
 
-async function ContactsList({ userId, page }: { userId: string; page: number }) {
+async function ContactsList({
+  userId,
+  page,
+  filters,
+}: {
+  userId: string;
+  page: number;
+  filters: Parameters<typeof contactListWhere>[1];
+}) {
   const contacts = await prisma.contact.findMany({
-    where: { userId },
+    where: contactListWhere(userId, filters),
     orderBy: { updatedAt: "desc" },
     include: { entity: { select: { id: true, name: true } } },
     // The list row never renders the enrichment blob; skip pulling KBs per row.
@@ -174,7 +239,33 @@ async function ContactsList({ userId, page }: { userId: string; page: number }) 
     take: PAGE,
   });
 
+  const filtered = Boolean(
+    filters.status ||
+      filters.source ||
+      filters.tag ||
+      filters.list ||
+      filters.ownerId ||
+      filters.segmentId ||
+      filters.stage,
+  );
+
   if (contacts.length === 0) {
+    if (filtered) {
+      return (
+        <Card>
+          <EmptyState
+            icon={Users}
+            title="No contacts match"
+            description="Nothing in this CRM matches the current filters. Clear them to see everyone."
+            action={
+              <Button variant="outline" asChild>
+                <Link href="/crm?tab=contacts">Clear filters</Link>
+              </Button>
+            }
+          />
+        </Card>
+      );
+    }
     return (
       <Card>
         <EmptyState
@@ -206,6 +297,9 @@ async function ContactsList({ userId, page }: { userId: string; page: number }) 
     email: c.email,
     title: c.title,
     status: c.status,
+    source: c.source,
+    list: c.list,
+    tags: c.tags,
     imageUrl: c.imageUrl,
     updatedAt: c.updatedAt.toISOString(),
     entity: c.entity ?? null,

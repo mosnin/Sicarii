@@ -56,6 +56,11 @@ exponential growth into a plateau.
 - **Discovery saves only what it can verify.** find_socials auto-saves a profile
   only on name AND company match; everything else is a candidate for review.
   Null over wrong, on every enrichment path. _(Cards 0003, 0008)_
+- **Owner admin bypasses plan caps, never tenant isolation.** Application-owner
+  accounts (`User.role === "admin"` or `OWNER_EMAILS`) skip credit/monitor caps.
+  Every CRM query stays scoped to that account's userId.
+- **Lead org lives on Contact.** Status, source, tags, list, owner, segment, and
+  pipeline stage are fields/filters on the existing lead, not a second CRM.
 
 ## Open debts (owed to reality)
 

@@ -364,16 +364,36 @@ const handler = createMcpHandler(
     /* -------------------------- Contacts -------------------------- */
     server.tool(
       "list_contacts",
-      "List people (contacts), newest first. Accepted params: query (filters name/email/company; `search` is an alias, query wins if both are sent), status (pipeline status filter), and limit (rows to return, 1-200, default 50). No other params are read.",
+      "List people (contacts), newest first. Filters are first-class fields on the contact (not a second CRM): query (name/email/company; `search` is an alias, query wins if both are sent), status, source, tag, list, ownerId, segmentId, pipelineId, stage (pipeline stage), and limit (1-200, default 50).",
       {
         query: z.string().max(500).optional(),
         search: z.string().max(500).optional().describe("Alias for query (older agent docs); ignored when query is set"),
         status: z.string().max(20).optional(),
+        source: z.string().max(100).optional(),
+        tag: z.string().max(50).optional(),
+        list: z.string().max(80).optional(),
+        ownerId: z.string().max(64).optional(),
+        segmentId: z.string().max(64).optional(),
+        pipelineId: z.string().max(64).optional(),
+        stage: z.string().max(20).optional().describe("Pipeline stage on a pipeline entry"),
         limit: z.number().int().min(1).max(200).optional().describe("Rows to return (default 50)"),
       },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      async ({ query, search, status, limit }, extra) =>
-        run(() => listContacts(userIdFrom(extra), { q: query ?? search, status, limit })),
+      async ({ query, search, status, source, tag, list, ownerId, segmentId, pipelineId, stage, limit }, extra) =>
+        run(() =>
+          listContacts(userIdFrom(extra), {
+            q: query ?? search,
+            status,
+            source,
+            tag,
+            list,
+            ownerId,
+            segmentId,
+            pipelineId,
+            stage,
+            limit,
+          }),
+        ),
     );
 
     server.tool(
@@ -402,6 +422,8 @@ const handler = createMcpHandler(
         notes: z.string().max(10000).optional(),
         source: z.string().max(100).optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
+        list: z.string().max(80).optional(),
+        ownerId: z.string().optional(),
         entityId: z.string().optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
@@ -413,7 +435,7 @@ const handler = createMcpHandler(
 
     server.tool(
       "update_contact",
-      "Update fields on a contact (including status, social profiles, and entity assignment).",
+      "Update fields on a contact (including status, social profiles, entity assignment, list, owner, tags, and source).",
       {
         id: z.string(),
         name: z.string().max(200).nullable().optional(),
@@ -442,6 +464,8 @@ const handler = createMcpHandler(
           .optional(),
         notes: z.string().max(10000).nullable().optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
+        list: z.string().max(80).nullable().optional(),
+        ownerId: z.string().nullable().optional(),
         entityId: z.string().nullable().optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
