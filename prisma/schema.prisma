@@ -1,0 +1,984 @@
+// Scalar — Prisma schema (Postgres on Supabase)
+// Auth is Clerk; users are mirrored here via the Clerk webhook.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  // Read the Supabase Vercel integration's auto-injected vars directly so no
+  // manual env control is needed. POSTGRES_PRISMA_URL = pooled (pgbouncer),
+  // POSTGRES_URL_NON_POOLING = direct connection (migrations / db push).
+  url        = env("POSTGRES_PRISMA_URL")
+  directUrl  = env("POSTGRES_URL_NON_POOLING")
+  // pgvector powers the agent's token-efficient recall (memory_chunks.embedding).
+  extensions = [vector]
+}
+
+model User {
+  id               String    @id @default(uuid())
+  clerkId          String    @unique
+  email            String
+  firstName        String?
+  lastName         String?
+  imageUrl         String?
+  role             String    @default("member")
+  // "user" = a human account. "workspace" = a synthetic account row mirroring a
+  // Clerk Organization: it owns the team's shared data through the exact same
+  // userId scoping every query already uses (see docs/engineering/
+  // teams-plan-2026-07-11.md). Human-only flows (welcome, profile) gate on this.
+  accountType      String    @default("user")
+  // Operator-authored context the agent reads (what you're selling) + a
+  // connected AgentMail key for email. Both are per-user settings.
+  productContext   String?   @db.Text
+  agentMailApiKey  String?
+  agentPhoneApiKey String?
+  // Outbound webhook: where Scalar POSTs results when a scheduled task (intent
+  // monitor / research schedule) completes, so the user's agent can be woken up.
+  taskWebhookUrl   String?
+  // Away-window guarantee: when true (default), finishing the first run seeds a
+  // weekly ICP radar so the agent keeps working while the user is away (powers
+  // The Pulse). The Settings toggle flips this AND pauses/resumes the seeded
+  // monitor, so it is a real off switch, not just a future-seeding preference.
+  autoRadar        Boolean   @default(true)
+  // Billing: plan + credit meter. Existing users default to "beta" with 10,000
+  // credits so nobody is suddenly blocked; new signups are set to "free"/200 by
+  // the Clerk webhook at creation time. creditsResetAt is the next monthly
+  // refill; stripeCustomerId links to the Stripe customer once they pay.
+  plan             String    @default("beta")
+  creditsRemaining Int       @default(10000)
+  creditsResetAt   DateTime?
+  stripeCustomerId String?
+  // Stamped on every dashboard load; the prior value is the "while you were
+  // away" window for The Pulse. Null until the first dashboard visit, so a
+  // returning user never sees their whole history bragged back at them.
+  lastSeenAt       DateTime?
+  // Voice-native CRM (inbound): the operator calls their AgentPhone number and
+  // asks Scalar a question out loud. voiceEnabled is the explicit opt-in (off
+  // by default, and requires agentPhoneApiKey to turn on). voiceInboundSecret
+  // is a high-entropy, per-user token the operator pastes into their
+  // AgentPhone inbound-webhook config as ?key=<token> - it is the ONLY thing
+  // that authenticates an inbound call to this user, since AgentPhone's
+  // payload shape/signing is unverified and nothing in the call body is ever
+  // trusted for identity. See src/app/api/webhooks/agentphone/route.ts.
+  // NOTE: this is deliberately NOT @unique at the DB level - a UNIQUE INDEX on
+  // this Supabase project's `users` table fails `prisma db push` (confirmed:
+  // every sibling PR that only ADDS a table deploys green; this is the only
+  // one that ALTERs `users`, and only the @unique variant failed). Uniqueness
+  // is instead guaranteed at generation time in
+  // src/app/api/settings/voice/route.ts (collision-checked before save), and
+  // lookups use findFirst against the plain index below.
+  voiceEnabled       Boolean   @default(false)
+  voiceInboundSecret String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  entities          Entity[]
+  contacts          Contact[]
+  apiKeys           ApiKey[]
+  conversations     Conversation[]
+  memoryChunks      MemoryChunk[]
+  intentMonitors    IntentMonitor[]
+  researchSchedules ResearchSchedule[]
+  swarmRuns         SwarmRun[]
+  creditLedger      CreditLedger[]
+  activities        Activity[]
+  segments          Segment[]
+  pipelines         Pipeline[]
+  outreachVariants  OutreachVariant[]
+  // Teams: workspaces this human belongs to / humans in this workspace.
+  memberships       TeamMember[] @relation("MemberOf")
+  members           TeamMember[] @relation("WorkspaceMembers")
+  // Budgeted Autopilot: proposed/approved spend plans that run unsupervised
+  // within their approved credit ceiling.
+  autopilotPlans    AutopilotPlan[]
+  breakupDrafts     BreakupDraft[]
+
+  // Plain (non-unique) index for the webhook's findFirst lookup by secret -
+  // see the voiceInboundSecret comment above for why this is not @unique.
+  @@index([voiceInboundSecret])
+  @@map("users")
+}
+
+// Mirror of a Clerk Organization membership: which humans can operate a
+// workspace account and with what role. Kept in sync by the Clerk webhook and
+// provisioned on first sight by the resolvers (same pattern as User).
+model TeamMember {
+  id                String   @id @default(uuid())
+  workspaceId       String // users.id of the workspace account row
+  workspace         User     @relation("WorkspaceMembers", fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId            String // users.id of the human member
+  user              User     @relation("MemberOf", fields: [userId], references: [id], onDelete: Cascade)
+  role              String   @default("member") // mirrors the Clerk org role
+  clerkMembershipId String?  @unique
+  createdAt         DateTime @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+// Append-only record of every credit movement (debits from metered actions,
+// refills on plan change). Best-effort: the atomic decrement on User is the
+// source of truth; this is the audit trail.
+model CreditLedger {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta        Int
+  balanceAfter Int
+  action       String
+  ref          String? // e.g. the contact/entity id the spend was for
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("credit_ledger")
+}
+
+// A chat with the Scalar agent. A fresh one is created on each page load; long-term
+// continuity comes from vector recall over memory_chunks, not from replaying history.
+model Conversation {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // "user" | "assistant"
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+// Token-efficient memory: embedded snippets of past messages and CRM data the agent
+// can recall by similarity instead of stuffing everything into the prompt.
+model MemoryChunk {
+  id        String                       @id @default(uuid())
+  userId    String
+  user      User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // "message" | "entity" | "contact" | "email"
+  refId     String? // id of the source record
+  content   String                       @db.Text
+  embedding Unsupported("vector(1536)")?
+  createdAt DateTime                     @default(now())
+
+  @@index([userId])
+  @@map("memory_chunks")
+}
+
+// Per-user API key for the MCP server / REST API. We store only a SHA-256 hash;
+// the plaintext is shown once at creation. `prefix`/`last4` are for display.
+model ApiKey {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  hashedKey  String    @unique
+  prefix     String
+  last4      String
+  // For workspace keys: the human member (users.id) who minted it.
+  createdById String?
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@map("api_keys")
+}
+
+// A business in the CRM. Discovered (e.g. via Tavily), enriched (via Explorium
+// by domain), and operated on by agents. Has many contacts.
+model Entity {
+  id     String @id @default(uuid())
+  userId String // owner (the Scalar account)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  domain      String?
+  website     String?
+  logoUrl     String?
+  phone       String?
+  industry    String?
+  location    String?
+  // Geocoded coordinates for the map view (from `location`, via Nominatim).
+  lat         Float?
+  lng         Float?
+  geocodedAt  DateTime?
+  description String?   @db.Text
+  size        String?
+
+  status EntityStatus @default(NEW)
+  source String? // "agent:tavily", "manual", "agent", etc.
+  tags   String[]     @default([])
+  notes  String?      @db.Text
+
+  // Enrichment payload (provider-shaped JSON the agent can read/extend).
+  enrichment Json?
+
+  // When this row is a copy shared from another account (personal -> team).
+  sharedFromId String?
+
+  contacts   Contact[]
+  activities Activity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, updatedAt])
+  @@index([userId, createdAt])
+  @@index([userId, domain])
+  @@map("entities")
+}
+
+enum EntityStatus {
+  NEW
+  ENRICHED
+  ARCHIVED
+}
+
+// Shared geocode cache. Keyed by a normalized address string so the same city
+// or address is only ever sent to Nominatim once (1 req/sec policy), making
+// repeated lookups instant. A row with null lat/lng is a remembered "no hit".
+model GeocodeCache {
+  id          String   @id @default(uuid())
+  query       String   @unique
+  lat         Float?
+  lng         Float?
+  displayName String?
+  createdAt   DateTime @default(now())
+
+  @@map("geocode_cache")
+}
+
+// A person/company in the CRM. Agents discover, enrich, and operate on these.
+model Contact {
+  id     String @id @default(uuid())
+  userId String // owner (the Scalar account this contact belongs to)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Optional parent business. A contact is assigned to an entity or stands solo.
+  entityId String?
+  entity   Entity? @relation(fields: [entityId], references: [id], onDelete: SetNull)
+
+  // Core
+  name     String?
+  email    String?
+  phone    String?
+  company  String?
+  title    String?
+  website  String?
+  linkedin String?
+  // Other social profiles (URL or handle). Filled manually, by an agent over
+  // MCP, or by find_socials (strict name+company verification, see social-find).
+  facebook  String?
+  instagram String?
+  twitter   String? // X (twitter.com / x.com)
+  location String?
+  imageUrl String?
+
+  // Pipeline
+  status ContactStatus @default(NEW)
+  source String? // how it was found: "discover:domain", "manual", "import", etc.
+  tags   String[]      @default([])
+  notes  String?
+  // Stamped by log_outreach when the agent reaches out; powers the
+  // "who needs a follow-up" query (status is the qualitative state, this the
+  // temporal one - updatedAt is polluted by every edit, so it can't be used).
+  lastContactedAt DateTime?
+
+  // Enrichment payload (provider-shaped JSON the agent can read/extend)
+  enrichment Json?
+
+  // When this row is a copy shared from another account (personal -> team),
+  // the source contact's id, for provenance and re-share dedup.
+  sharedFromId String?
+
+  emails          ContactEmail[]
+  calls           ContactCall[]
+  socialMessages  ContactSocialMessage[]
+  segments        ContactSegment[]
+  pipelineEntries PipelineEntry[]
+  activities      Activity[]
+  breakupDrafts   BreakupDraft[]
+  variantSends    VariantSend[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, status, lastContactedAt])
+  @@index([entityId])
+  @@index([userId, updatedAt])
+  @@index([userId, createdAt])
+  @@map("contacts")
+}
+
+// A timestamped trail of what happened with a contact or company: outreach
+// sent, a reply, a call, a note, a status change. The generic activity log the
+// ContactEmail model only covered for email. Keeps the human-summary `notes`
+// field from being overwritten by agents and gives an honest history.
+model Activity {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Polymorphic target: at least one is set.
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  entityId  String?
+  entity    Entity?  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  kind    String // "note" | "outreach" | "call" | "reply" | "status_change"
+  body    String @db.Text
+  channel String? // "email" | "linkedin" | "phone" | null
+  // Attribution in a team workspace: userId above is the TENANT (the workspace
+  // account); these say WHO acted - an agent's ApiKey.id or a member's users.id,
+  // with a display snapshot so the feed stays readable after key rotation.
+  actorId    String?
+  actorLabel String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([contactId, createdAt])
+  @@index([entityId, createdAt])
+  @@map("activities")
+}
+
+// Idempotency ledger for incoming Stripe webhook events. The PK is the Stripe
+// event.id; a duplicate delivery (Stripe is at-least-once + retries) fails the
+// insert, so the handler can safely skip it before applying any mutation.
+model ProcessedEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("processed_events")
+}
+
+// Atomic idempotency guard for credit grants (top-ups, plan purchases). The PK
+// is "<userId>:<ref>" where ref is the single-use payment reference (x402 nonce
+// or Stripe id). Inserting this row inside the same transaction as the credit
+// mutation makes the grant exactly-once: a concurrent or retried grant with the
+// same ref hits the PK collision (P2002) and the whole transaction rolls back,
+// closing the check-then-act race that a bare findFirst() left open.
+model IdempotencyKey {
+  key       String   @id
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("idempotency_keys")
+}
+
+// Revocation list for OAuth refresh tokens (jti = the token's unique id). The
+// MCP OAuth layer uses rotation-with-reuse-detection: each refresh consumes the
+// presented token (its jti is inserted here) and issues a fresh one. A refresh
+// token whose jti is already here is rejected, so a stolen-then-replayed token
+// is caught the moment the legit client has rotated past it. Rows past the
+// token's original expiry are prunable (the JWT exp already rejects them).
+model RevokedToken {
+  jti       String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("revoked_tokens")
+}
+
+enum ContactStatus {
+  NEW
+  ENRICHED
+  CONTACTED
+  REPLIED
+  QUALIFIED
+  WON
+  LOST
+  ARCHIVED
+}
+
+// Email exchanged with a contact. Rendered from the connected AgentMail account;
+// the agent can save messages here as reusable context.
+model ContactEmail {
+  id        String  @id @default(uuid())
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // AgentMail linkage (nullable until a key is connected)
+  agentMailMessageId String?
+  agentMailThreadId  String?
+
+  direction      Emaildirection
+  fromAddr       String?
+  toAddr         String?
+  subject        String?
+  body           String?        @db.Text
+  // Whether the agent flagged this message as durable context.
+  savedAsContext Boolean        @default(false)
+
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([contactId])
+  @@index([agentMailThreadId])
+  @@map("contact_emails")
+}
+
+enum Emaildirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum SocialChannel {
+  LINKEDIN
+  X
+  INSTAGRAM
+  FACEBOOK
+  OTHER
+}
+
+enum SocialDirection {
+  INBOUND
+  OUTBOUND
+}
+
+// A social media message (DM, comment thread, connection note) exchanged with a
+// contact on LinkedIn, X, Instagram, or Facebook. Mirrors ContactEmail so the
+// conversation history a user or agent tracks is durable and channel-labeled.
+// Agents log these over MCP (log_social_message); humans log them from the
+// contact page. threadRef is a permalink or external thread id when available.
+model ContactSocialMessage {
+  id        String  @id @default(uuid())
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  channel   SocialChannel
+  direction SocialDirection
+  body      String          @db.Text
+  threadRef String?
+  // Whether the agent flagged this message as durable context.
+  savedAsContext Boolean @default(false)
+
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([contactId, createdAt])
+  @@map("contact_social_messages")
+}
+
+// A phone call with a contact, placed/tracked via the user's AgentPhone account
+// (per-user key on User.agentPhoneApiKey). Mirrors ContactEmail for calls so the
+// agent's call history with a lead is durable and visible on the CRM.
+model ContactCall {
+  id        String  @id @default(uuid())
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  // AgentPhone linkage (nullable until a call is placed/synced).
+  agentPhoneCallId String?
+
+  direction      CallDirection
+  fromNumber     String?
+  toNumber       String?
+  status         String? // in-progress / completed / failed
+  durationSec    Int?
+  summary        String? @db.Text
+  transcript     String? @db.Text
+  recordingUrl   String?
+  savedAsContext Boolean @default(false)
+
+  startedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([contactId])
+  @@index([agentPhoneCallId])
+  @@map("contact_calls")
+}
+
+// Recurring Exa intent monitor — runs on a schedule, delivers results via webhook.
+// Results are attributed to userId and saved as entities tagged "intent".
+model IntentMonitor {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  query        String    @db.Text
+  frequency    String    @default("daily") // "daily" | "weekly" | "hourly"
+  exaMonitorId String? // Exa's remote monitor ID (set after createExaMonitor succeeds)
+  active       Boolean   @default(true)
+  // When true, runs auto-add new records to the CRM. When false, runs are stored
+  // for review and the user/agent can "Add to CRM" later.
+  autoAdd      Boolean   @default(true)
+  // True for the monitor auto-created from the ICP at first run, so the Settings
+  // autoRadar toggle can pause/resume exactly that one (vs the user's own).
+  autoSeeded   Boolean   @default(false)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  runs MonitorRun[]
+
+  @@index([userId])
+  @@index([active, nextRunAt])
+  @@index([exaMonitorId])
+  @@map("intent_monitors")
+}
+
+// A single execution of an intent monitor: what it pulled, and how much was added.
+model MonitorRun {
+  id         String        @id @default(uuid())
+  userId     String
+  monitorId  String
+  monitor    IntentMonitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  items      Json? // the pulled results [{ title, url, summary }]
+  found      Int           @default(0)
+  added      Int           @default(0)
+  addedToCrm Boolean       @default(false) // whether results were ingested
+  createdAt  DateTime      @default(now())
+
+  @@index([monitorId])
+  @@index([userId])
+  @@map("monitor_runs")
+}
+
+// A swarm discovery run: N parallel Exa search angles derived from (or given
+// for) one broad goal, each run blind to the others, then merged and deduped
+// across angles AND against the CRM. A separate model from MonitorRun on
+// purpose: a MonitorRun always belongs to a recurring IntentMonitor, while a
+// swarm is a one-off, on-demand multi-angle fan-out with no schedule and no
+// parent monitor - forcing it through MonitorRun would mean a fake monitor row
+// per run. This is the auditable record: what was searched, what came back per
+// angle, what got merged/added/skipped, and which angle(s) surfaced each
+// company (see docs/decisions/0011-swarm-discovery.md).
+model SwarmRun {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  goal        String   @db.Text
+  angles      String[] // the N angles actually run (explicit or derived)
+  angleSource String   @default("derived") // "derived" | "explicit"
+
+  found        Int @default(0) // raw company hits across all angles, before merge
+  merged       Int @default(0) // unique companies after cross-angle dedup
+  added        Int @default(0) // new entities created (merged minus CRM dupes)
+  skipped      Int @default(0) // merged companies dropped as CRM duplicates
+  creditsSpent Int @default(0) // actual credits debited (per angle that returned hits)
+
+  // Results surface: { perAngle: [{angle,found,credited}], companies: [{companyName,domain,angles,status,entityId}] }
+  items Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("swarm_runs")
+}
+
+// Scheduled deep research (Linkup or Exa) on a topic, contact, or entity.
+// When targetType+targetId are set, research is merged into that record's notes.
+// When null, top sources are saved as new entities.
+model ResearchSchedule {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  query      String    @db.Text
+  provider   String    @default("linkup") // "linkup" | "exa"
+  depth      String    @default("deep") // "standard" | "deep"
+  frequency  String    @default("daily") // "hourly" | "daily" | "weekly"
+  targetType String? // "contact" | "entity" | null (saves as new records)
+  targetId   String?
+  active     Boolean   @default(true)
+  lastRunAt  DateTime?
+  nextRunAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([active, nextRunAt])
+  @@map("research_schedules")
+}
+
+// ── Field: customer segments + agentic pipelines ────────────────────────────
+
+// A customer segment: a named set of target contacts, built manually or from a
+// prompt (OpenAI + vector match). FK to User so account deletion cascades.
+model Segment {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  goal      String?  @db.Text // the prompt/intent used to build it
+  source    String? // "manual" | "prompt"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  ContactSegment[]
+  variants OutreachVariant[]
+
+  @@index([userId])
+  @@map("segments")
+}
+
+model ContactSegment {
+  id        String   @id @default(uuid())
+  segmentId String
+  segment   Segment  @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  score     Float? // vector match score 0-1
+  createdAt DateTime @default(now())
+
+  @@unique([segmentId, contactId])
+  @@index([contactId])
+  @@map("contact_segments")
+}
+
+// A pipeline: agentic deal flow. Contacts enter as PipelineEntry rows that track
+// stage, deal score, and conversation status so agents don't loop forever.
+model Pipeline {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  goal      String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries PipelineEntry[]
+
+  @@index([userId])
+  @@map("pipelines")
+}
+
+enum PipelineStage {
+  NEW
+  ENRICHED
+  PROSPECTING
+  ENGAGING
+  REPLYING
+  WON
+  LOST
+}
+
+enum ConversationStatus {
+  OPEN
+  AWAITING_REPLY
+  STALLED
+  CLOSED
+}
+
+model PipelineEntry {
+  id                 String             @id @default(uuid())
+  userId             String
+  pipelineId         String
+  pipeline           Pipeline           @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  contactId          String
+  contact            Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  stage              PipelineStage      @default(NEW)
+  dealScore          Int? // 1-100 likelihood the deal closes
+  conversationStatus ConversationStatus @default(OPEN)
+  lastActivityAt     DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@unique([pipelineId, contactId])
+  @@index([userId])
+  @@index([contactId])
+  @@index([pipelineId, stage])
+  @@map("pipeline_entries")
+}
+
+// ── Breakup drafts: stalled-deal pattern-interrupt emails ───────────────────
+//
+// Scalar notices a cold deal itself (see listStalledDeals in
+// src/lib/breakup-operations.ts), drafts a polite "breakup" email grounded in
+// the contact's real activity/email history, and holds it here PENDING for
+// one-click human approval - it is never auto-sent. See
+// docs/decisions/0012-breakup-drafts.md.
+
+enum BreakupDraftStatus {
+  PENDING
+  APPROVED
+  SENT
+  DISMISSED
+}
+
+model BreakupDraft {
+  id     String @id @default(uuid())
+  userId String // tenant (owner of the contact); every query is scoped to this
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  status  BreakupDraftStatus @default(PENDING)
+  subject String
+  body    String             @db.Text
+
+  // Snapshot of the cold-detection signal (staleness window, last-contacted
+  // date, contact/pipeline status) and the reasoning + sources the draft was
+  // grounded in (activity/email ids referenced), for auditability. Captured at
+  // generation time and never re-derived, so the review queue always shows why
+  // THIS draft was written even if the underlying history later changes.
+  generatedFrom Json?
+
+  createdAt DateTime  @default(now())
+  // When the human approved or dismissed it (null while PENDING).
+  decidedAt DateTime?
+
+  @@index([userId, status])
+  @@index([userId, status, createdAt])
+  @@index([contactId])
+  @@map("breakup_drafts")
+}
+
+// ── Self-optimizing outreach: a bandit over subject/opener variants ────────
+//
+// The agent silently learns which outreach openers/subject lines get replies,
+// per segment, and converges on the best ones without a human ever
+// configuring an A/B test. selectVariant (src/lib/variant-operations.ts)
+// Thompson-samples over each active variant's Beta(replies+1,
+// sends-replies+1) posterior; logOutreach/saveSocialMessage record a
+// VariantSend when the agent supplies the variantId it used; an inbound
+// reply that advances a contact to REPLIED attributes back to that contact's
+// most-recent unreplied send.
+
+enum VariantKind {
+  SUBJECT
+  OPENER
+}
+
+model OutreachVariant {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Null = a general-purpose variant used outside any segment. Segment
+  // deletion unscopes rather than destroys a variant, so the reply-rate data
+  // an agent has already earned on it survives (SetNull), same pattern as
+  // Contact.entityId.
+  segmentId String?
+  segment   Segment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+
+  kind VariantKind
+  text String @db.Text
+
+  // The bandit's running counts. Incremented by recordVariantSend /
+  // attributeReply, never written directly by a caller.
+  sends   Int     @default(0)
+  replies Int     @default(0)
+  active  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variantSends VariantSend[]
+
+  @@index([userId, kind, segmentId, active])
+  @@map("outreach_variants")
+}
+
+// A single outbound send of a specific variant to a specific contact - the
+// join that makes reply attribution exact. Deliberately NOT a variantId
+// column on Activity (see the module docstring in variant-operations.ts):
+// this keeps "the most recent unreplied send to this contact" a single
+// indexed query instead of a filtered scan over a polymorphic activity log,
+// and gives attribution a clean, race-safe terminal state (replied flips
+// exactly once - see attributeReply).
+model VariantSend {
+  id String @id @default(uuid())
+
+  variantId String
+  variant   OutreachVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  sentAt    DateTime  @default(now())
+  replied   Boolean   @default(false)
+  repliedAt DateTime?
+
+  @@index([contactId, replied, sentAt])
+  @@index([variantId])
+  @@map("variant_sends")
+}
+
+// ── Provenance spine (Moment 3 - Visible Trust) ─────────────────────────────
+//
+// One row per (recordType, recordId, field) - the last provider that wrote a
+// value, how confident it was, what value it stored, and when. Used by the UI
+// to show "via explorium, 3 days ago" on each enriched field and by the
+// re-verify scheduler to find stale rows.
+//
+// recordType: "contact" | "entity"
+// field:      column name exactly as stored on the record (e.g. "email", "phone",
+//             "linkedin", "industry", "location", "phone", "description", "website")
+// source:     short provider slug: "explorium" | "pipe0" | "exa" | "manual" | etc.
+// confidence: 0-100 integer; 100 = verified exact match, lower = inferred.
+// valueSnapshot: the value we recorded at the time (truncated to 500 chars for
+//             large blobs like descriptions so the row stays lean).
+// retrievedAt: when the provider returned this value (used for staleness).
+// verifiedAt:  last time re-verify confirmed the value is still accurate.
+// stale:       true when retrievedAt is older than the re-verify threshold and a
+//             re-check has been scheduled but not yet completed.
+model FieldProvenance {
+  id            String    @id @default(uuid())
+  recordType    String // "contact" | "entity"
+  recordId      String // contact.id or entity.id
+  field         String // column name
+  source        String // provider slug
+  confidence    Int       @default(80) // 0-100
+  valueSnapshot String?   @db.Text
+  retrievedAt   DateTime  @default(now())
+  verifiedAt    DateTime?
+  stale         Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([recordType, recordId, field])
+  @@index([recordType, recordId])
+  @@index([retrievedAt])
+  @@index([stale])
+  @@map("field_provenance")
+}
+
+// ── Budgeted Autopilot ───────────────────────────────────────────────────────
+//
+// The problem: today an agent hits a surprise HTTP 402 mid-task when credits
+// run out. Instead: the agent proposes a spend plan up front (a total ceiling
+// split across categories), a human approves it ONCE (never an agent - see
+// approveAutopilotPlan / the session-gated REST route), and the scheduler then
+// runs it unsupervised, hard-stopping cleanly at the cap instead of erroring.
+//
+// The plan's credit ceiling is an ADDITIONAL budget on top of the real user
+// credit meter (User.creditsRemaining / spendCredits) - approving a plan never
+// grants credits, it only caps how much of the user's real balance the
+// autopilot loop is allowed to spend, per category, per window.
+
+enum AutopilotStatus {
+  draft // proposed by an agent, not yet runnable
+  approved // human approved; about to open its first window (transient)
+  active // running unsupervised within budget
+  paused // hard-stopped: a category hit its cap, or a human/agent paused it
+  exhausted // hard-stopped: the plan's whole budget was spent for this window
+  completed // manually retired; kept for history
+}
+
+enum AutopilotCategory {
+  discovery
+  enrichment
+  outreach
+  other
+}
+
+// A proposed/approved spend plan. One row per plan; its per-category ceilings
+// live in AutopilotAllocation, and every autonomous action it takes is logged
+// to AutopilotRun so the human can audit what the autopilot did.
+model AutopilotPlan {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name String
+  // How often the plan's window resets and the scheduler re-runs it: "daily" |
+  // "weekly" | "hourly" - same vocabulary as IntentMonitor.frequency.
+  cadence      String          @default("weekly")
+  status       AutopilotStatus @default(draft)
+  // The ceiling for one window; mirrors the sum of AutopilotAllocation.allocated
+  // (enforced at propose time so the plan's headline number is never a lie).
+  totalCredits Int
+  // What the discovery step searches for, e.g. "B2B fintech startups in NYC".
+  // Optional - a plan with no discoveryQuery only runs enrichment + outreach.
+  discoveryQuery String? @db.Text
+
+  windowStart DateTime?
+  windowEnd   DateTime?
+  approvedAt  DateTime?
+  // The human who approved it (users.id) - never an agent; stamped by the
+  // session-gated approve route only.
+  approvedById String?
+  // Why the plan last hard-stopped (category exhausted, full budget spent, or
+  // a human/agent pause), shown in the UI so the reason is never a mystery.
+  pausedReason String? @db.Text
+
+  lastRunAt DateTime?
+  nextRunAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  allocations AutopilotAllocation[]
+  runs        AutopilotRun[]
+
+  @@index([userId])
+  @@index([status, nextRunAt])
+  @@map("autopilot_plans")
+}
+
+// One row per spend category per plan: the ceiling (allocated) and the running
+// total (spent). A dedicated table with real integer columns - not a JSON blob
+// - so the budget guard can use a single atomic, conditional SQL UPDATE per
+// charge (the exact proven pattern spendCredits already uses for the credit
+// meter's atomic decrement), with no hand-rolled JSONB arithmetic, and so the
+// per-category numbers are directly queryable for the dashboard bars.
+model AutopilotAllocation {
+  id     String        @id @default(uuid())
+  planId String
+  plan   AutopilotPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  category  AutopilotCategory
+  allocated Int
+  spent     Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([planId, category])
+  @@map("autopilot_allocations")
+}
+
+// Append-only audit ledger: one row per autonomous action the plan actually
+// took (or a zero-cost step like surfacing due follow-ups), so the human can
+// see exactly what their autopilot did while they were away.
+model AutopilotRun {
+  id     String        @id @default(uuid())
+  planId String
+  plan   AutopilotPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId String
+
+  category     AutopilotCategory
+  action       String // underlying operation, e.g. "find_companies", "company_aspect", "list_due_followups"
+  creditsSpent Int               @default(0)
+  ref          String? // the entity/contact id touched, when applicable
+  summary      String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([planId, createdAt])
+  @@index([userId])
+  @@map("autopilot_runs")
+}
