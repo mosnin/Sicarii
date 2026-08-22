@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /crm
+Disallow: /agent
+Disallow: /discover
+Disallow: /radar
+Disallow: /field
+Disallow: /skills
+Disallow: /product-context
+Disallow: /settings
+Disallow: /api/
+Sitemap: https://www.tryscalar.xyz/sitemap.xml

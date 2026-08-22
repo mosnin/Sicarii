@@ -1,0 +1,50 @@
+import type { Metadata, Viewport } from "next";
+import { AppProviders } from "@/components/providers/app-providers";
+import { PwaRegister } from "@/components/providers/pwa-register";
+import { SquircleFilters } from "@/components/ui/squircle-filter";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Scalar | The CRM Your Agents Run",
+  description:
+    "A CRM operated by AI agents - they discover leads, enrich your database, run the conversations, and own the data. You direct; the agents operate.",
+  metadataBase: new URL("https://tryscalar.xyz"),
+  applicationName: "Scalar",
+  appleWebApp: {
+    capable: true,
+    title: "Scalar",
+    statusBarStyle: "default",
+  },
+  formatDetection: { telephone: false },
+  openGraph: {
+    title: "Scalar | The CRM Your Agents Run",
+    description:
+      "A CRM operated by AI agents - discover, enrich, and own every relationship, all on data that stays inside.",
+    url: "https://tryscalar.xyz",
+    siteName: "Scalar",
+    type: "website",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
+  ],
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
+        <SquircleFilters />
+        <AppProviders>{children}</AppProviders>
+        <PwaRegister />
+      </body>
+    </html>
+  );
+}
