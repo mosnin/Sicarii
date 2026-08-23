@@ -1,0 +1,28 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "registries": {
+    "@tool-ui": "https://www.tool-ui.com/r/{name}.json",
+    "@componentry": "https://componentry.fun/r/{name}.json",
+    "@ncdai": "https://chanhdai.com/r/{name}.json",
+    "@bklit": "https://ui.bklit.com/r/{name}.json",
+    "@shark": "https://shark.vini.one/r/{name}.json"
+  }
+}
