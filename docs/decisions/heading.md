@@ -3,58 +3,46 @@
 > The one thing to push right now. Surfaced first by the Ratchet hook each
 > session. Keep it to a glance; update it on every RECORD. (Volatile - the *aim*.)
 
-**Binding constraint right now:** _The product is correct, honest, billable, and
-hardened (audits 2026-06-06 -> 09; PRs #19-#29) - and still **unfelt**. Nothing
-has been observed running end to end, and the product has zero choreographed
-moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
+**Binding constraint right now:** _The product on `main` is a real agent CRM
+(66 MCP tools, funded providers, 460 tests) and is **not production-ready
+to scale**. GitHub default branch is the Ritual skeleton. `app.tryscalar.xyz`
+is 500. Stripe and Upstash are missing. First-run has never been observed.
+Vision: idea 9, felt experience 4._
 
-**The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
+**The cycle in flight: 0015 - Production readiness**
+(`0015-production-readiness.md` + `docs/engineering/production-readiness-plan-2026-08-24.md`)
 
 | # | Phase | Owner | Status |
 |---|-------|-------|--------|
-| 0 | **Reality Gate**: fund Explorium/Pipe0, set Upstash, run pgvector index, then run discover -> enrich -> news LIVE and record whether it feels like quiet leverage | **Founder** | BLOCKING |
-| 1 | **Moment 1 - The First Run**: one sentence -> the CRM builds itself, live, in 60s | agents (Wave A) | SHIPPED (code): `/welcome` + streaming orchestrator, honest sample-degradation until Phase 0. Live observation owed. |
-| 2 | **Moment 2 - The Pulse**: "While you were away, your agent added 14 companies..." | agents (Wave A) | SHIPPED (code): `User.lastSeenAt` + `computePulse` (agent-added entities, distinct enriched refs from CreditLedger, MonitorRun signals) rendered in the dashboard hero band; never an empty brag. Needs `prisma db push` + live observation. |
-| 3 | **Moment 3 - Visible Trust**: provenance on every enriched field + the honest blank | agents (Wave B) | SHIPPED (code): `FieldProvenance` + `via Explorium, 3d ago` + re-verify endpoint. |
-| 4 | **Moment 4 - The Handshake**: /connect page that listens and flips green on the first agent write (+ first live OAuth observation) | agents (Wave B) | after Wave A |
-| 5 | **Gate out**: founder runs all four moments as one journey; subtraction holds; RECORD | Founder | last |
+| 0 | **Factory**: default branch → `main`; CI on PRs; fix or retire `app.tryscalar.xyz`; Vercel deploys `main` | Founder + agent | NEXT |
+| 1 | **Bleed**: merge #63 #64 #68 #65 #66 #70 #69 onto `main` | Founder review + agent | NEXT |
+| 2 | **Production on**: Upstash, Stripe, Clerk webhook, `MCP_OAUTH_SECRET`, migrate deploy, unique constraints (#52), encrypt keys (#48) | Founder env + agent | BLOCKED on 0-1 |
+| 3 | **Promise**: one observed welcome → enrich → Pulse → MCP write → Stripe test; Handshake; honest copy | Founder watches, agent builds Handshake | BLOCKED on 2 |
+| 4 | **Scale**: async jobs, pagination, monitoring, seats, Nominatim | agent | BLOCKED on 3 felt/flat |
 
-**Parallel cycle shipped: 0008 - Social channels** (`0008-social-channels.md`).
-Social profiles on contacts (LinkedIn/X/Instagram/Facebook), find_socials
-discovery with the accuracy rule intact, ContactSocialMessage + the unified
-Conversations card, source attribution on agent-created leads, and the
-2026-07-11 MCP audit remediation (3 P1s fixed). Owed: `pnpm prisma db push`
-+ one live find_socials observation.
+**Hard rule this cycle:** no new surfaces, providers, or tools. Do not
+merge #60 #61 #62. Do not rebuild on the Ritual branch.
 
-**Parallel cycle shipped: 0009 - Teams v1** (`0009-teams-v1.md`). Founder
-approved the build; Clerk Orgs + synthetic workspace accounts, share-to-team
-deep copy, workspace agent keys with Activity attribution, team plan $299/30d.
-Owed: enable Organizations in Clerk + org webhook events + STRIPE_PRICE_TEAM,
-then one live org round-trip (create, invite, switch, share, agent write).
+**Riskiest assumption under test:** _that discover → enrich → news, now
+that Explorium/Pipe0/Exa keys are set in prod, feels like quiet leverage.
+If it is flat, fix the loop before Handshake chrome._
 
-**Parallel cycle shipped: 0007 - x402 agent payments** (`0007-x402-agent-payments.md`).
-The CRM your agents run now lets the agents pay for it: USDC top-ups
-(`/api/x402/topup`) and 30-day plan purchase (`/api/x402/subscribe`) over HTTP
-402, env-gated to 501 until the treasury wallet + CDP keys are set. One live
-mainnet settlement is owed to reality (the x402 sibling of Phase 0).
+**Standing founder actions (cannot be done from code):**
 
-**Riskiest assumption under test:** _that the enrichment loop, observed live,
-feels like quiet leverage. If it works but feels flat, we fix the loop before
-choreographing it - chrome on a flat loop is the unforgivable spend._
+1. Switch GitHub default branch to `main`.
+2. Repair or 301 `app.tryscalar.xyz` (currently 500).
+3. Set Upstash Redis. Rate limits are theater without it.
+4. Stripe live: prices + webhook + `STRIPE_PRICE_*` including TEAM.
+5. Clerk: `CLERK_WEBHOOK_SECRET` + Organizations if Teams is in cohort 1.
+6. `MCP_OAUTH_SECRET` (stop falling back to Clerk).
+7. Pricing ladder Founder Call: Business vs Pro vs Team.
+8. Watch one live first-run. Write felt / flat / broken here.
 
-**Standing debts (founder-side):** Stripe goes live (2026-06-12 migration off
-Creem): create monthly Prices, set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET /
-STRIPE_PRICE_*, register /api/webhooks/stripe (checkout.session.completed,
-invoice.paid, customer.subscription.deleted), run `pnpm prisma db push` ·
-`/terms` needs a real SaaS ToS · prisma migrate deploy · DB unique
-constraints (dedupe first) · Explorium top-up (currently 403ing in prod).
+**0006 Four Moments (still owed, not abandoned):** 1-3 shipped in code,
+4 (Handshake) not built, gate-out never run. Phase 3 of 0015 *is* that
+gate-out, after the factory works.
 
-**Hard rule this cycle:** no new surfaces, providers, or tools. Moments, not
-features. Radar/Field/Map/Skills stay demoted.
-
-**DONE recent cycles:** rebrand + product marketing site (intelligence-first) ·
-manifesto · 26-tool MCP server + OAuth (DCR/PKCE, redirect-validated) · billing
-meter + Creem scaffolding + pricing w/ launch sale · CSV export + pagination ·
-honest FAQ/About, agency pages deleted · 33 tests · five audits recorded ·
-enrichment accuracy holes closed · Pipe0/logo/news fixed · creation guard +
-rate limiting (durable w/ Upstash) · claims integrity restored (PRs #19-#29).
+**DONE recent (do not redo):** providers funded on prod (Exa, Tavily,
+Explorium, Pipe0, Firecrawl, Linkup, OpenAI) · env-doctor + `/api/health`
+· Teams/social/autopilot/swarm/breakup/bandit/voice shipped as code ·
+meter + x402 scaffolding · 460 unit tests · audits through 2026-07-11.

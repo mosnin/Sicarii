@@ -56,6 +56,11 @@ exponential growth into a plateau.
 - **Discovery saves only what it can verify.** find_socials auto-saves a profile
   only on name AND company match; everything else is a candidate for review.
   Null over wrong, on every enrichment path. _(Cards 0003, 0008)_
+- **Factory before features.** A 66-tool CRM with no default branch, no CI,
+  and no Stripe is a demo. Stand up the factory, then observe, then scale.
+  _(Card 0015)_
+- **Health `ok` means required-for-traffic, not every experiment funded.**
+  Optional providers must not fail the production bar. _(Card 0015)_
 
 ## Open debts (owed to reality)
 
@@ -78,6 +83,18 @@ exponential growth into a plateau.
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
+| GitHub default branch is `main` | 0015 · Deliverable | `gh repo view` shows default = `main` | founder |
+| `app.tryscalar.xyz` serves the app | 0015 · Desirable | HTTP 200 or deliberate redirect, not 500 | founder + eng |
+| CI gates `main` | 0015 · Deliverable | lint + test + tsc on every PR | eng |
+| Upstash in production | 0015 · Feasible | health Rate limiting = pass | founder |
+| Stripe live + one test charge | 0015 · Viable | health Billing Stripe = pass; credits land | founder |
+| Clerk webhook secret | 0015 · Feasible | health Clerk webhook = pass | founder |
+| Distinct `MCP_OAUTH_SECRET` | 0015 · Feasible | health MCP OAuth = pass (not partial) | founder |
+| Unique (userId, domain/email) | 0015 · Deliverable | #52 after founder dedupe SQL | founder + eng |
+| Provider keys encrypted at rest | 0015 / audit 07-11 | #48 + `SECRETS_ENCRYPTION_KEY` | founder + eng |
+| First-run observed | 0015 / 0006 · Desirable | founder writes felt / flat / broken | founder |
+| Handshake (Moment 4) | 0006 · Desirable | `/connect` flips green on first agent write | eng |
+| Pricing ladder decided | 0015 · Viable | Business vs Pro vs Team, page matches `PLANS` | founder |
 
 ## Kills & falsifieds (do not re-open)
 
