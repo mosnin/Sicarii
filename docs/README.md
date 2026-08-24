@@ -32,6 +32,11 @@
 | `decisions/0008-social-channels.md` | Social channels: profiles on contacts, find_socials discovery (accuracy rule intact), ContactSocialMessage + unified Conversations, source attribution | Revisiting social / conversations |
 | `decisions/0009-teams-v1.md` | Teams v1: Clerk Orgs + synthetic workspace accounts, lead sharing (deep copy + dedup-merge), workspace agent keys with attribution, team plan $299/30d | Revisiting teams / workspaces |
 | `decisions/0010-budgeted-autopilot.md` | Budgeted Autopilot: propose a spend plan (draft), human-only approval, atomic per-category budget guard on top of the real credit meter, scheduled execution loop (discovery/enrichment/outreach) over the existing Inngest cron | Revisiting autopilot / scheduled agent budgets |
+| `decisions/0011-swarm-discovery.md` | Swarm: fan a broad goal into N parallel angles, merge and dedupe | Revisiting swarm discovery |
+| `decisions/0012-breakup-drafts.md` | Stalled-deal breakup drafts, held for approval | Revisiting breakup / outreach |
+| `decisions/0013-self-optimizing-outreach.md` | Bandit over subject/opener variants | Revisiting outreach variants |
+| `decisions/0014-voice-native-crm.md` | Inbound AgentPhone calls answered from CRM data | Revisiting voice |
+| `decisions/0015-production-readiness.md` | **Current cycle.** Stop scaling features; stand up the factory; observe the journey before unbounded signup | Any production / scale / "what next" question |
 
 ## Working knowledge (grows with the product)
 
@@ -52,7 +57,8 @@
 | [`engineering/claims-audit-2026-06-09b.md`](engineering/claims-audit-2026-06-09b.md) | Claims re-audit after the fix pass: integrity gaps closed; metering ordering bug found + fixed |
 | [`engineering/world-class-plan-2026-07-02.md`](engineering/world-class-plan-2026-07-02.md) | Synthesis of 4 parallel audits (OWASP, structure, perf, Playwright): waves 1+2 shipped, founder actions, next cycles |
 | [`engineering/mcp-audit-2026-07-11.md`](engineering/mcp-audit-2026-07-11.md) | Deep MCP re-audit (45 tools): isolation + metering clean; 3 P1s found and fixed same-cycle; open items + agent coverage gaps |
-| [`engineering/teams-plan-2026-07-11.md`](engineering/teams-plan-2026-07-11.md) | Teams/workspaces architecture plan: Clerk Orgs + synthetic workspace account, lead sharing semantics, v1 cut (designed, not built) |
+| [`engineering/teams-plan-2026-07-11.md`](engineering/teams-plan-2026-07-11.md) | Teams/workspaces architecture plan: Clerk Orgs + synthetic workspace account, lead sharing semantics, v1 cut (designed, then built as 0009) |
+| [`engineering/production-readiness-plan-2026-08-24.md`](engineering/production-readiness-plan-2026-08-24.md) | **Current plan.** Audit of `main` + live health + open PRs; five-phase path to production-ready scale. Supersedes the *aim* of the June/July scale and world-class plans |
 
 ---
 
