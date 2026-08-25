@@ -25,19 +25,28 @@ function secret(): Uint8Array {
 
 export type CodeClaims = JWTPayload & {
   typ: "code";
-  sub: string; // userId
+  sub: string; // account userId (personal row, or workspace row in team context)
+  act?: string; // personal userId of the human who authorized
   client_id: string;
   redirect_uri: string;
   code_challenge: string;
   scope?: string;
 };
-export type AccessClaims = JWTPayload & { typ: "access"; sub: string; scope?: string };
+export type AccessClaims = JWTPayload & {
+  typ: "access";
+  sub: string;
+  act?: string;
+  scope?: string;
+};
 export type RefreshClaims = JWTPayload & {
   typ: "refresh";
   sub: string;
+  act?: string;
   scope?: string;
   jti: string; // unique token id, for rotation + revocation
 };
+
+export type OAuthIdentity = { userId: string; actorId?: string };
 
 async function sign(payload: JWTPayload, expSeconds: number): Promise<string> {
   return new SignJWT(payload)
@@ -54,13 +63,20 @@ const REFRESH_TTL = 60 * 60 * 24 * 30; // 30d
 export function signAuthCode(c: Omit<CodeClaims, "typ" | "iat" | "exp">) {
   return sign({ ...c, typ: "code" }, CODE_TTL);
 }
-export function signAccessToken(userId: string, scope?: string) {
-  return sign({ sub: userId, typ: "access", ...(scope ? { scope } : {}) }, ACCESS_TTL);
+function withActor(payload: JWTPayload, actorId?: string): JWTPayload {
+  return actorId ? { ...payload, act: actorId } : payload;
 }
-export function signRefreshToken(userId: string, scope?: string) {
+
+export function signAccessToken(userId: string, scope?: string, actorId?: string) {
+  return sign(withActor({ sub: userId, typ: "access", ...(scope ? { scope } : {}) }, actorId), ACCESS_TTL);
+}
+export function signRefreshToken(userId: string, scope?: string, actorId?: string) {
   // Every refresh token carries a unique jti so it can be individually revoked
   // on rotation (reuse detection).
-  return sign({ sub: userId, typ: "refresh", jti: randomUUID(), ...(scope ? { scope } : {}) }, REFRESH_TTL);
+  return sign(
+    withActor({ sub: userId, typ: "refresh", jti: randomUUID(), ...(scope ? { scope } : {}) }, actorId),
+    REFRESH_TTL,
+  );
 }
 
 /**
@@ -116,10 +132,63 @@ export async function verifyToken<T extends JWTPayload>(token: string): Promise<
   }
 }
 
+/** Resolve an OAuth access token to account + actor (null if not a valid access token). */
+export async function identityFromAccessToken(token: string): Promise<OAuthIdentity | null> {
+  const claims = await verifyToken<AccessClaims>(token);
+  if (!claims || claims.typ !== "access" || typeof claims.sub !== "string") return null;
+  return {
+    userId: claims.sub,
+    actorId: typeof claims.act === "string" ? claims.act : undefined,
+  };
+}
+
 /** Resolve an OAuth access token to a userId (null if not a valid access token). */
 export async function userIdFromAccessToken(token: string): Promise<string | null> {
-  const claims = await verifyToken<AccessClaims>(token);
-  return claims && claims.typ === "access" && typeof claims.sub === "string" ? claims.sub : null;
+  const identity = await identityFromAccessToken(token);
+  return identity?.userId ?? null;
+}
+
+function actorFromClaims(claims: { act?: unknown }): string | undefined {
+  return typeof claims.act === "string" ? claims.act : undefined;
+}
+
+/**
+ * Re-check that the human who minted this token may still operate the account
+ * it is scoped to. Browser routes get this for free from Clerk (orgId is
+ * dropped after removal). OAuth tokens are stateless JWTs, so membership
+ * must be checked on every refresh and MCP request.
+ *
+ * Personal account: actor is the account itself (legacy tokens omit `act`).
+ * Workspace account: `act` is required and must still have a TeamMember row.
+ * Tokens minted before actor-binding against a workspace are rejected so a
+ * removed member cannot keep a pre-fix token alive for 30 days.
+ */
+export async function oauthActorStillAuthorized(
+  accountId: string,
+  actorId?: string,
+): Promise<boolean> {
+  const account = await prisma.user.findUnique({
+    where: { id: accountId },
+    select: { id: true, accountType: true },
+  });
+  if (!account) return false;
+
+  if (account.accountType !== "workspace") {
+    return !actorId || actorId === accountId;
+  }
+
+  if (!actorId) return false;
+  const membership = await prisma.teamMember.findUnique({
+    where: { workspaceId_userId: { workspaceId: accountId, userId: actorId } },
+    select: { id: true },
+  });
+  return Boolean(membership);
+}
+
+/** Account + actor from a code/refresh/access claims object. */
+export function identityFromClaims(claims: { sub?: unknown; act?: unknown }): OAuthIdentity | null {
+  if (typeof claims.sub !== "string") return null;
+  return { userId: claims.sub, actorId: actorFromClaims(claims) };
 }
 
 /** PKCE S256 check: base64url(sha256(verifier)) === challenge. */

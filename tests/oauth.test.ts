@@ -9,7 +9,10 @@ import {
   clientRedirectUris,
   verifyPkceS256,
   signAccessToken,
+  signRefreshToken,
   userIdFromAccessToken,
+  identityFromAccessToken,
+  identityFromClaims,
 } from "@/lib/oauth";
 
 beforeAll(() => {
@@ -46,6 +49,11 @@ describe("userIdFromAccessToken", () => {
     expect(await userIdFromAccessToken(token)).toBe("user_abc");
   });
 
+  it("still returns the account sub when an actor is bound", async () => {
+    const token = await signAccessToken("ws_1", "mcp", "human_1");
+    expect(await userIdFromAccessToken(token)).toBe("ws_1");
+  });
+
   it("returns null for a client_id token (typ confusion guard)", async () => {
     const clientId = await signClientId(["https://app.example.com/callback"]);
     expect(await userIdFromAccessToken(clientId)).toBeNull();
@@ -53,6 +61,43 @@ describe("userIdFromAccessToken", () => {
 
   it("returns null for garbage", async () => {
     expect(await userIdFromAccessToken("garbage")).toBeNull();
+  });
+});
+
+describe("identityFromAccessToken", () => {
+  it("returns only userId for a legacy token with no actor", async () => {
+    const token = await signAccessToken("user_abc");
+    expect(await identityFromAccessToken(token)).toEqual({ userId: "user_abc" });
+  });
+
+  it("round-trips the authorizing human as act", async () => {
+    const token = await signAccessToken("ws_1", "mcp", "human_1");
+    expect(await identityFromAccessToken(token)).toEqual({
+      userId: "ws_1",
+      actorId: "human_1",
+    });
+  });
+
+  it("returns null for a refresh token (typ confusion guard)", async () => {
+    const refresh = await signRefreshToken("ws_1", "mcp", "human_1");
+    expect(await identityFromAccessToken(refresh)).toBeNull();
+  });
+});
+
+describe("identityFromClaims", () => {
+  it("reads act when present", () => {
+    expect(identityFromClaims({ sub: "ws_1", act: "human_1" })).toEqual({
+      userId: "ws_1",
+      actorId: "human_1",
+    });
+  });
+
+  it("omits actorId when act is missing", () => {
+    expect(identityFromClaims({ sub: "user_1" })).toEqual({ userId: "user_1" });
+  });
+
+  it("returns null without a string sub", () => {
+    expect(identityFromClaims({ act: "human_1" })).toBeNull();
   });
 });
 

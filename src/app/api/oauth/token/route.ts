@@ -4,6 +4,8 @@ import {
   signAccessToken,
   signRefreshToken,
   consumeRefreshToken,
+  oauthActorStillAuthorized,
+  identityFromClaims,
   ACCESS_TTL,
   type CodeClaims,
 } from "@/lib/oauth";
@@ -43,8 +45,13 @@ export async function POST(req: Request) {
     if (claims.redirect_uri !== redirectUri) return err("invalid_grant", 400, "redirect_uri mismatch");
     if (!verifyPkceS256(verifier, claims.code_challenge)) return err("invalid_grant", 400, "PKCE verification failed");
 
-    const access = await signAccessToken(claims.sub, claims.scope);
-    const refresh = await signRefreshToken(claims.sub, claims.scope);
+    const identity = identityFromClaims(claims);
+    if (!identity || !(await oauthActorStillAuthorized(identity.userId, identity.actorId))) {
+      return err("invalid_grant", 400, "Actor is no longer authorized for this account");
+    }
+
+    const access = await signAccessToken(identity.userId, claims.scope, identity.actorId);
+    const refresh = await signRefreshToken(identity.userId, claims.scope, identity.actorId);
     return Response.json(
       { access_token: access, token_type: "Bearer", expires_in: ACCESS_TTL, refresh_token: refresh, scope: claims.scope ?? "mcp" },
       { headers: cors }
@@ -58,8 +65,12 @@ export async function POST(req: Request) {
     // fails if it was already used (stolen-token replay is caught here).
     const claims = await consumeRefreshToken(rt);
     if (!claims) return err("invalid_grant", 400, "Bad, expired, or already-used refresh token");
-    const access = await signAccessToken(claims.sub, claims.scope);
-    const refresh = await signRefreshToken(claims.sub, claims.scope);
+    const identity = identityFromClaims(claims);
+    if (!identity || !(await oauthActorStillAuthorized(identity.userId, identity.actorId))) {
+      return err("invalid_grant", 400, "Actor is no longer authorized for this account");
+    }
+    const access = await signAccessToken(identity.userId, claims.scope, identity.actorId);
+    const refresh = await signRefreshToken(identity.userId, claims.scope, identity.actorId);
     return Response.json(
       {
         access_token: access,

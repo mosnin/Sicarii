@@ -2,7 +2,7 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { authenticateApiKeyDetailed, bearerFromRequest } from "@/lib/api-auth";
-import { userIdFromAccessToken } from "@/lib/oauth";
+import { identityFromAccessToken, oauthActorStillAuthorized } from "@/lib/oauth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
   topUpHint,
@@ -1212,10 +1212,21 @@ const authHandler = withMcpAuth(
       };
     }
 
-    // OAuth access token (issued by our authorization server).
-    const userId = await userIdFromAccessToken(token);
-    if (userId) {
-      return { token, clientId: userId, scopes: [], extra: { userId } };
+    // OAuth access token (issued by our authorization server). Re-check that
+    // the authorizing human is still a member of the workspace the token is
+    // scoped to; Clerk session routes drop orgId on removal, but these JWTs
+    // would otherwise keep working for the refresh-token lifetime (30 days).
+    const identity = await identityFromAccessToken(token);
+    if (identity && (await oauthActorStillAuthorized(identity.userId, identity.actorId))) {
+      return {
+        token,
+        clientId: identity.userId,
+        scopes: [],
+        extra: {
+          userId: identity.userId,
+          ...(identity.actorId ? { actorId: identity.actorId } : {}),
+        },
+      };
     }
 
     return undefined;

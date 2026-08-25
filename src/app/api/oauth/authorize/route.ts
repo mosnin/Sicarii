@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { getPublicOrigin } from "mcp-handler";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthContext } from "@/lib/auth-utils";
 import { signAuthCode, clientRedirectUris } from "@/lib/oauth";
 
 function isValidUrl(u: string): boolean {
@@ -56,10 +56,14 @@ export async function GET(req: Request) {
     signIn.searchParams.set("redirect_url", req.url);
     return Response.redirect(signIn.toString(), 302);
   }
-  const user = await getAuthenticatedUser();
+  // Bind BOTH the account the token may operate (workspace in team context)
+  // AND the human who clicked Authorize. Refresh + MCP re-check TeamMember
+  // against `act` so a removed member cannot keep workspace access.
+  const ctx = await getAuthContext();
 
   const code = await signAuthCode({
-    sub: user.id,
+    sub: ctx.account.id,
+    act: ctx.actor.id,
     client_id: clientId,
     redirect_uri: redirectUri,
     code_challenge: codeChallenge,
