@@ -13,6 +13,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const OWNER = "user-A";
 const ATTACKER = "user-B";
 
+vi.mock("@/lib/agentphone", () => ({
+  placeCall: vi.fn(() => {
+    throw new Error("ISOLATION BREACH: placeCall was invoked for an unauthorized contact");
+  }),
+  getCall: vi.fn(() => {
+    throw new Error("ISOLATION BREACH: getCall was invoked for an unauthorized call");
+  }),
+}));
+
 vi.mock("@/lib/prisma", () => {
   // Inlined inside the factory: vi.mock is hoisted above module-level consts.
   const owner = "user-A";
@@ -43,7 +52,14 @@ vi.mock("@/lib/prisma", () => {
         create: forbid("contactCall.create"),
         findMany: forbid("contactCall.findMany"),
       },
-      contactEmail: { findMany: forbid("contactEmail.findMany") },
+      contactEmail: {
+        findMany: forbid("contactEmail.findMany"),
+        create: forbid("contactEmail.create"),
+      },
+      contactSocialMessage: {
+        findMany: forbid("contactSocialMessage.findMany"),
+        create: forbid("contactSocialMessage.create"),
+      },
       fieldProvenance: { findMany: forbid("fieldProvenance.findMany") },
       activity: { create: forbid("activity.create") },
       user: { findUnique: vi.fn().mockResolvedValue({ agentPhoneApiKey: "k" }) },
@@ -65,6 +81,11 @@ import {
   listContactCalls,
   syncContactCall,
   listContactEmails,
+  saveEmail,
+  saveCall,
+  saveSocialMessage,
+  listSocialMessages,
+  placeContactCall,
   OpError,
 } from "@/lib/crm-operations";
 import { getProvenanceMap } from "@/lib/provenance";
@@ -107,6 +128,40 @@ describe("ops-layer tenant isolation", () => {
     // contactEmail.findMany is wired to throw if reached at all, so this also
     // proves the ownership check happens BEFORE any email row is touched.
     await expectDenied(() => listContactEmails(ATTACKER, "c1"));
+  });
+
+  it("saveEmail / saveCall / saveSocialMessage never write on a non-owned contact", async () => {
+    // These are the send-path inserts. A leaked write here forges outreach
+    // history on someone else's lead (and can flip their pipeline status).
+    await expectDenied(() =>
+      saveEmail(ATTACKER, {
+        contactId: "c1",
+        direction: "OUTBOUND",
+        subject: "hi",
+        body: "x",
+      }),
+    );
+    await expectDenied(() =>
+      saveCall(ATTACKER, { contactId: "c1", direction: "OUTBOUND", toNumber: "+15551234567" }),
+    );
+    await expectDenied(() =>
+      saveSocialMessage(ATTACKER, {
+        contactId: "c1",
+        channel: "LINKEDIN",
+        direction: "OUTBOUND",
+        body: "x",
+      }),
+    );
+    await expectDenied(() => listSocialMessages(ATTACKER, "c1"));
+  });
+
+  it("placeContactCall denies a non-owner before any call is placed or logged", async () => {
+    // placeCall is a paid side effect. The ownership check must run first so
+    // an attacker cannot spend the owner's AgentPhone minutes or stamp their
+    // contact CONTACTED.
+    await expectDenied(() =>
+      placeContactCall(ATTACKER, { contactId: "c1", systemPrompt: "pitch" }),
+    );
   });
 
   it("get_provenance (getProvenanceMap's userId fence) denies a non-owner for both contact and entity records, and never reads field_provenance rows", async () => {
