@@ -25,9 +25,14 @@ const AUTH_USER = {
   agentPhoneApiKey: "sk_live_x" as string | null,
   voiceInboundSecret: null as string | null,
 };
-const getAuthenticatedUserMock = vi.fn(async () => AUTH_USER);
+const getAuthContextMock = vi.fn(async () => ({
+  account: AUTH_USER,
+  actor: AUTH_USER,
+  workspaceRole: null as string | null,
+}));
 vi.mock("@/lib/auth-utils", () => ({
-  getAuthenticatedUser: (...args: unknown[]) => getAuthenticatedUserMock(...(args as [])),
+  getAuthContext: (...args: unknown[]) => getAuthContextMock(...(args as [])),
+  getAuthenticatedUser: async () => (await getAuthContextMock()).account,
 }));
 
 const secretQueue: string[] = [];
@@ -50,7 +55,11 @@ describe("PATCH /api/settings/voice - application-level secret uniqueness", () =
   beforeEach(() => {
     vi.clearAllMocks();
     secretQueue.length = 0;
-    getAuthenticatedUserMock.mockResolvedValue(AUTH_USER);
+    getAuthContextMock.mockResolvedValue({
+      account: AUTH_USER,
+      actor: AUTH_USER,
+      workspaceRole: null,
+    });
   });
 
   it("regenerates the secret on a collision instead of ever saving a duplicate", async () => {
@@ -91,7 +100,11 @@ describe("PATCH /api/settings/voice - application-level secret uniqueness", () =
   });
 
   it("refuses to enable voice without a connected AgentPhone key (no secret minted, no DB write)", async () => {
-    getAuthenticatedUserMock.mockResolvedValueOnce({ id: "user-2", agentPhoneApiKey: null, voiceInboundSecret: null });
+    getAuthContextMock.mockResolvedValueOnce({
+      account: { id: "user-2", agentPhoneApiKey: null, voiceInboundSecret: null },
+      actor: { id: "user-2" },
+      workspaceRole: null,
+    });
 
     const res = await PATCH(req({ enabled: true }));
 
