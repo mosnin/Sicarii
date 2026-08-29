@@ -5,13 +5,15 @@ import { motion, AnimatePresence } from "motion/react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const UPGRADES = [
+const PERSONAL_UPGRADES = [
   { plan: "starter", label: "Starter", price: "$39/mo" },
   { plan: "pro", label: "Pro", price: "$129/mo" },
   { plan: "business", label: "Business", price: "$99/mo" },
 ] as const;
 
-export function BillingUpgrade() {
+const TEAM_UPGRADES = [{ plan: "team", label: "Team", price: "$299/mo" }] as const;
+
+export function BillingUpgrade({ workspace = false }: { workspace?: boolean }) {
   const [pending, setPending] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -44,7 +46,7 @@ export function BillingUpgrade() {
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row">
-        {UPGRADES.map(({ plan, label, price }) => (
+        {(workspace ? TEAM_UPGRADES : PERSONAL_UPGRADES).map(({ plan, label, price }) => (
           <Button
             key={plan}
             variant="outline"

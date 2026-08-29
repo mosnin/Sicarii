@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-utils";
+import { checkoutAllowed } from "@/lib/billing-access";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createCheckoutSession, priceIdFor, stripeConfigured } from "@/lib/stripe";
 import type { PaidPlanName } from "@/lib/credits";
 
 const PAID_PLANS = ["starter", "pro", "business", "team"] as const;
 
-// POST /api/billing/checkout  body: { plan: "starter" | "pro" | "business" }
+// POST /api/billing/checkout  body: { plan: "starter" | "pro" | "business" | "team" }
 // Creates a Stripe Checkout session and returns its URL. Env-gated: without
 // STRIPE_SECRET_KEY (or the plan's price id) this returns 501 so the UI can
 // show "Billing launches soon".
@@ -29,20 +30,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // The team plan is bought FOR a workspace, from team context, by an admin.
-    if (plan === "team") {
-      if (user.accountType !== "workspace") {
-        return NextResponse.json(
-          { error: "Switch to your team workspace to buy the team plan." },
-          { status: 400 },
-        );
-      }
-      if (ctx.workspaceRole !== "admin") {
-        return NextResponse.json(
-          { error: "Only a team admin can manage the team plan." },
-          { status: 403 },
-        );
-      }
+    // Team workspaces buy only the team plan, and only an admin may start
+    // checkout. A member completing Starter/Pro/Business would rewrite the
+    // workspace plan and overwrite stripeCustomerId (orphaning the admin
+    // subscription). See src/lib/billing-access.ts.
+    const allowed = checkoutAllowed({
+      accountType: user.accountType,
+      workspaceRole: ctx.workspaceRole,
+      plan,
+    });
+    if (!allowed.ok) {
+      return NextResponse.json({ error: allowed.error }, { status: allowed.status });
     }
 
     if (!stripeConfigured()) {
