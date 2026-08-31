@@ -2,6 +2,21 @@ import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { cancelSubscriptionsForCustomer } from "@/lib/stripe";
+
+/** Tear down a personal or workspace account. Stripe cancel runs FIRST so a
+ *  failed billing teardown leaves the User row (and stripeCustomerId) for
+ *  Clerk to retry — deleting first would orphan a live subscription. */
+async function deleteAccountRow(user: { id: string; stripeCustomerId: string | null }) {
+  if (user.stripeCustomerId) {
+    await cancelSubscriptionsForCustomer(user.stripeCustomerId);
+  }
+  await prisma.$transaction([
+    prisma.pipeline.deleteMany({ where: { userId: user.id } }),
+    prisma.segment.deleteMany({ where: { userId: user.id } }),
+    prisma.user.delete({ where: { id: user.id } }),
+  ]);
+}
 
 export async function POST(req: Request) {
   try {
@@ -118,15 +133,11 @@ export async function POST(req: Request) {
       // org. Fail loudly so Clerk retries a partial delete.
       const ws = await prisma.user.findUnique({
         where: { clerkId: data.id as string },
-        select: { id: true, accountType: true },
+        select: { id: true, accountType: true, stripeCustomerId: true },
       });
       if (ws && ws.accountType === "workspace") {
         try {
-          await prisma.$transaction([
-            prisma.pipeline.deleteMany({ where: { userId: ws.id } }),
-            prisma.segment.deleteMany({ where: { userId: ws.id } }),
-            prisma.user.delete({ where: { id: ws.id } }),
-          ]);
+          await deleteAccountRow(ws);
         } catch (err) {
           console.error(`[clerk] organization.deleted cleanup failed for ${ws.id}`, err);
           return NextResponse.json({ error: "Deletion failed, will retry" }, { status: 500 });
@@ -181,18 +192,14 @@ export async function POST(req: Request) {
       // cascade from their parent.
       const u = await prisma.user.findUnique({
         where: { clerkId: data.id as string },
-        select: { id: true },
+        select: { id: true, stripeCustomerId: true },
       });
       if (u) {
         // Do NOT swallow failures here: account deletion is a compliance
         // action, and a silent partial delete would leave user data retained
         // while reporting success. Failing loudly (500) makes Clerk retry.
         try {
-          await prisma.$transaction([
-            prisma.pipeline.deleteMany({ where: { userId: u.id } }),
-            prisma.segment.deleteMany({ where: { userId: u.id } }),
-            prisma.user.delete({ where: { id: u.id } }),
-          ]);
+          await deleteAccountRow(u);
         } catch (err) {
           console.error(`[clerk] user.deleted cleanup failed for ${u.id}`, err);
           return NextResponse.json({ error: "Deletion failed, will retry" }, { status: 500 });
