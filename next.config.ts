@@ -36,12 +36,13 @@ const nextConfig: NextConfig = {
     ],
   },
   // Standard discovery paths -> our metadata handlers (RFC 8414 / RFC 9728).
+  // They describe the authorization server under /oauth/* (see docs/OAUTH.md).
   async rewrites() {
     return [
-      { source: "/.well-known/oauth-authorization-server", destination: "/api/oauth/metadata/authorization-server" },
-      { source: "/.well-known/oauth-authorization-server/:path*", destination: "/api/oauth/metadata/authorization-server" },
-      { source: "/.well-known/oauth-protected-resource", destination: "/api/oauth/metadata/protected-resource" },
-      { source: "/.well-known/oauth-protected-resource/:path*", destination: "/api/oauth/metadata/protected-resource" },
+      { source: "/.well-known/oauth-authorization-server", destination: "/oauth/metadata/authorization-server" },
+      { source: "/.well-known/oauth-authorization-server/:path*", destination: "/oauth/metadata/authorization-server" },
+      { source: "/.well-known/oauth-protected-resource", destination: "/oauth/metadata/protected-resource" },
+      { source: "/.well-known/oauth-protected-resource/:path*", destination: "/oauth/metadata/protected-resource" },
     ];
   },
   async headers() {

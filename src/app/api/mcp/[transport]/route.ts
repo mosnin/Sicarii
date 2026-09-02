@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { authenticateApiKeyDetailed, bearerFromRequest } from "@/lib/api-auth";
 import { userIdFromAccessToken } from "@/lib/oauth";
+import { authenticateOauthAccessToken } from "@/lib/oauth-server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
   topUpHint,
@@ -1212,7 +1213,20 @@ const authHandler = withMcpAuth(
       };
     }
 
-    // OAuth access token (issued by our authorization server).
+    // Access token from the OAuth 2.1 authorization server (/oauth/*). The
+    // grant is bound to an account, so a team member's token operates the
+    // shared workspace CRM exactly as their session would.
+    const granted = await authenticateOauthAccessToken(token);
+    if (granted && granted.scopes.includes("mcp")) {
+      return {
+        token,
+        clientId: granted.clientId,
+        scopes: granted.scopes,
+        extra: { userId: granted.accountId },
+      };
+    }
+
+    // Legacy stateless OAuth access token (issued by /api/oauth/token).
     const userId = await userIdFromAccessToken(token);
     if (userId) {
       return { token, clientId: userId, scopes: [], extra: { userId } };

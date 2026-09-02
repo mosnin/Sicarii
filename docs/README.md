@@ -41,6 +41,12 @@
 | `engineering/` | Architecture, systems, interfaces, trade-offs | The engineer + the producer |
 | `operations/` | Production, economics, go-to-market, metrics | The producer + the banker |
 
+## Interfaces
+
+| Doc | What it covers |
+|---|---|
+| [`OAUTH.md`](OAUTH.md) | The OAuth 2.1 authorization server at `/oauth/*`: endpoints, scopes, PKCE + rotation + replay rules, storage, env vars, how to register a client |
+
 ## Audits
 
 | Doc | What it covers |
