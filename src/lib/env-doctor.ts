@@ -268,6 +268,20 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
               : "Not set, and no CLERK_SECRET_KEY fallback available - OAuth will throw at request time.",
         },
         {
+          name: "OAuth consent signing secret",
+          status: isSet(env, "OAUTH_CONSENT_SECRET")
+            ? "pass"
+            : anySet(env, ["MCP_OAUTH_SECRET", "CLERK_SECRET_KEY"])
+              ? "partial"
+              : "missing",
+          vars: ["OAUTH_CONSENT_SECRET"],
+          detail: isSet(env, "OAUTH_CONSENT_SECRET")
+            ? "Distinct secret set."
+            : anySet(env, ["MCP_OAUTH_SECRET", "CLERK_SECRET_KEY"])
+              ? "Derived from MCP_OAUTH_SECRET/CLERK_SECRET_KEY - works, but set a distinct OAUTH_CONSENT_SECRET so the /oauth consent tickets have their own signing material."
+              : "Not set, and no base secret to derive from - the /oauth/authorize consent screen will throw at request time.",
+        },
+        {
           name: "Exa webhook secret",
           status: anySet(env, ["EXA_WEBHOOK_SECRET", "MCP_OAUTH_SECRET", "CLERK_SECRET_KEY"]) ? "pass" : "missing",
           vars: ["EXA_WEBHOOK_SECRET"],

@@ -95,6 +95,10 @@ model User {
   // within their approved credit ceiling.
   autopilotPlans    AutopilotPlan[]
   breakupDrafts     BreakupDraft[]
+  // OAuth 2.1 authorization server: grants this human approved, and grants
+  // that read this account (a workspace row only ever has the latter).
+  oauthGrants       OauthGrant[] @relation("OauthGrantSubject")
+  oauthTenantGrants OauthGrant[] @relation("OauthGrantAccount")
 
   // Plain (non-unique) index for the webhook's findFirst lookup by secret -
   // see the voiceInboundSecret comment above for why this is not @unique.
@@ -981,4 +985,107 @@ model AutopilotRun {
   @@index([planId, createdAt])
   @@index([userId])
   @@map("autopilot_runs")
+}
+
+// ── OAuth 2.1 authorization server ──────────────────────────────────────────
+//
+// The stateful authorization server behind /oauth/*. Everything a bearer could
+// present is stored only as a SHA-256 hash, exactly like ApiKey.hashedKey, so a
+// database leak yields no usable code or token. The older stateless JWT flow
+// under /api/oauth/* stays reachable for tokens already in the wild but is no
+// longer advertised in the discovery metadata. See docs/OAUTH.md.
+
+// A registered client. Public (PKCE, no secret) is the only type issued today;
+// clientType keeps the door open for a confidential client later.
+model OauthClient {
+  id           String    @id @default(uuid())
+  clientId     String    @unique // the public identifier the client sends
+  name         String // shown on the consent screen
+  redirectUris String[]  @default([]) // matched byte for byte, never by prefix
+  scopes       String[]  @default([]) // the ceiling this client may ask for
+  clientType   String    @default("public")
+  disabledAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  grants OauthGrant[]
+
+  @@map("oauth_clients")
+}
+
+// One person's approval of one client for one account. Codes and tokens hang
+// off it, so revoking the grant kills every credential it ever produced.
+model OauthGrant {
+  id          String      @id @default(uuid())
+  clientRowId String
+  client      OauthClient @relation(fields: [clientRowId], references: [id], onDelete: Cascade)
+  // The human who approved (always the personal users row).
+  userId      String
+  user        User        @relation("OauthGrantSubject", fields: [userId], references: [id], onDelete: Cascade)
+  // The account the grant reads: that same personal row, or the workspace row
+  // the person picked on the consent screen. Every scoped query uses this.
+  accountId   String
+  account     User        @relation("OauthGrantAccount", fields: [accountId], references: [id], onDelete: Cascade)
+
+  scopes        String[]  @default([])
+  redirectUri   String
+  resource      String? // RFC 8707 indicator, bound when the client sends one
+  revokedAt     DateTime?
+  revokedReason String? // "code_replay" | "refresh_replay" | "revocation" | "user"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  codes  OauthAuthCode[]
+  tokens OauthToken[]
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([clientRowId])
+  @@map("oauth_grants")
+}
+
+// A single-use authorization code: ten minute life, bound to the client, the
+// exact redirect URI, the PKCE challenge and the resource. consumedAt is set by
+// a guarded update, so two simultaneous exchanges can never both win.
+model OauthAuthCode {
+  id            String     @id @default(uuid())
+  codeHash      String     @unique
+  grantId       String
+  grant         OauthGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  redirectUri   String
+  codeChallenge String
+  scopes        String[]   @default([])
+  resource      String?
+  expiresAt     DateTime
+  consumedAt    DateTime?
+  createdAt     DateTime   @default(now())
+
+  @@index([grantId])
+  @@index([expiresAt])
+  @@map("oauth_auth_codes")
+}
+
+// An access or refresh token, stored only as a hash. Every refresh token
+// descended from one authorization code shares a familyId, so replaying a
+// rotated token kills the whole line at once.
+model OauthToken {
+  id         String     @id @default(uuid())
+  grantId    String
+  grant      OauthGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  kind       String // "access" | "refresh"
+  tokenHash  String     @unique
+  familyId   String
+  scopes     String[]   @default([])
+  resource   String?
+  expiresAt  DateTime
+  rotatedAt  DateTime? // set when a refresh token was traded for its successor
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@index([grantId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("oauth_tokens")
 }

@@ -29,6 +29,11 @@ const isPublicRoute = createRouteMatcher([
   // MCP server + OAuth endpoints do their own auth (Bearer / OAuth / Clerk).
   "/api/mcp(.*)",
   "/api/oauth(.*)",
+  // The OAuth 2.1 authorization server. The token, revoke, userinfo and
+  // register endpoints authenticate themselves; /oauth/authorize is a page that
+  // sends signed-out visitors to /sign-in itself, keeping its query intact so
+  // they come back to the same authorization request.
+  "/oauth(.*)",
   // x402 payment endpoints resolve the user from an API key or Clerk session
   // themselves, and the payment proof is the X-PAYMENT header.
   "/api/x402(.*)",
