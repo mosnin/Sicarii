@@ -53,6 +53,9 @@ model User {
   // the Convex Auth provisioner. creditsResetAt is the next monthly
   // refill; stripeCustomerId links to the Stripe customer once they pay.
   plan             String    @default("beta")
+  // Preserved from the production database. Scalar currently prices in USD,
+  // but this column is part of the deployed billing contract.
+  reportingCurrency String   @default("USD")
   creditsRemaining Int       @default(10000)
   creditsResetAt   DateTime?
   stripeCustomerId String?

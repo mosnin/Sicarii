@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS "users" (
   "imageUrl"  TEXT,
   "role"      TEXT NOT NULL DEFAULT 'member',
   "accountType"      TEXT NOT NULL DEFAULT 'user',
+  "reportingCurrency" TEXT NOT NULL DEFAULT 'USD',
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "users_pkey" PRIMARY KEY ("id")
