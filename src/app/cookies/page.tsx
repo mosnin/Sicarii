@@ -28,7 +28,7 @@ export default function CookiesPage() {
         {
           heading: "Cookies we use",
           bullets: [
-            "Essential: authentication and session cookies set by Clerk so you can sign in and stay signed in securely. The app does not work without these.",
+            "Essential: authentication and session cookies set by Convex Auth so you can sign in and stay signed in securely. The app does not work without these.",
             "Preferences: a cookie that remembers your light or dark theme choice.",
             "Analytics: privacy-respecting, aggregate usage measurement that helps us keep the product reliable. These do not identify you to advertisers.",
           ],

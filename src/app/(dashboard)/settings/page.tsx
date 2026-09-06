@@ -54,7 +54,7 @@ export default async function SettingsPage() {
         <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Account</CardTitle>
-            <CardDescription>Your profile information from Clerk.</CardDescription>
+            <CardDescription>Your profile information from Convex Auth.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="divide-y divide-border">

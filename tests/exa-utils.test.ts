@@ -59,7 +59,6 @@ describe("exa webhook token", () => {
   it("derives a stable token from MCP_OAUTH_SECRET when no explicit secret is set", () => {
     vi.stubEnv("EXA_WEBHOOK_SECRET", undefined);
     vi.stubEnv("MCP_OAUTH_SECRET", "server-secret");
-    vi.stubEnv("CLERK_SECRET_KEY", undefined);
     const token = exaWebhookToken();
     expect(token).toBeTruthy();
     expect(token).not.toBe("server-secret"); // HMAC-derived, not the raw secret
@@ -69,7 +68,6 @@ describe("exa webhook token", () => {
   it("fails closed when no server secret exists at all", () => {
     vi.stubEnv("EXA_WEBHOOK_SECRET", undefined);
     vi.stubEnv("MCP_OAUTH_SECRET", undefined);
-    vi.stubEnv("CLERK_SECRET_KEY", undefined);
     expect(exaWebhookToken()).toBeNull();
     expect(exaWebhookTokenValid("anything")).toBe(false);
     expect(exaWebhookTokenValid("")).toBe(false);

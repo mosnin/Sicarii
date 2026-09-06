@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoMark } from "@/components/brand/logo-mark";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { useConvexAuth } from "@convex-dev/auth/react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
@@ -140,7 +140,7 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
-  const { isSignedIn } = useAuth();
+  const { isAuthenticated: isSignedIn } = useConvexAuth();
   const pathname = usePathname();
   const reduce = useReducedMotion();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -280,7 +280,6 @@ export function Header() {
                     >
                       Dashboard
                     </Link>
-                    <UserButton />
                   </>
                 )}
               </div>

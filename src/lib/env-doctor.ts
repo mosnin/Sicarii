@@ -101,16 +101,10 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
       group: "Auth",
       checks: [
         allOrNothing(
-          "Clerk auth",
-          ["NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "CLERK_SECRET_KEY"],
+          "Convex Auth",
+          ["NEXT_PUBLIC_CONVEX_URL", "NEXT_PUBLIC_CONVEX_SITE_URL"],
           env,
-          "Required for sign-in/sign-up and every protected route."
-        ),
-        optionalKey(
-          "Clerk webhook",
-          "CLERK_WEBHOOK_SECRET",
-          env,
-          "Verifies /api/webhooks/clerk (user + org sync)."
+          "Required for secure sessions and every protected route. Provider credentials are configured on the Convex deployment."
         ),
       ],
     },
@@ -255,40 +249,34 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
       checks: [
         {
           name: "MCP OAuth signing secret",
-          status: isSet(env, "MCP_OAUTH_SECRET")
-            ? "pass"
-            : isSet(env, "CLERK_SECRET_KEY")
-              ? "partial"
-              : "missing",
+          status: isSet(env, "MCP_OAUTH_SECRET") ? "pass" : "missing",
           vars: ["MCP_OAUTH_SECRET"],
           detail: isSet(env, "MCP_OAUTH_SECRET")
             ? "Distinct secret set."
-            : isSet(env, "CLERK_SECRET_KEY")
-              ? "Falling back to CLERK_SECRET_KEY - works, but shares signing material across two security contexts. Set a distinct MCP_OAUTH_SECRET."
-              : "Not set, and no CLERK_SECRET_KEY fallback available - OAuth will throw at request time.",
+            : "Not set. Legacy OAuth token verification will fail closed.",
         },
         {
           name: "OAuth consent signing secret",
           status: isSet(env, "OAUTH_CONSENT_SECRET")
             ? "pass"
-            : anySet(env, ["MCP_OAUTH_SECRET", "CLERK_SECRET_KEY"])
+            : isSet(env, "MCP_OAUTH_SECRET")
               ? "partial"
               : "missing",
           vars: ["OAUTH_CONSENT_SECRET"],
           detail: isSet(env, "OAUTH_CONSENT_SECRET")
             ? "Distinct secret set."
-            : anySet(env, ["MCP_OAUTH_SECRET", "CLERK_SECRET_KEY"])
-              ? "Derived from MCP_OAUTH_SECRET/CLERK_SECRET_KEY - works, but set a distinct OAUTH_CONSENT_SECRET so the /oauth consent tickets have their own signing material."
+            : isSet(env, "MCP_OAUTH_SECRET")
+              ? "Derived from MCP_OAUTH_SECRET. Set a distinct OAUTH_CONSENT_SECRET to isolate consent ticket signing."
               : "Not set, and no base secret to derive from - the /oauth/authorize consent screen will throw at request time.",
         },
         {
           name: "Exa webhook secret",
-          status: anySet(env, ["EXA_WEBHOOK_SECRET", "MCP_OAUTH_SECRET", "CLERK_SECRET_KEY"]) ? "pass" : "missing",
+          status: anySet(env, ["EXA_WEBHOOK_SECRET", "MCP_OAUTH_SECRET"]) ? "pass" : "missing",
           vars: ["EXA_WEBHOOK_SECRET"],
           detail: isSet(env, "EXA_WEBHOOK_SECRET")
             ? "Explicit secret set."
-            : anySet(env, ["MCP_OAUTH_SECRET", "CLERK_SECRET_KEY"])
-              ? "Not set explicitly; derived from MCP_OAUTH_SECRET/CLERK_SECRET_KEY."
+            : isSet(env, "MCP_OAUTH_SECRET")
+              ? "Not set explicitly; derived from MCP_OAUTH_SECRET."
               : "Not set, and no base secret to derive from - the Exa monitor webhook will fail closed.",
         },
         optionalKey(

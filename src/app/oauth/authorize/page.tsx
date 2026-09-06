@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
 import { LogoMark } from "@/components/brand/logo-mark";
 import { Button } from "@/components/ui/button";
-import { getAuthContext } from "@/lib/auth-utils";
+import { getOptionalAuthContext } from "@/lib/auth-utils";
 import { listUserWorkspaces } from "@/lib/workspace";
 import {
   DEFAULT_SCOPES,
@@ -65,7 +64,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * The consent screen. Identity is the product's own Clerk session: a signed-out
+ * The consent screen. Identity is the product's own Convex Auth session: a signed-out
  * visitor is sent to /sign-in and returns to this exact URL. Nothing is minted
  * here; approving POSTs a signed ticket to /oauth/authorize/decide, which mints
  * the code server side.
@@ -136,11 +135,11 @@ export default async function AuthorizePage({
 
   // Identity: the product's own session. Signed out means sign in and come back
   // to the same authorization request.
-  const { userId: clerkId } = await auth();
-  if (!clerkId) {
-    redirect(`/sign-in?redirect_url=${encodeURIComponent(selfUrl(params))}`);
+  const auth = await getOptionalAuthContext();
+  if (!auth) {
+    redirect(`/sign-in?redirectTo=${encodeURIComponent(selfUrl(params))}`);
   }
-  const { actor } = await getAuthContext();
+  const { actor } = auth;
 
   // Which account the person is about to expose: their own, or a team workspace
   // they belong to. The grant is bound to whichever they pick.

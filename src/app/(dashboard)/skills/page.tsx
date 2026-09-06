@@ -4,9 +4,8 @@ import { SkillsBrowser } from "@/components/dashboard/skills-browser";
 import { SKILLS } from "@/lib/skills";
 
 // This page lives under the authenticated dashboard layout, which is
-// force-dynamic and reads Clerk auth (getDbUser). Forcing this page static made
-// Next try to prerender it outside the Clerk request context, so a direct load
-// 500'd with "auth() was called but Clerk cannot detect clerkMiddleware()".
+// force-dynamic and reads server auth (getDbUser). This page must not render
+// outside a request context because authentication depends on request cookies.
 // Match the rest of the dashboard: render dynamically.
 export const dynamic = "force-dynamic";
 

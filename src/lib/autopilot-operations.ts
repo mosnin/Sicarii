@@ -131,9 +131,9 @@ export async function getAutopilotStatus(userId: string, id?: string) {
 /* ------------------------------- Approve ------------------------------- */
 
 /** Flip a draft/paused/exhausted plan to active and open a fresh window.
- *  HUMAN-ONLY: callers must resolve `approvedBy` from a Clerk session, never
+ *  HUMAN-ONLY: callers must resolve `approvedBy` from a Convex Auth session, never
  *  an API key - enforced by the caller (the REST route uses
- *  getAuthenticatedUser(), which only reads the Clerk session cookie; there is
+ *  getAuthenticatedUser(), which only reads the user session cookie; there is
  *  no MCP tool for this operation at all). Resets spent counters to 0 so a
  *  re-approval after a pause/exhaustion starts a clean window rather than
  *  inheriting a stale one. */

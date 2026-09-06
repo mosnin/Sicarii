@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         {
           heading: "Data we collect",
           bullets: [
-            "Account data: your name, email, and authentication identifiers, handled by Clerk.",
+            "Account data: your name, email, and authentication identifiers, handled by Convex Auth and your selected OAuth provider.",
             "Billing data: your plan, credit usage, and payment records, handled by our payment processor, Stripe. We do not store full card numbers.",
             "Customer Data: the companies, contacts, deals, emails, notes, and agent memory you create or enrich inside Scalar.",
             "Usage data: logs, device and browser information, and product analytics used to keep the service reliable and secure.",

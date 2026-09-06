@@ -1,5 +1,5 @@
-// Scalar — Prisma schema (Postgres on Supabase)
-// Auth is Clerk; users are mirrored here via the Clerk webhook.
+// Scalar Prisma schema (Postgres on Supabase).
+// Convex Auth owns identity and sessions. Product data remains in Postgres.
 
 generator client {
   provider        = "prisma-client-js"
@@ -19,14 +19,19 @@ datasource db {
 
 model User {
   id               String    @id @default(uuid())
-  clerkId          String    @unique
+  // authSubject is the stable Convex Auth user document id. clerkId stays
+  // nullable during the account migration window so verified-email sign-in can
+  // attach an existing Scalar row without moving its CRM data.
+  authProvider     String    @default("convex-auth")
+  authSubject      String?   @unique
+  clerkId          String?   @unique
   email            String
   firstName        String?
   lastName         String?
   imageUrl         String?
   role             String    @default("member")
-  // "user" = a human account. "workspace" = a synthetic account row mirroring a
-  // Clerk Organization: it owns the team's shared data through the exact same
+  // "user" = a human account. "workspace" = a synthetic account row that owns
+  // the team's shared data through the exact same
   // userId scoping every query already uses (see docs/engineering/
   // teams-plan-2026-07-11.md). Human-only flows (welcome, profile) gate on this.
   accountType      String    @default("user")
@@ -45,7 +50,7 @@ model User {
   autoRadar        Boolean   @default(true)
   // Billing: plan + credit meter. Existing users default to "beta" with 10,000
   // credits so nobody is suddenly blocked; new signups are set to "free"/200 by
-  // the Clerk webhook at creation time. creditsResetAt is the next monthly
+  // the Convex Auth provisioner. creditsResetAt is the next monthly
   // refill; stripeCustomerId links to the Stripe customer once they pay.
   plan             String    @default("beta")
   creditsRemaining Int       @default(10000)
@@ -106,16 +111,16 @@ model User {
   @@map("users")
 }
 
-// Mirror of a Clerk Organization membership: which humans can operate a
-// workspace account and with what role. Kept in sync by the Clerk webhook and
-// provisioned on first sight by the resolvers (same pattern as User).
+// Which humans can operate a workspace account and with what role. Existing
+// rows imported from Clerk remain valid while workspace management moves into
+// Scalar.
 model TeamMember {
   id                String   @id @default(uuid())
   workspaceId       String // users.id of the workspace account row
   workspace         User     @relation("WorkspaceMembers", fields: [workspaceId], references: [id], onDelete: Cascade)
   userId            String // users.id of the human member
   user              User     @relation("MemberOf", fields: [userId], references: [id], onDelete: Cascade)
-  role              String   @default("member") // mirrors the Clerk org role
+  role              String   @default("member")
   clerkMembershipId String?  @unique
   createdAt         DateTime @default(now())
 

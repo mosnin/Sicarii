@@ -13,7 +13,7 @@ const proofPoints = [
 
 /**
  * The shell for sign-in and sign-up. A split screen: a brand panel on the left
- * (hidden on mobile) over the ASCII signature, and the Clerk form on the right.
+ * (hidden on mobile) over the ASCII signature, and the auth form on the right.
  * Replaces the bare centered form so the front door matches the product.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {

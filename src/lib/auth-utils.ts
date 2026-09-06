@@ -1,89 +1,112 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 import { authenticateApiKey, bearerFromRequest } from "@/lib/api-auth";
-import { resolveWorkspace } from "@/lib/workspace";
+import { getConvexSessionIdentity, type ConvexSessionIdentity } from "@/lib/convex-session";
 
 export type DbUser = User;
+export const ACTIVE_WORKSPACE_COOKIE = "scalar_workspace";
 
-/** The full auth context: the ACCOUNT queries scope to (personal row, or the
- *  workspace row when a Clerk org is the active context) plus the human ACTOR
- *  (always the personal row). account.id === actor.id in personal context. */
 export interface AuthContext {
   account: DbUser;
   actor: DbUser;
-  /** Our role string in the active workspace ("admin" | "member"), or null in
-   *  personal context. */
   workspaceRole: string | null;
 }
 
-// Provision-on-first-sight for the personal row (the app never hard-depends on
-// the Clerk webhook having fired).
-async function personalRow(clerkId: string): Promise<DbUser> {
-  const existing = await prisma.user.findUnique({ where: { clerkId } });
-  if (existing) return existing;
-  const clerk = await currentUser();
-  const email = clerk?.emailAddresses?.[0]?.emailAddress ?? "";
-  return prisma.user.upsert({
-    where: { clerkId },
-    update: {},
-    create: {
-      clerkId,
-      email,
-      firstName: clerk?.firstName ?? undefined,
-      lastName: clerk?.lastName ?? undefined,
-      imageUrl: clerk?.imageUrl ?? undefined,
-      // Match the Clerk webhook's new-user grant (free/200), not the schema
-      // defaults (beta/10000) which are only for migrated existing users.
+function splitName(name: string | null): { firstName?: string; lastName?: string } {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (parts.length === 0) return {};
+  return {
+    firstName: parts[0],
+    ...(parts.length > 1 ? { lastName: parts.slice(1).join(" ") } : {}),
+  };
+}
+
+async function personalRow(identity: ConvexSessionIdentity): Promise<DbUser> {
+  const existing = await prisma.user.findUnique({ where: { authSubject: identity.id } });
+  const names = splitName(identity.name);
+  if (existing) {
+    return prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        ...(identity.email ? { email: identity.email } : {}),
+        ...names,
+        ...(identity.image ? { imageUrl: identity.image } : {}),
+      },
+    });
+  }
+
+  if (!identity.email || !identity.emailVerified) {
+    throw NextResponse.json(
+      { error: "A verified email address is required to use Scalar." },
+      { status: 403 },
+    );
+  }
+
+  const legacy = await prisma.user.findFirst({
+    where: { email: { equals: identity.email, mode: "insensitive" }, accountType: "user" },
+  });
+  if (legacy) {
+    if (legacy.authSubject && legacy.authSubject !== identity.id) {
+      throw NextResponse.json(
+        { error: "This email is already linked to another Scalar identity." },
+        { status: 409 },
+      );
+    }
+    return prisma.user.update({
+      where: { id: legacy.id },
+      data: {
+        authProvider: "convex-auth",
+        authSubject: identity.id,
+        ...names,
+        ...(identity.image ? { imageUrl: identity.image } : {}),
+      },
+    });
+  }
+
+  return prisma.user.create({
+    data: {
+      authProvider: "convex-auth",
+      authSubject: identity.id,
+      email: identity.email,
+      ...names,
+      ...(identity.image ? { imageUrl: identity.image } : {}),
       plan: "free",
       creditsRemaining: 200,
     },
   });
 }
 
-/**
- * The full auth context for the current session. Throws a NextResponse 401
- * when signed out; callers catch `NextResponse` in their error handler.
- */
-export async function getAuthContext(): Promise<AuthContext> {
-  const { userId: clerkId, orgId, orgRole } = await auth();
-  if (!clerkId) {
-    throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function getOptionalAuthContext(): Promise<AuthContext | null> {
+  const identity = await getConvexSessionIdentity();
+  if (!identity) return null;
+  const actor = await personalRow(identity);
+  const workspaceId = (await cookies()).get(ACTIVE_WORKSPACE_COOKIE)?.value;
+  if (!workspaceId || workspaceId === actor.id) {
+    return { account: actor, actor, workspaceRole: null };
   }
-  const actor = await personalRow(clerkId);
-  if (!orgId) return { account: actor, actor, workspaceRole: null };
 
-  // Team context: scope to the workspace account row. Clerk only sets orgId
-  // for orgs the user belongs to, so this is safe to provision from.
-  const workspace = await resolveWorkspace({ orgId, actor, orgRole });
-  return {
-    account: workspace,
-    actor,
-    workspaceRole: orgRole === "org:admin" || orgRole === "admin" ? "admin" : "member",
-  };
+  const membership = await prisma.teamMember.findUnique({
+    where: { workspaceId_userId: { workspaceId, userId: actor.id } },
+    include: { workspace: true },
+  });
+  if (!membership || membership.workspace.accountType !== "workspace") {
+    return { account: actor, actor, workspaceRole: null };
+  }
+  return { account: membership.workspace, actor, workspaceRole: membership.role };
 }
 
-/**
- * Get the authenticated DB account the request should scope to: the personal
- * row, or the workspace row when a team is the active Clerk context. Existing
- * call sites keep working unchanged - in team context they transparently
- * operate on the shared workspace data. Throws a NextResponse 401 when there
- * is no signed-in session.
- */
+export async function getAuthContext(): Promise<AuthContext> {
+  const context = await getOptionalAuthContext();
+  if (!context) throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return context;
+}
+
 export async function getAuthenticatedUser(): Promise<DbUser> {
-  const ctx = await getAuthContext();
-  return ctx.account;
+  return (await getAuthContext()).account;
 }
 
-/**
- * Resolve the user behind a request from either a connected agent (Authorization:
- * Bearer scl_... API key) or a signed-in human (Clerk session), or null when
- * neither identifies a user. Used by endpoints that both agents and people call,
- * like the x402 payment routes. The API key is tried first so agent traffic never
- * depends on a browser session. A workspace-minted key resolves to the workspace
- * account, so team agents pay into and spend from the pooled team meter.
- */
 export async function resolveRequestUser(req: Request): Promise<DbUser | null> {
   const token = bearerFromRequest(req);
   if (token) {

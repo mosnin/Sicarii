@@ -9,7 +9,7 @@ export const maxDuration = 60;
 // POST /api/discover/swarm - launch a swarm discovery run from the dashboard.
 //
 // Metering note (founder call): unlike the generic /api/discover switch (which
-// is Clerk-session-only, free, and returns results for the human to review and
+// is user-session-only, free, and returns results for the human to review and
 // add manually), a swarm run auto-creates CRM entities in one step - the same
 // shape as the find_companies/maps_leads MCP tools, which DO cost credits. So
 // this route calls the SAME metered op function (swarmDiscover) those tools

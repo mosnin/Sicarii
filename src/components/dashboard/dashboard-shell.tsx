@@ -46,7 +46,7 @@ import {
 } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
+import { SessionControls, type SessionControlsProps } from "@/components/auth/session-controls";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import {
   Home,
@@ -441,11 +441,13 @@ function Dock({
 
 function Sidebar({
   isStaff,
+  session,
   onCloseSidebar,
   onOpenLaunchpad,
   launchpadOpen,
 }: {
   isStaff: boolean;
+  session: SessionControlsProps | null;
   onCloseSidebar: () => void;
   onOpenLaunchpad: () => void;
   launchpadOpen: boolean;
@@ -560,11 +562,7 @@ function Sidebar({
 
           {/* User + workspace + theme */}
           <div className="flex items-center gap-2 px-3 py-2">
-            <UserButton />
-            <OrganizationSwitcher
-              afterSelectOrganizationUrl="/dashboard"
-              afterSelectPersonalUrl="/dashboard"
-            />
+            {session && <SessionControls {...session} />}
             <ThemeToggle />
           </div>
         </div>
@@ -788,9 +786,11 @@ function Launchpad({
 
 export function DashboardShell({
   isStaff,
+  session,
   children,
 }: {
   isStaff: boolean;
+  session: SessionControlsProps | null;
   children: React.ReactNode;
 }) {
   const prefersReduced = useReducedMotion();
@@ -873,14 +873,8 @@ export function DashboardShell({
                   </span>
                 </Link>
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  {/* Personal vs team context: switching orgs re-scopes every
-                      page to the shared workspace CRM. */}
-                  <OrganizationSwitcher
-                    afterSelectOrganizationUrl="/dashboard"
-                    afterSelectPersonalUrl="/dashboard"
-                  />
+                  {session && <SessionControls {...session} />}
                   <ThemeToggle />
-                  <UserButton />
                 </div>
               </div>
             </div>
@@ -902,6 +896,7 @@ export function DashboardShell({
               <Sidebar
                 key="sidebar"
                 isStaff={isStaff}
+                session={session}
                 onCloseSidebar={closeSidebar}
                 onOpenLaunchpad={openLaunchpad}
                 launchpadOpen={launchpadOpen}

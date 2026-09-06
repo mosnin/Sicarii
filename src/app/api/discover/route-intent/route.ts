@@ -13,7 +13,7 @@ const MODEL = process.env.OPENAI_REFINER_MODEL ?? "gpt-5-mini";
 // params to prefill, and the /discover page auto-runs it. No LLM key => a
 // heuristic fallback still routes the common cases, so the box never dead-ends.
 //
-// Clerk-session only (getAuthenticatedUser), same as /api/discover - not
+// User-session only (getAuthenticatedUser), same as /api/discover - not
 // reachable by API-key/MCP agents. The classifier is a small gpt-5-mini call; a
 // tight rate limit bounds the cost since routing itself is not credit-metered
 // (interactive UI research is free by design; see /api/discover).
