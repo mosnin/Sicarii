@@ -73,7 +73,7 @@ export async function buildCompanyOsOverview(accountId: string, origin: string) 
         kind: item.kind,
         summary: item.body,
         channel: item.channel,
-        actor: item.actorLabel,
+        actor: item.actorLabel ?? "Scalar",
         occurredAt: item.createdAt.toISOString(),
         target: item.contact
           ? { type: "contact", id: item.contact.id, name: item.contact.name, openUrl: scalarDeepLink(origin, `/crm/${item.contact.id}`) }
