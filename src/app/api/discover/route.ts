@@ -177,7 +177,7 @@ function enrichmentResult(domain: string, label: string, data: unknown) {
 
 // POST /api/discover - run a discovery tool and return shaped results.
 //
-// Metering note (founder call): this route is authenticated by Clerk SESSION
+// Metering note (founder call): this route is authenticated by USER SESSION
 // only (getAuthenticatedUser, not resolveRequestUser), so it is reachable from
 // the dashboard UI by a logged-in human and NOT by an API-key/MCP agent. It is
 // rate-limited (30/min/user) but does NOT debit credits, i.e. interactive UI

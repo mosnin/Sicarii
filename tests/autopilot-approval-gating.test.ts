@@ -1,9 +1,8 @@
 // Approval gating: an agent (holding only an API key) must never be able to
-// approve its own autopilot plan - only a human, from a Clerk session. There
+// approve its own autopilot plan - only a human, from a Convex Auth session. There
 // is no MCP tool for approval at all (grepped below), and the REST route only
 // resolves the caller via getAuthenticatedUser(), which src/lib/auth-utils.ts
-// implements strictly from the Clerk session cookie (auth() from
-// @clerk/nextjs/server) with NO Authorization: Bearer / API-key fallback -
+// implements strictly from the server-only session with no bearer fallback -
 // unlike resolveRequestUser(), which routes like x402 payments use
 // specifically because BOTH humans and agents may call them. Mirrors the
 // source-inspection style of the "does not debit credits before..." test in
@@ -26,10 +25,10 @@ describe("autopilot approval is human-only", () => {
     expect(route).not.toContain("bearerFromRequest");
   });
 
-  it("getAuthenticatedUser itself has no Authorization/Bearer fallback (it is Clerk-session-only)", () => {
+  it("getAuthenticatedUser itself has no Authorization/Bearer fallback", () => {
     const authUtils = read("src/lib/auth-utils.ts");
     // getAuthContext (which getAuthenticatedUser wraps) must resolve strictly
-    // from auth() (the Clerk session). If a bearer/API-key path were ever
+    // from getOptionalAuthContext (the browser session). If a bearer/API-key path were ever
     // added to this helper, every route built on it - including approve -
     // would silently become agent-callable. Guard the invariant at its
     // source: isolate just the getAuthContext function body (up to the next
@@ -40,7 +39,7 @@ describe("autopilot approval is human-only", () => {
     const nextExport = rest.search(/\nexport (async )?function /);
     const authContextBody = nextExport === -1 ? rest : rest.slice(0, nextExport);
 
-    expect(authContextBody).toContain("auth()");
+    expect(authContextBody).toContain("getOptionalAuthContext()");
     expect(authContextBody).not.toContain("bearerFromRequest");
     expect(authContextBody).not.toContain("authenticateApiKey");
 

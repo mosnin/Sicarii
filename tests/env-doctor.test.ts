@@ -16,7 +16,7 @@ describe("runEnvDoctor", () => {
     const report = runEnvDoctor({});
     expect(findCheck(report, "Tavily web search").status).toBe("missing");
     expect(findCheck(report, "Supabase Postgres (Prisma)").status).toBe("missing");
-    expect(findCheck(report, "Clerk auth").status).toBe("missing");
+    expect(findCheck(report, "Convex Auth").status).toBe("missing");
     expect(report.summary.missing).toBeGreaterThan(0);
     expect(report.summary.pass).toBeGreaterThan(0); // GLEIF/SEC EDGAR need no key
   });
@@ -57,7 +57,7 @@ describe("runEnvDoctor", () => {
 
   it("never includes a secret value anywhere in the serialized report", () => {
     const secret = "sk_live_super_secret_value_12345";
-    const report = runEnvDoctor({ CLERK_SECRET_KEY: secret, STRIPE_SECRET_KEY: secret });
+    const report = runEnvDoctor({ MCP_OAUTH_SECRET: secret, STRIPE_SECRET_KEY: secret });
     expect(JSON.stringify(report)).not.toContain(secret);
   });
 

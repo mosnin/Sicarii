@@ -1,7 +1,9 @@
 // OAuth 2.1 token + PKCE helpers for Scalar's MCP authorization server.
 // Tokens are stateless signed JWTs (HS256 via jose), so no token table is
 // needed; the MCP route verifies an access token straight back to a userId.
-// Identity comes from Clerk at /authorize; codes/tokens are bound to that user.
+// Identity comes from the Scalar session at /authorize; codes and tokens are
+// bound to that user. This module only verifies access tokens issued before the
+// stateful OAuth server shipped.
 
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { createHash, randomUUID } from "node:crypto";
@@ -9,17 +11,9 @@ import { prisma } from "@/lib/prisma";
 
 const enc = new TextEncoder();
 
-let warnedFallback = false;
 function secret(): Uint8Array {
-  const s = process.env.MCP_OAUTH_SECRET || process.env.CLERK_SECRET_KEY;
-  if (!s) throw new Error("MCP_OAUTH_SECRET (or CLERK_SECRET_KEY) must be set for OAuth");
-  if (!process.env.MCP_OAUTH_SECRET && process.env.NODE_ENV === "production" && !warnedFallback) {
-    warnedFallback = true;
-    console.error(
-      "[oauth] SECURITY: MCP_OAUTH_SECRET is not set; falling back to CLERK_SECRET_KEY. " +
-        "Set a distinct MCP_OAUTH_SECRET so OAuth tokens do not share signing material with Clerk.",
-    );
-  }
+  const s = process.env.MCP_OAUTH_SECRET;
+  if (!s) throw new Error("MCP_OAUTH_SECRET must be set for legacy OAuth token verification");
   return enc.encode(s);
 }
 

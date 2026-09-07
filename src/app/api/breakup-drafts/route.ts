@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { listPendingDrafts } from "@/lib/breakup-operations";
 
 // GET /api/breakup-drafts - the review queue: pending breakup drafts, oldest
-// first. Human-session only (getAuthenticatedUser is Clerk-session-only, never
+// first. Human-session only (getAuthenticatedUser is user-session-only, never
 // an agent API key) - this mirrors what the dashboard's review card renders.
 export async function GET() {
   try {

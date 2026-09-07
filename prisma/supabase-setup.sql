@@ -55,21 +55,25 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 -- 2. Tables
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- users — mirrored from Clerk via the Clerk webhook
+-- users: application accounts linked to Convex Auth identities
 CREATE TABLE IF NOT EXISTS "users" (
   "id"        TEXT NOT NULL,
-  "clerkId"   TEXT NOT NULL,
+  "authProvider" TEXT NOT NULL DEFAULT 'convex-auth',
+  "authSubject" TEXT,
+  "clerkId"   TEXT,
   "email"     TEXT NOT NULL,
   "firstName" TEXT,
   "lastName"  TEXT,
   "imageUrl"  TEXT,
   "role"      TEXT NOT NULL DEFAULT 'member',
   "accountType"      TEXT NOT NULL DEFAULT 'user',
+  "reportingCurrency" TEXT NOT NULL DEFAULT 'USD',
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "users_clerkId_key" ON "users" ("clerkId");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_authSubject_key" ON "users" ("authSubject");
 
 -- conversations — a chat with the Scalar agent (fresh one per page load)
 CREATE TABLE IF NOT EXISTS "conversations" (

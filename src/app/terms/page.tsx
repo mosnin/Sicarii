@@ -32,7 +32,7 @@ export default function TermsPage() {
         {
           heading: "Accounts",
           body: [
-            "You need an account to use Scalar. Authentication is handled by Clerk. You are responsible for keeping your credentials and API keys secure and for all activity under your account, including actions taken by agents you connect. You must provide accurate information and be at least 18 years old (or the age of majority where you live).",
+            "You need an account to use Scalar. Authentication is handled by Convex Auth and the OAuth provider you choose. You are responsible for keeping your credentials and API keys secure and for all activity under your account, including actions taken by agents you connect. You must provide accurate information and be at least 18 years old (or the age of majority where you live).",
             "Notify us promptly at hello@tryscalar.xyz if you believe your account or an API key has been compromised.",
           ],
         },

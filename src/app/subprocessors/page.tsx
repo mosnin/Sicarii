@@ -34,7 +34,7 @@ export default function SubprocessorsPage() {
         {
           heading: "Identity and payments",
           bullets: [
-            "Clerk: authentication and account management.",
+            "Convex: authentication session storage and account identity.",
             "Stripe: subscription billing and payment processing.",
           ],
         },

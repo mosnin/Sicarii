@@ -24,7 +24,7 @@ function unauthorized(description: string) {
 
 /**
  * OIDC-style userinfo. Standard claims only, and only what Scalar can honestly
- * say: identity comes from Clerk, so name/picture/email are whatever the person
+ * say: identity comes from Convex Auth, so name, picture and email are whatever the person
  * signed up with. `workspace` is a Scalar claim, not a standard one: it says
  * which account the token actually reads, which for a team member is the shared
  * workspace row rather than their personal one.
@@ -74,8 +74,7 @@ export async function GET(req: Request) {
 
   return Response.json(
     {
-      // Stable forever: the Scalar users row id, not the Clerk id, which can be
-      // re-pointed, and not the email, which changes.
+      // Stable forever: the Scalar user row id, not a provider id or mutable email.
       sub: subject.id,
       ...(profile && name ? { name } : {}),
       ...(profile && subject.firstName ? { given_name: subject.firstName } : {}),

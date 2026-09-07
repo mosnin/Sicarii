@@ -1,4 +1,3 @@
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { LogoMark } from "@/components/brand/logo-mark";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -18,7 +17,6 @@ export function DashboardHeader() {
           </Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />
-            <UserButton />
           </div>
         </div>
       </header>

@@ -1,6 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthContext } from "@/lib/auth-utils";
+import { getOptionalAuthContext } from "@/lib/auth-utils";
 import { issueAuthorizationCode, verifyConsentTicket } from "@/lib/oauth-server";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +22,9 @@ export async function POST(req: Request) {
     });
   }
 
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return new Response("Sign in and start the connection again.", { status: 401 });
-  const { actor } = await getAuthContext();
+  const auth = await getOptionalAuthContext();
+  if (!auth) return new Response("Sign in and start the connection again.", { status: 401 });
+  const { actor } = auth;
   // The ticket belongs to one human. Anyone else presenting it gets nothing.
   if (actor.id !== ticket.userId) {
     return new Response("This consent screen belongs to a different session.", { status: 403 });

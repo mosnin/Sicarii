@@ -1,7 +1,7 @@
 # Scalar
 
 The CRM your agents run. Next.js 16 (App Router), React 19, TypeScript,
-Tailwind v4, Prisma on Supabase Postgres, Clerk auth, Stripe + x402 billing.
+Tailwind v4, Prisma on Supabase Postgres, Convex Auth, Stripe + x402 billing.
 Agents operate the CRM over MCP; deep context lives in `CLAUDE.md` and
 `docs/README.md`.
 
@@ -53,11 +53,12 @@ Both the CLI and the route read the same check logic from
   `UPSTASH_REDIS_REST_TOKEN`. Without them every rate limit is per-serverless-
   instance and bypassable across autoscaled instances; the app logs a SECURITY
   error once per instance until configured.
-- `OAUTH_SIGNING_SECRET` (falls back to `CLERK_SECRET_KEY` with a warning).
+- `MCP_OAUTH_SECRET` and a distinct `OAUTH_CONSENT_SECRET`.
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
   (including `STRIPE_PRICE_TEAM` for the team plan).
-- Clerk: enable Organizations and subscribe the webhook to `organization.*`
-  and `organizationMembership.*` events (Teams).
+- Convex: link a deployment and configure Google and GitHub OAuth providers.
+- Teams: keep workspace membership in the Scalar database and verify it on
+  every workspace switch.
 - Supabase: run `prisma/supabase-setup.sql` section 4 (pgvector HNSW index)
   once in the SQL editor; `db push` cannot create it.
 

@@ -31,6 +31,7 @@ export const SCOPE_DESCRIPTIONS: Record<string, string> = {
   email: "See your email address",
   "crm:read": "Read your contacts, companies, activities and pipelines",
   "crm:write": "Create and update records in your CRM",
+  "company-os:overview": "Show a read-only Scalar overview inside Company OS",
   mcp: "Run Scalar's agent tools on your behalf",
 };
 
@@ -187,7 +188,7 @@ let warnedSecretFallback = false;
 
 function consentSecret(): Buffer {
   const explicit = process.env.OAUTH_CONSENT_SECRET;
-  const fallback = process.env.MCP_OAUTH_SECRET || process.env.CLERK_SECRET_KEY;
+  const fallback = process.env.MCP_OAUTH_SECRET;
   const secret = explicit || fallback;
   if (!secret) throw new Error("OAUTH_CONSENT_SECRET (or MCP_OAUTH_SECRET) must be set for OAuth consent");
   if (!explicit && process.env.NODE_ENV === "production" && !warnedSecretFallback) {

@@ -346,7 +346,7 @@ export async function updateBreakupDraft(
 
 /** Approve a pending draft: human-session-gated ONLY (called from
  *  src/app/api/breakup-drafts/[id]/approve, which uses getAuthenticatedUser -
- *  a Clerk session - never an agent API key), so a prompt-injected agent can
+ *  a Convex Auth session - never an agent API key), so a prompt-injected agent can
  *  never approve, and thereby send, its own drafts.
  *
  *  AgentMail (src/lib/agentmail.ts) exposes no send capability today - it is

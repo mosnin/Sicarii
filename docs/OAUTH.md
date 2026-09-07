@@ -3,7 +3,7 @@
 Status: shipped. Owner: the engineer. Last updated 2026-09-02.
 
 Scalar is its own authorization server. An external app (an MCP client, an agent
-runtime, a partner integration) sends a person here, they sign in with the Clerk
+runtime, a partner integration) sends a person here, they sign in with Convex Auth
 session they already have, they approve a named set of scopes for a named
 account, and the app walks away with an access token and a refresh token.
 
@@ -150,7 +150,7 @@ revoked token gets 401 with a `WWW-Authenticate` header.
   "name": "Ana Ruiz",
   "given_name": "Ana",
   "family_name": "Ruiz",
-  "picture": "https://img.clerk.com/...",
+  "picture": "https://avatars.githubusercontent.com/...",
   "updated_at": 1756852800,
   "email": "ana@example.com",
   "workspace": { "id": "9b2e...", "name": "Ruiz Dental", "type": "workspace", "role": "admin" },
@@ -160,7 +160,7 @@ revoked token gets 401 with a `WWW-Authenticate` header.
 ```
 
 - `sub` is the Scalar `users.id` of the human who approved. It is stable
-  forever: not the Clerk id, which can be re-pointed, and not the email, which
+  forever: not an OAuth provider id, which can be re-pointed, and not the email, which
   changes.
 - `email` is present only with the `email` scope; the profile claims only with
   `profile`.
@@ -235,9 +235,9 @@ apply by hand.
 
 | Variable | Required | What it is for |
 | --- | --- | --- |
-| `OAUTH_CONSENT_SECRET` | recommended | Signs the consent tickets the authorize page hands to `/oauth/authorize/decide`. Falls back to `MCP_OAUTH_SECRET`, then `CLERK_SECRET_KEY`. Generate with `openssl rand -hex 32`. |
+| `OAUTH_CONSENT_SECRET` | recommended | Signs the consent tickets the authorize page hands to `/oauth/authorize/decide`. Falls back to `MCP_OAUTH_SECRET`. Generate with `openssl rand -hex 32`. |
 | `MCP_OAUTH_SECRET` | recommended | Signing material for the older stateless MCP OAuth layer, and the fallback above. |
-| `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | yes | The session behind the consent screen. |
+| `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` | yes | The Convex Auth session behind the consent screen. |
 | `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING` | yes | Where clients, grants, codes and tokens live. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | in production | Durable rate limiting for the token, revoke and register endpoints. Without them the limits are per serverless instance. |
 

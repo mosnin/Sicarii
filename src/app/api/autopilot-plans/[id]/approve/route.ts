@@ -8,8 +8,8 @@ import { OpError } from "@/lib/crm-operations";
 // to active and open its first budget window.
 //
 // HUMAN-ONLY BY CONSTRUCTION: getAuthenticatedUser() resolves strictly from
-// the Clerk session cookie (src/lib/auth-utils.ts -> auth() from
-// @clerk/nextjs/server) - it has no Authorization: Bearer fallback, so a
+// the Convex Auth session (src/lib/auth-utils.ts) - it has no Authorization:
+// Bearer fallback, so a
 // connected agent holding only an API key can never reach this route. There
 // is also no MCP tool that calls approveAutopilotPlan; an agent can propose a
 // plan and can pause one, but it can never approve its own spend.

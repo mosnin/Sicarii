@@ -5,7 +5,7 @@ import { OpError } from "@/lib/crm-operations";
 import { approveBreakupDraft } from "@/lib/breakup-operations";
 
 // POST /api/breakup-drafts/[id]/approve - one-click approve. Deliberately
-// human-session ONLY: getAuthenticatedUser resolves a Clerk session, never an
+// human-session ONLY: getAuthenticatedUser resolves a Convex Auth session, never an
 // agent API key, so a prompt-injected agent can never approve (and thereby
 // send) its own draft. See src/lib/breakup-operations.ts for the AgentMail
 // send-capability note.

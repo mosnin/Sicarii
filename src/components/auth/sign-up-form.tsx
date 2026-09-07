@@ -3,12 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { SignUp } from "@clerk/nextjs";
-import { clerkAppearance } from "@/lib/clerk-appearance";
+import { Suspense } from "react";
+import { ConvexAuthForm } from "@/components/auth/convex-auth-form";
 import { cn } from "@/lib/utils";
 
 /**
- * Sign-up with a real consent gate. The Clerk form stays disabled (dimmed,
+ * Sign-up with a real consent gate. The auth form stays disabled (dimmed,
  * non-interactive) until the user checks the box agreeing to the Terms and
  * Privacy Policy, so agreement is enforced in the UI rather than implied by a
  * line of fine print. The box and the form share one card frame.
@@ -25,11 +25,9 @@ export function SignUpForm() {
         )}
         inert={!agreed}
       >
-        <SignUp
-          forceRedirectUrl="/dashboard"
-          signInUrl="/sign-in"
-          appearance={clerkAppearance}
-        />
+        <Suspense fallback={<p className="text-sm text-muted-foreground">Loading secure sign up...</p>}>
+          <ConvexAuthForm disabled={!agreed} />
+        </Suspense>
       </div>
 
       <div className="mt-6">

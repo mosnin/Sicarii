@@ -21,7 +21,7 @@ const BASE = "https://api.exa.ai";
 export function exaWebhookToken(): string | null {
   const explicit = process.env.EXA_WEBHOOK_SECRET?.trim();
   if (explicit) return explicit;
-  const base = (process.env.MCP_OAUTH_SECRET || process.env.CLERK_SECRET_KEY)?.trim();
+  const base = process.env.MCP_OAUTH_SECRET?.trim();
   if (!base) return null;
   return createHmac("sha256", base).update("exa-webhook-v1").digest("hex");
 }

@@ -229,7 +229,7 @@ The signed-in shell owns navigation in three modes, persisted to `localStorage`
 
 ## 9. Engineering spine (so design survives reality)
 
-- **Next 16, not vanilla:** middleware is `src/proxy.ts` (wraps `clerkMiddleware`);
+- **Next 16, not vanilla:** middleware is `src/proxy.ts` (wraps `convexAuthNextjsMiddleware`);
   dynamic params are `Promise` (`await params`); `export const viewport` for
   theme-color; file-convention `app/manifest.ts` + `app/apple-icon.tsx` (PNG via
   `next/og` `ImageResponse`). Verify APIs against installed Next; don't assume ≤14.
@@ -237,10 +237,10 @@ The signed-in shell owns navigation in three modes, persisted to `localStorage`
   names — `POSTGRES_PRISMA_URL` (pooled) + `POSTGRES_URL_NON_POOLING` (direct) — not a
   custom `DATABASE_URL`. Build runs `prisma db push` (schema auto-applies on deploy);
   prefer additive/idempotent schema changes.
-- **Auth:** Clerk via `proxy.ts`; the DB `User` row **auto-provisions** on first
+- **Auth:** Convex Auth via `proxy.ts`; the DB `User` row **auto-provisions** on first
   authenticated request (`getDbUser` / `getAuthenticatedUser`) — no hard webhook
   dependency. Roles `member` / `team` / `admin`; `isStaff = admin || team`.
-- **CSP** (`next.config.ts`) must whitelist the production Clerk Frontend API
+- **CSP** (`next.config.ts`) must whitelist the Convex deployment hosts
   (`*.tryscalar.xyz`) + Cloudflare Turnstile, or the sign-in/up widget renders blank.
 - **Degrade gracefully:** optional integrations (Synthoz, Tavily, OpenAI, AgentMail)
   must no-op cleanly when their env keys are unset.
