@@ -240,7 +240,7 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
           "Upstash Redis",
           ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
           env,
-          "Required in production - without it, rate limits are per-serverless-instance and bypassable across autoscaled instances."
+          "Required in production - protected operations fail closed without durable cross-instance rate limiting."
         ),
       ],
     },

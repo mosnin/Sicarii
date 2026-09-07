@@ -5,6 +5,7 @@ import { checkRateLimit, isDurableRateLimit } from "@/lib/rate-limit";
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllEnvs();
 });
 
 describe("checkRateLimit (in-memory path)", () => {
@@ -71,5 +72,20 @@ describe("checkRateLimit (in-memory path)", () => {
     vi.setSystemTime(1_000_000);
     const res = await checkRateLimit("t:resetAt", 5, 30_000);
     expect(res.resetAt).toBe(1_000_000 + 30_000);
+  });
+
+  it("fails closed in production when durable rate limiting is unavailable", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const res = await checkRateLimit(`t:production:${Date.now()}`, 5, 30_000);
+    expect(res.success).toBe(false);
+    expect(res.remaining).toBe(0);
+  });
+
+  it("allows an explicit in-memory fallback for cheap diagnostic routes", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const res = await checkRateLimit(`t:health:${Date.now()}`, 5, 30_000, {
+      productionFallback: "memory",
+    });
+    expect(res.success).toBe(true);
   });
 });

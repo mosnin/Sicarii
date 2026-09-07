@@ -1,10 +1,9 @@
 /**
  * Rate limiter. Durable across serverless instances when Upstash Redis is
  * configured (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN); otherwise it
- * falls back to a per-instance in-memory limiter. The in-memory path is fine for
- * local dev but weak in production (each serverless instance has its own map) -
- * which is exactly why the durable backend is preferred. On any Redis error we
- * fail OPEN to the in-memory limiter, so a Redis blip never 500s the app.
+ * falls back to a per-instance in-memory limiter outside production. Production
+ * callers fail closed when the durable backend is absent or unavailable unless
+ * they explicitly opt into the in-memory fallback for a cheap diagnostic route.
  */
 
 import { Redis } from "@upstash/redis";
@@ -13,6 +12,11 @@ interface RateLimitResult {
   success: boolean;
   remaining: number;
   resetAt: number;
+}
+
+interface RateLimitOptions {
+  /** Only suitable for cheap, non-mutating routes such as /api/health. */
+  productionFallback?: "deny" | "memory";
 }
 
 /* ------------------------- In-memory fallback ------------------------- */
@@ -59,8 +63,7 @@ const redis: Redis | null = (() => {
       g.__rateLimitWarned = true;
       console.error(
         "[rate-limit] SECURITY: UPSTASH_REDIS_REST_URL/TOKEN not set in production. " +
-          "Rate limiting is per-instance in-memory and bypassable across autoscaled instances. " +
-          "Configure Upstash Redis for durable cross-instance limits.",
+          "Protected operations will fail closed until durable cross-instance limits are configured.",
       );
     }
     return null;
@@ -87,9 +90,18 @@ export function isDurableRateLimit(): boolean {
 export async function checkRateLimit(
   key: string,
   limit: number,
-  windowMs: number = 60_000
+  windowMs: number = 60_000,
+  options: RateLimitOptions = {},
 ): Promise<RateLimitResult> {
-  if (!redis) return memoryCheck(key, limit, windowMs);
+  const mayUseMemory =
+    process.env.NODE_ENV !== "production" || options.productionFallback === "memory";
+  const deny = (): RateLimitResult => ({
+    success: false,
+    remaining: 0,
+    resetAt: Date.now() + windowMs,
+  });
+
+  if (!redis) return mayUseMemory ? memoryCheck(key, limit, windowMs) : deny();
 
   // Fixed window: one counter per (key, time-slot), expiring at the window end.
   const windowSec = Math.max(1, Math.ceil(windowMs / 1000));
@@ -105,7 +117,6 @@ export async function checkRateLimit(
     if (count > limit) return { success: false, remaining: 0, resetAt };
     return { success: true, remaining: limit - count, resetAt };
   } catch {
-    // Redis unreachable - fail open to the in-memory limiter rather than erroring.
-    return memoryCheck(key, limit, windowMs);
+    return mayUseMemory ? memoryCheck(key, limit, windowMs) : deny();
   }
 }

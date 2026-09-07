@@ -19,7 +19,9 @@ export async function GET(req: Request) {
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??
     "unknown";
-  const rateLimit = await checkRateLimit(`health:${ip}`, 30, 60_000);
+  const rateLimit = await checkRateLimit(`health:${ip}`, 30, 60_000, {
+    productionFallback: "memory",
+  });
   if (!rateLimit.success) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
