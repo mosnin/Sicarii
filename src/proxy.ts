@@ -33,6 +33,9 @@ const isPublicRoute = createRouteMatcher([
   // Company OS app resources enforce their own OAuth bearer scopes and must
   // return protocol errors, not browser sign-in redirects.
   "/api/company-os(.*)",
+  // First-party native clients authenticate with resource-bound OAuth bearer
+  // tokens and must receive protocol errors instead of browser redirects.
+  "/api/client(.*)",
   // The OAuth 2.1 authorization server. The token, revoke, userinfo and
   // register endpoints authenticate themselves; /oauth/authorize is a page that
   // sends signed-out visitors to /sign-in itself, keeping its query intact so
