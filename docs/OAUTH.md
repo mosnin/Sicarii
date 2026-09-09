@@ -24,6 +24,7 @@ paths, so a client that speaks RFC 8414 needs nothing but the origin.
 | `POST` | `/oauth/revoke` | RFC 7009 revocation. Form encoded. Always 200. |
 | `GET` | `/oauth/userinfo` | OIDC style claims for the bearer's subject. |
 | `POST` | `/oauth/register` | RFC 7591 dynamic client registration for public PKCE clients. |
+| `GET` | `/api/client/v1/overview` | Resource-bound read-only overview for first-party native clients. |
 
 ### `GET /oauth/authorize`
 
@@ -261,9 +262,11 @@ curl -sX POST https://www.tryscalar.xyz/oauth/register \
 
 The response carries the `client_id`. There is no client secret: these are
 public clients, and PKCE is what secures the exchange. Redirect URIs must be
-`https`, or `http` on `localhost` / `127.0.0.1` for local development. At most
-ten per client, and each is matched byte for byte later, so register the exact
-string the client will send.
+`https`, or `http` on `localhost` / `127.0.0.1` for local development. The exact
+first-party URI `scalar://oauth/callback` is also accepted for Scalar for Mac,
+which uses PKCE with `ASWebAuthenticationSession`. At most ten URIs are accepted
+per client, and each is matched byte for byte later, so register the exact string
+the client will send.
 
 Registering grants nothing on its own. A client cannot read a byte until a
 person approves it on the consent screen.

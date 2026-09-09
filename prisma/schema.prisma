@@ -1097,3 +1097,26 @@ model OauthToken {
   @@index([expiresAt])
   @@map("oauth_tokens")
 }
+
+// Short-lived device authorization requests used by native clients that open
+// Scalar sign-in in the system browser. Both codes are stored only as hashes.
+model OauthDeviceCode {
+  id              String   @id @default(uuid())
+  deviceCodeHash  String   @unique
+  userCodeHash    String   @unique
+  clientRowId     String
+  scopes          String[] @default([])
+  resource        String
+  intervalSeconds Int      @default(5)
+  expiresAt       DateTime
+  approvedAt      DateTime?
+  deniedAt        DateTime?
+  consumedAt      DateTime?
+  userId          String?
+  accountId       String?
+  grantId         String?  @unique
+  createdAt       DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("oauth_device_codes")
+}

@@ -76,3 +76,23 @@ printed):
 SCALAR_API_KEY=scl_... pnpm smoke:mcp                 # production endpoint
 SCALAR_API_KEY=scl_... node scripts/mcp-smoke.mjs https://<preview>/api/mcp/mcp
 ```
+
+## Scalar for Mac and CLI
+
+The native Mac client lives in `apps/macos`. It uses the system browser for
+OAuth PKCE, stores rotating credentials in macOS Keychain, reads canonical
+Scalar data from the versioned client API, and uses Sparkle 2.9.2 for signed
+updates. It does not keep a second CRM database.
+
+The local-agent CLI is available as the `scalar` package binary:
+
+```bash
+pnpm scalar login
+pnpm scalar status
+pnpm scalar tools
+pnpm scalar mcp serve
+```
+
+See `docs/SCALAR_PLATFORM.md` for the platform contract and explicit production
+gates. The current Mac build is an authenticated overview foundation; full web
+capability parity remains a release blocker.

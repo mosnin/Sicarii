@@ -1,5 +1,6 @@
 import { checkRateLimit } from "@/lib/rate-limit";
 import { DEFAULT_SCOPES, SUPPORTED_SCOPES, narrowScopes, parseScopes, registerClient } from "@/lib/oauth-server";
+import { isAllowedPublicRedirectUri } from "@/lib/oauth-redirect";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -10,16 +11,6 @@ const cors = {
 
 function clientIp(req: Request): string {
   return (req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown").trim();
-}
-
-function isHttpsOrLoopback(uri: string): boolean {
-  try {
-    const url = new URL(uri);
-    if (url.protocol === "https:") return true;
-    return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -44,13 +35,13 @@ export async function POST(req: Request) {
   };
 
   const redirectUris = Array.isArray(body.redirect_uris)
-    ? body.redirect_uris.filter((u): u is string => typeof u === "string" && isHttpsOrLoopback(u)).slice(0, 10)
+    ? body.redirect_uris.filter((u): u is string => typeof u === "string" && isAllowedPublicRedirectUri(u)).slice(0, 10)
     : [];
   if (redirectUris.length === 0) {
     return Response.json(
       {
         error: "invalid_redirect_uri",
-        error_description: "At least one https (or http loopback) redirect_uri is required",
+        error_description: "At least one https, loopback, or approved Scalar app redirect_uri is required",
       },
       { status: 400, headers: cors },
     );
