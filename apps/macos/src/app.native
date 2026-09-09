@@ -1,0 +1,122 @@
+<column background="background" padding="24" gap="18">
+  <row cross="center" gap="10">
+    <text size="heading"><span foreground="text_muted">]</span><span foreground="accent">s</span><span foreground="text_muted">[</span></text>
+    <column gap="2" grow="1">
+      <text size="heading">Scalar</text>
+      <text foreground="text_muted">The CRM your agents run</text>
+    </column>
+    <if test="{phase == 'ready'}">
+      <button size="sm" variant="ghost" icon="refresh-cw" on-press="refresh">Refresh</button>
+      <button size="sm" variant="outline" on-press="sign_out">Sign out</button>
+    </if>
+  </row>
+  <separator />
+
+  <if test="{phase == 'booting' or phase == 'authorizing' or phase == 'loading'}">
+    <column grow="1" main="center" cross="center" gap="14">
+      <spinner />
+      <text size="heading">Preparing Scalar</text>
+      <text foreground="text_muted">{status}</text>
+    </column>
+  </if>
+  <else>
+    <if test="{phase == 'signed_out'}">
+      <row grow="1" main="center" cross="center">
+        <card max-width="560" padding="24" background="surface" radius="xl">
+          <column gap="16">
+            <text size="display" wrap="true">Your company context, native on Mac.</text>
+            <text foreground="text_muted" wrap="true">Sign in through your system browser. Scalar sends the app a scoped, revocable token and stores it only in macOS Keychain.</text>
+            <button size="lg" variant="primary" on-press="sign_in">Sign in to Scalar</button>
+            <text foreground="text_muted">{status}</text>
+          </column>
+        </card>
+      </row>
+    </if>
+    <else>
+      <if test="{phase == 'waiting'}">
+        <row grow="1" main="center" cross="center">
+          <card max-width="560" padding="24" background="surface" radius="xl">
+            <column gap="14">
+              <text foreground="accent">SECURE BROWSER SIGN-IN</text>
+              <text size="heading">Confirm this code</text>
+              <text size="display" foreground="accent" text-alignment="center">{userCode}</text>
+              <text foreground="text_muted" wrap="true">{status}</text>
+              <spinner />
+            </column>
+          </card>
+        </row>
+      </if>
+      <else>
+        <if test="{phase == 'failed'}">
+          <row grow="1" main="center" cross="center">
+            <alert max-width="560" padding="20" variant="destructive">
+              <column gap="14">
+                <text size="heading">Scalar needs your attention</text>
+                <text wrap="true">{status}</text>
+                <row gap="10">
+                  <button variant="primary" on-press="sign_in">Try sign-in again</button>
+                  <button variant="outline" on-press="refresh">Retry session</button>
+                </row>
+              </column>
+            </alert>
+          </row>
+        </if>
+        <else>
+          <scroll grow="1" overscroll="none">
+            <column gap="18">
+              <card padding="20" background="surface" radius="xl">
+                <column gap="12">
+                  <text foreground="accent">LIVE SCALAR WORKSPACE</text>
+                  <row cross="center" gap="12">
+                    <column grow="1" gap="3">
+                      <text size="heading">{accountName}</text>
+                      <text foreground="text_muted">{accountType} account</text>
+                    </column>
+                    <status-bar>{status}</status-bar>
+                  </row>
+                  <row gap="10">
+                    <button variant="primary" icon="external-link" on-press="open_dashboard">Open in Scalar</button>
+                    <button variant="outline" on-press="open_crm">Open CRM</button>
+                    <button variant="ghost" on-press="open_radar">Open Radar</button>
+                  </row>
+                </column>
+              </card>
+
+              <grid columns="3" gap="12">
+                <card padding="16" background="surface" radius="lg"><column gap="5"><text size="display">{companies}</text><text foreground="text_muted">Companies</text></column></card>
+                <card padding="16" background="surface" radius="lg"><column gap="5"><text size="display">{contacts}</text><text foreground="text_muted">Contacts</text></column></card>
+                <card padding="16" background="surface" radius="lg"><column gap="5"><text size="display">{enriched}</text><text foreground="text_muted">Enriched</text></column></card>
+                <card padding="16" background="surface" radius="lg"><column gap="5"><text size="display">{inConversation}</text><text foreground="text_muted">In conversation</text></column></card>
+                <card padding="16" background="surface" radius="lg"><column gap="5"><text size="display">{radarActive}</text><text foreground="text_muted">Active radar</text></column></card>
+                <card padding="16" background="surface" radius="lg"><column gap="5"><text size="display">{radarSignals}</text><text foreground="text_muted">Signals this week</text></column></card>
+              </grid>
+
+              <row gap="12" cross="stretch">
+                <card grow="1" padding="18" background="surface" radius="xl">
+                  <column gap="10">
+                    <text size="heading">Needs attention</text>
+                    <list>
+                      <list-item label="Replies"><text grow="1">Replies</text><badge variant="primary">{replies}</badge></list-item>
+                      <list-item label="Due follow-ups"><text grow="1">Due follow-ups</text><badge variant="warning">{dueFollowups}</badge></list-item>
+                      <list-item label="Companies to enrich"><text grow="1">Companies to enrich</text><badge>{toEnrich}</badge></list-item>
+                    </list>
+                  </column>
+                </card>
+                <card grow="1" padding="18" background="surface" radius="xl">
+                  <column gap="10">
+                    <text size="heading">Recent activity</text>
+                    <text wrap="true">{activityOne}</text>
+                    <separator />
+                    <text wrap="true" foreground="text_muted">{activityTwo}</text>
+                    <separator />
+                    <text wrap="true" foreground="text_muted">{activityThree}</text>
+                  </column>
+                </card>
+              </row>
+            </column>
+          </scroll>
+        </else>
+      </else>
+    </else>
+  </else>
+</column>

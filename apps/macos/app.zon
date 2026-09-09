@@ -1,0 +1,41 @@
+.{
+    .id = "xyz.tryscalar.mac",
+    .name = "Scalar",
+    .display_name = "Scalar",
+    .description = "The CRM your agents run, built natively for macOS.",
+    .version = "0.1.0",
+    .icons = .{"assets/icon.png"},
+    .platforms = .{"macos"},
+    .permissions = .{ "view", "command", "network", "credentials", "open_url" },
+    .capabilities = .{ "native_views", "gpu_surfaces", "network", "credentials", "open_url" },
+    .service_carrier = "child",
+    .shell = .{
+        .windows = .{
+            .{
+                .label = "main",
+                .title = "Scalar",
+                .width = 1100,
+                .height = 760,
+                .min_width = 820,
+                .min_height = 620,
+                .views = .{
+                    .{ .label = "scalar-native", .kind = "gpu_surface", .fill = true, .role = "Scalar workspace", .accessibility_label = "Scalar", .gpu_backend = "metal", .gpu_pixel_format = "bgra8_unorm", .gpu_present_mode = "timer", .gpu_alpha_mode = "opaque", .gpu_color_space = "srgb", .gpu_vsync = true },
+                },
+            },
+        },
+    },
+    .security = .{
+        .navigation = .{
+            .allowed_origins = .{ "zero://app", "zero://inline" },
+            .external_links = .{ .action = "open_system_browser", .allowed_urls = .{ "https://www.tryscalar.xyz/*" } },
+        },
+    },
+    .dmg = .{
+        .volume_name = "Scalar",
+        .window_width = 660,
+        .window_height = 400,
+        .icon_size = 128,
+        .app_position = .{ .x = 180, .y = 200 },
+        .applications_position = .{ .x = 480, .y = 200 },
+    },
+}

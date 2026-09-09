@@ -9,7 +9,7 @@
 // Replay is treated as a security event, not a typo: presenting a spent code or
 // a rotated refresh token revokes the whole grant family. See docs/OAUTH.md.
 
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { clientRedirectUris } from "@/lib/oauth";
 
@@ -18,6 +18,7 @@ import { clientRedirectUris } from "@/lib/oauth";
 export const ACCESS_TOKEN_TTL_SECONDS = 3600; // 1h
 export const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30d
 export const AUTH_CODE_TTL_SECONDS = 600; // 10m, per the spec's single-use code
+export const DEVICE_CODE_TTL_SECONDS = 600;
 const CONSENT_TICKET_TTL_SECONDS = 600; // how long a rendered consent screen is live
 
 /* --------------------------------- scopes -------------------------------- */
@@ -66,6 +67,9 @@ export function narrowScopes(requested: string[], allowed: string[]): string[] {
 const CODE_PREFIX = "sco_ac_";
 const ACCESS_PREFIX = "sco_at_";
 const REFRESH_PREFIX = "sco_rt_";
+const DEVICE_PREFIX = "sco_dc_";
+const NATIVE_CLIENT_ID = "scalar_macos_native_v1";
+const NATIVE_REDIRECT_URI = "urn:ietf:params:oauth:grant-type:device_code";
 
 /** SHA-256 hex. The only form a code or token is ever written down in. */
 export function hashSecret(value: string): string {
@@ -354,6 +358,214 @@ async function issueTokenPair(input: {
     expires_in: ACCESS_TOKEN_TTL_SECONDS,
     refresh_token: refreshToken,
     scope: formatScopes(input.scopes),
+  };
+}
+
+/* -------------------------- device authorization ------------------------- */
+
+const DEVICE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function normalizeUserCode(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function mintUserCode(): string {
+  const bytes = randomBytes(8);
+  let raw = "";
+  for (const byte of bytes) raw += DEVICE_ALPHABET[byte & 31];
+  return `${raw.slice(0, 4)}-${raw.slice(4)}`;
+}
+
+async function nativeClient() {
+  return prisma.oauthClient.upsert({
+    where: { clientId: NATIVE_CLIENT_ID },
+    update: {
+      disabledAt: null,
+      name: "Scalar for Mac",
+      scopes: ["openid", "profile", "crm:read"],
+    },
+    create: {
+      clientId: NATIVE_CLIENT_ID,
+      name: "Scalar for Mac",
+      redirectUris: [NATIVE_REDIRECT_URI],
+      scopes: ["openid", "profile", "crm:read"],
+      clientType: "public",
+    },
+  });
+}
+
+export async function createDeviceAuthorization(origin: string) {
+  const client = await nativeClient();
+  const deviceCode = mintSecret(DEVICE_PREFIX);
+  const userCode = mintUserCode();
+  const resource = `${origin}/api/client/v1/overview`;
+  await prisma.oauthDeviceCode.create({
+    data: {
+      deviceCodeHash: hashSecret(deviceCode),
+      userCodeHash: hashSecret(normalizeUserCode(userCode)),
+      clientRowId: client.id,
+      scopes: ["openid", "profile", "crm:read"],
+      resource,
+      expiresAt: new Date(Date.now() + DEVICE_CODE_TTL_SECONDS * 1000),
+    },
+  });
+  const verification = new URL("/oauth/device", origin);
+  verification.searchParams.set("code", userCode);
+  return {
+    device_code: deviceCode,
+    user_code: userCode,
+    verification_uri: new URL("/oauth/device", origin).toString(),
+    verification_uri_complete: verification.toString(),
+    expires_in: DEVICE_CODE_TTL_SECONDS,
+    interval: 5,
+  };
+}
+
+export interface DeviceApproval {
+  id: string;
+  scopes: string[];
+  expiresAt: Date;
+}
+
+export async function getDeviceApproval(rawCode: string): Promise<DeviceApproval | null> {
+  const code = normalizeUserCode(rawCode);
+  if (code.length !== 8) return null;
+  const row = await prisma.oauthDeviceCode.findUnique({ where: { userCodeHash: hashSecret(code) } });
+  if (!row || row.expiresAt.getTime() <= Date.now() || row.consumedAt || row.deniedAt || row.approvedAt) return null;
+  return { id: row.id, scopes: row.scopes, expiresAt: row.expiresAt };
+}
+
+interface DeviceTicket {
+  deviceId: string;
+  userId: string;
+  exp: number;
+}
+
+export function signDeviceTicket(deviceId: string, userId: string, now = Date.now()): string {
+  const payload: DeviceTicket = {
+    deviceId,
+    userId,
+    exp: Math.floor(now / 1000) + CONSENT_TICKET_TTL_SECONDS,
+  };
+  const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const sig = createHmac("sha256", consentSecret()).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+export function verifyDeviceTicket(raw: string | null | undefined, now = Date.now()): DeviceTicket | null {
+  if (!raw) return null;
+  const dot = raw.indexOf(".");
+  if (dot <= 0) return null;
+  const body = raw.slice(0, dot);
+  const sig = Buffer.from(raw.slice(dot + 1), "base64url");
+  const expected = createHmac("sha256", consentSecret()).update(body).digest();
+  if (sig.length !== expected.length || !timingSafeEqual(sig, expected)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as DeviceTicket;
+    if (!parsed.deviceId || !parsed.userId || parsed.exp * 1000 < now) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function decideDeviceAuthorization(input: {
+  deviceId: string;
+  userId: string;
+  accountId: string;
+  approve: boolean;
+}): Promise<boolean> {
+  const row = await prisma.oauthDeviceCode.findUnique({ where: { id: input.deviceId } });
+  if (!row || row.expiresAt.getTime() <= Date.now() || row.approvedAt || row.deniedAt || row.consumedAt) return false;
+  if (!input.approve) {
+    const denied = await prisma.oauthDeviceCode.updateMany({
+      where: { id: row.id, approvedAt: null, deniedAt: null, consumedAt: null },
+      data: { deniedAt: new Date(), userId: input.userId },
+    });
+    return denied.count === 1;
+  }
+  return prisma.$transaction(async (tx) => {
+    const grant = await tx.oauthGrant.create({
+      data: {
+        clientRowId: row.clientRowId,
+        userId: input.userId,
+        accountId: input.accountId,
+        scopes: row.scopes,
+        redirectUri: NATIVE_REDIRECT_URI,
+        resource: row.resource,
+      },
+    });
+    const approved = await tx.oauthDeviceCode.updateMany({
+      where: { id: row.id, approvedAt: null, deniedAt: null, consumedAt: null },
+      data: {
+        approvedAt: new Date(),
+        userId: input.userId,
+        accountId: input.accountId,
+        grantId: grant.id,
+      },
+    });
+    if (approved.count !== 1) throw new Error("Device authorization was already decided");
+    return true;
+  });
+}
+
+export type DeviceTokenResult =
+  | { ok: true; tokens: TokenSet }
+  | { ok: false; status: number; error: "authorization_pending" | "access_denied" | "expired_token" | "invalid_grant" };
+
+export async function exchangeDeviceAuthorization(deviceCode: string | null): Promise<DeviceTokenResult> {
+  if (!deviceCode) return { ok: false, status: 400, error: "invalid_grant" };
+  const row = await prisma.oauthDeviceCode.findUnique({ where: { deviceCodeHash: hashSecret(deviceCode) } });
+  if (!row) return { ok: false, status: 400, error: "invalid_grant" };
+  if (row.expiresAt.getTime() <= Date.now()) return { ok: false, status: 400, error: "expired_token" };
+  if (row.deniedAt) return { ok: false, status: 400, error: "access_denied" };
+  if (!row.approvedAt || !row.grantId) return { ok: false, status: 428, error: "authorization_pending" };
+  if (row.consumedAt) return { ok: false, status: 400, error: "invalid_grant" };
+
+  const accessToken = mintSecret(ACCESS_PREFIX);
+  const refreshToken = mintSecret(REFRESH_PREFIX);
+  const familyId = randomUUID();
+  const now = Date.now();
+  const consumed = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.oauthDeviceCode.updateMany({
+      where: { id: row.id, consumedAt: null },
+      data: { consumedAt: new Date(now) },
+    });
+    if (claimed.count !== 1) return false;
+    await tx.oauthToken.createMany({
+      data: [
+        {
+          grantId: row.grantId as string,
+          kind: "access",
+          tokenHash: hashSecret(accessToken),
+          familyId,
+          scopes: row.scopes,
+          resource: row.resource,
+          expiresAt: new Date(now + ACCESS_TOKEN_TTL_SECONDS * 1000),
+        },
+        {
+          grantId: row.grantId as string,
+          kind: "refresh",
+          tokenHash: hashSecret(refreshToken),
+          familyId,
+          scopes: row.scopes,
+          resource: row.resource,
+          expiresAt: new Date(now + REFRESH_TOKEN_TTL_SECONDS * 1000),
+        },
+      ],
+    });
+    return true;
+  });
+  if (!consumed) return { ok: false, status: 400, error: "invalid_grant" };
+  return {
+    ok: true,
+    tokens: {
+      access_token: accessToken,
+      token_type: "Bearer",
+      expires_in: ACCESS_TOKEN_TTL_SECONDS,
+      refresh_token: refreshToken,
+      scope: formatScopes(row.scopes),
+    },
   };
 }
 
