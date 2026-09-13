@@ -1,5 +1,6 @@
 "use client";
 
+import { useWebsiteReducedMotion } from "@/components/marketing/use-website-reduced-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -7,7 +8,7 @@ import { LogoMark } from "@/components/brand/logo-mark";
 import { UserButton, useAuth } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import { Menu, X, ArrowRight, ChevronDown } from "lucide-react";
 
@@ -34,14 +35,16 @@ const groups: NavGroup[] = [
     label: "Product",
     links: [
       { label: "Discover", href: "/product/discover", description: "Find the right companies and people from a name, a domain, or a prompt." },
-      { label: "Enrich", href: "/product/enrich", description: "Fill every gap: firmographics, verified email, phone, and more." },
-      { label: "Intent signals", href: "/product/signals", description: "See who is in-market before anyone else reaches out." },
+      { label: "Enrich", href: "/product/enrich", description: "Research firmographics and contact details; inspect the match before using it." },
+      { label: "Intent signals", href: "/product/signals", description: "Monitor relevant changes and review whether they matter to an account." },
+      {label:"Budgeted autopilot",href:"/product/autopilot",description:"Review a plan and budget before research runs."},
+      {label:"Pipeline",href:"/product/pipeline",description:"Keep the next action with the account."},
       { label: "The agent", href: "/product/agent", description: "Chat that discovers, enriches, and writes to your CRM." },
     ],
     featured: {
       eyebrow: "New",
-      title: "Agents that pay their own way",
-      body: "Connected agents top up usage and buy plans in USDC over HTTP, no human in the loop.",
+      title: "Connected tools, visible permissions",
+      body: "Connect a compatible agent, inspect its work and authorize paid actions explicitly.",
       href: "/integrations",
       cta: "See how agents connect",
     },
@@ -49,10 +52,10 @@ const groups: NavGroup[] = [
   {
     label: "Solutions",
     links: [
-      { label: "Why Scalar", href: "/product/why", description: "Structure, UI, and intelligence as one system, not messy files." },
-      { label: "For agent builders", href: "/integrations", description: "Bring your own agent over MCP and give it a real database." },
-      { label: "Data you own", href: "/security", description: "A single source of truth you control, exportable, never resold." },
-      { label: "Pricing", href: "/pricing", description: "A seat plus usage credits. Pay for what your agents do." },
+      {label:"Founders",href:"/solutions/founders",description:"Research a focused prospect list."},
+      {label:"Sales teams",href:"/solutions/sales",description:"Keep account context beside follow-up."},
+      {label:"Agencies",href:"/solutions/agencies",description:"Organize research around each client brief."},
+      {label:"Agent builders",href:"/solutions/agent-builders",description:"Connect tools to a structured CRM."},
     ],
     featured: {
       eyebrow: "The thesis",
@@ -65,10 +68,11 @@ const groups: NavGroup[] = [
   {
     label: "Resources",
     links: [
-      { label: "How it works", href: "/product/how-it-works", description: "Connect your agent and it just works, in three steps." },
+      { label: "How it works", href: "/product/how-it-works", description: "Set up access and try a bounded task." },
       { label: "Integrations", href: "/integrations", description: "OpenClaw, Hermes, Claude, and anything that speaks MCP." },
       { label: "Security and trust", href: "/security", description: "How your data stays isolated, owned, and yours." },
-      { label: "FAQ", href: "/faq", description: "The honest answers to the common questions." },
+      {label:"Practical guides",href:"/resources",description:"Plan credits, check identity and review outreach."},
+      { label: "FAQ", href: "/faq", description: "Answers to common product questions." },
     ],
     featured: {
       eyebrow: "Read",
@@ -78,6 +82,7 @@ const groups: NavGroup[] = [
       cta: "Read the manifesto",
     },
   },
+  {label:"Company",links:[{label:"About",href:"/about",description:"What Scalar is for."},{label:"Contact",href:"/contact",description:"Discuss your workflow or a product question."},{label:"Request a demo",href:"/demo",description:"Plan a relevant product walkthrough."}],featured:{eyebrow:"Start here",title:"Try one research task",body:"Inspect the evidence before expanding your workload.",href:"/resources/first-research",cta:"Read the guide"}},
 ];
 
 // Direct links (no mega menu), Apple-style.
@@ -86,7 +91,7 @@ const directLinks = [{ label: "Pricing", href: "/pricing" }];
 /* ----------------------------- Mega menu panel ---------------------------- */
 
 function MegaPanel({ group }: { group: NavGroup }) {
-  const reduce = useReducedMotion();
+  const reduce = useWebsiteReducedMotion();
   return (
     <motion.div
       key={group.label}
@@ -106,7 +111,7 @@ function MegaPanel({ group }: { group: NavGroup }) {
           >
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-foreground">{link.label}</p>
-              <ArrowRight className="h-3.5 w-3.5 -translate-x-1 text-primary opacity-0 transition-all duration-300 group-hover/link:translate-x-0 group-hover/link:opacity-100" />
+              <ArrowRight className="h-3.5 w-3.5 -translate-x-1 text-[#24658f] dark:text-primary opacity-0 transition-all duration-300 group-hover/link:translate-x-0 group-hover/link:opacity-100" />
             </div>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{link.description}</p>
           </Link>
@@ -121,13 +126,13 @@ function MegaPanel({ group }: { group: NavGroup }) {
         <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.18] dark:opacity-30" cell={12} speed={0.07} gradient />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_0%,rgba(90,176,232,0.16),transparent_60%)]" />
         <div className="relative">
-          <p className="text-[0.65rem] uppercase tracking-[0.25em] text-primary">{group.featured.eyebrow}</p>
+          <p className="text-[0.65rem] uppercase tracking-[0.25em] text-[#24658f] dark:text-primary">{group.featured.eyebrow}</p>
           <p className="mt-2 font-brand text-lg leading-tight text-foreground">{group.featured.title}</p>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{group.featured.body}</p>
         </div>
         <div className="relative mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
           {group.featured.cta}
-          <ArrowRight className="h-3.5 w-3.5 text-primary transition-transform duration-300 group-hover/feat:translate-x-0.5" />
+          <ArrowRight className="h-3.5 w-3.5 text-[#24658f] dark:text-primary transition-transform duration-300 group-hover/feat:translate-x-0.5" />
         </div>
       </Link>
     </motion.div>
@@ -138,11 +143,13 @@ function MegaPanel({ group }: { group: NavGroup }) {
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobilePanel = useRef<HTMLDivElement>(null);
+  const mobileTrigger = useRef<HTMLButtonElement>(null);
   const [active, setActive] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const { isSignedIn } = useAuth();
   const pathname = usePathname();
-  const reduce = useReducedMotion();
+  const reduce = useWebsiteReducedMotion();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Close everything on route change, the render-phase way (no effect needed):
@@ -162,21 +169,17 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Lock body scroll behind the full-screen mobile menu.
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [mobileOpen]);
-
-  // Escape closes the open mega menu.
-  useEffect(() => {
-    if (!active) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setActive(null);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [active]);
+    if (!mobileOpen) return;
+    const trigger = mobileTrigger.current;
+    const previous=document.body.style.overflow;document.body.style.overflow="hidden";
+    const focusables=()=>Array.from(mobilePanel.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled])')??[]);
+    const timer=setTimeout(()=>focusables()[0]?.focus(),0);
+    const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape"){e.preventDefault();setMobileOpen(false);}if(e.key==="Tab"){const a=focusables();if(e.shiftKey&&document.activeElement===a[0]){e.preventDefault();a.at(-1)?.focus();}else if(!e.shiftKey&&document.activeElement===a.at(-1)){e.preventDefault();a[0]?.focus();}}};
+    document.addEventListener("keydown",onKey);
+    return()=>{clearTimeout(timer);document.removeEventListener("keydown",onKey);document.body.style.overflow=previous;trigger?.focus();};
+  },[mobileOpen]);
+  useEffect(()=>{if(!active)return;const close=(e:KeyboardEvent)=>{if(e.key==="Escape"){document.querySelector<HTMLButtonElement>(`[data-site-group="${active}"]`)?.focus();setActive(null);}};document.addEventListener("keydown",close);return()=>document.removeEventListener("keydown",close);},[active]);
 
   const cancelClose = useCallback(() => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -223,17 +226,14 @@ export function Header() {
                   <button
                     key={group.label}
                     type="button"
-                    onMouseEnter={() => {
-                      cancelClose();
-                      setActive(group.label);
-                    }}
-                    onFocus={() => setActive(group.label)}
                     onClick={() => setActive(isOpen ? null : group.label)}
+                    data-site-group={group.label}
+                    aria-controls="site-mega-panel"
                     aria-expanded={isOpen}
                     aria-haspopup="true"
                     className={cn(
                       "flex cursor-pointer items-center gap-1 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-                      isOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
+                      isOpen ? "bg-primary/10 text-[#24658f] dark:text-primary" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {group.label}
@@ -267,7 +267,7 @@ export function Header() {
                     </Link>
                     <Link
                       href="/sign-up"
-                      className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+                      className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-[#132b3a] shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
                     >
                       Get started
                     </Link>
@@ -288,7 +288,10 @@ export function Header() {
               {/* Mobile trigger */}
               <button
                 type="button"
+                ref={mobileTrigger}
                 aria-label="Open menu"
+                aria-expanded={mobileOpen}
+                aria-controls="site-mobile-menu"
                 className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted lg:hidden"
                 onClick={() => setMobileOpen(true)}
               >
@@ -306,6 +309,7 @@ export function Header() {
               animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
               exit={reduce ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.99 }}
               transition={{ duration: 0.26, ease: EASE }}
+              id="site-mega-panel"
               className="absolute left-1/2 top-[calc(100%+0.6rem)] hidden w-[min(92vw,720px)] -translate-x-1/2 overflow-hidden rounded-[1.75rem] border border-border bg-background/95 shadow-2xl shadow-black/10 ring-1 ring-inset ring-border/50 backdrop-blur-2xl lg:block dark:border-white/10 dark:bg-charcoal/95 dark:shadow-black/50 dark:ring-white/5"
               onMouseEnter={cancelClose}
             >
@@ -321,6 +325,7 @@ export function Header() {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
+            ref={mobilePanel} id="site-mobile-menu" role="dialog" aria-modal="true" aria-label="Site menu"
             className="fixed inset-0 z-[100] lg:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -369,7 +374,7 @@ export function Header() {
                         hidden: { opacity: 0, y: 14, filter: "blur(6px)" },
                         show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE } },
                       }}
-                      className="text-xs uppercase tracking-[0.3em] text-primary/80"
+                      className="text-xs uppercase tracking-[0.3em] text-[#24658f] dark:text-primary"
                     >
                       {group.label}
                     </motion.p>
@@ -402,7 +407,7 @@ export function Header() {
                     <Link
                       href="/sign-up"
                       onClick={() => setMobileOpen(false)}
-                      className="flex h-12 w-full items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
+                      className="flex h-12 w-full items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-semibold text-[#132b3a] transition-transform hover:-translate-y-0.5"
                     >
                       Get started
                       <ArrowRight className="h-4 w-4" />
@@ -419,7 +424,7 @@ export function Header() {
                   <Link
                     href="/dashboard"
                     onClick={() => setMobileOpen(false)}
-                    className="flex h-12 w-full items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
+                    className="flex h-12 w-full items-center justify-center rounded-full bg-primary text-sm font-semibold text-[#132b3a] transition-transform hover:-translate-y-0.5"
                   >
                     Dashboard
                   </Link>

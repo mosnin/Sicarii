@@ -1,0 +1,308 @@
+{
+  "solutions/founders": {
+    "title": "Research a focused prospect list before writing the pitch.",
+    "sub": "Use Scalar to organize companies, inspect contact details and prepare follow-up while you learn who fits your product.",
+    "problem": "A long list of unqualified names creates more outreach work without explaining why anyone should care.",
+    "steps": [
+      {
+        "title": "Define the fit",
+        "body": "Add your product context and describe a narrow customer problem."
+      },
+      {
+        "title": "Research candidates",
+        "body": "Discover companies, verify the intended identity and inspect sources."
+      },
+      {
+        "title": "Prepare the next step",
+        "body": "Save the relevant findings and review a draft against the prospect’s situation."
+      }
+    ],
+    "benefits": [
+      {
+        "title": "A reason to reach out",
+        "body": "Research gives the message a concrete basis."
+      },
+      {
+        "title": "One record to revisit",
+        "body": "Notes, people and company context remain connected."
+      },
+      {
+        "title": "Controlled experimentation",
+        "body": "Use a small research budget while you test the segment."
+      }
+    ],
+    "limits": "Research does not guarantee buying intent, replies or revenue. Review data accuracy and communication permissions before outreach."
+  },
+  "solutions/sales": {
+    "title": "Put the account research beside the next follow-up.",
+    "sub": "Give sellers and their agents a CRM record they can inspect, update and use when preparing the next conversation.",
+    "problem": "Switching between research tabs, a spreadsheet and a draft can lose the detail that made the account relevant.",
+    "steps": [
+      {
+        "title": "Choose the account",
+        "body": "Start from a company domain or verified contact."
+      },
+      {
+        "title": "Fill useful gaps",
+        "body": "Request the enrichment needed for the next decision and inspect the result."
+      },
+      {
+        "title": "Review the follow-up",
+        "body": "Use activity history and account context to prepare a relevant message."
+      }
+    ],
+    "benefits": [
+      {
+        "title": "More useful preparation",
+        "body": "Research stays attached to the account."
+      },
+      {
+        "title": "Visible next actions",
+        "body": "Keep follow-up work in the pipeline instead of a private note."
+      },
+      {
+        "title": "Fewer blind assumptions",
+        "body": "Source checks can expose missing or uncertain data."
+      }
+    ],
+    "limits": "A found address or phone number is not permission to contact someone. Sending requires configured channels and user approval."
+  },
+  "solutions/agencies": {
+    "title": "Keep each client’s prospecting context distinct.",
+    "sub": "Use workspace records, segments and explicit research criteria to organize client prospecting work.",
+    "problem": "Reusing the wrong product context or mixing account data can produce an irrelevant pitch and a difficult handoff.",
+    "steps": [
+      {
+        "title": "Set the boundary",
+        "body": "Select the correct workspace and confirm who can access it."
+      },
+      {
+        "title": "Define the segment",
+        "body": "Document the client’s offer, exclusions and target criteria before research."
+      },
+      {
+        "title": "Hand back evidence",
+        "body": "Review the matching accounts and supporting findings before any campaign action."
+      }
+    ],
+    "benefits": [
+      {
+        "title": "A clearer brief",
+        "body": "The agent has a specific product and audience to research."
+      },
+      {
+        "title": "Reviewable lists",
+        "body": "A client can understand why an account was selected."
+      },
+      {
+        "title": "Shared work history",
+        "body": "Keep the research trail available for follow-up."
+      }
+    ],
+    "limits": "Validate workspace access and provider configuration before client use. Team seats and pooled allowances depend on the selected plan."
+  },
+  "solutions/agent-builders": {
+    "title": "Give your agent a CRM it can read and update.",
+    "sub": "Connect through MCP to supported research and CRM actions, with a visible credit balance for metered work.",
+    "problem": "A folder of research files makes it difficult to keep people, companies and next actions consistent.",
+    "steps": [
+      {
+        "title": "Connect a client",
+        "body": "Authorize a scoped integration using the documented setup."
+      },
+      {
+        "title": "Read before writing",
+        "body": "Inspect the current account and verify identity before attaching enrichment."
+      },
+      {
+        "title": "Bound the work",
+        "body": "Estimate research credits, review results and keep communication actions explicit."
+      }
+    ],
+    "benefits": [
+      {
+        "title": "Structured records",
+        "body": "The agent operates on people, companies and pipeline data."
+      },
+      {
+        "title": "Reusable findings",
+        "body": "Later tasks can use earlier research."
+      },
+      {
+        "title": "Visible usage",
+        "body": "Metered actions consume the account’s credit allowance."
+      }
+    ],
+    "limits": "MCP access does not imply permission to send messages, buy top-ups or enroll in a plan. Those actions need explicit authorization."
+  },
+  "product/autopilot": {
+    "title": "Turn a research goal into a bounded plan.",
+    "sub": "Prepare a budgeted autopilot plan, inspect its steps and approve it before execution.",
+    "problem": "An open-ended research instruction can consume credits without producing a list you would actually use.",
+    "steps": [
+      {
+        "title": "Define the goal",
+        "body": "Describe the desired accounts and the exclusions that matter."
+      },
+      {
+        "title": "Review the plan",
+        "body": "Inspect the proposed steps and maximum credit budget."
+      },
+      {
+        "title": "Approve and monitor",
+        "body": "Start only after review, then inspect results or pause the plan."
+      }
+    ],
+    "benefits": [
+      {
+        "title": "A visible scope",
+        "body": "The plan makes the intended work inspectable."
+      },
+      {
+        "title": "A budget before execution",
+        "body": "Know the proposed allowance before paid research starts."
+      },
+      {
+        "title": "A place to intervene",
+        "body": "Pause and inspect progress when the direction is wrong."
+      }
+    ],
+    "limits": "Budgeted research does not guarantee qualified prospects or a business outcome. Provider results still need identity and relevance checks."
+  },
+  "product/pipeline": {
+    "title": "Keep research connected to the next conversation.",
+    "sub": "Organize contacts, companies, activity and deal stages in the same CRM.",
+    "problem": "Research loses value when the account record has no clear next step.",
+    "steps": [
+      {
+        "title": "Review the account",
+        "body": "Check company identity and the supporting information."
+      },
+      {
+        "title": "Set the next action",
+        "body": "Record the follow-up, owner and relevant stage."
+      },
+      {
+        "title": "Update from the result",
+        "body": "Keep activity current after a conversation or decision."
+      }
+    ],
+    "benefits": [
+      {
+        "title": "Continuity for follow-up",
+        "body": "The next person can see what already happened."
+      },
+      {
+        "title": "A visible pipeline",
+        "body": "Stages help organize the work still ahead."
+      },
+      {
+        "title": "Context for agents",
+        "body": "Supported tools can retrieve the current account before preparing a draft."
+      }
+    ],
+    "limits": "A stage is a workflow state, not verified revenue. Outcomes depend on the quality of the offer and the customer’s choice."
+  },
+  "resources/first-research": {
+    "title": "Run one research task you can check.",
+    "sub": "Start with a known company and a small question before asking an agent to build a large list.",
+    "problem": "A broad discovery run is difficult to evaluate if you have not tested identity matching and credit usage.",
+    "steps": [
+      {
+        "title": "Choose a known account",
+        "body": "Use its domain and an unambiguous company name."
+      },
+      {
+        "title": "Request one useful fact",
+        "body": "Estimate the credit charge and inspect the returned source."
+      },
+      {
+        "title": "Check the record",
+        "body": "Confirm the result is attached to the correct company before expanding the run."
+      }
+    ],
+    "benefits": [
+      {
+        "title": "A clear first success",
+        "body": "You can judge accuracy against a known account."
+      },
+      {
+        "title": "A bounded spend",
+        "body": "One task makes it easier to understand usage."
+      },
+      {
+        "title": "A safer repeatable process",
+        "body": "Carry the identity check into larger research tasks."
+      }
+    ],
+    "limits": "An unverified match should remain missing. Do not accept a same-name stranger just to fill a field."
+  },
+  "resources/credit-guide": {
+    "title": "Budget the research steps, not just the final list.",
+    "sub": "Credits measure priced actions. A single prospect can require several searches and enrichment steps.",
+    "problem": "A claim that a plan buys a fixed number of leads hides differences in research depth and provider results.",
+    "steps": [
+      {
+        "title": "Choose the actions",
+        "body": "List discovery, email lookup, company enrichment and other required steps."
+      },
+      {
+        "title": "Multiply by the workload",
+        "body": "Use the published per-action schedule and include planned repeats."
+      },
+      {
+        "title": "Set a stopping point",
+        "body": "Review the credit balance and any autopilot budget before increasing the workload."
+      }
+    ],
+    "benefits": [
+      {
+        "title": "A clearer estimate",
+        "body": "The calculation reflects the actual work requested."
+      },
+      {
+        "title": "Visible tradeoffs",
+        "body": "Choose which missing facts justify another paid action."
+      },
+      {
+        "title": "No promised lead count",
+        "body": "A credit allowance is not a guarantee of contacts or sales."
+      }
+    ],
+    "limits": "Current action examples: web search 2 credits, email lookup 8, company discovery 12, company aspect 30. Provider-backed agent turns may have additional charges. Check billing before buying."
+  },
+  "resources/review-before-outreach": {
+    "title": "Review the person, the evidence and the message.",
+    "sub": "Use research to prepare a relevant follow-up without treating an AI draft as permission to send.",
+    "problem": "The wrong identity or an unsupported claim can damage a conversation before it begins.",
+    "steps": [
+      {
+        "title": "Confirm identity",
+        "body": "Match the person with the intended company or domain."
+      },
+      {
+        "title": "Check the claim",
+        "body": "Open supporting sources and remove uncertain personalizations."
+      },
+      {
+        "title": "Approve the action",
+        "body": "Check sender, recipients, channel permissions and final wording before sending."
+      }
+    ],
+    "benefits": [
+      {
+        "title": "Fewer wrong attachments",
+        "body": "Identity comes before enrichment."
+      },
+      {
+        "title": "A more relevant draft",
+        "body": "The message uses facts you can defend."
+      },
+      {
+        "title": "A deliberate decision",
+        "body": "You choose whether the communication is appropriate."
+      }
+    ],
+    "limits": "This checklist is workflow guidance, not a guarantee of deliverability or regulatory compliance."
+  }
+}

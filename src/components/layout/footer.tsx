@@ -31,7 +31,7 @@ export function Footer() {
     <footer className="bg-muted/30 px-4 pb-6 sm:px-6 dark:bg-charcoal-dark">
       <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-border bg-card dark:bg-white/[0.02]">
         <div className="px-6 py-12 sm:px-8 lg:px-12">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
             {/* Brand */}
             <div className="col-span-2 space-y-4 md:col-span-1">
               <Link href="/" className="flex items-center gap-2">
@@ -40,12 +40,14 @@ export function Footer() {
               </Link>
               <p className="max-w-xs text-sm text-muted-foreground">
                 The CRM your agents run. Discover leads, enrich your database, and
-                run email relationships - on data that never leaves your system.
+                prepare follow-up with research and activity in one place.
               </p>
             </div>
 
+<div><h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-foreground">Use cases</h4><ul className="space-y-2.5"><li><Link href="/solutions/founders" className="text-sm text-muted-foreground hover:text-foreground">Founders</Link></li><li><Link href="/solutions/sales" className="text-sm text-muted-foreground hover:text-foreground">Sales</Link></li><li><Link href="/solutions/agencies" className="text-sm text-muted-foreground hover:text-foreground">Agencies</Link></li><li><Link href="/solutions/agent-builders" className="text-sm text-muted-foreground hover:text-foreground">Agent builders</Link></li></ul></div>
+<div><h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-foreground">Resources</h4><ul className="space-y-2.5"><li><Link href="/resources" className="text-sm text-muted-foreground hover:text-foreground">Guides</Link></li><li><Link href="/resources/credit-guide" className="text-sm text-muted-foreground hover:text-foreground">Credit guide</Link></li><li><Link href="/resources/review-before-outreach" className="text-sm text-muted-foreground hover:text-foreground">Review checklist</Link></li></ul></div>
             <div>
-              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Product</h4>
+              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-[#24658f] dark:text-primary">Product</h4>
               <ul className="space-y-2.5">
                 {footerLinks.product.map((link) => (
                   <li key={link.href}>
@@ -61,7 +63,7 @@ export function Footer() {
             </div>
 
             <div>
-              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Company</h4>
+              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-[#24658f] dark:text-primary">Company</h4>
               <ul className="space-y-2.5">
                 {footerLinks.company.map((link) => (
                   <li key={link.href}>
@@ -77,7 +79,7 @@ export function Footer() {
             </div>
 
             <div>
-              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Legal</h4>
+              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-[#24658f] dark:text-primary">Legal</h4>
               <ul className="space-y-2.5">
                 {footerLinks.legal.map((link) => (
                   <li key={link.href}>

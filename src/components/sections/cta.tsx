@@ -12,16 +12,15 @@ export function CTASection() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.12),transparent_60%)]" />
         <div className="relative z-10">
           <h2 className="font-brand text-3xl text-foreground sm:text-4xl lg:text-5xl">
-            Ready to run your{" "}
+            Start with one{" "}
             <ShimmeringText
-              text="agent CRM?"
+              text="useful account."
               duration={2.4}
               className="align-baseline font-brand [--color:var(--primary)] [--shimmering-color:var(--foreground)]"
             />
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-            Connect your product context, point your agents at Scalar, and start building
-            relationships that compound - on data that stays yours.
+            Add your product context, research a known company and inspect the result. Expand the workflow after you know what a useful match looks like.
           </p>
           <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
@@ -32,10 +31,10 @@ export function CTASection() {
               <ArrowRight className="h-5 w-5" />
             </Link>
             <Link
-              href="/contact"
+              href="/demo"
               className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-base font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
             >
-              Talk to us
+              Request a demo
             </Link>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">No commitment. Free to start.</p>

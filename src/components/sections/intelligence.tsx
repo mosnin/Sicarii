@@ -221,8 +221,8 @@ export function IntelligenceSection() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mx-auto mt-10 max-w-2xl text-center text-sm text-muted-foreground"
         >
-          Noisy results are refined into real, deduped companies, never
-          aggregators, never the wrong person. Accuracy beats coverage, always.
+          Research results are checked for company identity and duplicates.
+          Inspect the sources and leave uncertain matches unresolved.
         </motion.p>
       </div>
     </section>

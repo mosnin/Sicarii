@@ -29,7 +29,7 @@ export default function AgentPage() {
         },
         {
           title: "It can pay its own way",
-          body: "Connected agents can top up usage and buy a plan in USDC over HTTP, with no human in the loop, so autonomous workflows never stall on a billing wall.",
+          body: "Supported payment tools can buy credits or plan access. Authorize the purchase explicitly and inspect the price and account before executing it.",
         },
       ]}
       ctaTitle="Put an agent on it."

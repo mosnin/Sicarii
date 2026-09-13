@@ -24,7 +24,7 @@ type Driver = {
 
 const drivers: Driver[] = [
   { id: "discovery", label: "Discovery runs", unit: "prompts", cost: 12, max: 200, step: 5, default: 40 },
-  { id: "emails", label: "Verified emails", unit: "found", cost: 8, max: 600, step: 10, default: 120 },
+  { id: "emails", label: "Email lookups", unit: "found", cost: 8, max: 600, step: 10, default: 120 },
   { id: "enrich", label: "Company enrichments", unit: "companies", cost: 30, max: 300, step: 5, default: 60 },
   { id: "research", label: "Deep research runs", unit: "reports", cost: 18, max: 200, step: 5, default: 20 },
 ];
@@ -49,11 +49,11 @@ export function UsageEstimator() {
 
   const recommended = useMemo(() => {
     const fit = plans.find((p) => p.credits >= total);
-    if (fit) return { name: fit.name, href: fit.href, note: "covers this every month" };
-    return { name: "Pro plus top-ups", href: "/sign-up?plan=pro", note: "or Business for a team" };
+    if (fit) return { name: fit.name, href: fit.href, note: "covers these selected actions within the current allowance" };
+    return { name: "Pro plus top-ups", href: "/sign-up?plan=pro", note: "contact us to discuss a larger workload" };
   }, [total]);
 
-  const dollars = (total * 0.01).toFixed(0);
+
 
   return (
     <div className="mx-auto grid max-w-4xl gap-4 rounded-[1.75rem] border border-border bg-card p-6 shadow-xl shadow-black/[0.04] sm:p-8 lg:grid-cols-[1fr_minmax(0,260px)] dark:border-white/10 dark:shadow-black/40">
@@ -88,7 +88,7 @@ export function UsageEstimator() {
 
       {/* Live total + recommendation */}
       <div className="flex flex-col justify-center rounded-2xl border border-border bg-muted/40 p-6 text-center dark:border-white/10 dark:bg-white/[0.02]">
-        <p className="text-xs uppercase tracking-[0.25em] text-primary">Estimated</p>
+        <p className="text-xs uppercase tracking-[0.25em] text-[#24658f] dark:text-primary">Estimated</p>
         <motion.p
           key={total}
           initial={{ opacity: 0.5, y: 4 }}
@@ -99,15 +99,15 @@ export function UsageEstimator() {
           {total.toLocaleString()}
         </motion.p>
         <p className="text-sm text-muted-foreground">credits / month</p>
-        <p className="mt-1 text-xs text-muted-foreground">about ${dollars} in usage</p>
+        <p className="mt-1 text-xs text-muted-foreground">Other actions and agent turns are additional.</p>
 
         <div className="mt-5 border-t border-border pt-5 dark:border-white/10">
           <p className="text-sm text-foreground">
-            <span className="font-brand text-primary">{recommended.name}</span> {recommended.note}
+            <span className="font-brand text-[#24658f] dark:text-primary">{recommended.name}</span> {recommended.note}
           </p>
           <Link
             href={recommended.href}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-[#132b3a] shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5"
           >
             Get started
             <ArrowRight className="h-4 w-4" />

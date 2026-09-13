@@ -25,7 +25,7 @@ export default function DiscoverPage() {
         },
         {
           title: "Deduped by default",
-          body: "Every new record is checked against your CRM by domain, then name, so the same company is never added twice, no matter how many times you run discovery.",
+          body: "Discovery checks company domain and name to reduce duplicate records. Review ambiguous matches before merging or using them.",
         },
         {
           title: "People, not just logos",

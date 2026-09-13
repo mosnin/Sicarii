@@ -1,0 +1,1052 @@
+{
+  "version": 1,
+  "project": {
+    "company": "Scalar",
+    "repository": "mosnin/Sicarii",
+    "fictional": false,
+    "scope": "Public website repositioning and pricing proposal; existing authenticated product preserved."
+  },
+  "context_refs": [
+    "DESIGN.md",
+    "PRICING.md",
+    "VALUE.md",
+    "OFFER.md",
+    "INFLUENCE.md",
+    "INVENTORY.md"
+  ],
+  "theme": {
+    "mode": "supplied_premium_primitives",
+    "source_ref": "existing repository baseline, see DESIGN.md",
+    "preserve_user_assets": true,
+    "follow_user_requests": true,
+    "primitives": {
+      "typography": "Existing fonts and heading components",
+      "color": "Blue and white surfaces, monospace labels, ASCII artwork and existing motion.",
+      "spacing": "Existing containers and responsive grids",
+      "components": "Existing hero, navigation shell, cards and footer",
+      "motion": "Existing animations with reduced-motion support",
+      "responsive": "390, 768, 1024 and 1440 CSS pixels"
+    }
+  },
+  "facts": [
+    {
+      "id": "workflow-0",
+      "kind": "use_case",
+      "statement": "Use Scalar to organize companies, inspect contact details and prepare follow-up while you learn who fits your product.",
+      "status": "source_grounded",
+      "evidence_ref": "VALUE.md"
+    },
+    {
+      "id": "workflow-1",
+      "kind": "use_case",
+      "statement": "Give sellers and their agents a CRM record they can inspect, update and use when preparing the next conversation.",
+      "status": "source_grounded",
+      "evidence_ref": "VALUE.md"
+    },
+    {
+      "id": "workflow-2",
+      "kind": "use_case",
+      "statement": "Use workspace records, segments and explicit research criteria to organize client prospecting work.",
+      "status": "source_grounded",
+      "evidence_ref": "VALUE.md"
+    },
+    {
+      "id": "workflow-3",
+      "kind": "use_case",
+      "statement": "Connect through MCP to supported research and CRM actions, with a visible credit balance for metered work.",
+      "status": "source_grounded",
+      "evidence_ref": "VALUE.md"
+    },
+    {
+      "id": "workflow-4",
+      "kind": "use_case",
+      "statement": "Prepare a budgeted autopilot plan, inspect its steps and approve it before execution.",
+      "status": "source_grounded",
+      "evidence_ref": "VALUE.md"
+    },
+    {
+      "id": "workflow-5",
+      "kind": "use_case",
+      "statement": "Organize contacts, companies, activity and deal stages in the same CRM.",
+      "status": "source_grounded",
+      "evidence_ref": "VALUE.md"
+    },
+    {
+      "id": "workflow-6",
+      "kind": "resource",
+      "statement": "Start with a known company and a small question before asking an agent to build a large list.",
+      "status": "source_grounded",
+      "evidence_ref": "VALUE.md"
+    },
+    {
+      "id": "workflow-7",
+      "kind": "resource",
+      "statement": "Credits measure priced actions. A single prospect can require several searches and enrichment steps.",
+      "status": "source_grounded",
+      "evidence_ref": "VALUE.md"
+    },
+    {
+      "id": "workflow-8",
+      "kind": "resource",
+      "statement": "Use research to prepare a relevant follow-up without treating an AI draft as permission to send.",
+      "status": "source_grounded",
+      "evidence_ref": "VALUE.md"
+    }
+  ],
+  "assets": [],
+  "pages": [
+    {
+      "id": "solutions-founders",
+      "path": "/solutions/founders",
+      "role": "solution",
+      "title": "Research a focused prospect list before writing the pitch.",
+      "purpose": "Use Scalar to organize companies, inspect contact details and prepare follow-up while you learn who fits your product.",
+      "hero": {
+        "headline": "Research a focused prospect list before writing the pitch."
+      },
+      "fact_ids": [
+        "workflow-0"
+      ],
+      "sections": [
+        {
+          "kind": "problem",
+          "content": "A long list of unqualified names creates more outreach work without explaining why anyone should care.",
+          "fact_ids": [
+            "workflow-0"
+          ]
+        },
+        {
+          "kind": "feature",
+          "content": [
+            {
+              "title": "Define the fit",
+              "body": "Add your product context and describe a narrow customer problem."
+            },
+            {
+              "title": "Research candidates",
+              "body": "Discover companies, verify the intended identity and inspect sources."
+            },
+            {
+              "title": "Prepare the next step",
+              "body": "Save the relevant findings and review a draft against the prospect\u2019s situation."
+            }
+          ],
+          "fact_ids": [
+            "workflow-0"
+          ]
+        },
+        {
+          "kind": "benefit",
+          "content": [
+            {
+              "title": "A reason to reach out",
+              "body": "Research gives the message a concrete basis."
+            },
+            {
+              "title": "One record to revisit",
+              "body": "Notes, people and company context remain connected."
+            },
+            {
+              "title": "Controlled experimentation",
+              "body": "Use a small research budget while you test the segment."
+            }
+          ],
+          "fact_ids": [
+            "workflow-0"
+          ]
+        }
+      ],
+      "proof": {
+        "placement": "within_content",
+        "fact_ids": [
+          "workflow-0"
+        ],
+        "logo_asset_ids": []
+      },
+      "reduced_motion": "static_equivalent",
+      "bottom_cta": [
+        {
+          "label": "Get started",
+          "target": "/sign-up"
+        },
+        {
+          "label": "Request a demo",
+          "target": "/demo"
+        }
+      ],
+      "exceptions": [
+        {
+          "capability": "proof_under_hero",
+          "rationale": "No permissioned customer endorsements supplied. Show product mechanisms and clearly labeled examples."
+        },
+        {
+          "capability": "unique_illustrations",
+          "rationale": "Reuse existing purchased theme primitives as requested. New pages use editorial steps and cards."
+        },
+        {
+          "capability": "animated_illustration",
+          "rationale": "Preserve existing motion; explanatory text remains available without animation."
+        }
+      ]
+    },
+    {
+      "id": "solutions-sales",
+      "path": "/solutions/sales",
+      "role": "solution",
+      "title": "Put the account research beside the next follow-up.",
+      "purpose": "Give sellers and their agents a CRM record they can inspect, update and use when preparing the next conversation.",
+      "hero": {
+        "headline": "Put the account research beside the next follow-up."
+      },
+      "fact_ids": [
+        "workflow-1"
+      ],
+      "sections": [
+        {
+          "kind": "problem",
+          "content": "Switching between research tabs, a spreadsheet and a draft can lose the detail that made the account relevant.",
+          "fact_ids": [
+            "workflow-1"
+          ]
+        },
+        {
+          "kind": "feature",
+          "content": [
+            {
+              "title": "Choose the account",
+              "body": "Start from a company domain or verified contact."
+            },
+            {
+              "title": "Fill useful gaps",
+              "body": "Request the enrichment needed for the next decision and inspect the result."
+            },
+            {
+              "title": "Review the follow-up",
+              "body": "Use activity history and account context to prepare a relevant message."
+            }
+          ],
+          "fact_ids": [
+            "workflow-1"
+          ]
+        },
+        {
+          "kind": "benefit",
+          "content": [
+            {
+              "title": "More useful preparation",
+              "body": "Research stays attached to the account."
+            },
+            {
+              "title": "Visible next actions",
+              "body": "Keep follow-up work in the pipeline instead of a private note."
+            },
+            {
+              "title": "Fewer blind assumptions",
+              "body": "Source checks can expose missing or uncertain data."
+            }
+          ],
+          "fact_ids": [
+            "workflow-1"
+          ]
+        }
+      ],
+      "proof": {
+        "placement": "within_content",
+        "fact_ids": [
+          "workflow-1"
+        ],
+        "logo_asset_ids": []
+      },
+      "reduced_motion": "static_equivalent",
+      "bottom_cta": [
+        {
+          "label": "Get started",
+          "target": "/sign-up"
+        },
+        {
+          "label": "Request a demo",
+          "target": "/demo"
+        }
+      ],
+      "exceptions": [
+        {
+          "capability": "proof_under_hero",
+          "rationale": "No permissioned customer endorsements supplied. Show product mechanisms and clearly labeled examples."
+        },
+        {
+          "capability": "unique_illustrations",
+          "rationale": "Reuse existing purchased theme primitives as requested. New pages use editorial steps and cards."
+        },
+        {
+          "capability": "animated_illustration",
+          "rationale": "Preserve existing motion; explanatory text remains available without animation."
+        }
+      ]
+    },
+    {
+      "id": "solutions-agencies",
+      "path": "/solutions/agencies",
+      "role": "solution",
+      "title": "Keep each client\u2019s prospecting context distinct.",
+      "purpose": "Use workspace records, segments and explicit research criteria to organize client prospecting work.",
+      "hero": {
+        "headline": "Keep each client\u2019s prospecting context distinct."
+      },
+      "fact_ids": [
+        "workflow-2"
+      ],
+      "sections": [
+        {
+          "kind": "problem",
+          "content": "Reusing the wrong product context or mixing account data can produce an irrelevant pitch and a difficult handoff.",
+          "fact_ids": [
+            "workflow-2"
+          ]
+        },
+        {
+          "kind": "feature",
+          "content": [
+            {
+              "title": "Set the boundary",
+              "body": "Select the correct workspace and confirm who can access it."
+            },
+            {
+              "title": "Define the segment",
+              "body": "Document the client\u2019s offer, exclusions and target criteria before research."
+            },
+            {
+              "title": "Hand back evidence",
+              "body": "Review the matching accounts and supporting findings before any campaign action."
+            }
+          ],
+          "fact_ids": [
+            "workflow-2"
+          ]
+        },
+        {
+          "kind": "benefit",
+          "content": [
+            {
+              "title": "A clearer brief",
+              "body": "The agent has a specific product and audience to research."
+            },
+            {
+              "title": "Reviewable lists",
+              "body": "A client can understand why an account was selected."
+            },
+            {
+              "title": "Shared work history",
+              "body": "Keep the research trail available for follow-up."
+            }
+          ],
+          "fact_ids": [
+            "workflow-2"
+          ]
+        }
+      ],
+      "proof": {
+        "placement": "within_content",
+        "fact_ids": [
+          "workflow-2"
+        ],
+        "logo_asset_ids": []
+      },
+      "reduced_motion": "static_equivalent",
+      "bottom_cta": [
+        {
+          "label": "Get started",
+          "target": "/sign-up"
+        },
+        {
+          "label": "Request a demo",
+          "target": "/demo"
+        }
+      ],
+      "exceptions": [
+        {
+          "capability": "proof_under_hero",
+          "rationale": "No permissioned customer endorsements supplied. Show product mechanisms and clearly labeled examples."
+        },
+        {
+          "capability": "unique_illustrations",
+          "rationale": "Reuse existing purchased theme primitives as requested. New pages use editorial steps and cards."
+        },
+        {
+          "capability": "animated_illustration",
+          "rationale": "Preserve existing motion; explanatory text remains available without animation."
+        }
+      ]
+    },
+    {
+      "id": "solutions-agent-builders",
+      "path": "/solutions/agent-builders",
+      "role": "solution",
+      "title": "Give your agent a CRM it can read and update.",
+      "purpose": "Connect through MCP to supported research and CRM actions, with a visible credit balance for metered work.",
+      "hero": {
+        "headline": "Give your agent a CRM it can read and update."
+      },
+      "fact_ids": [
+        "workflow-3"
+      ],
+      "sections": [
+        {
+          "kind": "problem",
+          "content": "A folder of research files makes it difficult to keep people, companies and next actions consistent.",
+          "fact_ids": [
+            "workflow-3"
+          ]
+        },
+        {
+          "kind": "feature",
+          "content": [
+            {
+              "title": "Connect a client",
+              "body": "Authorize a scoped integration using the documented setup."
+            },
+            {
+              "title": "Read before writing",
+              "body": "Inspect the current account and verify identity before attaching enrichment."
+            },
+            {
+              "title": "Bound the work",
+              "body": "Estimate research credits, review results and keep communication actions explicit."
+            }
+          ],
+          "fact_ids": [
+            "workflow-3"
+          ]
+        },
+        {
+          "kind": "benefit",
+          "content": [
+            {
+              "title": "Structured records",
+              "body": "The agent operates on people, companies and pipeline data."
+            },
+            {
+              "title": "Reusable findings",
+              "body": "Later tasks can use earlier research."
+            },
+            {
+              "title": "Visible usage",
+              "body": "Metered actions consume the account\u2019s credit allowance."
+            }
+          ],
+          "fact_ids": [
+            "workflow-3"
+          ]
+        }
+      ],
+      "proof": {
+        "placement": "within_content",
+        "fact_ids": [
+          "workflow-3"
+        ],
+        "logo_asset_ids": []
+      },
+      "reduced_motion": "static_equivalent",
+      "bottom_cta": [
+        {
+          "label": "Get started",
+          "target": "/sign-up"
+        },
+        {
+          "label": "Request a demo",
+          "target": "/demo"
+        }
+      ],
+      "exceptions": [
+        {
+          "capability": "proof_under_hero",
+          "rationale": "No permissioned customer endorsements supplied. Show product mechanisms and clearly labeled examples."
+        },
+        {
+          "capability": "unique_illustrations",
+          "rationale": "Reuse existing purchased theme primitives as requested. New pages use editorial steps and cards."
+        },
+        {
+          "capability": "animated_illustration",
+          "rationale": "Preserve existing motion; explanatory text remains available without animation."
+        }
+      ]
+    },
+    {
+      "id": "product-autopilot",
+      "path": "/product/autopilot",
+      "role": "product",
+      "title": "Turn a research goal into a bounded plan.",
+      "purpose": "Prepare a budgeted autopilot plan, inspect its steps and approve it before execution.",
+      "hero": {
+        "headline": "Turn a research goal into a bounded plan."
+      },
+      "fact_ids": [
+        "workflow-4"
+      ],
+      "sections": [
+        {
+          "kind": "problem",
+          "content": "An open-ended research instruction can consume credits without producing a list you would actually use.",
+          "fact_ids": [
+            "workflow-4"
+          ]
+        },
+        {
+          "kind": "feature",
+          "content": [
+            {
+              "title": "Define the goal",
+              "body": "Describe the desired accounts and the exclusions that matter."
+            },
+            {
+              "title": "Review the plan",
+              "body": "Inspect the proposed steps and maximum credit budget."
+            },
+            {
+              "title": "Approve and monitor",
+              "body": "Start only after review, then inspect results or pause the plan."
+            }
+          ],
+          "fact_ids": [
+            "workflow-4"
+          ]
+        },
+        {
+          "kind": "benefit",
+          "content": [
+            {
+              "title": "A visible scope",
+              "body": "The plan makes the intended work inspectable."
+            },
+            {
+              "title": "A budget before execution",
+              "body": "Know the proposed allowance before paid research starts."
+            },
+            {
+              "title": "A place to intervene",
+              "body": "Pause and inspect progress when the direction is wrong."
+            }
+          ],
+          "fact_ids": [
+            "workflow-4"
+          ]
+        }
+      ],
+      "proof": {
+        "placement": "within_content",
+        "fact_ids": [
+          "workflow-4"
+        ],
+        "logo_asset_ids": []
+      },
+      "reduced_motion": "static_equivalent",
+      "bottom_cta": [
+        {
+          "label": "Get started",
+          "target": "/sign-up"
+        },
+        {
+          "label": "Request a demo",
+          "target": "/demo"
+        }
+      ],
+      "exceptions": [
+        {
+          "capability": "proof_under_hero",
+          "rationale": "No permissioned customer endorsements supplied. Show product mechanisms and clearly labeled examples."
+        },
+        {
+          "capability": "unique_illustrations",
+          "rationale": "Reuse existing purchased theme primitives as requested. New pages use editorial steps and cards."
+        },
+        {
+          "capability": "animated_illustration",
+          "rationale": "Preserve existing motion; explanatory text remains available without animation."
+        }
+      ]
+    },
+    {
+      "id": "product-pipeline",
+      "path": "/product/pipeline",
+      "role": "product",
+      "title": "Keep research connected to the next conversation.",
+      "purpose": "Organize contacts, companies, activity and deal stages in the same CRM.",
+      "hero": {
+        "headline": "Keep research connected to the next conversation."
+      },
+      "fact_ids": [
+        "workflow-5"
+      ],
+      "sections": [
+        {
+          "kind": "problem",
+          "content": "Research loses value when the account record has no clear next step.",
+          "fact_ids": [
+            "workflow-5"
+          ]
+        },
+        {
+          "kind": "feature",
+          "content": [
+            {
+              "title": "Review the account",
+              "body": "Check company identity and the supporting information."
+            },
+            {
+              "title": "Set the next action",
+              "body": "Record the follow-up, owner and relevant stage."
+            },
+            {
+              "title": "Update from the result",
+              "body": "Keep activity current after a conversation or decision."
+            }
+          ],
+          "fact_ids": [
+            "workflow-5"
+          ]
+        },
+        {
+          "kind": "benefit",
+          "content": [
+            {
+              "title": "Continuity for follow-up",
+              "body": "The next person can see what already happened."
+            },
+            {
+              "title": "A visible pipeline",
+              "body": "Stages help organize the work still ahead."
+            },
+            {
+              "title": "Context for agents",
+              "body": "Supported tools can retrieve the current account before preparing a draft."
+            }
+          ],
+          "fact_ids": [
+            "workflow-5"
+          ]
+        }
+      ],
+      "proof": {
+        "placement": "within_content",
+        "fact_ids": [
+          "workflow-5"
+        ],
+        "logo_asset_ids": []
+      },
+      "reduced_motion": "static_equivalent",
+      "bottom_cta": [
+        {
+          "label": "Get started",
+          "target": "/sign-up"
+        },
+        {
+          "label": "Request a demo",
+          "target": "/demo"
+        }
+      ],
+      "exceptions": [
+        {
+          "capability": "proof_under_hero",
+          "rationale": "No permissioned customer endorsements supplied. Show product mechanisms and clearly labeled examples."
+        },
+        {
+          "capability": "unique_illustrations",
+          "rationale": "Reuse existing purchased theme primitives as requested. New pages use editorial steps and cards."
+        },
+        {
+          "capability": "animated_illustration",
+          "rationale": "Preserve existing motion; explanatory text remains available without animation."
+        }
+      ]
+    },
+    {
+      "id": "resources-first-research",
+      "path": "/resources/first-research",
+      "role": "article",
+      "title": "Run one research task you can check.",
+      "purpose": "Start with a known company and a small question before asking an agent to build a large list.",
+      "hero": {
+        "headline": "Run one research task you can check."
+      },
+      "fact_ids": [
+        "workflow-6"
+      ],
+      "sections": [
+        {
+          "kind": "problem",
+          "content": "A broad discovery run is difficult to evaluate if you have not tested identity matching and credit usage.",
+          "fact_ids": [
+            "workflow-6"
+          ]
+        },
+        {
+          "kind": "feature",
+          "content": [
+            {
+              "title": "Choose a known account",
+              "body": "Use its domain and an unambiguous company name."
+            },
+            {
+              "title": "Request one useful fact",
+              "body": "Estimate the credit charge and inspect the returned source."
+            },
+            {
+              "title": "Check the record",
+              "body": "Confirm the result is attached to the correct company before expanding the run."
+            }
+          ],
+          "fact_ids": [
+            "workflow-6"
+          ]
+        },
+        {
+          "kind": "benefit",
+          "content": [
+            {
+              "title": "A clear first success",
+              "body": "You can judge accuracy against a known account."
+            },
+            {
+              "title": "A bounded spend",
+              "body": "One task makes it easier to understand usage."
+            },
+            {
+              "title": "A safer repeatable process",
+              "body": "Carry the identity check into larger research tasks."
+            }
+          ],
+          "fact_ids": [
+            "workflow-6"
+          ]
+        }
+      ],
+      "proof": {
+        "placement": "within_content",
+        "fact_ids": [
+          "workflow-6"
+        ],
+        "logo_asset_ids": []
+      },
+      "reduced_motion": "static_equivalent",
+      "bottom_cta": [
+        {
+          "label": "Get started",
+          "target": "/sign-up"
+        },
+        {
+          "label": "Request a demo",
+          "target": "/demo"
+        }
+      ],
+      "exceptions": [
+        {
+          "capability": "proof_under_hero",
+          "rationale": "No permissioned customer endorsements supplied. Show product mechanisms and clearly labeled examples."
+        },
+        {
+          "capability": "unique_illustrations",
+          "rationale": "Reuse existing purchased theme primitives as requested. New pages use editorial steps and cards."
+        },
+        {
+          "capability": "animated_illustration",
+          "rationale": "Preserve existing motion; explanatory text remains available without animation."
+        }
+      ]
+    },
+    {
+      "id": "resources-credit-guide",
+      "path": "/resources/credit-guide",
+      "role": "article",
+      "title": "Budget the research steps, not just the final list.",
+      "purpose": "Credits measure priced actions. A single prospect can require several searches and enrichment steps.",
+      "hero": {
+        "headline": "Budget the research steps, not just the final list."
+      },
+      "fact_ids": [
+        "workflow-7"
+      ],
+      "sections": [
+        {
+          "kind": "problem",
+          "content": "A claim that a plan buys a fixed number of leads hides differences in research depth and provider results.",
+          "fact_ids": [
+            "workflow-7"
+          ]
+        },
+        {
+          "kind": "feature",
+          "content": [
+            {
+              "title": "Choose the actions",
+              "body": "List discovery, email lookup, company enrichment and other required steps."
+            },
+            {
+              "title": "Multiply by the workload",
+              "body": "Use the published per-action schedule and include planned repeats."
+            },
+            {
+              "title": "Set a stopping point",
+              "body": "Review the credit balance and any autopilot budget before increasing the workload."
+            }
+          ],
+          "fact_ids": [
+            "workflow-7"
+          ]
+        },
+        {
+          "kind": "benefit",
+          "content": [
+            {
+              "title": "A clearer estimate",
+              "body": "The calculation reflects the actual work requested."
+            },
+            {
+              "title": "Visible tradeoffs",
+              "body": "Choose which missing facts justify another paid action."
+            },
+            {
+              "title": "No promised lead count",
+              "body": "A credit allowance is not a guarantee of contacts or sales."
+            }
+          ],
+          "fact_ids": [
+            "workflow-7"
+          ]
+        }
+      ],
+      "proof": {
+        "placement": "within_content",
+        "fact_ids": [
+          "workflow-7"
+        ],
+        "logo_asset_ids": []
+      },
+      "reduced_motion": "static_equivalent",
+      "bottom_cta": [
+        {
+          "label": "Get started",
+          "target": "/sign-up"
+        },
+        {
+          "label": "Request a demo",
+          "target": "/demo"
+        }
+      ],
+      "exceptions": [
+        {
+          "capability": "proof_under_hero",
+          "rationale": "No permissioned customer endorsements supplied. Show product mechanisms and clearly labeled examples."
+        },
+        {
+          "capability": "unique_illustrations",
+          "rationale": "Reuse existing purchased theme primitives as requested. New pages use editorial steps and cards."
+        },
+        {
+          "capability": "animated_illustration",
+          "rationale": "Preserve existing motion; explanatory text remains available without animation."
+        }
+      ]
+    },
+    {
+      "id": "resources-review-before-outreach",
+      "path": "/resources/review-before-outreach",
+      "role": "article",
+      "title": "Review the person, the evidence and the message.",
+      "purpose": "Use research to prepare a relevant follow-up without treating an AI draft as permission to send.",
+      "hero": {
+        "headline": "Review the person, the evidence and the message."
+      },
+      "fact_ids": [
+        "workflow-8"
+      ],
+      "sections": [
+        {
+          "kind": "problem",
+          "content": "The wrong identity or an unsupported claim can damage a conversation before it begins.",
+          "fact_ids": [
+            "workflow-8"
+          ]
+        },
+        {
+          "kind": "feature",
+          "content": [
+            {
+              "title": "Confirm identity",
+              "body": "Match the person with the intended company or domain."
+            },
+            {
+              "title": "Check the claim",
+              "body": "Open supporting sources and remove uncertain personalizations."
+            },
+            {
+              "title": "Approve the action",
+              "body": "Check sender, recipients, channel permissions and final wording before sending."
+            }
+          ],
+          "fact_ids": [
+            "workflow-8"
+          ]
+        },
+        {
+          "kind": "benefit",
+          "content": [
+            {
+              "title": "Fewer wrong attachments",
+              "body": "Identity comes before enrichment."
+            },
+            {
+              "title": "A more relevant draft",
+              "body": "The message uses facts you can defend."
+            },
+            {
+              "title": "A deliberate decision",
+              "body": "You choose whether the communication is appropriate."
+            }
+          ],
+          "fact_ids": [
+            "workflow-8"
+          ]
+        }
+      ],
+      "proof": {
+        "placement": "within_content",
+        "fact_ids": [
+          "workflow-8"
+        ],
+        "logo_asset_ids": []
+      },
+      "reduced_motion": "static_equivalent",
+      "bottom_cta": [
+        {
+          "label": "Get started",
+          "target": "/sign-up"
+        },
+        {
+          "label": "Request a demo",
+          "target": "/demo"
+        }
+      ],
+      "exceptions": [
+        {
+          "capability": "proof_under_hero",
+          "rationale": "No permissioned customer endorsements supplied. Show product mechanisms and clearly labeled examples."
+        },
+        {
+          "capability": "unique_illustrations",
+          "rationale": "Reuse existing purchased theme primitives as requested. New pages use editorial steps and cards."
+        },
+        {
+          "capability": "animated_illustration",
+          "rationale": "Preserve existing motion; explanatory text remains available without animation."
+        }
+      ]
+    }
+  ],
+  "navigation": [
+    {
+      "id": "product",
+      "mode": "megamenu",
+      "items": [
+        {
+          "label": "Turn a research goal into a bounded plan.",
+          "target": "/product/autopilot"
+        },
+        {
+          "label": "Keep research connected to the next conversation.",
+          "target": "/product/pipeline"
+        }
+      ]
+    },
+    {
+      "id": "solutions",
+      "mode": "megamenu",
+      "items": [
+        {
+          "label": "Research a focused prospect list before writing the pitch.",
+          "target": "/solutions/founders"
+        },
+        {
+          "label": "Put the account research beside the next follow-up.",
+          "target": "/solutions/sales"
+        },
+        {
+          "label": "Keep each client\u2019s prospecting context distinct.",
+          "target": "/solutions/agencies"
+        },
+        {
+          "label": "Give your agent a CRM it can read and update.",
+          "target": "/solutions/agent-builders"
+        }
+      ]
+    },
+    {
+      "id": "resources",
+      "mode": "megamenu",
+      "items": [
+        {
+          "label": "Run one research task you can check.",
+          "target": "/resources/first-research"
+        },
+        {
+          "label": "Budget the research steps, not just the final list.",
+          "target": "/resources/credit-guide"
+        },
+        {
+          "label": "Review the person, the evidence and the message.",
+          "target": "/resources/review-before-outreach"
+        }
+      ]
+    },
+    {
+      "id": "company",
+      "mode": "megamenu",
+      "items": [
+        {
+          "label": "About",
+          "target": "/about"
+        },
+        {
+          "label": "Contact",
+          "target": "/contact"
+        }
+      ]
+    },
+    {
+      "id": "pricing",
+      "mode": "link",
+      "label": "Pricing",
+      "target": "/pricing"
+    }
+  ],
+  "footer": {
+    "source_ref": "Existing footer expanded with use cases and resources"
+  },
+  "auth": {
+    "status": "preserved_not_provider_tested",
+    "source_ref": "Existing application routes"
+  },
+  "onboarding": {
+    "status": "preserved_not_provider_tested"
+  },
+  "verification": [
+    {
+      "id": "routes",
+      "status": "see_evidence",
+      "evidence_ref": "evidence/routes.json"
+    },
+    {
+      "id": "responsive_keyboard",
+      "status": "see_evidence",
+      "evidence_ref": "evidence/controls.json"
+    },
+    {
+      "id": "provider_checkout_auth",
+      "status": "not_tested",
+      "rationale": "No live sign-in, charge, meter migration or message was performed."
+    }
+  ],
+  "inventory_dispositions": {
+    "resources": "Existing resources plus new practical guides; no invented events or community.",
+    "company": "Existing company, contact and legal surfaces retained; no invented jobs, press or customer logos."
+  }
+}
