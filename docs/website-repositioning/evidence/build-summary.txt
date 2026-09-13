@@ -1,0 +1,16 @@
+├ ○ /sitemap.xml
+├ ƒ /skills
+├ ○ /solutions/agencies
+├ ○ /solutions/agent-builders
+├ ○ /solutions/founders
+├ ○ /solutions/sales
+├ ○ /subprocessors
+├ ○ /terms
+└ ƒ /welcome
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

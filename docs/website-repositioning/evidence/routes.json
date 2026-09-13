@@ -1,0 +1,130 @@
+[
+  {
+    "route": "/",
+    "status": 200,
+    "h1": [
+      "Research the account.Prepare the next conversation."
+    ],
+    "overflow": false,
+    "description": "A CRM operated by AI agents - they discover leads, enrich your database, run the conversations, and own the data. You direct; the agents operate."
+  },
+  {
+    "route": "/pricing",
+    "status": 200,
+    "h1": [
+      "Pricing that scales with your pipeline"
+    ],
+    "overflow": false,
+    "description": "A CRM operated by AI agents - they discover leads, enrich your database, run the conversations, and own the data. You direct; the agents operate."
+  },
+  {
+    "route": "/demo",
+    "status": 200,
+    "h1": [
+      "Walk through your next research task."
+    ],
+    "overflow": false,
+    "description": "Discuss your research workflow, credit budget and review process.",
+    "canonical": "https://tryscalar.xyz/demo"
+  },
+  {
+    "route": "/resources",
+    "status": 200,
+    "h1": [
+      "Plan, research and review with Scalar."
+    ],
+    "overflow": false,
+    "description": "Practical product guides and setup help.",
+    "canonical": "https://tryscalar.xyz/resources"
+  },
+  {
+    "route": "/solutions/founders",
+    "status": 200,
+    "h1": [
+      "Research a focused prospect list before writing the pitch. "
+    ],
+    "overflow": false,
+    "description": "Use Scalar to organize companies, inspect contact details and prepare follow-up while you learn who fits your product.",
+    "canonical": "https://tryscalar.xyz/solutions/founders"
+  },
+  {
+    "route": "/solutions/sales",
+    "status": 200,
+    "h1": [
+      "Put the account research beside the next follow-up. "
+    ],
+    "overflow": false,
+    "description": "Give sellers and their agents a CRM record they can inspect, update and use when preparing the next conversation.",
+    "canonical": "https://tryscalar.xyz/solutions/sales"
+  },
+  {
+    "route": "/solutions/agencies",
+    "status": 200,
+    "h1": [
+      "Keep each client’s prospecting context distinct. "
+    ],
+    "overflow": false,
+    "description": "Use workspace records, segments and explicit research criteria to organize client prospecting work.",
+    "canonical": "https://tryscalar.xyz/solutions/agencies"
+  },
+  {
+    "route": "/solutions/agent-builders",
+    "status": 200,
+    "h1": [
+      "Give your agent a CRM it can read and update. "
+    ],
+    "overflow": false,
+    "description": "Connect through MCP to supported research and CRM actions, with a visible credit balance for metered work.",
+    "canonical": "https://tryscalar.xyz/solutions/agent-builders"
+  },
+  {
+    "route": "/product/autopilot",
+    "status": 200,
+    "h1": [
+      "Turn a research goal into a bounded plan. "
+    ],
+    "overflow": false,
+    "description": "Prepare a budgeted autopilot plan, inspect its steps and approve it before execution.",
+    "canonical": "https://tryscalar.xyz/product/autopilot"
+  },
+  {
+    "route": "/product/pipeline",
+    "status": 200,
+    "h1": [
+      "Keep research connected to the next conversation. "
+    ],
+    "overflow": false,
+    "description": "Organize contacts, companies, activity and deal stages in the same CRM.",
+    "canonical": "https://tryscalar.xyz/product/pipeline"
+  },
+  {
+    "route": "/resources/first-research",
+    "status": 200,
+    "h1": [
+      "Run one research task you can check. "
+    ],
+    "overflow": false,
+    "description": "Start with a known company and a small question before asking an agent to build a large list.",
+    "canonical": "https://tryscalar.xyz/resources/first-research"
+  },
+  {
+    "route": "/resources/credit-guide",
+    "status": 200,
+    "h1": [
+      "Budget the research steps, not just the final list. "
+    ],
+    "overflow": false,
+    "description": "Credits measure priced actions. A single prospect can require several searches and enrichment steps.",
+    "canonical": "https://tryscalar.xyz/resources/credit-guide"
+  },
+  {
+    "route": "/resources/review-before-outreach",
+    "status": 200,
+    "h1": [
+      "Review the person, the evidence and the message. "
+    ],
+    "overflow": false,
+    "description": "Use research to prepare a relevant follow-up without treating an AI draft as permission to send.",
+    "canonical": "https://tryscalar.xyz/resources/review-before-outreach"
+  }
+]

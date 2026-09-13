@@ -17,7 +17,7 @@ export default function EnrichPage() {
       blocks={[
         {
           title: "Accuracy over coverage",
-          body: "Scalar never attaches data for the wrong person or company. It verifies the name and the company or domain before saving, and prefers an honest blank over a confident guess about a same-name stranger.",
+          body: "Scalar checks the person and company before accepting a match. Inspect the result before relying on it; an uncertain identity should remain unfilled.",
         },
         {
           title: "Provenance on every field",
@@ -29,7 +29,7 @@ export default function EnrichPage() {
         },
         {
           title: "Only pay for hits",
-          body: "Enrichment spends credits only when it actually returns data. A miss costs nothing, so coverage gaps never cost you.",
+          body: "Individual enrichment lookups debit on success. A multi-step research task may still consume credits for completed steps even when other details are missing.",
         },
       ]}
       ctaTitle="Make every record complete."

@@ -10,11 +10,10 @@ import { Check, ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { UsageEstimator } from "@/components/marketing/usage-estimator";
+import { ProposedPlans } from "@/components/marketing/proposed-plans";
 import Border2 from "@/components/pixel-perfect/border2";
 
-// Launch sale: list price is 2x the live price, struck through. Set SALE=false
-// to end it (prices then show at their live value with no strike-through).
-const SALE = true;
+
 
 type Plan = {
   name: string;
@@ -32,10 +31,10 @@ const plans: Plan[] = [
     name: "Free",
     price: 0,
     credits: "200 credits / mo",
-    blurb: "Kick the tires. Feel your CRM fill itself, once.",
+    blurb: "Test a small research task before committing to a paid workflow.",
     features: [
       "1 seat",
-      "Full MCP + the built-in agent",
+      "MCP access and the built-in agent",
       "All discovery & enrichment tools",
       "Community support",
     ],
@@ -49,7 +48,7 @@ const plans: Plan[] = [
     blurb: "For one operator running an agent.",
     features: [
       "1 seat",
-      "Full MCP + agent (read & write)",
+      "MCP and agent access to supported actions",
       "All enrichment, discovery & deep research",
       "1 scheduled monitor",
       "Top-up credits at $0.012 each",
@@ -62,7 +61,7 @@ const plans: Plan[] = [
     name: "Pro",
     price: 129,
     credits: "12,000 credits / mo",
-    blurb: "For power users compounding a real pipeline.",
+    blurb: "For an operator doing deeper account research.",
     features: [
       "1 seat",
       "Everything in Starter",
@@ -78,10 +77,10 @@ const plans: Plan[] = [
     name: "Business",
     price: 99,
     credits: "8,000 credits / mo",
-    blurb: "For running a wall of monitors on autopilot.",
+    blurb: "For monitoring more accounts with a smaller research allowance.",
     features: [
       "1 seat",
-      "Everything in Pro",
+      "Same core research tools; fewer credits than Pro",
       "25 scheduled monitors",
       "Priority support",
     ],
@@ -94,11 +93,11 @@ const plans: Plan[] = [
 // every action is priced at roughly 3x its underlying provider cost, so usage
 // is always margin-positive. CRM reads/writes are free.
 const creditCosts: { action: string; credits: string }[] = [
-  { action: "Agent turn / CRM read & write", credits: "1" },
+  { action: "CRM reads and writes", credits: "0" },
   { action: "Web search", credits: "2" },
   { action: "Find a contact's LinkedIn", credits: "3" },
-  { action: "Find a verified work email", credits: "8" },
-  { action: "Find a verified phone", credits: "12" },
+  { action: "Find a work email", credits: "8" },
+  { action: "Find a phone number", credits: "12" },
   { action: "Discover companies from a prompt", credits: "12" },
   { action: "Deep report / analyze a site", credits: "8" },
   { action: "Enrich a company aspect", credits: "30" },
@@ -109,12 +108,10 @@ function PriceTag({ plan }: { plan: Plan }) {
   if (plan.price === 0) {
     return <span className="font-brand text-5xl text-foreground">$0</span>;
   }
-  const list = plan.price * 2;
+
   return (
     <div className="flex flex-col items-center">
-      {SALE && (
-        <span className="text-sm text-muted-foreground line-through">${list}</span>
-      )}
+
       <div className="flex items-baseline gap-1">
         <span className="font-brand text-5xl text-foreground">${plan.price}</span>
         <span className="text-sm text-muted-foreground">/mo</span>
@@ -132,12 +129,10 @@ export default function PricingPage() {
         <section className="relative overflow-hidden py-24 sm:py-28">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
           <div className="relative z-10 mx-auto max-w-3xl px-4 text-center">
-            {SALE && (
-              <Badge variant="primary" className="mb-4">Launch sale: 50% off</Badge>
-            )}
+
             <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               Pricing that scales with{" "}
-              <span className="text-gradient-orange">your pipeline</span>
+              <span className="text-[#24658f] dark:text-primary">your pipeline</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
               A seat plus usage credits. You pay for the heavy lifting -
@@ -147,6 +142,8 @@ export default function PricingPage() {
           </div>
         </section>
 
+        <ProposedPlans />
+        <h2 className="font-brand mx-auto max-w-6xl px-6 pb-12 text-3xl">Current plan catalog</h2>
         {/* Plan cards */}
         <section className="-mt-8 pb-8">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -169,7 +166,7 @@ export default function PricingPage() {
                       <>
                         <Border2 className="opacity-80" />
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                          <Badge variant="default" className="bg-primary text-primary-foreground">Most popular</Badge>
+                          <Badge variant="default" className="bg-primary text-[#132b3a]">For research volume</Badge>
                         </div>
                       </>
                     )}
@@ -178,14 +175,14 @@ export default function PricingPage() {
                       <div className="mt-4">
                         <PriceTag plan={plan} />
                       </div>
-                      <p className="mt-3 text-sm font-semibold text-primary">{plan.credits}</p>
+                      <p className="mt-3 text-sm font-semibold text-[#24658f] dark:text-primary">{plan.credits}</p>
                       <CardDescription className="mt-2">{plan.blurb}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-1 flex-col">
                       <ul className="flex-1 space-y-3">
                         {plan.features.map((f) => (
                           <li key={f} className="flex items-start gap-2.5 text-sm">
-                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#24658f] dark:text-primary" />
                             <span>{f}</span>
                           </li>
                         ))}
@@ -211,8 +208,7 @@ export default function PricingPage() {
               <div>
                 <p className="font-brand text-lg text-foreground">Enterprise</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Bring your own provider keys (cost pass-through, cheaper
-                  credits), volume pricing, SSO, and an SLA.
+                  Discuss provider setup, volume, workspace access and support requirements. Custom service commitments require a written agreement.
                 </p>
               </div>
               <Button variant="outline" className="mt-4 sm:mt-0" asChild>
@@ -226,13 +222,12 @@ export default function PricingPage() {
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">How credits work</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-[#24658f] dark:text-primary">How credits work</p>
               <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
-                You only pay for the <span className="text-gradient-orange">heavy lifting</span>
+                You only pay for the <span className="text-[#24658f] dark:text-primary">heavy lifting</span>
               </h2>
               <p className="mt-4 text-muted-foreground">
-                1 credit = $0.01. Reading and writing your CRM is free; you spend
-                credits only when an agent pulls real data from the outside world.
+                Credits are usage units, not cash or a guaranteed number of leads. CRM reads and writes are free. Research, enrichment and provider-backed agent work can consume credits.
               </p>
             </div>
             <div className="mt-10 overflow-hidden rounded-3xl border border-border bg-card">
@@ -245,15 +240,14 @@ export default function PricingPage() {
                   )}
                 >
                   <span className="text-foreground">{row.action}</span>
-                  <span className="font-brand text-primary">
+                  <span className="font-brand text-[#24658f] dark:text-primary">
                     {row.credits} {row.credits === "1" ? "credit" : "credits"}
                   </span>
                 </div>
               ))}
             </div>
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              Run out? Top up anytime, or your plan resets monthly. You are only
-              charged when a lookup actually returns data, never for a miss.
+              Plan allowances reset on the account cycle. Check your balance and top-up terms in billing. A multi-step task can incur several charges; successful earlier steps remain chargeable even if a later step finds nothing.
             </p>
           </div>
         </section>
@@ -262,13 +256,12 @@ export default function PricingPage() {
         <section className="pb-24 sm:pb-28">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">Estimate</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-[#24658f] dark:text-primary">Estimate</p>
               <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
-                Size it to <span className="text-gradient-orange">your month</span>
+                Size it to <span className="text-[#24658f] dark:text-primary">your month</span>
               </h2>
               <p className="mt-4 text-muted-foreground">
-                Drag the sliders for the work your agents do. We will add up the
-                credits and point you at the plan that fits.
+                Estimate selected research actions below. This is a partial workload estimate, not a quote; agent turns and other actions can add usage.
               </p>
             </div>
             <div className="mt-12">

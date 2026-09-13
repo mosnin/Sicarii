@@ -26,7 +26,7 @@ const caps: Cap[] = [
     id: "discover",
     label: "Discover",
     title: "Find the right companies, from a sentence",
-    body: "Describe who you sell to. The agent searches, dedupes, and returns real companies as typed records, never aggregators or the wrong match.",
+    body: "Describe who you sell to. The agent searches for matching companies and saves structured candidates for you to inspect.",
   },
   {
     id: "enrich",
@@ -37,7 +37,7 @@ const caps: Cap[] = [
   {
     id: "intent",
     label: "Sense intent",
-    title: "See who is in-market before anyone else",
+    title: "Research signals worth checking",
     body: "Buying signals are read continuously and scored, so your agent reaches the accounts that are looking right now, not the ones that went cold last quarter.",
   },
   {

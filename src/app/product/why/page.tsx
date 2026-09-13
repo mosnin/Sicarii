@@ -25,7 +25,7 @@ export default function WhyScalarPage() {
         },
         {
           title: "Data you own",
-          body: "A single source of truth you control: exportable any time, never resold, and never used to train someone else's model. Enrichment flows in; your data stays yours.",
+          body: "Keep research in a structured record you can inspect. Review the privacy policy and provider settings to understand how information is processed.",
         },
         {
           title: "Intelligence built in",

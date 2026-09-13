@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Starter",
+    "price": 49,
+    "credits": 3000,
+    "features": [
+      "1 member",
+      "1 scheduled monitor",
+      "Discovery, enrichment and research",
+      "CRM and MCP access"
+    ],
+    "for": "One operator testing a repeatable prospecting workflow."
+  },
+  {
+    "name": "Grow",
+    "price": 149,
+    "credits": 12000,
+    "features": [
+      "1 member",
+      "10 scheduled monitors",
+      "Research and reviewed follow-up",
+      "Budgeted autopilot planning"
+    ],
+    "for": "One operator researching accounts and reviewing ongoing work."
+  },
+  {
+    "name": "Team",
+    "price": 349,
+    "credits": 30000,
+    "features": [
+      "5 members",
+      "25 scheduled monitors",
+      "A pooled workspace allowance",
+      "Shared CRM, segments and pipeline"
+    ],
+    "for": "A small team that needs shared records and a pooled research budget."
+  }
+]

@@ -48,11 +48,11 @@ const faqCategories = [
       },
       {
         q: "What happens if Scalar can't verify a match?",
-        a: "It returns nothing. Scalar never attaches data for the wrong person or company: every lookup verifies the name and the company or domain before saving, and a same-name stranger is treated as a miss, not a match. A wrong value is worse than no value, and a miss is never charged.",
+        a: "An uncertain identity should remain missing. Scalar checks person and company information, but you should inspect sources before using a result. A multi-step task can still charge for successful earlier steps.",
       },
       {
         q: "Who owns my data?",
-        a: "You do. Your CRM is a single source of truth you control: isolated per user, never resold, and never used to train models. Enrichment flows in; your data does not leak out.",
+        a: "You manage the CRM records in your account or workspace. Provider-backed features send relevant inputs to configured services. Review the privacy policy and subprocessors before adding sensitive data.",
       },
     ],
   },
@@ -61,11 +61,11 @@ const faqCategories = [
     questions: [
       {
         q: "How does pricing work?",
-        a: "A seat plus usage credits, where 1 credit = $0.01. Reading and writing your CRM is free; you spend credits only when an agent pulls real data from the outside world, like discovery, enrichment, or deep research. Your cost scales with your pipeline, not with shelfware seats, and you can cancel anytime.",
+        a: "Plans include a research credit allowance. CRM reads and writes are free; research, enrichment and provider-backed agent work can consume credits. Credits are usage units, not cash. The pricing page separates the current catalog from proposed packages.",
       },
       {
         q: "What happens when I run out of credits?",
-        a: "Paid plans reset their credits monthly, and you can top up anytime if you need more before the reset. You are only charged when a lookup actually returns verified data, never for a miss.",
+        a: "Paid plans reset their credits monthly, and you can top up anytime if you need more before the reset. Individual lookups debit on success. Multi-step jobs can still charge for successful earlier steps.",
       },
     ],
   },

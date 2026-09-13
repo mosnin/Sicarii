@@ -7,7 +7,7 @@ import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const values = [
   {
-    title: "Owned data - never leaves your system",
+    title: "A CRM record you can inspect",
     description:
       "Every contact, enrichment, and email thread lives in your Scalar database. No third-party scraping your CRM. No shared pool. It is yours.",
   },
@@ -37,7 +37,7 @@ export function AboutSection() {
             <p className="mt-5 text-lg text-muted-foreground">
               Scalar is a CRM whose operators are AI agents. They discover leads, enrich the
               database, run email relationships, and read/write every record - on data that
-              never leaves the system.
+              stays connected to its CRM record. Provider-backed features send the inputs needed to process a request.
             </p>
             <p className="mt-4 text-muted-foreground">
               For agencies, founders, and lean teams running outbound. The world changed; how

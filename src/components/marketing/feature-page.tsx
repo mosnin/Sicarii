@@ -1,5 +1,6 @@
 "use client";
 
+import { useWebsiteReducedMotion } from "@/components/marketing/use-website-reduced-motion";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { ArrowRight } from "lucide-react";
@@ -45,6 +46,7 @@ export function FeaturePage({
   extra,
   ctaTitle,
 }: FeaturePageProps) {
+  const reduce = useWebsiteReducedMotion();
   return (
     <>
       <Header />
@@ -59,21 +61,21 @@ export function FeaturePage({
           />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
           <motion.div
-            initial={{ opacity: 0, y: 18, filter: "blur(6px)" }}
+            initial={reduce ? false : { opacity: 0, y: 18, filter: "blur(6px)" }}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ duration: 0.7, ease: EASE }}
             className="relative z-10 mx-auto max-w-4xl px-4 text-center"
           >
-            <p className="text-xs uppercase tracking-[0.3em] text-primary">{eyebrow}</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#24658f] dark:text-primary">{eyebrow}</p>
             <h1 className="font-brand mt-4 text-4xl leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              {title} <span className="text-gradient-orange">{accent}</span>
+              {title} <span className="text-[#24658f] dark:text-primary">{accent}</span>
               {titleTail ? ` ${titleTail}` : ""}
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">{subtitle}</p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/sign-up"
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3 text-base font-semibold text-[#132b3a] shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
               >
                 Get started
                 <ArrowRight className="h-4 w-4" />
@@ -96,7 +98,7 @@ export function FeaturePage({
                 key={b.title}
                 className="rounded-3xl border border-border bg-card p-6 transition-shadow hover:shadow-lg hover:shadow-black/[0.05] sm:p-8"
               >
-                <h3 className="font-brand text-xl text-foreground">{b.title}</h3>
+                <h2 className="font-brand text-xl text-foreground">{b.title}</h2>
                 <p className="mt-3 leading-relaxed text-muted-foreground">{b.body}</p>
               </div>
             ))}
@@ -110,11 +112,11 @@ export function FeaturePage({
               <ol className="space-y-8">
                 {steps.map((s, i) => (
                   <li key={s.title} className="flex gap-5">
-                    <span className="font-brand text-2xl tabular-nums text-primary">
+                    <span className="font-brand text-2xl tabular-nums text-[#24658f] dark:text-primary">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <div>
-                      <h4 className="font-brand text-lg text-foreground">{s.title}</h4>
+                      <h2 className="font-brand text-lg text-foreground">{s.title}</h2>
                       <p className="mt-1.5 leading-relaxed text-muted-foreground">{s.body}</p>
                     </div>
                   </li>
@@ -134,11 +136,12 @@ export function FeaturePage({
             </h2>
             <Link
               href="/sign-up"
-              className="mt-7 inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+              className="mt-7 inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-[#132b3a] shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
             >
               Get started
               <ArrowRight className="h-5 w-5" />
             </Link>
+            <Link href="/demo" className="ml-4 mt-7 inline-flex rounded-full border border-border px-6 py-3.5 font-medium">Request a demo</Link>
           </div>
         </section>
       </main>

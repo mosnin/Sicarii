@@ -1,10 +1,11 @@
 "use client";
 
+import { useWebsiteReducedMotion } from "@/components/marketing/use-website-reduced-motion";
 import { useRef } from "react";
 import Link from "next/link";
-import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
+import { motion, useScroll, useTransform } from "motion/react";
 import { AsciiField } from "@/components/dashboard/ascii-field";
-import { RotatingWord } from "@/components/ui/rotating-word";
+
 import { LiveDemo } from "@/components/marketing/live-demo";
 import { ArrowRight } from "lucide-react";
 
@@ -21,7 +22,7 @@ const item = {
 
 export function HeroSection() {
   const ref = useRef<HTMLElement>(null);
-  const reduce = useReducedMotion();
+  const reduce = useWebsiteReducedMotion();
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
@@ -49,7 +50,7 @@ export function HeroSection() {
         animate="show"
         className="relative z-10 flex max-w-3xl flex-col items-center gap-6 text-center"
       >
-        <motion.p variants={item} className="text-xs uppercase tracking-[0.3em] text-primary">
+        <motion.p variants={item} className="text-xs uppercase tracking-[0.3em] text-[#24658f] dark:text-primary">
           The CRM your agents run
         </motion.p>
 
@@ -58,21 +59,19 @@ export function HeroSection() {
           className="font-brand text-4xl leading-[1.05] tracking-tight text-foreground sm:text-6xl"
         >
           <span className="block">
-            <RotatingWord words={["Lead", "Company", "People", "Intent"]} className="text-gradient-orange" />
+            <span className="text-[#24658f] dark:text-primary">Research the account.</span>
           </span>
-          <span className="block">intelligence at agent speed</span>
+          <span className="block">Prepare the next conversation.</span>
         </motion.h1>
 
         <motion.p variants={item} className="max-w-2xl text-lg text-muted-foreground sm:text-xl">
-          Point your agent at a name, a domain, or a prompt. It finds the right
-          companies and people, surfaces who is in-market, and enriches every
-          record. It all lands structured, deduped, and yours.
+          Find companies, inspect contact details and prepare follow-up from one CRM. Give your agent a research brief and a credit budget, then review the evidence before reaching out.
         </motion.p>
 
         <motion.div variants={item} className="mt-1 flex flex-col items-center gap-4 sm:flex-row">
           <Link
             href="/sign-up"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-[#132b3a] shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
           >
             Get started
             <ArrowRight className="h-5 w-5" />
@@ -89,9 +88,9 @@ export function HeroSection() {
       {/* The live, interactive product demo: the CRM building itself. */}
       <motion.div
         initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40, filter: "blur(8px)" }}
-        animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)" }}
-        transition={{ duration: 0.9, delay: 0.35, ease: EASE }}
-        className="relative z-10 mt-14 w-full"
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: reduce ? 0 : 0.9, delay: reduce ? 0 : 0.35, ease: EASE }}
+        className="relative z-10 mt-14 w-full motion-reduce:!filter-none motion-reduce:!transform-none motion-reduce:!opacity-100"
       >
         <LiveDemo />
       </motion.div>

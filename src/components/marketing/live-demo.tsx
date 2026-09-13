@@ -1,7 +1,8 @@
 "use client";
 
+import { useWebsiteReducedMotion } from "@/components/marketing/use-website-reduced-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 
 /**
@@ -81,7 +82,7 @@ const intentLabel: Record<Intent, string> = {
 };
 
 export function LiveDemo() {
-  const reduce = useReducedMotion();
+  const reduce = useWebsiteReducedMotion();
   const [activeIdx, setActiveIdx] = useState(0);
   const [typed, setTyped] = useState("");
   const [revealed, setRevealed] = useState(0);
@@ -153,9 +154,7 @@ export function LiveDemo() {
   useEffect(() => {
     runBuild(0, true);
     return clearTimers;
-    // runBuild and clearTimers are stable for the component's life.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [runBuild, clearTimers]);
 
   const build = builds[activeIdx];
 
