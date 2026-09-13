@@ -1,3 +1,4 @@
+import { isMcpResource } from "@/lib/mcp-resource";
 import codexCatalog from "@/lib/codex-tool-catalog.json";
 const codexToolNames = new Set(codexCatalog);
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
@@ -2048,7 +2049,8 @@ const authHandler = withMcpAuth(
     // grant is bound to an account, so a team member's token operates the
     // shared workspace CRM exactly as their session would.
     const granted = await authenticateOauthAccessToken(token);
-    if (granted && granted.scopes.includes("mcp")) {
+    if (granted && granted.scopes.includes("mcp") &&
+        (granted.resource ? isMcpResource(granted.resource, req.url) : new URL(req.url).searchParams.get("profile") !== "codex")) {
       return {
         token,
         clientId: granted.clientId,
