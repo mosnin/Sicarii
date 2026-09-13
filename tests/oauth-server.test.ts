@@ -526,6 +526,23 @@ describe("userinfo", () => {
     expect(body.workspace).toMatchObject({ id: store.user[0].id, type: "personal", role: "owner" });
   });
 
+  it("refuses a workspace token after membership removal", async () => {
+    const { token } = await accessTokenWith(["openid", "profile"]);
+    const grant = store.oauthGrant[0];
+    grant.accountId = "workspace-account";
+    store.teamMember.push({ workspaceId: "workspace-account", userId: grant.userId });
+    const { authenticateOauthAccessToken } = await import("@/lib/oauth-server");
+    expect(await authenticateOauthAccessToken(token)).not.toBeNull();
+    store.teamMember.length = 0;
+    expect(await authenticateOauthAccessToken(token)).toBeNull();
+  });
+
+  it("refuses access from a disabled public client", async () => {
+    const { token } = await accessTokenWith(["openid", "profile"]);
+    store.oauthClient[0].disabledAt = new Date();
+    expect((await userinfoRoute(bearer(token))).status).toBe(401);
+  });
+
   it("omits email when the token was not granted the email scope", async () => {
     const { token } = await accessTokenWith(["openid", "profile"]);
     const res = await userinfoRoute(bearer(token));

@@ -551,7 +551,13 @@ export async function authenticateOauthAccessToken(token?: string | null): Promi
     include: { grant: { include: { client: true } } },
   });
   if (!record || record.kind !== "access") return null;
-  if (record.revokedAt || record.grant.revokedAt) return null;
+  if (record.revokedAt || record.grant.revokedAt || record.grant.client.disabledAt) return null;
+  if (record.grant.accountId !== record.grant.userId) {
+    const membership = await prisma.teamMember.findUnique({
+      where: { workspaceId_userId: { workspaceId: record.grant.accountId, userId: record.grant.userId } },
+    });
+    if (!membership) return null;
+  }
   if (record.expiresAt.getTime() <= Date.now()) return null;
 
   // Best-effort usage stamp; never block the request on it.
