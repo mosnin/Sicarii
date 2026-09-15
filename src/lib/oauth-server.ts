@@ -239,6 +239,39 @@ export function verifyConsentTicket(raw: string | null | undefined, now = Date.n
   }
 }
 
+/* --------------------------- membership gating ---------------------------- */
+
+/**
+ * A grant is only live while the approving human may still act for the
+ * account it was bound to. Browser routes drop Clerk orgId the moment a
+ * TeamMember row is deleted; OAuth tokens do not, so every code exchange,
+ * refresh, and resource-server lookup re-checks this.
+ *
+ * Personal grants: actor == account. Workspace grants: a live TeamMember
+ * row. A removed member must not keep CRM/MCP access for the rest of the
+ * refresh lifetime (30 days).
+ */
+export async function grantActorStillAuthorized(userId: string, accountId: string): Promise<boolean> {
+  if (userId === accountId) {
+    const account = await prisma.user.findUnique({
+      where: { id: accountId },
+      select: { id: true },
+    });
+    return Boolean(account);
+  }
+  const membership = await prisma.teamMember.findUnique({
+    where: { workspaceId_userId: { workspaceId: accountId, userId } },
+    select: { id: true },
+  });
+  return Boolean(membership);
+}
+
+async function refuseIfMembershipLost(grant: { id: string; userId: string; accountId: string }): Promise<GrantResult | null> {
+  if (await grantActorStillAuthorized(grant.userId, grant.accountId)) return null;
+  await revokeGrant(grant.id, "membership_revoked");
+  return fail("invalid_grant", "The authorizing member no longer has access to this account");
+}
+
 /* ------------------------------ issuing codes ----------------------------- */
 
 /**
@@ -417,6 +450,8 @@ export async function exchangeAuthorizationCode(input: {
 
   if (record.grant.revokedAt) return fail("invalid_grant", "The grant was revoked");
   if (record.expiresAt.getTime() <= Date.now()) return fail("invalid_grant", "Authorization code expired");
+  const membershipLost = await refuseIfMembershipLost(record.grant);
+  if (membershipLost) return membershipLost;
 
   // Byte for byte, against the URI the code was bound to at authorize time.
   if (record.redirectUri !== input.redirectUri) return fail("invalid_grant", "redirect_uri mismatch");
@@ -492,6 +527,8 @@ export async function rotateRefreshToken(input: {
 
   if (record.revokedAt || record.grant.revokedAt) return fail("invalid_grant", "The grant was revoked");
   if (record.expiresAt.getTime() <= Date.now()) return fail("invalid_grant", "Refresh token expired");
+  const membershipLost = await refuseIfMembershipLost(record.grant);
+  if (membershipLost) return membershipLost;
   if (record.resource && input.resource && record.resource !== input.resource) {
     return fail("invalid_target", "resource does not match the one bound to this grant");
   }
@@ -553,6 +590,10 @@ export async function authenticateOauthAccessToken(token?: string | null): Promi
   if (!record || record.kind !== "access") return null;
   if (record.revokedAt || record.grant.revokedAt) return null;
   if (record.expiresAt.getTime() <= Date.now()) return null;
+  if (!(await grantActorStillAuthorized(record.grant.userId, record.grant.accountId))) {
+    await revokeGrant(record.grantId, "membership_revoked");
+    return null;
+  }
 
   // Best-effort usage stamp; never block the request on it.
   prisma.oauthToken.update({ where: { id: record.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
