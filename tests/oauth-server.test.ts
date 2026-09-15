@@ -120,7 +120,9 @@ vi.mock("@/lib/prisma", () => ({
 
 import {
   AUTH_CODE_TTL_SECONDS,
+  authenticateOauthAccessToken,
   exchangeAuthorizationCode,
+  grantActorStillAuthorized,
   hashSecret,
   issueAuthorizationCode,
   matchRedirectUri,
@@ -554,6 +556,106 @@ describe("scopes", () => {
   it("never grants a scope the client is not allowed, or one this server does not know", () => {
     expect(narrowScopes(["openid", "crm:write", "admin"], ["openid", "crm:read"])).toEqual(["openid"]);
     expect(narrowScopes(["not-a-scope"], ["openid"])).toEqual([]);
+  });
+});
+
+describe("workspace membership gating", () => {
+  async function seedWorkspaceGrant() {
+    const client = await seedClient(["openid", "profile", "mcp", "crm:write"]);
+    const actorId = await seedUser();
+    const workspaceId = randomUUID();
+    store.user.push({
+      id: workspaceId,
+      clerkId: `org_${workspaceId}`,
+      email: null,
+      firstName: "Acme",
+      lastName: null,
+      imageUrl: null,
+      accountType: "workspace",
+      updatedAt: new Date(),
+    });
+    store.teamMember.push({
+      id: randomUUID(),
+      workspaceId,
+      userId: actorId,
+      role: "member",
+    });
+    const code = await issueAuthorizationCode({
+      clientRowId: client.rowId,
+      userId: actorId,
+      accountId: workspaceId,
+      scopes: ["mcp", "crm:write"],
+      redirectUri: REDIRECT_URI,
+      codeChallenge: CHALLENGE,
+      resource: null,
+    });
+    return { client, actorId, workspaceId, code };
+  }
+
+  function dropMembership(actorId: string, workspaceId: string) {
+    store.teamMember = store.teamMember.filter(
+      (row) => !(row.workspaceId === workspaceId && row.userId === actorId),
+    );
+  }
+
+  it("allows a personal grant and a live workspace membership", async () => {
+    const personal = await seedUser();
+    expect(await grantActorStillAuthorized(personal, personal)).toBe(true);
+    expect(await grantActorStillAuthorized(personal, "missing")).toBe(false);
+
+    const { actorId, workspaceId } = await seedWorkspaceGrant();
+    expect(await grantActorStillAuthorized(actorId, workspaceId)).toBe(true);
+    dropMembership(actorId, workspaceId);
+    expect(await grantActorStillAuthorized(actorId, workspaceId)).toBe(false);
+  });
+
+  it("refuses the code exchange and revokes the grant after the member is removed", async () => {
+    const { client, actorId, workspaceId, code } = await seedWorkspaceGrant();
+    dropMembership(actorId, workspaceId);
+
+    const result = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: client.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("invalid_grant");
+    expect(result.description).toMatch(/no longer has access/i);
+    expect(store.oauthGrant[0].revokedReason).toBe("membership_revoked");
+  });
+
+  it("refuses refresh and MCP auth after the member is removed, and kills the grant", async () => {
+    const { client, actorId, workspaceId, code } = await seedWorkspaceGrant();
+    const first = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: client.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    if (!first.ok) throw new Error("expected the member to exchange while still on the team");
+
+    const live = await authenticateOauthAccessToken(first.tokens.access_token);
+    expect(live?.accountId).toBe(workspaceId);
+    expect(live?.userId).toBe(actorId);
+
+    dropMembership(actorId, workspaceId);
+
+    expect(await authenticateOauthAccessToken(first.tokens.access_token)).toBeNull();
+    expect(store.oauthGrant[0].revokedAt).toBeTruthy();
+    expect(store.oauthGrant[0].revokedReason).toBe("membership_revoked");
+
+    const refresh = await rotateRefreshToken({
+      refreshToken: first.tokens.refresh_token,
+      clientId: client.clientId,
+      resource: null,
+    });
+    expect(refresh.ok).toBe(false);
+    if (refresh.ok) return;
+    expect(refresh.error).toBe("invalid_grant");
   });
 });
 
