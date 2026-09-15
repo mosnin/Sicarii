@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import { getAuthContext } from "@/lib/auth-utils";
 import { listUserWorkspaces } from "@/lib/workspace";
 import {
-  DEFAULT_SCOPES,
   SCOPE_DESCRIPTIONS,
   matchRedirectUri,
-  narrowScopes,
   parseScopes,
   resolveClient,
+  resolveRequestedScopes,
   signConsentTicket,
 } from "@/lib/oauth-server";
 
@@ -125,13 +124,7 @@ export default async function AuthorizePage({
   // what it registered. A client whose registered set has nothing in common
   // with the default (an MCP client that only ever holds "mcp", say) gets its
   // own set rather than an empty grant it cannot use.
-  const requested = parseScopes(one(params, "scope"));
-  const defaults = narrowScopes(DEFAULT_SCOPES, client.scopes);
-  const scopes = requested.length
-    ? narrowScopes(requested, client.scopes)
-    : defaults.length
-      ? defaults
-      : narrowScopes(client.scopes, client.scopes);
+  const scopes = resolveRequestedScopes(parseScopes(one(params, "scope")), client.scopes);
   if (scopes.length === 0) bounce("invalid_scope", "None of the requested scopes are available to this client");
 
   // Identity: the product's own session. Signed out means sign in and come back
