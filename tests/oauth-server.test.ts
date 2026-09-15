@@ -12,7 +12,7 @@
 // tests/oauth-rotation.test.ts fakes the revoked-token table.
 
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 
 /* ---------------------------- in-memory Prisma ---------------------------- */
 
@@ -118,22 +118,43 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+const authMock = vi.fn(async () => ({ userId: "" as string | null }));
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: (...args: unknown[]) => authMock(...(args as [])),
+}));
+
+const getAuthContextMock = vi.fn(async () => ({ actor: { id: "" } }));
+vi.mock("@/lib/auth-utils", () => ({
+  getAuthContext: (...args: unknown[]) => getAuthContextMock(...(args as [])),
+}));
+
 import {
   AUTH_CODE_TTL_SECONDS,
+  DEFAULT_SCOPES,
+  authenticateOauthAccessToken,
   exchangeAuthorizationCode,
   hashSecret,
+  hasScope,
   issueAuthorizationCode,
+  looksLikeOauthAccessToken,
   matchRedirectUri,
   narrowScopes,
+  parseScopes,
   registerClient,
+  resolveClient,
+  resolveRequestedScopes,
   revokeByPresentedToken,
   rotateRefreshToken,
   signConsentTicket,
   verifyConsentTicket,
   verifyPkceS256,
 } from "@/lib/oauth-server";
+import { signClientId } from "@/lib/oauth";
 import { POST as revokeRoute } from "@/app/oauth/revoke/route";
 import { GET as userinfoRoute } from "@/app/oauth/userinfo/route";
+import { POST as registerRoute } from "@/app/oauth/register/route";
+import { POST as tokenRoute } from "@/app/oauth/token/route";
+import { POST as decideRoute } from "@/app/oauth/authorize/decide/route";
 
 /* --------------------------------- fixtures -------------------------------- */
 
@@ -184,7 +205,10 @@ function form(fields: Record<string, string>): Request {
   });
 }
 
-beforeAll(() => vi.stubEnv("OAUTH_CONSENT_SECRET", "consent-test-secret"));
+beforeAll(() => {
+  vi.stubEnv("OAUTH_CONSENT_SECRET", "consent-test-secret");
+  vi.stubEnv("MCP_OAUTH_SECRET", "mcp-test-secret");
+});
 afterAll(() => vi.unstubAllEnvs());
 
 beforeEach(() => {
@@ -555,6 +579,25 @@ describe("scopes", () => {
     expect(narrowScopes(["openid", "crm:write", "admin"], ["openid", "crm:read"])).toEqual(["openid"]);
     expect(narrowScopes(["not-a-scope"], ["openid"])).toEqual([]);
   });
+
+  it("parses space and plus separators, drops empties, and de-dupes", () => {
+    expect(parseScopes(null)).toEqual([]);
+    expect(parseScopes("")).toEqual([]);
+    expect(parseScopes("openid+profile crm:read openid")).toEqual(["openid", "profile", "crm:read"]);
+  });
+
+  it("defaults an empty request to openid profile crm:read, narrowed to the client", () => {
+    expect(resolveRequestedScopes([], ["openid", "profile", "email", "crm:read", "crm:write"])).toEqual(
+      DEFAULT_SCOPES,
+    );
+    expect(resolveRequestedScopes([], ["openid", "crm:read"])).toEqual(["openid", "crm:read"]);
+  });
+
+  it("gives an MCP-only client its own scopes instead of an empty default grant", () => {
+    expect(resolveRequestedScopes([], ["mcp"])).toEqual(["mcp"]);
+    expect(resolveRequestedScopes(["crm:write", "admin"], ["mcp"])).toEqual([]);
+    expect(resolveRequestedScopes(["mcp", "crm:read"], ["mcp"])).toEqual(["mcp"]);
+  });
 });
 
 describe("consent ticket", () => {
@@ -587,5 +630,422 @@ describe("consent ticket", () => {
   it("refuses an expired ticket", () => {
     const signed = signConsentTicket(ticket, Date.now() - 60 * 60 * 1000);
     expect(verifyConsentTicket(signed)).toBeNull();
+  });
+
+  it("refuses a ticket whose payload is missing a required field", () => {
+    const body = Buffer.from(
+      JSON.stringify({
+        userId: "",
+        clientRowId: "cli_1",
+        redirectUri: REDIRECT_URI,
+        scopes: ["openid"],
+        codeChallenge: CHALLENGE,
+        exp: Math.floor(Date.now() / 1000) + 60,
+      }),
+    ).toString("base64url");
+    const sig = createHmac("sha256", "consent-test-secret").update(body).digest("base64url");
+    expect(verifyConsentTicket(`${body}.${sig}`)).toBeNull();
+  });
+});
+
+describe("client resolution", () => {
+  it("returns null for a missing, empty, or disabled client_id", async () => {
+    expect(await resolveClient(null)).toBeNull();
+    expect(await resolveClient("")).toBeNull();
+    const client = await seedClient();
+    store.oauthClient[0]!.disabledAt = new Date();
+    expect(await resolveClient(client.clientId)).toBeNull();
+  });
+
+  it("refuses to plant a client from an unsigned identifier", async () => {
+    expect(await resolveClient("sco_cid_not-signed-by-this-deployment")).toBeNull();
+    expect(store.oauthClient).toHaveLength(0);
+  });
+
+  it("materialises a legacy signed client_id as an mcp-only row on first use", async () => {
+    const legacyId = await signClientId([REDIRECT_URI]);
+    const resolved = await resolveClient(legacyId);
+    expect(resolved).not.toBeNull();
+    expect(resolved?.clientId).toBe(legacyId);
+    expect(resolved?.scopes).toEqual(["mcp"]);
+    expect(resolved?.redirectUris).toEqual([REDIRECT_URI]);
+    expect(store.oauthClient).toHaveLength(1);
+
+    const again = await resolveClient(legacyId);
+    expect(again?.rowId).toBe(resolved?.rowId);
+    expect(store.oauthClient).toHaveLength(1);
+  });
+});
+
+describe("authorization code security events", () => {
+  it("treats a code presented by another client as theft and revokes the grant", async () => {
+    const { client, code } = await approvedCode();
+    const other = await seedClient();
+
+    const stolen = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: other.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    expect(stolen.ok).toBe(false);
+    expect(store.oauthGrant[0]!.revokedReason).toBe("client_mismatch");
+    expect(store.oauthGrant[0]!.revokedAt).toBeInstanceOf(Date);
+
+    const owner = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: client.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    expect(owner.ok).toBe(false);
+  });
+
+  it("refuses a resource that does not match the one bound to the code", async () => {
+    const client = await seedClient();
+    const userId = await seedUser();
+    const code = await issueAuthorizationCode({
+      clientRowId: client.rowId,
+      userId,
+      accountId: userId,
+      scopes: ["openid"],
+      redirectUri: REDIRECT_URI,
+      codeChallenge: CHALLENGE,
+      resource: "https://api.example.com/mcp",
+    });
+
+    const mismatch = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: client.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: "https://evil.example.com/mcp",
+    });
+    expect(mismatch.ok).toBe(false);
+    if (mismatch.ok) return;
+    expect(mismatch.error).toBe("invalid_target");
+    expect(store.oauthAuthCode[0]!.consumedAt).toBeNull();
+  });
+
+  it("refuses the exchange when required fields are missing", async () => {
+    const missing = await exchangeAuthorizationCode({
+      code: null,
+      codeVerifier: VERIFIER,
+      clientId: "x",
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    expect(missing.ok).toBe(false);
+    if (missing.ok) return;
+    expect(missing.error).toBe("invalid_request");
+  });
+});
+
+describe("refresh token security events", () => {
+  async function mintedPair() {
+    const { client, code } = await approvedCode();
+    const first = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: client.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    if (!first.ok) throw new Error("expected the exchange to succeed");
+    return { client, tokens: first.tokens };
+  }
+
+  it("revokes the family when a refresh token is presented by a different client", async () => {
+    const { client, tokens } = await mintedPair();
+    const other = await seedClient();
+
+    const stolen = await rotateRefreshToken({
+      refreshToken: tokens.refresh_token,
+      clientId: other.clientId,
+      resource: null,
+    });
+    expect(stolen.ok).toBe(false);
+    expect(store.oauthGrant[0]!.revokedReason).toBe("client_mismatch");
+
+    const owner = await rotateRefreshToken({
+      refreshToken: tokens.refresh_token,
+      clientId: client.clientId,
+      resource: null,
+    });
+    expect(owner.ok).toBe(false);
+  });
+
+  it("refuses an expired refresh token without rotating it", async () => {
+    const { client, tokens } = await mintedPair();
+    const refresh = store.oauthToken.find((t) => t.kind === "refresh");
+    expect(refresh).toBeTruthy();
+    refresh!.expiresAt = new Date(Date.now() - 1000);
+
+    const expired = await rotateRefreshToken({
+      refreshToken: tokens.refresh_token,
+      clientId: client.clientId,
+      resource: null,
+    });
+    expect(expired.ok).toBe(false);
+    if (expired.ok) return;
+    expect(expired.description).toMatch(/expired/i);
+    expect(refresh!.rotatedAt).toBeNull();
+  });
+});
+
+describe("access token authentication", () => {
+  it("never treats an API key or refresh token as an OAuth access token", () => {
+    expect(looksLikeOauthAccessToken("scl_live_abc")).toBe(false);
+    expect(looksLikeOauthAccessToken("sco_rt_abc")).toBe(false);
+    expect(looksLikeOauthAccessToken("sco_at_abc")).toBe(true);
+    expect(looksLikeOauthAccessToken(null)).toBe(false);
+  });
+
+  it("resolves a live access token and refuses expired, revoked, or refresh material", async () => {
+    const { client, code } = await approvedCode({ scopes: ["mcp"], clientScopes: ["mcp"] });
+    const first = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: client.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    if (!first.ok) throw new Error("expected the exchange to succeed");
+
+    const live = await authenticateOauthAccessToken(first.tokens.access_token);
+    expect(live).not.toBeNull();
+    expect(live?.clientId).toBe(client.clientId);
+    expect(hasScope(live!, "mcp")).toBe(true);
+
+    expect(await authenticateOauthAccessToken(first.tokens.refresh_token)).toBeNull();
+
+    const access = store.oauthToken.find((t) => t.kind === "access");
+    access!.expiresAt = new Date(Date.now() - 1000);
+    expect(await authenticateOauthAccessToken(first.tokens.access_token)).toBeNull();
+
+    access!.expiresAt = new Date(Date.now() + 60_000);
+    store.oauthGrant[0]!.revokedAt = new Date();
+    expect(await authenticateOauthAccessToken(first.tokens.access_token)).toBeNull();
+  });
+
+  it("does not grant MCP to a token that only holds crm:read", async () => {
+    const { client, code } = await approvedCode();
+    const first = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: client.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    if (!first.ok) throw new Error("expected the exchange to succeed");
+    const ctx = await authenticateOauthAccessToken(first.tokens.access_token);
+    expect(ctx).not.toBeNull();
+    expect(hasScope(ctx!, "mcp")).toBe(false);
+    expect(hasScope(ctx!, "crm:read")).toBe(true);
+  });
+});
+
+describe("userinfo workspace claim", () => {
+  it("reports the shared workspace and membership role, not the personal account", async () => {
+    const client = await seedClient(["openid", "profile"]);
+    const userId = await seedUser();
+    const workspaceId = randomUUID();
+    store.user.push({
+      id: workspaceId,
+      clerkId: `org_${workspaceId}`,
+      email: "team@example.com",
+      firstName: "Acme",
+      lastName: null,
+      imageUrl: null,
+      accountType: "workspace",
+      updatedAt: new Date(),
+    });
+    store.teamMember.push({ workspaceId, userId, role: "admin" });
+
+    const code = await issueAuthorizationCode({
+      clientRowId: client.rowId,
+      userId,
+      accountId: workspaceId,
+      scopes: ["openid", "profile"],
+      redirectUri: REDIRECT_URI,
+      codeChallenge: CHALLENGE,
+      resource: null,
+    });
+    const tokens = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: client.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    if (!tokens.ok) throw new Error("expected the exchange to succeed");
+
+    const res = await userinfoRoute(
+      new Request("https://tryscalar.xyz/oauth/userinfo", {
+        headers: { authorization: `Bearer ${tokens.tokens.access_token}` },
+      }),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { workspace: { id: string; type: string; role: string; name: string } };
+    expect(body.workspace).toMatchObject({
+      id: workspaceId,
+      type: "workspace",
+      role: "admin",
+      name: "Acme",
+    });
+  });
+});
+
+describe("POST /oauth/register", () => {
+  function register(body: unknown): Request {
+    return new Request("https://tryscalar.xyz/oauth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("rejects http non-loopback, javascript, and empty redirect lists", async () => {
+    const http = await registerRoute(register({ redirect_uris: ["http://evil.example.com/cb"] }));
+    expect(http.status).toBe(400);
+
+    const script = await registerRoute(register({ redirect_uris: ["javascript:alert(1)"] }));
+    expect(script.status).toBe(400);
+
+    const empty = await registerRoute(register({}));
+    expect(empty.status).toBe(400);
+    expect(store.oauthClient).toHaveLength(0);
+  });
+
+  it("drops unknown scopes and defaults an empty request to the standard set", async () => {
+    const named = await registerRoute(
+      register({
+        client_name: "Desk",
+        redirect_uris: ["https://desk.example.com/cb", "http://localhost:8787/cb"],
+        scope: "openid admin crm:write",
+      }),
+    );
+    expect(named.status).toBe(201);
+    const namedBody = (await named.json()) as { scope: string; redirect_uris: string[] };
+    expect(namedBody.scope.split(" ")).toEqual(["openid", "crm:write"]);
+    expect(namedBody.redirect_uris).toEqual(["https://desk.example.com/cb", "http://localhost:8787/cb"]);
+
+    const defaults = await registerRoute(register({ redirect_uris: ["https://app.example.com/cb"] }));
+    const defaultsBody = (await defaults.json()) as { scope: string; client_name: string };
+    expect(defaultsBody.scope).toBe(DEFAULT_SCOPES.join(" "));
+    expect(defaultsBody.client_name).toBe("Unnamed client");
+  });
+});
+
+describe("POST /oauth/token", () => {
+  it("refuses an unsupported grant_type", async () => {
+    const res = await tokenRoute(
+      new Request("https://tryscalar.xyz/oauth/token", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ grant_type: "password", username: "ana", password: "x" }).toString(),
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("unsupported_grant_type");
+  });
+});
+
+describe("POST /oauth/authorize/decide", () => {
+  function decideForm(fields: Record<string, string>): Request {
+    const fd = new FormData();
+    for (const [key, value] of Object.entries(fields)) fd.set(key, value);
+    return new Request("https://tryscalar.xyz/oauth/authorize/decide", { method: "POST", body: fd });
+  }
+
+  it("refuses to share a workspace the signer is not a member of", async () => {
+    const client = await seedClient();
+    const userId = await seedUser();
+    authMock.mockResolvedValue({ userId: `user_${userId}` });
+    getAuthContextMock.mockResolvedValue({ actor: { id: userId } });
+
+    const signed = signConsentTicket({
+      userId,
+      clientRowId: client.rowId,
+      redirectUri: REDIRECT_URI,
+      scopes: ["openid"],
+      codeChallenge: CHALLENGE,
+    });
+    const res = await decideRoute(
+      decideForm({ ticket: signed, decision: "approve", accountId: randomUUID() }),
+    );
+    expect(res.status).toBe(403);
+    expect(store.oauthGrant).toHaveLength(0);
+    expect(store.oauthAuthCode).toHaveLength(0);
+  });
+
+  it("refuses a ticket presented by a different session", async () => {
+    const client = await seedClient();
+    const userId = await seedUser();
+    authMock.mockResolvedValue({ userId: "user_other" });
+    getAuthContextMock.mockResolvedValue({ actor: { id: "someone-else" } });
+
+    const signed = signConsentTicket({
+      userId,
+      clientRowId: client.rowId,
+      redirectUri: REDIRECT_URI,
+      scopes: ["openid"],
+      codeChallenge: CHALLENGE,
+    });
+    const res = await decideRoute(decideForm({ ticket: signed, decision: "approve", accountId: userId }));
+    expect(res.status).toBe(403);
+    expect(store.oauthGrant).toHaveLength(0);
+  });
+
+  it("redirects deny to the bound URI with access_denied and mints no code", async () => {
+    const client = await seedClient();
+    const userId = await seedUser();
+    authMock.mockResolvedValue({ userId: `user_${userId}` });
+    getAuthContextMock.mockResolvedValue({ actor: { id: userId } });
+
+    const signed = signConsentTicket({
+      userId,
+      clientRowId: client.rowId,
+      redirectUri: REDIRECT_URI,
+      scopes: ["openid"],
+      codeChallenge: CHALLENGE,
+      state: "xyz",
+    });
+    const res = await decideRoute(decideForm({ ticket: signed, decision: "deny", accountId: userId }));
+    expect(res.status).toBe(303);
+    const location = res.headers.get("location") ?? "";
+    expect(location.startsWith(REDIRECT_URI)).toBe(true);
+    expect(location).toContain("error=access_denied");
+    expect(location).toContain("state=xyz");
+    expect(location).not.toContain("code=");
+    expect(store.oauthGrant).toHaveLength(0);
+  });
+
+  it("mints a code bound to a workspace the signer belongs to", async () => {
+    const client = await seedClient();
+    const userId = await seedUser();
+    const workspaceId = randomUUID();
+    store.teamMember.push({ workspaceId, userId, role: "member" });
+    authMock.mockResolvedValue({ userId: `user_${userId}` });
+    getAuthContextMock.mockResolvedValue({ actor: { id: userId } });
+
+    const signed = signConsentTicket({
+      userId,
+      clientRowId: client.rowId,
+      redirectUri: REDIRECT_URI,
+      scopes: ["mcp"],
+      codeChallenge: CHALLENGE,
+    });
+    const res = await decideRoute(
+      decideForm({ ticket: signed, decision: "approve", accountId: workspaceId }),
+    );
+    expect(res.status).toBe(303);
+    const location = new URL(res.headers.get("location") ?? "");
+    const code = location.searchParams.get("code");
+    expect(code).toMatch(/^sco_ac_/);
+    expect(store.oauthGrant[0]).toMatchObject({ accountId: workspaceId, userId, scopes: ["mcp"] });
   });
 });

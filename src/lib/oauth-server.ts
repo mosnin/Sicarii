@@ -60,6 +60,20 @@ export function narrowScopes(requested: string[], allowed: string[]): string[] {
   return requested.filter((s) => ceiling.has(s) && SUPPORTED_SCOPES.includes(s));
 }
 
+/**
+ * What the consent screen actually offers.
+ *
+ * A client that asks for nothing gets DEFAULT_SCOPES, narrowed to what it
+ * registered. A client whose registered set has nothing in common with the
+ * default (an MCP-only client, say) gets its own set rather than an empty
+ * grant it cannot use. Unknown or unregistered scopes are dropped.
+ */
+export function resolveRequestedScopes(requested: string[], clientScopes: string[]): string[] {
+  if (requested.length) return narrowScopes(requested, clientScopes);
+  const defaults = narrowScopes(DEFAULT_SCOPES, clientScopes);
+  return defaults.length ? defaults : narrowScopes(clientScopes, clientScopes);
+}
+
 /* ------------------------------ secret material --------------------------- */
 
 const CODE_PREFIX = "sco_ac_";

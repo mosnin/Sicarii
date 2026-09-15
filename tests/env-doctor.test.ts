@@ -66,4 +66,15 @@ describe("runEnvDoctor", () => {
     expect(text).toContain("Scalar environment doctor");
     expect(text).toContain("Summary:");
   });
+
+  it("reports the OAuth consent secret as missing, partial, or pass", () => {
+    expect(findCheck(runEnvDoctor({}), "OAuth consent signing secret").status).toBe("missing");
+    expect(
+      findCheck(runEnvDoctor({ MCP_OAUTH_SECRET: "mcp-secret" }), "OAuth consent signing secret").status,
+    ).toBe("partial");
+    expect(
+      findCheck(runEnvDoctor({ OAUTH_CONSENT_SECRET: "consent-secret" }), "OAuth consent signing secret")
+        .status,
+    ).toBe("pass");
+  });
 });
