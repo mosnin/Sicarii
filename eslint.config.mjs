@@ -33,6 +33,13 @@ const eslintConfig = defineConfig([
     "src/components/ui/pagination.tsx",
     "src/components/ui/radio-group.tsx",
     "src/components/ui/sidebar.tsx",
+    // Vendored Forge UI illustration set (@forgeui registry), installed as the
+    // source library for the logged-out site's illustrations. Unreachable from
+    // any page; the adapted, token-correct versions actually rendered live in
+    // src/components/marketing/illustrations/ and are NOT ignored. Kept intact
+    // so upstream stays diffable — see illustration.md for the catalog and the
+    // adaptation contract. Prune deliberately when a wave lands or is dropped.
+    "src/components/forgeui/**",
   ]),
 ]);
 

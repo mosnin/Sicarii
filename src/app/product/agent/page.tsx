@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { FeaturePage } from "@/components/marketing/feature-page";
+import {
+  IllustrationFrame,
+  AgentHandoff,
+} from "@/components/marketing/illustrations";
 
 export const metadata: Metadata = {
   title: "The agent | Scalar",
@@ -32,6 +36,14 @@ export default function AgentPage() {
           body: "Connected agents can top up usage and buy a plan in USDC over HTTP, with no human in the loop, so autonomous workflows never stall on a billing wall.",
         },
       ]}
+      illustration={
+        <IllustrationFrame
+          claim="Your agent already knows how to use it."
+          detail="Connect over MCP in minutes, authenticated as you — no plugin to build, no data handed to anyone else."
+        >
+          <AgentHandoff />
+        </IllustrationFrame>
+      }
       ctaTitle="Put an agent on it."
     />
   );

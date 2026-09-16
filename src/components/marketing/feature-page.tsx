@@ -29,6 +29,12 @@ export type FeaturePageProps = {
   subtitle: string;
   blocks: FeatureBlock[];
   steps?: FeatureStep[];
+  /**
+   * The proof, shown immediately under the hero: one illustration that lets a
+   * visitor see the promise land before they read a single block. One per
+   * page — a second one competes with it and both get scrolled past.
+   */
+  illustration?: React.ReactNode;
   /** Optional extra content rendered after the steps, before the CTA. */
   extra?: React.ReactNode;
   ctaTitle: string;
@@ -42,6 +48,7 @@ export function FeaturePage({
   subtitle,
   blocks,
   steps,
+  illustration,
   extra,
   ctaTitle,
 }: FeaturePageProps) {
@@ -87,6 +94,8 @@ export function FeaturePage({
             </div>
           </motion.div>
         </section>
+
+        {illustration}
 
         {/* In-depth blocks */}
         <section className="pb-4">

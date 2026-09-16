@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { FeaturePage } from "@/components/marketing/feature-page";
+import {
+  IllustrationFrame,
+  OwnYourData,
+} from "@/components/marketing/illustrations";
 
 export const metadata: Metadata = {
   title: "Why Scalar | Scalar",
@@ -32,6 +36,14 @@ export default function WhyScalarPage() {
           body: "Discovery, enrichment, and intent signals are part of the system, not a pile of integrations you wire together and babysit.",
         },
       ]}
+      illustration={
+        <IllustrationFrame
+          claim="One place your agents can't outgrow, and you can walk away with."
+          detail="Typed records instead of scattered notes: exportable any time, never resold, never used to train someone else's model."
+        >
+          <OwnYourData />
+        </IllustrationFrame>
+      }
       ctaTitle="Give agent work a home it never forgets."
     />
   );
