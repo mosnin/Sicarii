@@ -13,10 +13,13 @@ pnpm install --no-frozen-lockfile
 pnpm dev
 ```
 
-- `pnpm build` runs `prisma db push` first: it connects to the database in
-  `POSTGRES_PRISMA_URL` / `POSTGRES_URL_NON_POOLING` and applies the schema
-  (additive; it refuses destructive changes without an explicit flag - never
-  add `--accept-data-loss` casually).
+- `pnpm build` compiles the app only. It no longer runs `prisma db push`: the
+  preflight needed `POSTGRES_URL_NON_POOLING` at build time, which preview
+  deploys do not have, so every deploy failed before Next ever compiled.
+- **Apply schema changes deliberately, before releasing anything that depends
+  on them:** `pnpm db:deploy` (or `pnpm db:push`) against the target database.
+  It is additive and refuses destructive changes without an explicit flag -
+  never add `--accept-data-loss` casually.
 - `pnpm lint`, `pnpm test` (vitest), `npx tsc --noEmit` before shipping.
 
 ## Environment doctor

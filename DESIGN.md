@@ -235,8 +235,9 @@ The signed-in shell owns navigation in three modes, persisted to `localStorage`
   `next/og` `ImageResponse`). Verify APIs against installed Next; don't assume ≤14.
 - **DB:** Prisma on Supabase. Datasource reads the **Supabase Vercel integration**
   names — `POSTGRES_PRISMA_URL` (pooled) + `POSTGRES_URL_NON_POOLING` (direct) — not a
-  custom `DATABASE_URL`. Build runs `prisma db push` (schema auto-applies on deploy);
-  prefer additive/idempotent schema changes.
+  custom `DATABASE_URL`. The build no longer pushes schema — run `pnpm db:deploy`
+  deliberately before releasing a schema-dependent feature; prefer
+  additive/idempotent schema changes.
 - **Auth:** Clerk via `proxy.ts`; the DB `User` row **auto-provisions** on first
   authenticated request (`getDbUser` / `getAuthenticatedUser`) — no hard webhook
   dependency. Roles `member` / `team` / `admin`; `isStaff = admin || team`.

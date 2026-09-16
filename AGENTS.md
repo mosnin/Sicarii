@@ -48,6 +48,7 @@ Don't assume Next ≤14 APIs - verify against the installed version. In particul
 middleware is `src/proxy.ts` (not `middleware.ts`); dynamic route `params` are a
 `Promise` (await them); theme-color comes from `export const viewport`; icons/manifest
 use file conventions (`app/manifest.ts`, `app/apple-icon.tsx` via `next/og`).
-The build runs `prisma db push` (schema auto-applies on deploy); to build locally
-without the DB preflight use `./node_modules/.bin/next build`. Verify changes with
+The build compiles the app and does not change database schema. Apply reviewed
+schema changes separately with `pnpm db:deploy` before releasing a feature that
+depends on them. Verify changes with
 `./node_modules/.bin/eslint <files>` + a build before committing.
