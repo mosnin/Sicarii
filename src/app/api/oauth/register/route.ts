@@ -11,6 +11,16 @@ function clientIp(req: Request): string {
   return (req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown").trim();
 }
 
+function isHttpsOrLoopback(uri: string): boolean {
+  try {
+    const url = new URL(uri);
+    if (url.protocol === "https:") return true;
+    return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+  } catch {
+    return false;
+  }
+}
+
 // OAuth 2.0 Dynamic Client Registration (RFC 7591). We register PKCE public
 // clients statelessly: the client_id is opaque and PKCE secures the exchange,
 // so no client table is needed. Echoes back the client's metadata.
@@ -34,8 +44,19 @@ export async function POST(req: Request) {
   // /authorize can verify a redirect_uri belongs to this client before ever
   // redirecting to it (no client table needed).
   const redirectUris = Array.isArray(body.redirect_uris)
-    ? body.redirect_uris.filter((u): u is string => typeof u === "string").slice(0, 10)
+    ? body.redirect_uris
+        .filter((u): u is string => typeof u === "string" && isHttpsOrLoopback(u))
+        .slice(0, 10)
     : [];
+  if (redirectUris.length === 0) {
+    return Response.json(
+      {
+        error: "invalid_redirect_uri",
+        error_description: "At least one https (or http loopback) redirect_uri is required",
+      },
+      { status: 400, headers: cors },
+    );
+  }
   const clientId = await signClientId(redirectUris);
 
   return Response.json(
