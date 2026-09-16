@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { FeaturePage } from "@/components/marketing/feature-page";
+import {
+  IllustrationFrame,
+  SignalStack,
+} from "@/components/marketing/illustrations";
 
 export const metadata: Metadata = {
   title: "Intent signals | Scalar",
@@ -33,6 +37,14 @@ export default function SignalsPage() {
           body: "Monitors are scoped to the segment you care about, so what surfaces is relevant demand, not noise.",
         },
       ]}
+      illustration={
+        <IllustrationFrame
+          claim="You hear about the budget before the market does."
+          detail="Always-on monitors watch funding, hiring and tech changes, and write the ones worth a first line straight into your pipeline."
+        >
+          <SignalStack />
+        </IllustrationFrame>
+      }
       ctaTitle="Catch demand as it forms."
     />
   );

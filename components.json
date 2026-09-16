@@ -23,6 +23,12 @@
     "@componentry": "https://componentry.fun/r/{name}.json",
     "@ncdai": "https://chanhdai.com/r/{name}.json",
     "@bklit": "https://ui.bklit.com/r/{name}.json",
-    "@shark": "https://shark.vini.one/r/{name}.json"
+    "@shark": "https://shark.vini.one/r/{name}.json",
+    "@forgeui": {
+      "url": "https://forgeui.in/r/{name}.json",
+      "headers": {
+        "Authorization": "Bearer ${FORGEUI_API_TOKEN}"
+      }
+    }
   }
 }

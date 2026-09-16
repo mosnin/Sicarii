@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { FeaturePage } from "@/components/marketing/feature-page";
+import {
+  IllustrationFrame,
+  DiscoverResearch,
+} from "@/components/marketing/illustrations";
 
 export const metadata: Metadata = {
   title: "Discover | Scalar",
@@ -32,6 +36,14 @@ export default function DiscoverPage() {
           body: "Discovery surfaces the decision makers inside each company, so you start a relationship with a named contact instead of a blank account.",
         },
       ]}
+      illustration={
+        <IllustrationFrame
+          claim="You describe the market. The list builds itself."
+          detail="Real companies and the people inside them — each one checked against your CRM by domain before anything is written."
+        >
+          <DiscoverResearch />
+        </IllustrationFrame>
+      }
       ctaTitle="Let your agent build the list."
     />
   );

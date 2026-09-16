@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { FeaturePage } from "@/components/marketing/feature-page";
+import {
+  IllustrationFrame,
+  EnrichScan,
+} from "@/components/marketing/illustrations";
 
 export const metadata: Metadata = {
   title: "Enrich | Scalar",
@@ -32,6 +36,14 @@ export default function EnrichPage() {
           body: "Enrichment spends credits only when it actually returns data. A miss costs nothing, so coverage gaps never cost you.",
         },
       ]}
+      illustration={
+        <IllustrationFrame
+          claim="Every field filled — and you can see where it came from."
+          detail="Scalar reads the source, writes the value, and keeps the receipt, so you never act on a number you can't trace."
+        >
+          <EnrichScan />
+        </IllustrationFrame>
+      }
       ctaTitle="Make every record complete."
     />
   );
