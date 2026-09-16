@@ -263,17 +263,39 @@ from any page and tree-shaken out of the bundle, listed in the vendored-ignore
 block in `eslint.config.mjs` — the same pattern the shark kit and the chart
 engine already use.
 
-**To adopt one:** copy it into `src/components/marketing/illustrations/`, run
-the §4 contract against the copy, render it inside `IllustrationFrame`, and
-leave the original untouched so upstream stays diffable. Never edit a file
-while it is still in the ignore list.
+**To adopt one — the method, and it is not optional:**
+
+1. **Copy the vendor file verbatim** into
+   `src/components/marketing/illustrations/`.
+2. **Edit only content and colour** in the copy: strings, data arrays, icon
+   imports, `neutral-*` → tokens, foreign accent → `--primary`, fade masks →
+   `var(--card)`.
+3. Swap the component's private `FitScale` for the shared one, add the
+   reduced-motion branch, and resize the canvas if our copy is longer than the
+   vendor's.
+4. Render it inside `IllustrationFrame`. Leave the original untouched so
+   upstream stays diffable.
+
+> **Never reimplement an illustration from scratch.** The library is bought for
+> its craft — `notification-stack` is a 30-step GSAP timeline with a travelling
+> cursor; `pagescan` is a card grid, a scan beam and a ten-blade spinner;
+> `agentresearch` carries specific shadow and gradient work. Hand-writing
+> something that merely echoes the composition throws all of that away and
+> produces a worse illustration that also no longer tracks upstream. If a
+> component genuinely cannot be bent to `DESIGN.md`, drop it and pick another —
+> do not rebuild it.
 
 ### What the originals actually cost
 
 Findings from wave one, so the next adoption budgets for them:
 
-- **Zero props.** Every component is a hardcoded scene. "Adapting" is editing
-  content, not passing data.
+- **Mostly zero props.** Most are hardcoded scenes, so adapting means editing
+  strings in place. `notification-stack` is the exception — it accepts
+  `notificationCardItems`, so its signals are passed as data.
+- **`text-primary` is a trap.** Several components use it for *body copy*. In
+  Scalar `--primary` is baby blue, so importing them unedited paints every
+  label blue. Route body copy back to `text-foreground` /
+  `text-muted-foreground` and keep `--primary` for the one focal element.
 - **Each ships its own private `FitScale` copy.** The adapted set shares one
   (`illustrations/fit-scale.tsx`). Delete the duplicate on adoption.
 - **`export-flow` had a real bug:** its `useEffect` had no dependency array, so
