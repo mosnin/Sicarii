@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * Discover — Forge UI `agentresearch`, adapted.
+ * Discover - Forge UI `agentresearch`, adapted.
  *
  * A copy of the vendor component with its layout, shadows and pulse animation
  * intact; only content and colour changed. The stock version resolves to two
  * blog articles, which is the exact thing Discover promises never to return,
  * so the results are company records and one of them is a dedupe skip.
- * Company names are invented — naming real businesses would read as a claim
+ * Company names are invented - naming real businesses would read as a claim
  * about whose CRM they are in.
  */
 
@@ -82,7 +82,7 @@ export function DiscoverResearch() {
           <div className="flex flex-col items-end">
             <div className="w-fit max-w-90 rounded-2xl rounded-br-sm bg-muted px-4 py-3 border border-border">
               <p className="text-sm leading-relaxed text-foreground">
-                Find Series A fintechs in the UK hiring RevOps.
+                Series B fintech in New York, hiring RevOps.
               </p>
             </div>
           </div>
@@ -93,7 +93,7 @@ export function DiscoverResearch() {
           </div>
 
           <p className="mt-3 text-[13.5px] leading-[1.55] text-muted-foreground">
-            On it — real companies only, each checked against your CRM by
+            On it - real companies only, each checked against your CRM by
             domain before anything is written.
           </p>
 
@@ -101,22 +101,22 @@ export function DiscoverResearch() {
             <div className="flex w-full gap-2.5 border-b px-4 py-3">
               <Search className="size-4.5 shrink-0 text-muted-foreground" />
               <span className="truncate text-[13.5px] text-foreground">
-                Series A · fintech · United Kingdom · hiring RevOps
+                Series B · fintech · New York · hiring RevOps
               </span>
             </div>
 
             <div className="mt-2 space-y-3.5 px-4">
               <Result
-                title="Ledgerline — ledgerline.co.uk"
-                subtitle="Fintech · London · 180 staff · Series A — added with 4 contacts."
+                title="Northwind Pay  ·  northwindpay.com"
+                subtitle="Payments · New York · 180 staff · Series B. Added with 4 contacts."
               />
               <Result
-                title="Northbank Pay — northbankpay.com"
-                subtitle="Payments · Manchester · 94 staff · Series A — added with 2 contacts."
+                title="Cedar Capital  ·  cedarcapital.co"
+                subtitle="Fintech · New York · 94 staff · Series B. Added with 2 contacts."
               />
               <Result
-                title="Vaultpay — vaultpay.io"
-                subtitle="Already in your CRM — skipped, not duplicated."
+                title="Ledgerline  ·  ledgerline.io"
+                subtitle="Already in your CRM. Skipped, not duplicated."
               />
             </div>
           </div>

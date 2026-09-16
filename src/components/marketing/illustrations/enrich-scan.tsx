@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Enrich — Forge UI `pagescan`, adapted.
+ * Enrich - Forge UI `pagescan`, adapted.
  *
  * Vendor component kept whole: the card grid, the travelling scan beam and the
  * ten-blade spinner are all original. Its red and amber ambient orbs are now
  * the one brand accent, the beam pulses baby blue, and the status pill ends on
- * the fields produced rather than on "Scanning page…" — the apparatus is our
+ * the fields produced rather than on "Scanning page…" - the apparatus is our
  * problem, the filled fields are the customer's benefit.
  */
 
@@ -85,6 +85,9 @@ export function EnrichScan() {
             <span className="size-2 rounded-full bg-muted-foreground/25" />
             <span className="size-2 rounded-full bg-muted-foreground/25" />
             <span className="size-2 rounded-full bg-muted-foreground/25" />
+            <span className="ml-2 truncate text-[11px] text-muted-foreground">
+              northwindpay.com
+            </span>
           </div>
 
           <div className="relative flex-1 overflow-hidden px-6 py-4">

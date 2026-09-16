@@ -11,6 +11,10 @@ import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { UsageEstimator } from "@/components/marketing/usage-estimator";
 import Border2 from "@/components/pixel-perfect/border2";
+import {
+  IllustrationFrame,
+  ThreeStepsLive,
+} from "@/components/marketing/illustrations";
 
 // Launch sale: list price is 2x the live price, struck through. Set SALE=false
 // to end it (prices then show at their live value with no strike-through).
@@ -146,6 +150,13 @@ export default function PricingPage() {
             </p>
           </div>
         </section>
+
+        <IllustrationFrame
+          claim="You are four steps from a CRM that fills itself."
+          detail="No import, no schema to design, no onboarding call. Connect your agent, say who you sell to, and the records start landing."
+        >
+          <ThreeStepsLive />
+        </IllustrationFrame>
 
         {/* Plan cards */}
         <section className="-mt-8 pb-8">

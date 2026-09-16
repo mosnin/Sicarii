@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { FeaturePage } from "@/components/marketing/feature-page";
 import { AgentCircuitSection } from "@/components/sections/agent-circuit";
+import {
+  IllustrationFrame,
+  RecordPipeline,
+} from "@/components/marketing/illustrations";
 
 export const metadata: Metadata = {
   title: "How it works | Scalar",
@@ -40,6 +44,14 @@ export default function HowItWorksPage() {
         },
       ]}
       extra={<AgentCircuitSection />}
+      illustration={
+        <IllustrationFrame
+          claim="Nothing reaches your CRM until it has been checked."
+          detail="Every candidate is tested for being a real company, matched against what you already have, then enriched. The ones that fail never land."
+        >
+          <RecordPipeline />
+        </IllustrationFrame>
+      }
       ctaTitle="Start in minutes."
     />
   );

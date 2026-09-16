@@ -38,7 +38,7 @@ export default function EnrichPage() {
       ]}
       illustration={
         <IllustrationFrame
-          claim="Every field filled — and you can see where it came from."
+          claim="Every field filled, and you can see where it came from."
           detail="Scalar reads the source, writes the value, and keeps the receipt, so you never act on a number you can't trace."
         >
           <EnrichScan />

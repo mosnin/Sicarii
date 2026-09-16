@@ -14,6 +14,11 @@ export type IllustrationFrameProps = {
   claim: string;
   /** The mechanism, one line, earned only after the claim has landed. */
   detail?: string;
+  /**
+   * Drop the outer section and its vertical rhythm, for placing the figure
+   * inside a section that already owns its spacing (a homepage band).
+   */
+  inline?: boolean;
   children: React.ReactNode;
 };
 
@@ -22,15 +27,21 @@ export type IllustrationFrameProps = {
  *
  * Centralising it is what keeps a set of third-party illustrations reading as
  * one system: one panel treatment, one entry animation, one reduced-motion
- * path, one accessibility contract. The illustration itself is decoration —
- * `aria-hidden` — because the claim beneath it is the content, and a screen
+ * path, one accessibility contract. The illustration itself is decoration -
+ * `aria-hidden` - because the claim beneath it is the content, and a screen
  * reader should get the argument without the scenery.
  */
-export function IllustrationFrame({ claim, detail, children }: IllustrationFrameProps) {
+export function IllustrationFrame({
+  claim,
+  detail,
+  inline,
+  children,
+}: IllustrationFrameProps) {
   const reduce = useReducedMotion();
+  const Wrapper = inline ? "div" : "section";
 
   return (
-    <section className="px-4 pb-4 pt-12 sm:px-6 sm:pt-16 lg:px-8">
+    <Wrapper className={inline ? "" : "px-4 pb-4 pt-12 sm:px-6 sm:pt-16 lg:px-8"}>
       <motion.figure
         initial={reduce ? false : { opacity: 0, y: 16, filter: "blur(5px)" }}
         whileInView={reduce ? undefined : { opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -58,6 +69,6 @@ export function IllustrationFrame({ claim, detail, children }: IllustrationFrame
           ) : null}
         </figcaption>
       </motion.figure>
-    </section>
+    </Wrapper>
   );
 }

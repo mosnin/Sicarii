@@ -39,7 +39,7 @@ export default function AgentPage() {
       illustration={
         <IllustrationFrame
           claim="Your agent already knows how to use it."
-          detail="Connect over MCP in minutes, authenticated as you — no plugin to build, no data handed to anyone else."
+          detail="Connect over MCP in minutes, authenticated as you. No plugin to build, no data handed to anyone else."
         >
           <AgentHandoff />
         </IllustrationFrame>
