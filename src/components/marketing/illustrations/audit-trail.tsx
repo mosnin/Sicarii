@@ -6,7 +6,7 @@ import React from "react";
 import { FitScale } from "./fit-scale";
 
 const CARD =
-  "border border-border bg-background shadow-sm";
+  "border border-border bg-card shadow-sm";
 
 const RULER_LEFT = 24;
 const RULER_RIGHT = 496;
@@ -144,15 +144,15 @@ export function AuditTrail() {
 
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 z-50 w-10 bg-linear-to-r from-white to-transparent dark:from-black"
+          className="pointer-events-none absolute inset-y-0 left-0 z-50 w-10 bg-linear-to-r from-[var(--card)] to-transparent dark:from-[var(--card)]"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 z-50 w-8 bg-linear-to-l from-white to-transparent dark:from-black"
+          className="pointer-events-none absolute inset-y-0 right-0 z-50 w-8 bg-linear-to-l from-[var(--card)] to-transparent dark:from-[var(--card)]"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-50 h-10 bg-linear-to-t from-white to-transparent dark:from-black"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-50 h-10 bg-linear-to-t from-[var(--card)] to-transparent dark:from-[var(--card)]"
         />
       </div>
     </FitScale>

@@ -156,6 +156,16 @@ bending the component toward `DESIGN.md`.
 - [ ] Brand marks shown are real, shipping integrations only
 
 **Wear Scalar's skin**
+- [ ] **Never `bg-background` inside the frame.** In dark, `--background`
+      (`#0A0A0A`) is *darker* than `--card` (`#141414`), so a panel on
+      `bg-background` sits inside the frame as a heavier black than the card
+      holding it, which nothing else in the UI does. Panels are `bg-card` with
+      `border-border`; `bg-muted` is the raised/recessed fill. This shipped
+      wrong across all nine illustrations once: check an illustration beside a
+      native card, not on its own.
+- [ ] No pure `white`/`black` gradient stops. Against a tinted card they read
+      as a cream or charcoal band that exists nowhere in the system. Use
+      `var(--card)`.
 - [ ] No `neutral-*`, no `#hex`, no foreign accent. Semantic tokens only:
       `bg-card` `bg-background` `bg-muted` `text-foreground`
       `text-muted-foreground` `border-border` `text-primary` `bg-primary`

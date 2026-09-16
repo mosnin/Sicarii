@@ -267,7 +267,7 @@ const GlowingBox = ({ icon, boxRef }: GlowingBoxProps) => {
       className={cn(
         "flex h-16 w-16 items-center justify-center rounded-md p-2",
         "border border-border",
-        "bg-background",
+        "bg-card",
       )}
     >
       {icon}

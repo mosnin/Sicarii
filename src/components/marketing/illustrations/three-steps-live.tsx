@@ -244,7 +244,7 @@ export const StepCard = ({
       <div className="relative h-[30.4px] w-3.5">
         <span
           ref={checkRef}
-          className="absolute inset-x-0 top-[2.5px] text-cyan-500 opacity-0"
+          className="absolute inset-x-0 top-[2.5px] text-primary opacity-0"
         >
           <IoIosCheckmarkCircle size={14} />
         </span>
@@ -261,7 +261,7 @@ export const StepCard = ({
         <div className="flex h-1.5 w-[90%] rounded-sm bg-muted">
           <span
             ref={progressRef}
-            className="h-full w-[0%] rounded-sm bg-cyan-500"
+            className="h-full w-[0%] rounded-sm bg-primary"
           />
         </div>
       </div>

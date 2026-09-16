@@ -61,7 +61,7 @@ export function EnrichScan() {
             ) : (
               <div
                 key={i}
-                className="rounded-2xl border border-border bg-background"
+                className="rounded-2xl border border-border bg-card"
               />
             ),
           )}
@@ -78,7 +78,7 @@ export function EnrichScan() {
         </div>
 
         <div
-          className="absolute flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm"
+          className="absolute flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm"
           style={{ top: 62, right: 80, bottom: 62, left: 80 }}
         >
           <div className="flex items-center gap-1.5 border-b border-border px-4 py-2.5">
@@ -106,7 +106,7 @@ export function EnrichScan() {
           </div>
         </div>
 
-        <div className="absolute bottom-11 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-background px-3.5 py-2 shadow-sm">
+        <div className="absolute bottom-11 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 shadow-sm">
           <Spinner />
           <span className="whitespace-nowrap text-xs font-medium text-foreground">
             Writing fields with provenance

@@ -261,7 +261,7 @@ export function SignalStack({
                 "absolute inset-x-0 top-25 mx-auto",
                 "flex h-8 w-35 items-center justify-between",
                 "rounded-sm border border-border",
-                "bg-background",
+                "bg-card",
               )}
             >
               <div className="relative top-0 left-0 h-full w-70 rounded-sm">
@@ -312,7 +312,7 @@ function Card({ innerRef, top, icon, title, description, time }: CardProps) {
     <div
       ref={innerRef}
       className={cn(
-        `absolute inset-x-0 mx-auto flex h-15 w-full max-w-72.5 scale-[0.5] items-center justify-between rounded-sm border border-border bg-background px-2 opacity-0 ${top}`,
+        `absolute inset-x-0 mx-auto flex h-15 w-full max-w-72.5 scale-[0.5] items-center justify-between rounded-sm border border-border bg-card px-2 opacity-0 ${top}`,
       )}
     >
       <div className="flex items-center gap-2.5">

@@ -74,7 +74,7 @@ const ExportFlowScene = () => {
           "absolute top-1/2",
           "left-1/2 -translate-x-1/2 -mt-8.75 flex items-center justify-center rounded-md px-[12.5px] py-[6.5px]",
           "border border-border text-xs text-foreground",
-          "bg-background",
+          "bg-card",
         )}
       >
         Export as CSV
@@ -312,7 +312,7 @@ const DocumentIcon = ({ className = "" }) => (
     <path
       fill="currentColor"
       stroke="currentColor"
-      className="stroke-border stroke-20 text-muted/60 dark:text-card"
+      className="stroke-border stroke-20 text-muted"
       d="M410 472H72V10h258l80 80z"
     />
     <path

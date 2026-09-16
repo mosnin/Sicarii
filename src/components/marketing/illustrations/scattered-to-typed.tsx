@@ -53,7 +53,7 @@ function ArrowIcon({ className }: { className?: string }) {
   );
 }
 
-const CARD = "border border-border bg-background shadow-sm";
+const CARD = "border border-border bg-card shadow-sm";
 
 const ROWS: [string, string][] = [
   ["Company", "Northwind Pay"],

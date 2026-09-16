@@ -97,7 +97,7 @@ export function DiscoverResearch() {
             domain before anything is written.
           </p>
 
-          <div className="mt-4 flex flex-col items-start gap-2.5 rounded-t-xl border border-b-0 border-border bg-background">
+          <div className="mt-4 flex flex-col items-start gap-2.5 rounded-t-xl border border-b-0 border-border bg-card">
             <div className="flex w-full gap-2.5 border-b px-4 py-3">
               <Search className="size-4.5 shrink-0 text-muted-foreground" />
               <span className="truncate text-[13.5px] text-foreground">
