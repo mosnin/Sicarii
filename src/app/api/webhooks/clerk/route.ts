@@ -93,21 +93,21 @@ export async function POST(req: Request) {
 
     if (type === "organization.created" || type === "organization.updated") {
       const orgId = data.id as string;
-      const name = (data.name as string | undefined) ?? "Team workspace";
+      const name = (data.name as string | undefined) ?? null;
       await prisma.user.upsert({
         where: { clerkId: orgId },
         create: {
           clerkId: orgId,
           accountType: "workspace",
           email: "",
-          firstName: name,
+          workspaceName: name,
           imageUrl: data.image_url as string | undefined,
           plan: "free",
           creditsRemaining: 200,
         },
         // Never touch plan/meter on update: the team keeps what it bought.
         update: {
-          firstName: name,
+          ...(name ? { workspaceName: name } : {}),
           imageUrl: data.image_url as string | undefined,
         },
       });

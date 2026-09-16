@@ -30,6 +30,10 @@ model User {
   // userId scoping every query already uses (see docs/engineering/
   // teams-plan-2026-07-11.md). Human-only flows (welcome, profile) gate on this.
   accountType      String    @default("user")
+  // Workspace rows only: the Clerk Organization's name, kept in sync by
+  // resolveWorkspace and the org webhook. Null on human rows and on workspace
+  // rows provisioned before this column existed (those fall back to firstName).
+  workspaceName    String?
   // Operator-authored context the agent reads (what you're selling) + a
   // connected AgentMail key for email. Both are per-user settings.
   productContext   String?   @db.Text

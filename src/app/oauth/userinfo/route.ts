@@ -1,6 +1,7 @@
 import { bearerFromRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { authenticateOauthAccessToken, hasAnyScope, USERINFO_SCOPES } from "@/lib/oauth-server";
+import { workspaceDisplayName } from "@/lib/workspace";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +28,10 @@ function unauthorized(description: string) {
  * say: identity comes from Clerk, so name/picture/email are whatever the person
  * signed up with. `workspace` is a Scalar claim, not a standard one: it says
  * which account the token actually reads, which for a team member is the shared
- * workspace row rather than their personal one.
+ * workspace row rather than their personal one. `org_id` / `org_name` repeat
+ * the workspace's id and name flat, in the shape agent clients such as Cadre
+ * read; they are absent for a personal token, which those clients treat as
+ * "no workspace chosen".
  *
  * Scope is enforced here, not just at issue time: a token without openid or
  * profile is refused even though it is perfectly valid elsewhere.
@@ -71,6 +75,7 @@ export async function GET(req: Request) {
 
   const profile = ctx.scopes.includes("profile");
   const email = ctx.scopes.includes("email");
+  const workspaceName = isWorkspace ? workspaceDisplayName(account) : name || account.email;
 
   return Response.json(
     {
@@ -85,10 +90,11 @@ export async function GET(req: Request) {
       ...(email && subject.email ? { email: subject.email } : {}),
       workspace: {
         id: account.id,
-        name: account.firstName ?? (isWorkspace ? "Team workspace" : name || account.email),
+        name: workspaceName,
         type: isWorkspace ? "workspace" : "personal",
         role: isWorkspace ? (membership?.role ?? "member") : "owner",
       },
+      ...(isWorkspace ? { org_id: account.id, org_name: workspaceName } : {}),
       scope: ctx.scopes.join(" "),
       client_id: ctx.clientId,
     },
