@@ -120,9 +120,11 @@ vi.mock("@/lib/prisma", () => ({
 
 import {
   AUTH_CODE_TTL_SECONDS,
+  authenticateOauthAccessToken,
   exchangeAuthorizationCode,
   hashSecret,
   issueAuthorizationCode,
+  looksLikeOauthAccessToken,
   matchRedirectUri,
   narrowScopes,
   registerClient,
@@ -554,6 +556,59 @@ describe("scopes", () => {
   it("never grants a scope the client is not allowed, or one this server does not know", () => {
     expect(narrowScopes(["openid", "crm:write", "admin"], ["openid", "crm:read"])).toEqual(["openid"]);
     expect(narrowScopes(["not-a-scope"], ["openid"])).toEqual([]);
+  });
+});
+
+describe("authenticateOauthAccessToken", () => {
+  async function mintedAccess(scopes = ["openid", "profile", "mcp"]) {
+    const { client, userId, code } = await approvedCode({ scopes, clientScopes: scopes });
+    const result = await exchangeAuthorizationCode({
+      code,
+      codeVerifier: VERIFIER,
+      clientId: client.clientId,
+      redirectUri: REDIRECT_URI,
+      resource: null,
+    });
+    if (!result.ok) throw new Error("expected the exchange to succeed");
+    return { ...result.tokens, userId, client };
+  }
+
+  it("ignores API keys and garbage so scl_ traffic never opens the OAuth tables", () => {
+    expect(looksLikeOauthAccessToken("scl_live_abc")).toBe(false);
+    expect(looksLikeOauthAccessToken("")).toBe(false);
+    expect(looksLikeOauthAccessToken(null)).toBe(false);
+    expect(looksLikeOauthAccessToken("sco_at_abc")).toBe(true);
+  });
+
+  it("returns the grant's user and account for a live access token", async () => {
+    const minted = await mintedAccess();
+    const ctx = await authenticateOauthAccessToken(minted.access_token);
+    expect(ctx).toMatchObject({
+      userId: minted.userId,
+      accountId: minted.userId,
+      scopes: ["openid", "profile", "mcp"],
+      clientId: minted.client.clientId,
+    });
+  });
+
+  it("returns null for a refresh token (wrong kind, and the prefix pre-filter)", async () => {
+    const minted = await mintedAccess();
+    expect(looksLikeOauthAccessToken(minted.refresh_token)).toBe(false);
+    expect(await authenticateOauthAccessToken(minted.refresh_token)).toBeNull();
+  });
+
+  it("returns null once the access token has expired", async () => {
+    const minted = await mintedAccess();
+    const row = store.oauthToken.find((t) => t.kind === "access");
+    expect(row).toBeTruthy();
+    row!.expiresAt = new Date(Date.now() - 1000);
+    expect(await authenticateOauthAccessToken(minted.access_token)).toBeNull();
+  });
+
+  it("returns null after the grant is revoked", async () => {
+    const minted = await mintedAccess();
+    await revokeByPresentedToken(minted.access_token, minted.client.clientId);
+    expect(await authenticateOauthAccessToken(minted.access_token)).toBeNull();
   });
 });
 
