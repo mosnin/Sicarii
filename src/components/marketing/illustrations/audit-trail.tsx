@@ -111,7 +111,7 @@ export function AuditTrail() {
             style={{ left: r.left, top: r.top, width: r.width }}
           >
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-medium tracking-tight text-foreground">
+              <p className="truncate text-[13px] tracking-tight text-foreground">
                 {r.title}
               </p>
               <p className="mt-0.5 text-[10px] font-medium text-muted-foreground tabular-nums">
@@ -136,7 +136,7 @@ export function AuditTrail() {
         />
 
         <div
-          className="absolute z-40 -translate-x-1/2 rounded-md bg-primary px-2.5 py-1 text-[10px] font-semibold tracking-wide text-primary-foreground shadow-sm"
+          className="absolute z-40 -translate-x-1/2 rounded-md bg-primary px-2.5 py-1 text-[10px] font-medium tracking-wide text-primary-foreground shadow-sm"
           style={{ left: playX, top: 6 }}
         >
           TODAY

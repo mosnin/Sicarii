@@ -224,7 +224,7 @@ function ProgressStep({
   checkRef,
 }: ProgressStepProps) {
   return (
-    <div className="flex items-center justify-between bg-muted px-2 py-1.5 text-[13px] font-medium text-foreground">
+    <div className="flex items-center justify-between bg-muted px-2 py-1.5 text-[13px] text-foreground">
       <p>{label}</p>
       <div className="relative">
         <svg width="20" height="20" className="-rotate-90">

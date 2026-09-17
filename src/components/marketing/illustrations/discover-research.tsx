@@ -64,7 +64,7 @@ const Result = ({ title, subtitle }: { title: string; subtitle: string }) => (
   <div className="flex items-start gap-2.5">
     <Branch className="mt-0.5 size-4 shrink-0 text-primary" />
     <div className="min-w-0 flex-1">
-      <p className="truncate text-[13px] font-medium text-foreground">
+      <p className="truncate text-[13px] text-foreground">
         {title}
       </p>
       <p className="mt-1 truncate text-[12px] text-muted-foreground">
@@ -97,8 +97,8 @@ export function DiscoverResearch() {
             domain before anything is written.
           </p>
 
-          <div className="mt-4 flex flex-col items-start gap-2.5 rounded-t-xl border border-b-0 border-border bg-card">
-            <div className="flex w-full gap-2.5 border-b px-4 py-3">
+          <div className="mt-4 flex flex-col items-start gap-2.5 rounded-xl border border-border bg-card">
+            <div className="flex w-full gap-2.5 border-b border-border px-4 py-3">
               <Search className="size-4.5 shrink-0 text-muted-foreground" />
               <span className="truncate text-[13.5px] text-foreground">
                 Series B · fintech · New York · hiring RevOps

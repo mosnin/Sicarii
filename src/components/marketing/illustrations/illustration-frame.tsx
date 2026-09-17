@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import Border2 from "@/components/pixel-perfect/border2";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -49,8 +48,6 @@ export function IllustrationFrame({
         transition={{ duration: 0.65, ease: EASE }}
         className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card shadow-sm"
       >
-        <Border2 />
-
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.10),transparent_60%)]"

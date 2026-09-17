@@ -80,11 +80,11 @@ export function ScatteredToTyped() {
           style={{ left: 178, top: 20, width: 280, height: 320 }}
         >
           <div className="flex items-center gap-3 px-5 pt-4">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[13px] font-semibold text-primary">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[13px] font-medium text-primary">
               AC
             </span>
             <div className="min-w-0">
-              <p className="text-[13.5px] font-semibold text-foreground">
+              <p className="text-[13.5px] text-foreground">
                 Ava Chen
               </p>
               <p className="mt-0.5 text-[11.5px] text-muted-foreground">
@@ -102,7 +102,7 @@ export function ScatteredToTyped() {
                 <span className="text-[12.5px] text-muted-foreground">
                   {label}
                 </span>
-                <span className="text-[12.5px] font-medium text-foreground">
+                <span className="text-[12.5px] text-foreground">
                   {value}
                 </span>
               </div>
