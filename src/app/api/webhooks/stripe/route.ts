@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PLANS, refillToAllotment } from "@/lib/credits";
-import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
+import { cancelOtherCustomerSubscriptions, planForPriceId, verifyStripeSignature } from "@/lib/stripe";
 import { maybeCleanupIdempotency } from "@/lib/maintenance";
 
 // Stripe billing webhook. Verifies the Stripe-Signature header against
@@ -17,7 +17,20 @@ type StripeObject = Record<string, unknown>;
 
 function customerIdOf(obj: StripeObject): string | undefined {
   const c = obj.customer;
-  return typeof c === "string" ? c : undefined;
+  if (typeof c === "string") return c;
+  if (c && typeof c === "object" && typeof (c as { id?: unknown }).id === "string") {
+    return (c as { id: string }).id;
+  }
+  return undefined;
+}
+
+function subscriptionIdOf(obj: StripeObject): string | undefined {
+  const s = obj.subscription;
+  if (typeof s === "string") return s;
+  if (s && typeof s === "object" && typeof (s as { id?: unknown }).id === "string") {
+    return (s as { id: string }).id;
+  }
+  return undefined;
 }
 
 // The Price id on a subscription's first line item, used to tell which plan a
@@ -105,12 +118,27 @@ async function applyStripeEvent(type: string, obj: StripeObject, eventId?: strin
       return;
     }
     const customerId = customerIdOf(obj);
+    const subscriptionId = subscriptionIdOf(obj);
     // Set plan + customer id; refill uses GREATEST so existing top-ups survive.
     await prisma.user.updateMany({
       where: { id: userId },
       data: { plan, ...(customerId ? { stripeCustomerId: customerId } : {}) },
     });
     await refillToAllotment(userId, plan, eventId);
+
+    // An upgrade Checkout creates a NEW subscription. Cancel the previous one
+    // on the same personal customer so the old plan stops billing. Skip
+    // workspace accounts: a member checkout must not be able to cancel the
+    // team's existing subscription via this path.
+    if (customerId && subscriptionId) {
+      const account = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { accountType: true },
+      });
+      if (account && account.accountType !== "workspace") {
+        await cancelOtherCustomerSubscriptions(customerId, subscriptionId);
+      }
+    }
     return;
   }
 
