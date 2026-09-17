@@ -501,6 +501,11 @@ ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "voiceEnabled" BOOLEAN NOT NULL DEF
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "voiceInboundSecret" TEXT;
 CREATE INDEX IF NOT EXISTS "users_voiceInboundSecret_idx" ON "users" ("voiceInboundSecret");
 
+-- 3c. Teams: the Clerk Organization's name on a workspace account row, so the
+--     consent picker and OAuth userinfo can name the workspace without
+--     overloading firstName. Additive, same pattern as 3b.
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "workspaceName" TEXT;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 4. Vector similarity index for memory recall. WITHOUT this, every agent turn
 --    does a full sequential scan of the user's memory_chunks and degrades

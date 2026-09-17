@@ -154,6 +154,8 @@ revoked token gets 401 with a `WWW-Authenticate` header.
   "updated_at": 1756852800,
   "email": "ana@example.com",
   "workspace": { "id": "9b2e...", "name": "Ruiz Dental", "type": "workspace", "role": "admin" },
+  "org_id": "9b2e...",
+  "org_name": "Ruiz Dental",
   "scope": "openid profile email",
   "client_id": "sco_cid_..."
 }
@@ -168,6 +170,10 @@ revoked token gets 401 with a `WWW-Authenticate` header.
   token actually reads, which for a team member is the shared workspace row
   rather than their personal one, plus their role in it. `type` is `personal` or
   `workspace`.
+- `org_id` and `org_name` repeat the workspace's id and name flat, for agent
+  clients (Cadre among them) that read `{ sub, org_id, org_name }`. They are
+  present only when the token is bound to a team workspace; a personal token
+  omits both, which such a client reads as "choose a workspace".
 
 Scalar does not issue `id_token`s, so there is no `jwks_uri` and this is not a
 full OpenID Connect provider. `openid` here means "may call userinfo".

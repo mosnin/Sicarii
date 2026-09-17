@@ -134,6 +134,7 @@ import {
 } from "@/lib/oauth-server";
 import { POST as revokeRoute } from "@/app/oauth/revoke/route";
 import { GET as userinfoRoute } from "@/app/oauth/userinfo/route";
+import { workspaceDisplayName } from "@/lib/workspace";
 
 /* --------------------------------- fixtures -------------------------------- */
 
@@ -160,14 +161,38 @@ async function seedUser() {
   return id;
 }
 
-async function approvedCode(opts?: { scopes?: string[]; clientScopes?: string[] }) {
+/** A team workspace row the human belongs to, the way resolveWorkspace mirrors it. */
+async function seedWorkspace(userId: string, row?: Partial<Row>) {
+  const id = randomUUID();
+  store.user.push({
+    id,
+    clerkId: `org_${id}`,
+    email: "",
+    firstName: null,
+    lastName: null,
+    imageUrl: null,
+    accountType: "workspace",
+    workspaceName: "Ruiz Dental",
+    updatedAt: new Date(),
+    ...row,
+  });
+  store.teamMember.push({ id: randomUUID(), workspaceId: id, userId, role: "admin" });
+  return id;
+}
+
+async function approvedCode(opts?: {
+  scopes?: string[];
+  clientScopes?: string[];
+  workspace?: Partial<Row>;
+}) {
   const client = await seedClient(opts?.clientScopes);
   const userId = await seedUser();
+  const accountId = opts?.workspace ? await seedWorkspace(userId, opts.workspace) : userId;
   const scopes = opts?.scopes ?? ["openid", "profile", "crm:read"];
   const code = await issueAuthorizationCode({
     clientRowId: client.rowId,
     userId,
-    accountId: userId,
+    accountId,
     scopes,
     redirectUri: REDIRECT_URI,
     codeChallenge: CHALLENGE,
@@ -490,8 +515,8 @@ describe("userinfo", () => {
     });
   }
 
-  async function accessTokenWith(scopes: string[]) {
-    const { client, code } = await approvedCode({ scopes, clientScopes: scopes });
+  async function accessTokenWith(scopes: string[], workspace?: Partial<Row>) {
+    const { client, code } = await approvedCode({ scopes, clientScopes: scopes, workspace });
     const result = await exchangeAuthorizationCode({
       code,
       codeVerifier: VERIFIER,
@@ -524,6 +549,37 @@ describe("userinfo", () => {
     expect(body.email).toBe("ana@example.com");
     expect(body.client_id).toBe(client.clientId);
     expect(body.workspace).toMatchObject({ id: store.user[0].id, type: "personal", role: "owner" });
+    // A personal token names no organization: agent clients read the absence
+    // as "choose a workspace".
+    expect(body).not.toHaveProperty("org_id");
+    expect(body).not.toHaveProperty("org_name");
+  });
+
+  it("names the workspace flat as org_id / org_name when the token is bound to one", async () => {
+    const { token } = await accessTokenWith(["openid", "profile"], {});
+    const res = await userinfoRoute(bearer(token));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    const workspaceId = store.user[1].id;
+    expect(body.sub).toBe(store.user[0].id);
+    expect(body.org_id).toBe(workspaceId);
+    expect(body.org_name).toBe("Ruiz Dental");
+    expect(body.workspace).toEqual({
+      id: workspaceId,
+      name: "Ruiz Dental",
+      type: "workspace",
+      role: "admin",
+    });
+  });
+
+  it("falls back to the legacy firstName, then a generic label, for a workspace with no stored name", async () => {
+    const legacy = await accessTokenWith(["openid"], { workspaceName: null, firstName: "Old Org" });
+    const legacyBody = (await (await userinfoRoute(bearer(legacy.token))).json()) as Record<string, unknown>;
+    expect(legacyBody.org_name).toBe("Old Org");
+
+    const bare = await accessTokenWith(["openid"], { workspaceName: null });
+    const bareBody = (await (await userinfoRoute(bearer(bare.token))).json()) as Record<string, unknown>;
+    expect(bareBody.org_name).toBe("Team workspace");
   });
 
   it("omits email when the token was not granted the email scope", async () => {
@@ -547,6 +603,14 @@ describe("userinfo", () => {
     await revokeRoute(form({ client_id: client.clientId, token }));
     const res = await userinfoRoute(bearer(token));
     expect(res.status).toBe(401);
+  });
+});
+
+describe("workspaceDisplayName", () => {
+  it("prefers the organization name, then firstName, and is never empty", () => {
+    expect(workspaceDisplayName({ workspaceName: "Ruiz Dental", firstName: "x" })).toBe("Ruiz Dental");
+    expect(workspaceDisplayName({ workspaceName: null, firstName: "Old Org" })).toBe("Old Org");
+    expect(workspaceDisplayName({ workspaceName: "", firstName: null })).toBe("Team workspace");
   });
 });
 

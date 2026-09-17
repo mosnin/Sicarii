@@ -15,6 +15,16 @@ export function roleFromClerk(orgRole?: string | null): string {
 }
 
 /**
+ * The name a workspace row shows: the Clerk Organization's name, falling back
+ * to firstName for rows provisioned before workspaceName existed. Never empty.
+ */
+export function workspaceDisplayName(
+  row: Pick<User, "workspaceName" | "firstName">,
+): string {
+  return row.workspaceName || row.firstName || "Team workspace";
+}
+
+/**
  * Get or provision the workspace account row for a Clerk Organization, and
  * make sure the acting human is mirrored as a member. Clerk only puts an orgId
  * in the session when the user belongs to that org, so membership here is a
@@ -32,12 +42,12 @@ export async function resolveWorkspace(opts: {
   const workspace = await prisma.user.upsert({
     where: { clerkId: orgId },
     // Keep the display name fresh; never touch plan or meter on update.
-    update: { ...(orgName ? { firstName: orgName } : {}) },
+    update: { ...(orgName ? { workspaceName: orgName } : {}) },
     create: {
       clerkId: orgId,
       accountType: "workspace",
       email: "",
-      firstName: orgName ?? "Team workspace",
+      workspaceName: orgName ?? null,
       plan: "free",
       creditsRemaining: 200,
     },
@@ -58,12 +68,12 @@ export async function resolveWorkspace(opts: {
 export async function listUserWorkspaces(userId: string) {
   const rows = await prisma.teamMember.findMany({
     where: { userId },
-    include: { workspace: { select: { id: true, firstName: true } } },
+    include: { workspace: { select: { id: true, workspaceName: true, firstName: true } } },
     orderBy: { createdAt: "asc" },
   });
   return rows.map((m) => ({
     workspaceId: m.workspace.id,
-    name: m.workspace.firstName ?? "Team workspace",
+    name: workspaceDisplayName(m.workspace),
     role: m.role,
   }));
 }
