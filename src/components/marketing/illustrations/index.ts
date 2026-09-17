@@ -4,3 +4,7 @@ export { EnrichScan } from "./enrich-scan";
 export { SignalStack } from "./signal-stack";
 export { AgentHandoff } from "./agent-handoff";
 export { OwnYourData } from "./own-your-data";
+export { ScatteredToTyped } from "./scattered-to-typed";
+export { RecordPipeline } from "./record-pipeline";
+export { AuditTrail } from "./audit-trail";
+export { ThreeStepsLive } from "./three-steps-live";

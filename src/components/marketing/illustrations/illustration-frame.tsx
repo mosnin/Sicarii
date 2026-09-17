@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import Border2 from "@/components/pixel-perfect/border2";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -14,6 +13,11 @@ export type IllustrationFrameProps = {
   claim: string;
   /** The mechanism, one line, earned only after the claim has landed. */
   detail?: string;
+  /**
+   * Drop the outer section and its vertical rhythm, for placing the figure
+   * inside a section that already owns its spacing (a homepage band).
+   */
+  inline?: boolean;
   children: React.ReactNode;
 };
 
@@ -22,15 +26,21 @@ export type IllustrationFrameProps = {
  *
  * Centralising it is what keeps a set of third-party illustrations reading as
  * one system: one panel treatment, one entry animation, one reduced-motion
- * path, one accessibility contract. The illustration itself is decoration —
- * `aria-hidden` — because the claim beneath it is the content, and a screen
+ * path, one accessibility contract. The illustration itself is decoration -
+ * `aria-hidden` - because the claim beneath it is the content, and a screen
  * reader should get the argument without the scenery.
  */
-export function IllustrationFrame({ claim, detail, children }: IllustrationFrameProps) {
+export function IllustrationFrame({
+  claim,
+  detail,
+  inline,
+  children,
+}: IllustrationFrameProps) {
   const reduce = useReducedMotion();
+  const Wrapper = inline ? "div" : "section";
 
   return (
-    <section className="px-4 pb-4 pt-12 sm:px-6 sm:pt-16 lg:px-8">
+    <Wrapper className={inline ? "" : "px-4 pb-4 pt-12 sm:px-6 sm:pt-16 lg:px-8"}>
       <motion.figure
         initial={reduce ? false : { opacity: 0, y: 16, filter: "blur(5px)" }}
         whileInView={reduce ? undefined : { opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -38,8 +48,6 @@ export function IllustrationFrame({ claim, detail, children }: IllustrationFrame
         transition={{ duration: 0.65, ease: EASE }}
         className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-border bg-card shadow-sm"
       >
-        <Border2 />
-
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.10),transparent_60%)]"
@@ -58,6 +66,6 @@ export function IllustrationFrame({ claim, detail, children }: IllustrationFrame
           ) : null}
         </figcaption>
       </motion.figure>
-    </section>
+    </Wrapper>
   );
 }

@@ -3,6 +3,10 @@
 import { motion } from "motion/react";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { DotGridSpotlight } from "@/components/dot-grid-spotlight";
+import {
+  IllustrationFrame,
+  ScatteredToTyped,
+} from "@/components/marketing/illustrations";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
@@ -90,6 +94,16 @@ export function ProblemSection() {
               </ul>
             </SpotlightCard>
           </motion.div>
+        </div>
+
+        <div className="mt-12">
+          <IllustrationFrame
+            inline
+            claim="The same research, written once, as a record you can use."
+            detail="A note in a folder becomes a typed contact: company, verified email, stage, and where every field came from."
+          >
+            <ScatteredToTyped />
+          </IllustrationFrame>
         </div>
       </div>
     </section>

@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
+import {
+  IllustrationFrame,
+  AuditTrail,
+} from "@/components/marketing/illustrations";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
@@ -66,6 +70,13 @@ export default function SecurityPage() {
             </p>
           </div>
         </section>
+
+        <IllustrationFrame
+          claim="Every write is on the record, with the source attached."
+          detail="Who changed what, when, and which provider it came from. Your agent works in the open, not in a black box."
+        >
+          <AuditTrail />
+        </IllustrationFrame>
 
         {/* Pillars */}
         <section className="py-20 sm:py-28">

@@ -4,7 +4,7 @@
  * Data you own, adapted from Forge UI `export-flow`.
  *
  * Recoloured off its green pulse onto the one brand accent, re-tokenised off
- * `neutral-*`, and labelled with the record types Scalar actually stores — so
+ * `neutral-*`, and labelled with the record types Scalar actually stores - so
  * the picture argues the page's hardest claim (a single source of truth you
  * can take with you) instead of showing five anonymous files. Its interval had
  * no dependency array and re-armed on every render; it is armed once here.
@@ -74,7 +74,7 @@ const ExportFlowScene = () => {
           "absolute top-1/2",
           "left-1/2 -translate-x-1/2 -mt-8.75 flex items-center justify-center rounded-md px-[12.5px] py-[6.5px]",
           "border border-border text-xs text-foreground",
-          "bg-background",
+          "bg-card",
         )}
       >
         Export as CSV
@@ -312,7 +312,7 @@ const DocumentIcon = ({ className = "" }) => (
     <path
       fill="currentColor"
       stroke="currentColor"
-      className="stroke-border stroke-20 text-muted/60 dark:text-card"
+      className="stroke-border stroke-20 text-muted"
       d="M410 472H72V10h258l80 80z"
     />
     <path

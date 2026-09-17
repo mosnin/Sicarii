@@ -10,7 +10,7 @@ const useIsoLayoutEffect =
  *
  * Every Forge UI illustration ships its own private copy of this helper; we
  * keep exactly one so the adapted set shares a single measuring path and a
- * single behaviour at mobile widths (shrink to fit, never overflow — the
+ * single behaviour at mobile widths (shrink to fit, never overflow - the
  * horizontal lock in DESIGN.md §8 has no tolerance for a full-bleed child).
  */
 export function FitScale({

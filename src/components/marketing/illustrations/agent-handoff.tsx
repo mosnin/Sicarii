@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Bring your own agent — Forge UI `handoffmenu`, adapted.
+ * Bring your own agent - Forge UI `handoffmenu`, adapted.
  *
  * Vendor layout, spacing and scale-to-fit kept. The stock menu hands off to
  * Cursor, Zed and Opencode through `react-icons/si`; Scalar connects to none
@@ -22,7 +22,7 @@ type Tool = {
 };
 
 const TOOLS: Tool[] = [
-  { label: "Claude — connected as you", src: "/agents/claude.png" },
+  { label: "Claude, connected as you", src: "/agents/claude.png" },
   { label: "Connect OpenClaw", src: "/agents/openclaw.svg" },
   { label: "Connect Hermes", src: "/agents/hermes.webp" },
   { label: "Connect Codex", src: "/agents/codex.png" },

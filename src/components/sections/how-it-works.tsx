@@ -2,13 +2,22 @@
 
 import { useRef } from "react";
 import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
+import {
+  AgentHandoff,
+  DiscoverResearch,
+  EnrichScan,
+  AuditTrail,
+} from "@/components/marketing/illustrations";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 /**
  * How it works, as a connected vertical stepper: a progress line fills as you
- * scroll through the four steps, each revealing a small live visual of the work
- * at that stage. It reads as a single guided path, not four loose cards.
+ * scroll through the four steps. Each step carries the compact live visual of
+ * the work at that stage plus, from lg up, the full illustration of the same
+ * moment. The track used to be max-w-3xl with a max-w-md card in it, which left
+ * the right half of every row empty; the illustration column is what fills it.
+ * It reads as a single guided path, not four loose cards.
  */
 
 function ConnectVisual() {
@@ -79,24 +88,28 @@ const steps = [
     description:
       "Sign up, connect your domain and AgentMail key, and point Scalar at your product context. The agents have everything they need in minutes.",
     visual: <ConnectVisual />,
+    figure: <AgentHandoff />,
   },
   {
     title: "Discover",
     description:
       "Tell the agent what you want, a company, a role, a list of sites. It finds the matches, pulls verified contacts, and saves them straight into your CRM.",
     visual: <DiscoverVisual />,
+    figure: <DiscoverResearch />,
   },
   {
     title: "Enrich",
     description:
       "Every record stays alive. Agents fill the gaps, title, company, funding, socials, so your database compounds instead of rotting.",
     visual: <EnrichVisual />,
+    figure: <EnrichScan />,
   },
   {
     title: "Operate",
     description:
       "Email relationships run through AgentMail, context replays on every reply, and every agent action lands in the audit log. Trust by design.",
     visual: <OperateVisual />,
+    figure: <AuditTrail />,
   },
 ];
 
@@ -122,7 +135,7 @@ export function HowItWorksSection() {
           </p>
         </div>
 
-        <div ref={trackRef} className="relative mx-auto mt-16 max-w-3xl">
+        <div ref={trackRef} className="relative mx-auto mt-16 max-w-6xl">
           {/* Connecting line: muted track + primary fill that follows scroll */}
           <div className="absolute bottom-10 left-5 top-5 w-px bg-border" aria-hidden />
           <motion.div
@@ -139,7 +152,7 @@ export function HowItWorksSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-80px" }}
                 transition={{ duration: 0.5, ease: EASE }}
-                className="relative grid grid-cols-[2.5rem_1fr] gap-5"
+                className="relative grid grid-cols-[2.5rem_1fr] gap-5 lg:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,0.95fr)] lg:items-center lg:gap-10"
               >
                 {/* node */}
                 <div className="relative z-10 flex justify-center">
@@ -152,9 +165,18 @@ export function HowItWorksSection() {
                 <div className="pb-2">
                   <h3 className="font-brand text-xl text-foreground sm:text-2xl">{step.title}</h3>
                   <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">{step.description}</p>
-                  <div className="mt-4 max-w-md rounded-2xl border border-border bg-card p-3 shadow-sm dark:border-white/10">
+                  <div className="mt-4 max-w-md rounded-2xl border border-border bg-card p-3 shadow-sm lg:hidden dark:border-white/10">
                     {step.visual}
                   </div>
+                </div>
+
+                {/* The same moment, drawn out. Decorative: the copy above
+                    already carries the step, so screen readers skip it. */}
+                <div
+                  aria-hidden="true"
+                  className="mx-auto hidden w-full max-w-[430px] overflow-hidden rounded-2xl border border-border bg-card px-2 py-3 shadow-sm lg:block dark:border-white/10"
+                >
+                  {step.figure}
                 </div>
               </motion.div>
             ))}

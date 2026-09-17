@@ -39,7 +39,7 @@ export default function DiscoverPage() {
       illustration={
         <IllustrationFrame
           claim="You describe the market. The list builds itself."
-          detail="Real companies and the people inside them — each one checked against your CRM by domain before anything is written."
+          detail="Real companies and the people inside them, each one checked against your CRM by domain before anything is written."
         >
           <DiscoverResearch />
         </IllustrationFrame>

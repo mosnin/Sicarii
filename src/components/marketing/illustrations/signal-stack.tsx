@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Signals — Forge UI `notification-stack`, adapted.
+ * Signals - Forge UI `notification-stack`, adapted.
  *
  * The whole GSAP timeline is the vendor's: the cursor travels, clicks, the
  * notification centre expands, three cards spring in, then "Send to pipeline"
@@ -10,7 +10,7 @@
  * as data rather than patched in.
  *
  * Two Scalar-specific notes: the vendor leans on `text-primary` for body copy,
- * which in our system is baby blue and would paint every label — those are
+ * which in our system is baby blue and would paint every label - those are
  * routed back to the text tokens. And the reduced-motion branch sets the end
  * state instead of replaying a slower cursor demo.
  */
@@ -35,21 +35,21 @@ const notificationItems: NotificationCardItem[] = [
   {
     id: "funding",
     icon: <Banknote className="size-5 text-primary" />,
-    title: "Ledgerline raised £12M",
-    description: "Series A — budget just landed",
+    title: "Northwind Pay raised $40M",
+    description: "Series B, budget just landed",
     time: "2h ago",
   },
   {
     id: "hiring",
     icon: <UserPlus className="size-5 text-primary" />,
-    title: "Northbank Pay is hiring",
+    title: "Cedar Capital is hiring",
     description: "3 RevOps roles opened",
     time: "Today",
   },
   {
     id: "tech",
     icon: <Cpu className="size-5 text-primary" />,
-    title: "Vaultpay changed stack",
+    title: "Ledgerline changed stack",
     description: "Moved off their billing provider",
     time: "Yesterday",
   },
@@ -261,7 +261,7 @@ export function SignalStack({
                 "absolute inset-x-0 top-25 mx-auto",
                 "flex h-8 w-35 items-center justify-between",
                 "rounded-sm border border-border",
-                "bg-background",
+                "bg-card",
               )}
             >
               <div className="relative top-0 left-0 h-full w-70 rounded-sm">
@@ -312,7 +312,7 @@ function Card({ innerRef, top, icon, title, description, time }: CardProps) {
     <div
       ref={innerRef}
       className={cn(
-        `absolute inset-x-0 mx-auto flex h-15 w-full max-w-72.5 scale-[0.5] items-center justify-between rounded-sm border border-border bg-background px-2 opacity-0 ${top}`,
+        `absolute inset-x-0 mx-auto flex h-15 w-full max-w-72.5 scale-[0.5] items-center justify-between rounded-sm border border-border bg-card px-2 opacity-0 ${top}`,
       )}
     >
       <div className="flex items-center gap-2.5">
