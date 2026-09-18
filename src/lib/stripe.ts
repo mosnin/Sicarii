@@ -29,6 +29,76 @@ export function planForPriceId(priceId: string | undefined): PaidPlanName | unde
   return undefined;
 }
 
+/** Statuses that still bill or will bill. A subscription.deleted must not
+ *  drop the user to free while one of these remains on the same customer. */
+const LIVE_SUBSCRIPTION_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "incomplete",
+]);
+
+/**
+ * Whether a subscription.deleted event should drop the user to free.
+ *
+ * False when:
+ * - the deleted sub belongs to a stale Stripe customer (an upgrade Checkout
+ *   minted a second customer and overwrote stripeCustomerId), or
+ * - the same customer still has another live subscription (the deleted sub
+ *   was replaced by a newer Checkout, including after an upgrade cancels
+ *   the previous plan).
+ */
+export function shouldDowngradeAfterSubscriptionDeleted(opts: {
+  deletedCustomerId?: string;
+  currentStripeCustomerId?: string | null;
+  otherLiveSubscriptionIds: string[];
+}): boolean {
+  const { deletedCustomerId, currentStripeCustomerId, otherLiveSubscriptionIds } = opts;
+  if (
+    deletedCustomerId &&
+    currentStripeCustomerId &&
+    deletedCustomerId !== currentStripeCustomerId
+  ) {
+    return false;
+  }
+  return otherLiveSubscriptionIds.length === 0;
+}
+
+/**
+ * Live subscriptions on `customerId` other than `exceptSubscriptionId`.
+ * Throws on Stripe errors so the webhook can 500 and retry instead of
+ * wrongly dropping a paying user to free.
+ */
+export async function listOtherLiveSubscriptionIds(
+  customerId: string,
+  exceptSubscriptionId?: string,
+): Promise<string[]> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("STRIPE_SECRET_KEY is not set");
+
+  const res = await fetchWithTimeout(
+    `${STRIPE_API}/subscriptions?customer=${encodeURIComponent(customerId)}&limit=100`,
+    {
+      method: "GET",
+      headers: { Authorization: `Bearer ${key}` },
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Stripe list subscriptions failed (${res.status}): ${detail.slice(0, 200)}`);
+  }
+  const body = (await res.json()) as { data?: Array<{ id?: string; status?: string }> };
+  return (body.data ?? [])
+    .filter(
+      (s) =>
+        Boolean(s.id) &&
+        s.id !== exceptSubscriptionId &&
+        LIVE_SUBSCRIPTION_STATUSES.has(s.status ?? ""),
+    )
+    .map((s) => s.id as string);
+}
+
 function encodeForm(params: Record<string, string>): string {
   return Object.entries(params)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
