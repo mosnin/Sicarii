@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PLANS, refillToAllotment } from "@/lib/credits";
-import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
+import {
+  listOtherLiveSubscriptionIds,
+  planForPriceId,
+  shouldDowngradeAfterSubscriptionDeleted,
+  verifyStripeSignature,
+} from "@/lib/stripe";
 import { maybeCleanupIdempotency } from "@/lib/maintenance";
 
 // Stripe billing webhook. Verifies the Stripe-Signature header against
@@ -173,7 +178,11 @@ async function applyStripeEvent(type: string, obj: StripeObject, eventId?: strin
     return;
   }
 
-  // Subscription ended (canceled, or churned after dunning): drop to free.
+  // Subscription ended (canceled, or churned after dunning): drop to free
+  // ONLY when nothing else is still billing this user. An upgrade Checkout
+  // creates a new subscription and (today) often a second customer; Stripe
+  // then emits subscription.deleted for the old plan. Treating that as
+  // "user has no subscription" wipes the plan they just paid for.
   if (type === "customer.subscription.deleted") {
     const { userId } = metaOf(obj);
     const customerId = customerIdOf(obj);
@@ -193,16 +202,42 @@ async function applyStripeEvent(type: string, obj: StripeObject, eventId?: strin
     }
     const user = await prisma.user.findUnique({
       where: { id: resolvedId },
-      select: { creditsRemaining: true },
+      select: { creditsRemaining: true, stripeCustomerId: true },
     });
-    if (user) {
-      await prisma.user.update({
-        where: { id: resolvedId },
-        data: {
-          plan: "free",
-          creditsRemaining: Math.min(user.creditsRemaining, PLANS.free.credits),
-        },
-      });
+    if (!user) return;
+
+    // Stale customer: an upgrade Checkout already overwrote stripeCustomerId.
+    // Do not ask Stripe about the old customer, and do not drop the new plan.
+    if (
+      customerId &&
+      user.stripeCustomerId &&
+      customerId !== user.stripeCustomerId
+    ) {
+      console.info("[stripe] subscription.deleted ignored; event is for a replaced customer");
+      return;
     }
+
+    const deletedSubId = typeof obj.id === "string" ? obj.id : undefined;
+    const otherLiveSubscriptionIds = customerId
+      ? await listOtherLiveSubscriptionIds(customerId, deletedSubId)
+      : [];
+    if (
+      !shouldDowngradeAfterSubscriptionDeleted({
+        deletedCustomerId: customerId,
+        currentStripeCustomerId: user.stripeCustomerId,
+        otherLiveSubscriptionIds,
+      })
+    ) {
+      console.info("[stripe] subscription.deleted ignored; another paid subscription remains");
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: resolvedId },
+      data: {
+        plan: "free",
+        creditsRemaining: Math.min(user.creditsRemaining, PLANS.free.credits),
+      },
+    });
   }
 }
