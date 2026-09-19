@@ -5,9 +5,9 @@
 // and set TYPESAFE_JEV_MODEL=jev-1.13.0 once a live sweep has been observed.
 //
 // Usage:
-//   node --no-warnings scripts/jevcal.mjs
 //   pnpm jevcal
-//   node --no-warnings scripts/jevcal.mjs fixtures/jevcal/identity.json
+//   node --no-warnings --experimental-strip-types scripts/jevcal.mjs
+//   node --no-warnings --experimental-strip-types scripts/jevcal.mjs fixtures/jevcal/identity.json
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
