@@ -73,9 +73,9 @@ Deep context and all decisions are indexed in `@docs/README.md`.
   Auth: **Clerk**. UI: Radix + shadcn-style kit in `src/components/ui`,
   `lucide-react`, `motion`, `next-themes`. Payments: **Stripe** (cards; migrated
   off Creem.io 2026-06-12) + x402 USDC for agents. Uploads: Uploadthing.
-- **ORM / DB:** target is **Prisma** ORM on **Supabase** Postgres.
-  ⚠️ _The tree still ships the original **Drizzle + Neon** layer (`src/db/`,
-  `drizzle.config.ts`). Migration to Prisma is an open cycle - see the Heading._
+- **ORM / DB:** **Prisma** on **Supabase** Postgres (+ pgvector). Current
+  cycle is production readiness (`docs/decisions/0015-production-readiness.md`),
+  not a new feature. Do not add surfaces until that card exits.
 - **Package manager:** pnpm (`pnpm-lock.yaml`).
 - **Setup:** copy `.env.local.example` → `.env.local` and fill keys; `pnpm install`.
 - **Run (dev):** `pnpm dev` · **Build:** `pnpm build` · **Start:** `pnpm start`

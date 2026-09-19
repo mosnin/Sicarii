@@ -68,7 +68,7 @@ proof the product is working. (Quality-gated: deduped, named, real.)
 |---|---|---|
 | **Entity** | A company. Enriched (firmographics, tech stack, funding, traffic, news, overview), deduped by domain. | Built |
 | **Contact** | A person, ideally linked to an Entity. Enrich LinkedIn/email/phone per-field. | Built |
-| **Deal** | An opportunity with stage + value, **advanced automatically by the agent** from activity. | Planned (today: status fields on records) |
+| **Deal** | An opportunity with stage + value, **advanced automatically by the agent** from activity. | Planned. Today: contact status + `Pipeline` / `PipelineEntry`. Do not invent a Deal table in this cycle. |
 | **Email** | Threads via **AgentMail**, surfaced on the contact; agent can save messages as durable context. | Built (basic) |
 | **Memory** | Token-efficient vector recall over messages + CRM data so the agent stays consistent. | Built |
 
