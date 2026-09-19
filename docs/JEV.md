@@ -135,13 +135,14 @@ Qwen is **never** used for evaluate.
 ### Prove the install
 
 ```
-pnpm doctor          # TypeSafe Jev / Gateway / OpenRouter rows
+pnpm run doctor      # TypeSafe Jev / Gateway / OpenRouter rows (`pnpm doctor` is pnpm's own CLI)
+pnpm env-doctor      # same script
 pnpm jevcal          # threshold sweep on fixtures/jevcal
 pnpm exec tsc --noEmit
 pnpm test            # includes tests/jev-*.test.ts
 ```
 
-`pnpm doctor` in this cloud checkout reports TypeSafe / Gateway / OpenRouter
+`pnpm run doctor` in this cloud checkout reports TypeSafe / Gateway / OpenRouter
 as **missing**. That is expected: the app boots, every gate fails open, and
 no live 70-500ms call has been observed. Production needs at least
 `TYPESAFE_API_KEY` (or the Gateway / OpenRouter fallback) before the safety

@@ -247,7 +247,7 @@ apply by hand.
 | `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING` | yes | Where clients, grants, codes and tokens live. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | in production | Durable rate limiting for the token, revoke and register endpoints. Without them the limits are per serverless instance. |
 
-`pnpm doctor` reports on all of these.
+`pnpm run doctor` (or `pnpm env-doctor`) reports on all of these.
 
 ---
 

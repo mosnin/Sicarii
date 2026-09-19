@@ -1,6 +1,6 @@
 // Public health/env-doctor endpoint. Curl this after a deploy to see exactly
 // what's configured and what's missing, without shell access to the server -
-// the same report `pnpm doctor` prints locally, sourced from the same
+// the same report `pnpm run doctor` prints locally, sourced from the same
 // src/lib/env-doctor.ts so the two can never drift apart.
 //
 // Deliberately public (no auth): it's meant to be curled by whoever is
