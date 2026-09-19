@@ -169,11 +169,7 @@ export async function POST(req: Request) {
       description:
         "Recall relevant past context (earlier conversations and CRM notes) by similarity. Use before assuming you don't know something.",
       inputSchema: z.object({ query: z.string() }),
-      execute: async ({ query }) => {
-        const recallRate = await checkRateLimit(`agent-recall:${userId}`, 60, 60_000);
-        if (!recallRate.success) return { error: "Recall rate limit reached. Try again in a moment." };
-        return recallMemory(userId, query);
-      },
+      execute: ({ query }) => exec(() => recallMemory(userId, query)),
     }),
     find_companies: tool({
       description:

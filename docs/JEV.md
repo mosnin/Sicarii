@@ -353,6 +353,9 @@ Two stacked branches off Scalar `main`:
    the grounded system prompt. Autopilot pause is gated. Segment/pipeline
    reads are capped. Instant understands "follow up". HTTP decide takes
    `priorAssistant`. Fast-path prints autopilot budget from the payload.
+   Outreach, activity, calls, and call prompts are scanned. Autopilot
+   proposals go through `gateMoney`. Recall is rate-limited at the ops
+   layer. Pipeline add/metrics and HTTP entity/contact reads are bounded.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -462,6 +465,12 @@ Scalar now does that on `/api/agent`:
     rate-limited. Escalate turns use `GROUNDED_SYSTEM`. Fast-path prints
     autopilot spend from the real payload. HTTP `/api/jev/decide` accepts
     `priorAssistant`. Segment and pipeline lists/gets are capped.
+15. `logOutreach`, `addActivity`, `saveCall`, and `placeContactCall` scan
+    artifacts the same way email/social do. `proposeAutopilotPlan` runs
+    `gateMoney`. `recallMemory` rate-limits every caller. `addToPipeline`
+    caps segment expansion. `pipelineMetrics` aggregates in SQL. HTTP
+    entity/contact detail pages cap nested lists. HTTP decide accepts
+    optional `tools` / `skills` catalogs.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

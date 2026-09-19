@@ -41,6 +41,8 @@ export async function GET(
     const contacts = await prisma.contact.findMany({
       where: { entityId: id, userId: user.id },
       orderBy: { updatedAt: "desc" },
+      take: 100,
+      omit: { enrichment: true },
     });
     return NextResponse.json({ entity, contacts });
   } catch (e) {

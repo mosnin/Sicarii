@@ -149,9 +149,20 @@ export async function addToPipeline(userId: string, pipelineId: string, input: {
   if (!pipeline || pipeline.userId !== userId) throw new OpError("Pipeline not found", 404);
 
   let ids = input.contactIds ?? [];
+  let truncated = false;
   if (input.segmentId) {
-    const seg = await prisma.segment.findUnique({ where: { id: input.segmentId }, include: { members: { select: { contactId: true } } } });
+    const seg = await prisma.segment.findUnique({
+      where: { id: input.segmentId },
+      include: { members: { select: { contactId: true }, take: 500 } },
+    });
     if (seg && seg.userId === userId) ids = [...ids, ...seg.members.map((m) => m.contactId)];
+  }
+  const unique = [...new Set(ids)];
+  if (unique.length > 500) {
+    truncated = true;
+    ids = unique.slice(0, 500);
+  } else {
+    ids = unique;
   }
   if (ids.length === 0) throw new OpError("No contacts to add", 400);
 
@@ -160,7 +171,7 @@ export async function addToPipeline(userId: string, pipelineId: string, input: {
     data: owned.map((c) => ({ userId, pipelineId, contactId: c.id })),
     skipDuplicates: true,
   });
-  return { added: res.count };
+  return { added: res.count, ...(truncated ? { truncated: true, cap: 500 } : {}) };
 }
 
 // PipelineEntry.pipeline is onDelete: Cascade in the schema, so deleting the
@@ -203,29 +214,40 @@ export async function pipelineMetrics(userId: string, pipelineId: string) {
   const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
   if (!pipeline || pipeline.userId !== userId) throw new OpError("Pipeline not found", 404);
 
-  const entries = await prisma.pipelineEntry.findMany({
-    where: { userId, pipelineId },
-    select: { stage: true, dealScore: true, conversationStatus: true },
-  });
+  const [stageGroups, convoGroups, scoreAgg, total] = await Promise.all([
+    prisma.pipelineEntry.groupBy({
+      by: ["stage"],
+      where: { userId, pipelineId },
+      _count: { _all: true },
+    }),
+    prisma.pipelineEntry.groupBy({
+      by: ["conversationStatus"],
+      where: { userId, pipelineId },
+      _count: { _all: true },
+    }),
+    prisma.pipelineEntry.aggregate({
+      where: { userId, pipelineId, dealScore: { not: null } },
+      _avg: { dealScore: true },
+      _count: { dealScore: true },
+    }),
+    prisma.pipelineEntry.count({ where: { userId, pipelineId } }),
+  ]);
 
   const byStage = Object.fromEntries(STAGES.map((s) => [s, 0])) as Record<Stage, number>;
   const byConversation = Object.fromEntries(CONVO.map((c) => [c, 0])) as Record<Convo, number>;
-  let scoreSum = 0, scored = 0;
-  for (const e of entries) {
-    byStage[e.stage as Stage]++;
-    byConversation[e.conversationStatus as Convo]++;
-    if (e.dealScore != null) { scoreSum += e.dealScore; scored++; }
-  }
+  for (const row of stageGroups) byStage[row.stage as Stage] = row._count._all;
+  for (const row of convoGroups) byConversation[row.conversationStatus as Convo] = row._count._all;
+  const scored = scoreAgg._count.dealScore;
   return {
     name: pipeline.name,
     objective: pipeline.goal,
-    total: entries.length,
+    total,
     byStage,
     byConversation,
     won: byStage.WON,
     lost: byStage.LOST,
-    avgDealScore: scored ? Math.round(scoreSum / scored) : null,
+    avgDealScore: scored ? Math.round(scoreAgg._avg.dealScore ?? 0) : null,
     scored,
-    openConversations: entries.length - byConversation.CLOSED,
+    openConversations: total - byConversation.CLOSED,
   };
 }

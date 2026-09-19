@@ -27,6 +27,15 @@ export { OpError } from "@/lib/op-error";
 import { OpError } from "@/lib/op-error";
 import { keepNamedCompanies, rerankHits, runWardens, scanMalicious, triageInbound } from "@/lib/jev";
 
+async function assertCleanArtifact(text: string, kind: string) {
+  const payload = text.trim();
+  if (!payload) return;
+  const malicious = await scanMalicious(payload, kind);
+  if (!malicious.allow) {
+    throw new OpError(`Jev blocked this ${kind} as malicious (${malicious.reasons.join(", ")}).`, 422);
+  }
+}
+
 const CONTACT_STATUSES = [
   "NEW",
   "ENRICHED",
@@ -952,6 +961,7 @@ export async function logOutreach(
   if (!existing || existing.userId !== userId) throw new OpError("Contact not found", 404);
 
   if (input.variantId) await assertVariantOwned(userId, input.variantId);
+  await assertCleanArtifact(input.summary, "outreach");
 
   const nextStatus =
     input.status ?? (ADVANCE_FROM_OUTREACH.has(existing.status) ? "CONTACTED" : existing.status);
@@ -1010,6 +1020,7 @@ export async function addActivity(
     const e = await prisma.entity.findUnique({ where: { id: input.entityId } });
     if (!e || e.userId !== userId) throw new OpError("Entity not found", 404);
   }
+  await assertCleanArtifact(input.body, "activity");
   return prisma.activity.create({
     data: {
       userId,
@@ -1092,6 +1103,7 @@ export interface CallInput {
 export async function saveCall(userId: string, input: CallInput) {
   const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
   if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  await assertCleanArtifact([input.summary, input.transcript].filter(Boolean).join("\n"), "call");
   const { contactId, ...rest } = input;
   return prisma.contactCall.create({ data: { contactId, ...rest } });
 }
@@ -1122,6 +1134,17 @@ export async function placeContactCall(
   const toNumber = (input.toNumber || contact.phone || "").trim();
   if (!toNumber)
     throw new OpError("No phone number for this contact - add one or pass toNumber in E.164 form.", 400);
+
+  const prompt = [input.systemPrompt, input.initialGreeting].filter(Boolean).join("\n");
+  const warden = await runWardens({
+    payload: prompt,
+    goal: `call ${contact.name ?? contact.id}`,
+    phase: "send",
+  });
+  if (!warden.allow) {
+    throw new OpError(`Jev blocked this outbound call (${warden.reasons.join(", ")}).`, 422);
+  }
+  await assertCleanArtifact(prompt, "call");
 
   const placed = await placeCall(user.agentPhoneApiKey, {
     toNumber,

@@ -10,6 +10,8 @@ import { prisma } from "@/lib/prisma";
 import { embedText, toVectorLiteral } from "@/lib/embeddings";
 import { ensureCredits, spendCredits } from "@/lib/credits";
 import { scanMalicious } from "@/lib/jev";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { OpError } from "@/lib/op-error";
 
 export type MemoryKind = "message" | "entity" | "contact" | "email";
 
@@ -70,6 +72,8 @@ export async function recallMemory(
   query: string,
   k = 6,
 ): Promise<RecalledChunk[]> {
+  const rate = await checkRateLimit(`recall:${userId}`, 60, 60_000);
+  if (!rate.success) throw new OpError("Recall rate limit reached. Try again in a moment.", 429);
   const embedding = await embedText(query);
   if (!embedding) return [];
   const literal = toVectorLiteral(embedding);

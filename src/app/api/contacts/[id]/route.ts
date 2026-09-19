@@ -56,6 +56,7 @@ export async function GET(
     const emails = await prisma.contactEmail.findMany({
       where: { contactId: id },
       orderBy: { sentAt: "desc" },
+      take: 50,
     });
     return NextResponse.json({ contact, emails });
   } catch (e) {
