@@ -184,6 +184,21 @@ describe("classifyInstant", () => {
       tool: "score_fit",
       query: "Jane",
     });
+    expect(classifyInstant("set Acme size to 50-200")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      size: "50-200",
+    });
+    expect(classifyInstant("archive company Acme")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      entityStatus: "ARCHIVED",
+    });
+    expect(classifyInstant("mark company Acme as archived")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      entityStatus: "ARCHIVED",
+    });
     expect(classifyInstant("mark Jane as awaiting reply in Outbound")).toMatchObject({
       tool: "update_pipeline_entry",
       query: "Jane",

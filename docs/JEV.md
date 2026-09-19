@@ -668,6 +668,10 @@ Scalar now does that on `/api/agent`:
     `score_fit` score the first CRM hit against Product Context via
     Jev (0-100). Missing Product Context or a CRM miss returns the
     reason instead of inventing a number.
+48. Instant `set Acme size to 50-200`, `archive company Acme`, and
+    `mark company Acme as archived` skip TypeSafe and run
+    `update_entity` under auto-mode. Unqualified `mark Jane as
+    contacted` stays a contact write.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

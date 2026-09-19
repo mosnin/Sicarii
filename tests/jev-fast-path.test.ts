@@ -390,6 +390,20 @@ describe("formatFastReply", () => {
         payload: { error: "Add your Product Context first. Fit is scored against it." },
       }),
     ).toBe("Add your Product Context first. Fit is scored against it.");
+    expect(
+      formatFastReply({
+        tool: "update_entity",
+        query: "Acme",
+        payload: { name: "Acme", size: "50-200" },
+      }),
+    ).toBe("Set Acme's size to 50-200.");
+    expect(
+      formatFastReply({
+        tool: "update_entity",
+        query: "Acme",
+        payload: { name: "Acme", status: "ARCHIVED" },
+      }),
+    ).toBe("Marked Acme as archived.");
   });
 
   it("explains an empty CRM lookup", () => {

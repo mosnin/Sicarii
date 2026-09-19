@@ -32,6 +32,8 @@ export type InstantRoute = {
   instagram?: string;
   dealScore?: number;
   direction?: "INBOUND" | "OUTBOUND";
+  size?: string;
+  entityStatus?: "NEW" | "ENRICHED" | "ARCHIVED";
   detail?: boolean;
   source: "instant";
 };
@@ -333,9 +335,10 @@ function parseEntityPatch(text: string): {
   domain?: string;
   website?: string;
   description?: string;
+  size?: string;
 } | null {
   const m = text.match(
-    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(industry|location|domain|website|description)\s+to\s+(.+)$/i,
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(industry|location|domain|website|description|size)\s+to\s+(.+)$/i,
   );
   if (!m?.[3] || !m[4] || !m[5]) return null;
   const query = m[3]
@@ -358,7 +361,48 @@ function parseEntityPatch(text: string): {
   if (value.length > 80) return null;
   if (field === "industry") return { query, industry: value };
   if (field === "location") return { query, location: value };
+  if (field === "size") {
+    if (value.length > 40) return null;
+    return { query, size: value };
+  }
   return { query, domain: value.toLowerCase() };
+}
+
+const ENTITY_STATUS_WORDS: Record<string, NonNullable<InstantRoute["entityStatus"]>> = {
+  new: "NEW",
+  enriched: "ENRICHED",
+  archived: "ARCHIVED",
+};
+
+function parseEntityStatus(text: string): {
+  query: string;
+  entityStatus: NonNullable<InstantRoute["entityStatus"]>;
+} | null {
+  if (/\bautopilot\b/i.test(text)) return null;
+  const archive = text.match(
+    /^(please\s+)?archive\s+(?:the\s+)?(?:company|business|entity)\s+(.+)$/i,
+  );
+  if (archive?.[2]) {
+    const query = archive[2].replace(/\b(the|a|an)\b/gi, " ").replace(/\s+/g, " ").trim();
+    if (query && query.length <= 80) return { query, entityStatus: "ARCHIVED" };
+  }
+  const qualified = text.match(
+    /^(please\s+)?(mark|set|move)\s+(?:the\s+)?(?:company|business|entity)\s+(.+?)\s+(as|to)\s+(?:the\s+)?(new|enriched|archived)\b/i,
+  );
+  if (qualified?.[3] && qualified[5]) {
+    const query = qualified[3].replace(/\b(the|a|an)\b/gi, " ").replace(/\s+/g, " ").trim();
+    const entityStatus = ENTITY_STATUS_WORDS[qualified[5].toLowerCase()];
+    if (query && query.length <= 80 && entityStatus) return { query, entityStatus };
+  }
+  const field = text.match(
+    /^(please\s+)?(set|update|change)\s+(?:the\s+)?(?:company|business|entity)\s+(.+?)(?:'s)?\s+status\s+to\s+(new|enriched|archived)\b/i,
+  );
+  if (field?.[3] && field[4]) {
+    const query = field[3].replace(/\b(the|a|an)\b/gi, " ").replace(/\s+/g, " ").trim();
+    const entityStatus = ENTITY_STATUS_WORDS[field[4].toLowerCase()];
+    if (query && query.length <= 80 && entityStatus) return { query, entityStatus };
+  }
+  return null;
 }
 
 function parseContactPatch(text: string): {
@@ -924,6 +968,15 @@ export function classifyInstant(
       source: "instant",
     };
   }
+  const entityStatus = parseEntityStatus(text);
+  if (entityStatus && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_entity",
+      query: entityStatus.query,
+      entityStatus: entityStatus.entityStatus,
+      source: "instant",
+    };
+  }
   const statusUpdate = parseStatusUpdate(text);
   if (statusUpdate && !COMPOUND.test(text) && !DESTRUCTIVE.test(text)) {
     return {
@@ -971,6 +1024,7 @@ export function classifyInstant(
       domain: entityPatch.domain,
       website: entityPatch.website,
       description: entityPatch.description,
+      size: entityPatch.size,
       source: "instant",
     };
   }

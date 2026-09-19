@@ -631,15 +631,23 @@ export function formatFastReply(input: {
       notes?: string | null;
       description?: string | null;
       phone?: string | null;
+      size?: string | null;
+      status?: string | null;
     };
     const who = r.name ?? query;
-    if (r.notes && !r.industry && !r.location && !r.domain && !r.website && !r.description && !r.phone) {
+    if (r.status && !r.industry && !r.location && !r.domain && !r.website && !r.description && !r.phone && !r.size && !r.notes) {
+      return `Marked ${who} as ${r.status.toLowerCase()}.`;
+    }
+    if (r.size && !r.industry && !r.location && !r.domain && !r.website && !r.description && !r.phone && !r.notes) {
+      return `Set ${who}'s size to ${r.size}.`;
+    }
+    if (r.notes && !r.industry && !r.location && !r.domain && !r.website && !r.description && !r.phone && !r.size) {
       return `Set ${who}'s notes.`;
     }
-    if (r.description && !r.industry && !r.location && !r.domain && !r.website && !r.phone) {
+    if (r.description && !r.industry && !r.location && !r.domain && !r.website && !r.phone && !r.size) {
       return `Set ${who}'s description.`;
     }
-    if (r.phone && !r.industry && !r.location && !r.domain && !r.website) {
+    if (r.phone && !r.industry && !r.location && !r.domain && !r.website && !r.size) {
       return `Set ${who}'s phone to ${r.phone}.`;
     }
     if (r.location && !r.industry && !r.domain && !r.website) return `Set ${who}'s location to ${r.location}.`;
@@ -781,6 +789,8 @@ export type FastPathRunners = {
       notes?: string;
       description?: string;
       phone?: string;
+      size?: string;
+      status?: "NEW" | "ENRICHED" | "ARCHIVED";
     },
   ) => Promise<unknown>;
   listEntities?: (q?: string) => Promise<unknown>;
@@ -1081,7 +1091,9 @@ async function runTool(
       const notes = instant?.note?.trim();
       const description = instant?.description?.trim();
       const phone = instant?.phone?.trim();
-      if (!industry && !location && !domain && !website && !notes && !description && !phone) {
+      const size = instant?.size?.trim();
+      const status = instant?.entityStatus;
+      if (!industry && !location && !domain && !website && !notes && !description && !phone && !size && !status) {
         return { error: "Say the field, like set Acme industry to SaaS." };
       }
       const entityId = first.id;
@@ -1093,6 +1105,8 @@ async function runTool(
         ...(notes ? { notes } : {}),
         ...(description ? { description } : {}),
         ...(phone ? { phone } : {}),
+        ...(size ? { size } : {}),
+        ...(status ? { status } : {}),
       };
       return write("update_entity", { id: entityId, ...patch }, async () => {
         const result = runners.updateEntity
