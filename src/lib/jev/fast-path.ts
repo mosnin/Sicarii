@@ -866,6 +866,7 @@ export type FastPathRunners = {
     location?: string;
     source?: string;
     tags?: string[];
+    notes?: string;
   }) => Promise<unknown>;
   enrichEntity: (id: string) => Promise<unknown>;
   updateEntity?: (
@@ -1176,6 +1177,7 @@ async function runTool(
           ...(instant?.location ? { location: instant.location } : {}),
           ...(instant?.crmSource ? { source: instant.crmSource } : {}),
           ...(instant?.tags?.length ? { tags: instant.tags } : {}),
+          ...(instant?.note ? { notes: instant.note } : {}),
         },
         () =>
           runners.createContact({
@@ -1192,6 +1194,7 @@ async function runTool(
             location: instant?.location,
             source: instant?.crmSource,
             tags: instant?.tags,
+            notes: instant?.note,
           }),
       );
     case "enrich_entity": {

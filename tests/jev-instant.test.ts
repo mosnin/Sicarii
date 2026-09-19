@@ -550,6 +550,16 @@ describe("classifyInstant", () => {
       crmSource: "linkedin",
     });
     expect(classifyInstant("add contact Jane from LinkedIn")?.company).toBeUndefined();
+    expect(classifyInstant("add contact Jane notes follow up Q4")).toMatchObject({
+      tool: "create_contact",
+      name: "Jane",
+      note: "follow up Q4",
+    });
+    expect(classifyInstant("add a note on Jane: follow up Q4")).toMatchObject({
+      tool: "add_activity",
+      query: "Jane",
+      note: "follow up Q4",
+    });
   });
 
   it("confirms discovery after an empty CRM miss", () => {

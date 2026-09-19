@@ -727,6 +727,10 @@ Scalar now does that on `/api/agent`:
     (`product-context`). That text is injected into every fit score
     and generate turn, so a live TypeSafe miss denies the save when
     configured. Unconfigured local stays fail-open.
+60. Instant `add contact Jane notes follow up Q4` keeps notes (MCP
+    and in-app `create_contact` already accept them). `add a note
+    on Jane: follow up Q4` stays an activity write. Ops still scan
+    the notes before persist.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

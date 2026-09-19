@@ -857,6 +857,7 @@ function parseCreateContact(text: string): {
   location?: string;
   crmSource?: string;
   tags?: string[];
+  note?: string;
 } | null {
   if (!/\b(add|create|save|new)\b/i.test(text)) return null;
   if (!/\b(contact|person)\b/i.test(text)) return null;
@@ -873,7 +874,7 @@ function parseCreateContact(text: string): {
   const name = (named?.[1] ?? addName?.[1])?.trim();
   if (!name && !email) return null;
   const title =
-    text.match(/\btitle\s+["']?([^"',]+?)(?=\s+(?:\d|https?:|source|tagged|tags|location|website)|["',]|$)/i)?.[1]?.trim() ??
+    text.match(/\btitle\s+["']?([^"',]+?)(?=\s+(?:\d|https?:|source|tagged|tags|location|website|notes?)|["',]|$)/i)?.[1]?.trim() ??
     text.match(/\bas\s+(?!an?\s+(?:contact|person)\b)([A-Z][A-Za-z0-9&/]{1,40}(?:\s+[A-Z][A-Za-z0-9&/]{1,40}){0,3})\b/)?.[1]?.trim();
   const phone = text.match(/\b(\+?[\d][\d .\-()]{6,18}\d)\b/)?.[1]?.trim();
   const linkedin = text.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
@@ -885,20 +886,25 @@ function parseCreateContact(text: string): {
     ?.replace(/[.,)]+$/, "");
   const location = text
     .match(
-      /\b(?:located in|location)\s+["']?([^"',]+?)(?=\s+(?:title|phone|source|tagged|tags|website|https?:)|["',]|$)/i,
+      /\b(?:located in|location)\s+["']?([^"',]+?)(?=\s+(?:title|phone|source|tagged|tags|website|notes?|https?:)|["',]|$)/i,
     )?.[1]
     ?.trim();
   const sourceWord = text
     .match(
-      /\bsource\s+["']?([^"',]+?)(?=\s+(?:title|phone|tagged|tags|website|location|https?:)|["',]|$)/i,
+      /\bsource\s+["']?([^"',]+?)(?=\s+(?:title|phone|tagged|tags|website|location|notes?|https?:)|["',]|$)/i,
     )?.[1]
     ?.trim();
   const tagged = text
     .match(
-      /\b(?:tagged|tags)\s+(?:as\s+)?["']?([^"']+?)(?=\s+(?:title|phone|source|website|location|https?:)|["']|$)/i,
+      /\b(?:tagged|tags)\s+(?:as\s+)?["']?([^"']+?)(?=\s+(?:title|phone|source|website|location|notes?|https?:)|["']|$)/i,
     )?.[1]
     ?.trim();
   const tags = tagged ? parseTagList(tagged) : null;
+  const note = text
+    .match(
+      /\bnotes?\s+["']?([^"']+?)(?=\s+(?:title|phone|source|tagged|tags|website|location|https?:)|["']|$)/i,
+    )?.[1]
+    ?.trim();
   const atName = atCo?.[1]?.replace(/[.,]+$/, "").trim();
   const fromSource = atName && CONTACT_SOURCE_WORDS.test(atName) ? atName.toLowerCase() : undefined;
   const crmSource = (sourceWord || fromSource)?.slice(0, 100);
@@ -916,6 +922,7 @@ function parseCreateContact(text: string): {
     ...(location && location.length <= 80 ? { location } : {}),
     ...(crmSource ? { crmSource } : {}),
     ...(tags ? { tags } : {}),
+    ...(note && note.length <= 2000 ? { note } : {}),
   };
 }
 
@@ -1597,6 +1604,7 @@ export function classifyInstant(
       location: contact.location,
       crmSource: contact.crmSource,
       tags: contact.tags,
+      note: contact.note,
       source: "instant",
     };
   }

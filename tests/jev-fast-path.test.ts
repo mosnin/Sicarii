@@ -634,6 +634,40 @@ describe("executeFastPath", () => {
     });
   });
 
+  it("keeps notes on instant create-contact", async () => {
+    let captured: { name?: string; notes?: string } | null = null;
+    const result = await executeFastPath({
+      message: "add contact Jane notes follow up Q4",
+      decision: { kind: "tool", tool: "create_contact", confidence: 0.94 },
+      instant: {
+        tool: "create_contact",
+        query: "Jane",
+        name: "Jane",
+        note: "follow up Q4",
+        source: "instant",
+      },
+      runners: {
+        searchCrm: async () => ({ entities: [], contacts: [] }),
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async (input) => {
+          captured = input;
+          return { name: input.name };
+        },
+        enrichEntity: async () => ({ name: "x" }),
+      },
+    });
+    expect(result?.tool).toBe("create_contact");
+    expect(captured).toMatchObject({ name: "Jane", notes: "follow up Q4" });
+  });
+
   it("reuses a speculative CRM prefetch", async () => {
     let searches = 0;
     const result = await executeFastPath({
