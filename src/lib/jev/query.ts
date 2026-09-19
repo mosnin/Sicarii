@@ -2,7 +2,7 @@
 export function lookupQuery(message: string): string {
   const cleaned = message
     .replace(
-      /^(please\s+)?(show me|find me|tell me about|what do you know about|what(?:'s| is) the status of|summarize|enrich|find|search for|search|look up|lookup|who is|what is|get|list)\s+/i,
+      /^(please\s+)?(show me|show|find me|tell me about|what do you know about|what(?:'s| is) the status of|summarize|enrich|find|search for|search|look up|lookup|who is|what is|get|open|list)\s+/i,
       "",
     )
     .replace(/[?!.]+$/g, "")

@@ -13,6 +13,7 @@ import {
 describe("lookupQuery / splitLocalQuery", () => {
   it("strips lookup prefixes", () => {
     expect(lookupQuery("show me acme")).toBe("acme");
+    expect(lookupQuery("show acme")).toBe("acme");
     expect(lookupQuery("Find B2B fintech in Miami")).toBe("B2B fintech in Miami");
   });
 
@@ -143,6 +144,13 @@ describe("formatFastReply", () => {
         payload: [{ name: "Outbound", _count: { entries: 12 } }],
       }),
     ).toBe("1 pipeline: Outbound (12).");
+    expect(
+      formatFastReply({
+        tool: "list_emails",
+        query: "Jane",
+        payload: [{ subject: "Intro", direction: "OUTBOUND" }],
+      }),
+    ).toContain("1 email with Jane");
   });
 
   it("explains an empty CRM lookup", () => {

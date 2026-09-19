@@ -28,12 +28,16 @@ describe("agent Jev parity", () => {
   it("keeps paid search tools in auto-mode", () => {
     expect(AUTO_MODE_TOOLS.has("search_web")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("google_search")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("add_activity")).toBe(true);
     expect(source).toContain("for (const name of AUTO_MODE_TOOLS)");
   });
 
-  it("exposes Field and swarm list tools", () => {
+  it("exposes Field, swarm, and history list tools", () => {
     expect(source).toContain("list_segments:");
     expect(source).toContain("list_pipelines:");
     expect(source).toContain("list_swarm_runs:");
+    expect(source).toContain("list_emails:");
+    expect(source).toContain("list_activities:");
+    expect(source).toContain("log_outreach:");
   });
 });

@@ -200,6 +200,7 @@ export const AUTO_MODE_TOOLS = new Set([
   "propose_autopilot_plan",
   "log_social_message",
   "log_outreach",
+  "add_activity",
   "place_call",
   "buy_credits",
   "buy_plan",

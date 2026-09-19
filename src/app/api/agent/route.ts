@@ -38,7 +38,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { normalizeSocialChannel, normalizeDirection, normalizeVariantKind, requireNormalized } from "@/lib/agent-enums";
+import { normalizeSocialChannel, normalizeDirection, normalizeVariantKind, normalizeActivityKind, requireNormalized } from "@/lib/agent-enums";
 import {
   OpError,
   listEntities,
@@ -59,6 +59,11 @@ import {
   searchCrm,
   listDueFollowups,
   listSwarmRuns,
+  listContactEmails,
+  listActivities,
+  listContactCalls,
+  logOutreach,
+  addActivity,
 } from "@/lib/crm-operations";
 import { listSegments, listPipelines } from "@/lib/field-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
@@ -454,6 +459,56 @@ export async function POST(req: Request) {
       inputSchema: z.object({ limit: z.number().int().min(1).max(200).optional() }),
       execute: ({ limit }) => exec(() => listSwarmRuns(userId, limit)),
     }),
+    list_emails: tool({
+      description: "List saved emails with a contact, newest first.",
+      inputSchema: z.object({
+        contactId: z.string(),
+        limit: z.number().int().min(1).max(200).optional(),
+      }),
+      execute: ({ contactId, limit }) => exec(() => listContactEmails(userId, contactId, limit)),
+    }),
+    list_activities: tool({
+      description: "List the activity trail for a contact or company, newest first.",
+      inputSchema: z.object({
+        contactId: z.string().optional(),
+        entityId: z.string().optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+      }),
+      execute: (args) => exec(() => listActivities(userId, args)),
+    }),
+    list_contact_calls: tool({
+      description: "List phone calls logged on a contact, newest first.",
+      inputSchema: z.object({ contactId: z.string() }),
+      execute: ({ contactId }) => exec(() => listContactCalls(userId, contactId)),
+    }),
+    log_outreach: tool({
+      description:
+        "Record an outbound touch: stamp lastContactedAt and log an activity. Pass variantId from select_variant when you used a subject/opener.",
+      inputSchema: z.object({
+        contactId: z.string(),
+        summary: z.string().min(1).max(4000),
+        channel: z.enum(["email", "linkedin", "phone", "x", "instagram", "facebook", "other"]).optional(),
+        variantId: z.string().optional(),
+      }),
+      execute: (args) => exec(() => logOutreach(userId, args)),
+    }),
+    add_activity: tool({
+      description: "Log a note, call, outreach, or reply on a contact or company without changing status.",
+      inputSchema: z.object({
+        contactId: z.string().optional(),
+        entityId: z.string().optional(),
+        kind: z.string().max(20),
+        body: z.string().min(1).max(4000),
+        channel: z.string().max(40).optional(),
+      }),
+      execute: ({ kind, ...rest }) =>
+        exec(() =>
+          addActivity(userId, {
+            ...rest,
+            kind: requireNormalized(kind, normalizeActivityKind, "kind", "note, call, outreach, reply, status_change"),
+          }),
+        ),
+    }),
   };
 
   // Auto mode (LangChain AutoModeMiddleware): Jev inspects pending tool
@@ -487,6 +542,11 @@ export async function POST(req: Request) {
     list_swarm_runs: "List recent swarm runs.",
     list_pending_drafts: "List breakup drafts waiting for review.",
     get_autopilot_status: "Show autopilot budget and status.",
+    list_emails: "List emails with a contact.",
+    list_activities: "List activity for a contact or company.",
+    list_contact_calls: "List calls with a contact.",
+    log_outreach: "Record an outbound touch.",
+    add_activity: "Log a note or activity.",
   };
   const skillCatalog = Object.fromEntries(SKILLS.map((s) => [s.slug, s.description]));
 
@@ -516,6 +576,10 @@ export async function POST(req: Request) {
             ? listSwarmRuns(userId).catch(() => null)
           : instant?.tool === "list_pending_drafts"
             ? listPendingDrafts(userId, {}).catch(() => null)
+          : instant?.tool === "list_emails" ||
+              instant?.tool === "list_activities" ||
+              instant?.tool === "list_contact_calls"
+            ? searchCrm(userId, instant.query).catch(() => null)
         : prefetchQuery !== null
           ? instant?.tool === "list_entities"
             ? listEntities(userId, prefetchQuery || undefined).catch(() => null)
@@ -589,6 +653,9 @@ export async function POST(req: Request) {
         listSegments: () => listSegments(userId),
         listPipelines: () => listPipelines(userId),
         listSwarmRuns: () => listSwarmRuns(userId),
+        listEmails: (contactId) => listContactEmails(userId, contactId),
+        listActivities: (input) => listActivities(userId, input),
+        listContactCalls: (contactId) => listContactCalls(userId, contactId),
         scoreFit: productContext
           ? async (rows) => {
               const scores = await scoreFitWithJev(rows, productContext);

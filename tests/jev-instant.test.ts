@@ -42,6 +42,18 @@ describe("classifyInstant", () => {
     expect(classifyInstant("show pending drafts")).toMatchObject({ tool: "list_pending_drafts" });
     expect(classifyInstant("list swarm runs")).toMatchObject({ tool: "list_swarm_runs" });
     expect(classifyInstant("autopilot status")).toMatchObject({ tool: "get_autopilot_status" });
+    expect(classifyInstant("show emails for Jane")).toMatchObject({
+      tool: "list_emails",
+      query: "Jane",
+    });
+    expect(classifyInstant("list activities for Acme")).toMatchObject({
+      tool: "list_activities",
+      query: "Acme",
+    });
+    expect(classifyInstant("show calls for Jane")).toMatchObject({
+      tool: "list_contact_calls",
+      query: "Jane",
+    });
   });
 
   it("routes discovery and local maps", () => {

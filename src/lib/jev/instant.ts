@@ -48,6 +48,18 @@ export function extractMissedQuery(prior?: string | null): string | null {
   return null;
 }
 
+/** "show emails for Jane" -> "Jane". Empty means no person/company to resolve. */
+export function historySubject(text: string): string {
+  return lookupQuery(text)
+    .replace(
+      /\b(the |a |an )?(emails?|inbox|messages|activities|activity|calls?|history|thread|trail)\b/gi,
+      " ",
+    )
+    .replace(/\b(for|with|from|about)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function parseDomain(text: string): string | undefined {
   const m = text.match(/\b((?:[a-z0-9-]+\.)+[a-z]{2,})\b/i);
   const hit = m?.[1]?.toLowerCase();
@@ -202,6 +214,23 @@ export function classifyInstant(
   if (/\benrich\b/i.test(text)) {
     const q = lookupQuery(text);
     if (q) return { tool: "enrich_entity", query: q, source: "instant" };
+  }
+
+  if (
+    !COMPOSE.test(text) &&
+    !SEND.test(text) &&
+    /^(please\s+)?(list|show|get|open)\b/i.test(text)
+  ) {
+    const who = historySubject(text);
+    if (who && /\b(emails?|inbox|messages)\b/i.test(text)) {
+      return { tool: "list_emails", query: who, source: "instant" };
+    }
+    if (who && /\b(activit(?:y|ies)|trail)\b/i.test(text)) {
+      return { tool: "list_activities", query: who, source: "instant" };
+    }
+    if (who && /\b(calls?|call history)\b/i.test(text)) {
+      return { tool: "list_contact_calls", query: who, source: "instant" };
+    }
   }
 
   if (

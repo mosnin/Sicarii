@@ -33,6 +33,9 @@ export const FAST_PATH_TOOLS = new Set([
   "list_segments",
   "list_pipelines",
   "list_swarm_runs",
+  "list_emails",
+  "list_activities",
+  "list_contact_calls",
 ]);
 
 const READ_CORE = [
@@ -299,6 +302,28 @@ export function formatFastReply(input: {
     return `${rows.length} recent swarm run${rows.length === 1 ? "" : "s"} on file.`;
   }
 
+  if (tool === "list_emails") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return `No emails on file for "${query}".`;
+    const latest = rows[0] as { subject?: string | null; direction?: string | null };
+    const subj = latest.subject?.trim() ? `"${latest.subject.trim().slice(0, 80)}"` : "no subject";
+    return `${rows.length} email${rows.length === 1 ? "" : "s"} with ${query}. Latest (${latest.direction ?? "unknown"}): ${subj}.`;
+  }
+
+  if (tool === "list_activities") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return `No activity on file for "${query}".`;
+    const latest = rows[0] as { kind?: string | null; body?: string | null };
+    const snippet = (latest.body ?? "").trim().slice(0, 120);
+    return `${rows.length} activit${rows.length === 1 ? "y" : "ies"} for ${query}${snippet ? `: ${snippet}` : "."}`;
+  }
+
+  if (tool === "list_contact_calls") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return `No calls on file for "${query}".`;
+    return `${rows.length} call${rows.length === 1 ? "" : "s"} on file for ${query}.`;
+  }
+
   return "Done.";
 }
 
@@ -324,6 +349,9 @@ export type FastPathRunners = {
   listSegments?: () => Promise<unknown>;
   listPipelines?: () => Promise<unknown>;
   listSwarmRuns?: () => Promise<unknown>;
+  listEmails?: (contactId: string) => Promise<unknown>;
+  listActivities?: (input: { contactId?: string; entityId?: string }) => Promise<unknown>;
+  listContactCalls?: (contactId: string) => Promise<unknown>;
   scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
 
@@ -485,6 +513,27 @@ async function runTool(
       return runners.listPipelines ? runners.listPipelines() : [];
     case "list_swarm_runs":
       return runners.listSwarmRuns ? runners.listSwarmRuns() : [];
+    case "list_emails":
+    case "list_activities":
+    case "list_contact_calls": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      const entity = facts.find((f) => f.kind === "entity" && f.id);
+      if (tool === "list_activities") {
+        if (contact?.id) return runners.listActivities ? runners.listActivities({ contactId: contact.id }) : [];
+        if (entity?.id) return runners.listActivities ? runners.listActivities({ entityId: entity.id }) : [];
+        return { error: `I did not find "${query}" in the CRM.` };
+      }
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      if (tool === "list_emails") {
+        return runners.listEmails ? runners.listEmails(contact.id) : [];
+      }
+      return runners.listContactCalls ? runners.listContactCalls(contact.id) : [];
+    }
     case "search_crm":
     default:
       return runners.searchCrm(query);
