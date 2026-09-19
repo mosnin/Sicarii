@@ -22,6 +22,7 @@ export async function GET() {
     const keys = await prisma.apiKey.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
+      take: 50,
       select,
     });
     return NextResponse.json({ keys });

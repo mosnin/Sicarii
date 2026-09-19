@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { OpError } from "@/lib/crm-operations";
+import { createPipeline, listPipelines } from "@/lib/field-operations";
 
 export async function GET() {
   try {
     const user = await getAuthenticatedUser();
-    const pipelines = await prisma.pipeline.findMany({
-      where: { userId: user.id },
-      orderBy: { updatedAt: "desc" },
-      include: { _count: { select: { entries: true } } },
-    });
+    const pipelines = await listPipelines(user.id);
     return NextResponse.json({ pipelines });
   } catch (e) {
     if (e instanceof NextResponse) return e;
@@ -33,26 +30,12 @@ export async function POST(req: NextRequest) {
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid pipeline" }, { status: 400 });
     const { name, goal, segmentId } = parsed.data;
-
-    const pipeline = await prisma.pipeline.create({ data: { userId: user.id, name, goal } });
-
-    // Optionally seed from a segment's members.
-    if (segmentId) {
-      const seg = await prisma.segment.findUnique({
-        where: { id: segmentId },
-        include: { members: { select: { contactId: true } } },
-      });
-      if (seg && seg.userId === user.id && seg.members.length) {
-        await prisma.pipelineEntry.createMany({
-          data: seg.members.map((m) => ({ userId: user.id, pipelineId: pipeline.id, contactId: m.contactId })),
-          skipDuplicates: true,
-        });
-      }
-    }
+    const pipeline = await createPipeline(user.id, { name, goal, segmentId });
 
     return NextResponse.json({ pipeline }, { status: 201 });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("POST /api/pipelines", e);
     return NextResponse.json({ error: "Failed to create pipeline" }, { status: 500 });
   }

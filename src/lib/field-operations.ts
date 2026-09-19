@@ -145,7 +145,13 @@ export async function createPipeline(userId: string, input: { name: string; goal
   if (!input.name?.trim()) throw new OpError("Pipeline name is required", 400);
   await assertCleanArtifact([input.name, input.goal].filter(Boolean).join("\n"), "pipeline");
   const pipeline = await prisma.pipeline.create({ data: { userId, name: input.name.trim(), goal: input.goal } });
-  if (input.segmentId) await addToPipeline(userId, pipeline.id, { segmentId: input.segmentId });
+  if (input.segmentId) {
+    try {
+      await addToPipeline(userId, pipeline.id, { segmentId: input.segmentId });
+    } catch (e) {
+      if (!(e instanceof OpError && e.message === "No contacts to add")) throw e;
+    }
+  }
   return pipeline;
 }
 

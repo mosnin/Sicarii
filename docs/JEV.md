@@ -361,7 +361,9 @@ Two stacked branches off Scalar `main`:
    variant pick/stats skip TypeSafe. Instant Field reads (segments,
    pipelines, drafts, swarm runs) skip TypeSafe. Paid discovery is
    rate-limited at the ops layer. Segment/pipeline/autopilot text is
-   scanned. Inngest crons take at most 50 due jobs.
+   scanned. Inngest crons take at most 50 due jobs. HTTP Field
+   create/list uses the ops layer. Schedule and monitor queries are
+   scanned.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -489,6 +491,9 @@ Scalar now does that on `/api/agent`:
     Segment, pipeline, and autopilot proposal text is scanned.
     Intent-monitor and research-schedule crons take 50. Company OS
     counts follow-ups instead of loading 200 rows.
+18. HTTP Field create/list goes through the ops layer (scan + cap).
+    Research schedules, intent monitors, and API keys lists take 50.
+    Schedule and monitor queries are scanned before persist.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
+import { OpError } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 // GET /api/research-schedules - list all schedules for the current user.
 export async function GET() {
@@ -10,6 +12,7 @@ export async function GET() {
     const schedules = await prisma.researchSchedule.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
+      take: 50,
     });
     return NextResponse.json({ schedules });
   } catch (e) {
@@ -42,6 +45,12 @@ export async function POST(req: NextRequest) {
 
     const rate = await checkRateLimit(`research-schedule:create:${user.id}`, 20, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    try {
+      await assertCleanArtifact([body.name, body.query].join("\n"), "research");
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
 
     // A target must belong to the caller - never let a schedule reference another
     // user's entity/contact by id.
