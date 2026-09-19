@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getAuthContext, getAuthenticatedUser } from "@/lib/auth-utils";
 import { generateApiKey } from "@/lib/api-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { OpError } from "@/lib/op-error";
 
 const select = {
   id: true,
@@ -55,6 +57,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "A name is required" }, { status: 400 });
     }
+    await assertCleanArtifact(parsed.data.name, "api-key-name");
     const { plaintext, hashedKey, prefix, last4 } = generateApiKey();
     const key = await prisma.apiKey.create({
       data: {
@@ -71,6 +74,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ key, plaintext }, { status: 201 });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("POST /api/keys", e);
     return NextResponse.json({ error: "Failed to create key" }, { status: 500 });
   }

@@ -743,6 +743,11 @@ Scalar now does that on `/api/agent`:
     page. `list pending drafts` still lists. Company OS leftover
     draft and autopilot counts go through the same ops. In-app and
     MCP expose the count tools.
+63. Voice speak and API key names are scanned before they leave the
+    box. `POST /api/voice/speak` goes through `assertCleanArtifact`
+    (`speech`) before OpenAI TTS. Key minting scans the label
+    (`api-key-name`) before persist. A live TypeSafe miss denies
+    when configured. Unconfigured local stays fail-open.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

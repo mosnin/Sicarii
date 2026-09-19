@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isOpenAIVoiceConfigured, speakText } from "@/lib/jev";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { OpError } from "@/lib/op-error";
 
 const schema = z.object({
   text: z.string().trim().min(1).max(4000),
@@ -20,6 +22,7 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Provide text to speak." }, { status: 400 });
 
+    await assertCleanArtifact(parsed.data.text, "speech");
     const audio = await speakText(parsed.data.text);
     return new NextResponse(audio, {
       headers: {
@@ -29,6 +32,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("POST /api/voice/speak", e);
     return NextResponse.json({ error: "Speech failed." }, { status: 500 });
   }
