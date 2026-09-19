@@ -534,7 +534,7 @@ describe("executeFastPath", () => {
     let captured: {
       name: string;
       domain?: string;
-      extra?: { phone?: string; size?: string; tags?: string[] };
+      extra?: { phone?: string; size?: string; tags?: string[]; description?: string; notes?: string };
     } | null = null;
     const result = await executeFastPath({
       message: "add a company called Acme size 50-200 phone 512-555-0100 tagged enterprise",
@@ -546,6 +546,8 @@ describe("executeFastPath", () => {
         phone: "512-555-0100",
         size: "50-200",
         tags: ["enterprise"],
+        description: "Series B",
+        note: "follow up Q4",
         source: "instant",
       },
       runners: {
@@ -570,7 +572,13 @@ describe("executeFastPath", () => {
     expect(captured).toEqual({
       name: "Acme",
       domain: undefined,
-      extra: { phone: "512-555-0100", size: "50-200", tags: ["enterprise"] },
+      extra: {
+        phone: "512-555-0100",
+        size: "50-200",
+        tags: ["enterprise"],
+        description: "Series B",
+        notes: "follow up Q4",
+      },
     });
   });
 

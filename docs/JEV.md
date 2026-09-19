@@ -703,6 +703,10 @@ Scalar now does that on `/api/agent`:
     tags, website, and social URLs. `add contact Jane from LinkedIn`
     stores LinkedIn as the lead source, not the company. The in-app
     runner no longer overwrites an explicit source with `agent`.
+55. Instant `add a company called Acme description Series B notes
+    follow up Q4` keeps description and notes (MCP and in-app
+    `create_entity` already accept both). `add a note on Jane` stays
+    an activity write.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

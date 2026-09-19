@@ -725,6 +725,8 @@ function parseCreateEntity(text: string): {
   phone?: string;
   size?: string;
   tags?: string[];
+  description?: string;
+  note?: string;
 } | null {
   if (!/\b(add|create|save|new)\b/i.test(text)) return null;
   if (!/\b(company|business|entity)\b/i.test(text)) return null;
@@ -732,35 +734,45 @@ function parseCreateEntity(text: string): {
   const website = text.match(/https?:\/\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
   const industry = text
     .match(
-      /\bindustry\s+["']?([^"',]+?)(?=\s+(?:located in|location|website|phone|size|tagged|tags|https?:)|["',]|$)/i,
+      /\bindustry\s+["']?([^"',]+?)(?=\s+(?:located in|location|website|phone|size|tagged|tags|description|notes?|https?:)|["',]|$)/i,
     )?.[1]
     ?.trim();
   const location = text
     .match(
-      /\b(?:located in|location)\s+["']?([^"',]+?)(?=\s+(?:industry|website|phone|size|tagged|tags|https?:)|["',]|$)/i,
+      /\b(?:located in|location)\s+["']?([^"',]+?)(?=\s+(?:industry|website|phone|size|tagged|tags|description|notes?|https?:)|["',]|$)/i,
     )?.[1]
     ?.trim();
   const size = text
     .match(
-      /\bsize\s+["']?([^"',]+?)(?=\s+(?:industry|located in|location|website|phone|tagged|tags|https?:)|["',]|$)/i,
+      /\bsize\s+["']?([^"',]+?)(?=\s+(?:industry|located in|location|website|phone|tagged|tags|description|notes?|https?:)|["',]|$)/i,
     )?.[1]
     ?.trim();
   const tagged = text
     .match(
-      /\b(?:tagged|tags)\s+(?:as\s+)?["']?([^"']+?)(?=\s+(?:industry|located in|location|website|phone|size|https?:)|["']|$)/i,
+      /\b(?:tagged|tags)\s+(?:as\s+)?["']?([^"']+?)(?=\s+(?:industry|located in|location|website|phone|size|description|notes?|https?:)|["']|$)/i,
     )?.[1]
     ?.trim();
   const tags = tagged ? parseTagList(tagged) : null;
   const phone =
     text.match(/\bphone\s+["']?(\+?[\d][\d .\-()]{6,18}\d)/i)?.[1]?.trim() ??
     text.match(/\b(\+?[\d][\d .\-()]{6,18}\d)\b/)?.[1]?.trim();
+  const description = text
+    .match(
+      /\bdescription\s+["']?([^"']+?)(?=\s+(?:industry|located in|location|website|phone|size|tagged|tags|notes?|https?:)|["']|$)/i,
+    )?.[1]
+    ?.trim();
+  const note = text
+    .match(
+      /\bnotes?\s+["']?([^"']+?)(?=\s+(?:industry|located in|location|website|phone|size|tagged|tags|description|https?:)|["']|$)/i,
+    )?.[1]
+    ?.trim();
   const called = text.match(
     /\b(?:add|create|save|new)\b[\s\S]+?\b(?:company|business|entity)\b[\s\S]+?\b(?:called|named)\s+["']?([^"',.]+)["']?/i,
   );
   const stripDomain = (raw: string) =>
     raw
       .replace(
-        /\s+(?:industry|located in|location|website|https?:|size|phone|tagged|tags)\b[\s\S]*$/i,
+        /\s+(?:industry|located in|location|website|https?:|size|phone|tagged|tags|description|notes?)\b[\s\S]*$/i,
         "",
       )
       .replace(/\b((?:[a-z0-9-]+\.)+[a-z]{2,})\b/i, "")
@@ -775,6 +787,8 @@ function parseCreateEntity(text: string): {
     ...(phone && phone.length >= 5 && phone.length <= 50 ? { phone } : {}),
     ...(size && size.length <= 40 ? { size } : {}),
     ...(tags ? { tags } : {}),
+    ...(description && description.length <= 2000 ? { description } : {}),
+    ...(note && note.length <= 2000 ? { note } : {}),
   };
   if (called?.[1]) return { name: stripDomain(called[1]), domain, ...extra };
   const asCompany = text.match(
@@ -1563,6 +1577,8 @@ export function classifyInstant(
       phone: entity.phone,
       size: entity.size,
       tags: entity.tags,
+      description: entity.description,
+      note: entity.note,
       source: "instant",
     };
   }

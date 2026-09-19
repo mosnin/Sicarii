@@ -483,6 +483,14 @@ describe("classifyInstant", () => {
       name: "Acme",
       size: "50-200",
     });
+    expect(
+      classifyInstant("add a company called Acme description Series B notes follow up Q4"),
+    ).toMatchObject({
+      tool: "create_entity",
+      name: "Acme",
+      description: "Series B",
+      note: "follow up Q4",
+    });
     expect(classifyInstant("tag company Acme as enterprise")).toMatchObject({
       tool: "update_entity",
       query: "Acme",
