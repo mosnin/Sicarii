@@ -81,6 +81,7 @@ export const FAST_PATH_TOOLS = new Set([
   "score_fit",
   "count_entities",
   "count_contacts",
+  "count_due_followups",
 ]);
 
 const READ_CORE = [
@@ -97,6 +98,7 @@ const READ_CORE = [
   "score_fit",
   "count_entities",
   "count_contacts",
+  "count_due_followups",
 ] as const;
 
 const DISCOVER_CORE = [
@@ -345,6 +347,20 @@ export function formatFastReply(input: {
     const who = people ? (n === 1 ? "contact" : "contacts") : n === 1 ? "company" : "companies";
     const filter = r.status ? ` marked ${r.status.toLowerCase()}` : "";
     return `You have ${n} ${who}${filter} in the CRM.`;
+  }
+
+  if (tool === "count_due_followups") {
+    const r = payload as { count?: number; staleDays?: number };
+    const n =
+      typeof payload === "number" && Number.isFinite(payload)
+        ? payload
+        : typeof r.count === "number" && Number.isFinite(r.count)
+          ? r.count
+          : 0;
+    const window = r.staleDays != null ? ` older than ${r.staleDays} days` : "";
+    return n === 0
+      ? "No contacts are due for a follow-up."
+      : `You have ${n} contact${n === 1 ? "" : "s"} due for a follow-up${window}.`;
   }
 
   if (tool === "get_billing" || tool === "get_balance") {
@@ -873,6 +889,7 @@ export type FastPathRunners = {
   countContacts?: (
     status?: "NEW" | "ENRICHED" | "CONTACTED" | "REPLIED" | "QUALIFIED" | "WON" | "LOST" | "ARCHIVED",
   ) => Promise<unknown>;
+  countDueFollowups?: (staleDays?: number) => Promise<unknown>;
   listDueFollowups?: () => Promise<unknown>;
   getBilling?: () => Promise<unknown>;
   getUsage?: () => Promise<unknown>;
@@ -1368,6 +1385,13 @@ async function runTool(
       const status = instant?.status;
       const count = await runners.countContacts(status);
       if (typeof count === "number") return { count, kind: "contact", ...(status ? { status } : {}) };
+      return count;
+    }
+    case "count_due_followups": {
+      if (!runners.countDueFollowups) return { error: "Follow-up count is unavailable." };
+      const staleDays = instant?.staleDays;
+      const count = await runners.countDueFollowups(staleDays);
+      if (typeof count === "number") return { count, ...(staleDays != null ? { staleDays } : {}) };
       return count;
     }
     case "list_entities":

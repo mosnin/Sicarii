@@ -67,6 +67,7 @@ import {
   listDueFollowups,
   countEntities,
   countContacts,
+  countDueFollowups,
   listRecentDiscoveries,
   listSwarmRuns,
   getSwarmRun,
@@ -117,7 +118,7 @@ export const maxDuration = 60;
 
 const MODEL = process.env.OPENAI_AGENT_MODEL ?? "gpt-4o";
 
-const GROUNDED_SYSTEM = `You are Scalar. Answer only from <crm-facts> and tool results in this turn. If a company, person, email, or domain is not there, say you do not have it and offer to discover. Never invent records. find_companies adds real homepages; maps_leads is for local places; swarm_discover is multi-angle; search_web is pages, not companies. Use count_entities and count_contacts for how-many asks, list_due_followups and get_billing for those asks. Confirm before bulk writes. Plain conversational prose. No markdown. One short paragraph.`;
+const GROUNDED_SYSTEM = `You are Scalar. Answer only from <crm-facts> and tool results in this turn. If a company, person, email, or domain is not there, say you do not have it and offer to discover. Never invent records. find_companies adds real homepages; maps_leads is for local places; swarm_discover is multi-angle; search_web is pages, not companies. Use count_entities, count_contacts, and count_due_followups for how-many asks, list_due_followups and get_billing for those asks. Confirm before bulk writes. Plain conversational prose. No markdown. One short paragraph.`;
 
 function uiMessageText(m: UIMessage): string {
   return (m.parts ?? [])
@@ -541,6 +542,19 @@ export async function POST(req: Request) {
         exec(() =>
           listDueFollowups(userId, { status, staleDays, limit }),
         ),
+    }),
+    count_due_followups: tool({
+      description:
+        "Count contacts due for a follow-up without loading the rows. Optional staleDays (default 7). Use this instead of listing when the operator asks how many.",
+      inputSchema: z.object({
+        status: z.string().optional(),
+        staleDays: z.number().int().min(1).max(365).optional(),
+      }),
+      execute: async ({ status, staleDays }) =>
+        exec(async () => ({
+          count: await countDueFollowups(userId, { status, staleDays }),
+          ...(staleDays != null ? { staleDays } : {}),
+        })),
     }),
     get_billing: tool({
       description: "Show remaining credits and the current plan.",
@@ -971,6 +985,7 @@ export async function POST(req: Request) {
     draft_breakups: "Draft breakup emails for stalled deals.",
     propose_autopilot_plan: "Propose a budgeted autopilot plan.",
     list_due_followups: "List contacts due for a follow-up.",
+    count_due_followups: "Count contacts due for a follow-up.",
     get_billing: "Show remaining credits and plan.",
     get_balance: "Show remaining credits and plan.",
     get_usage: "Show the credit price list and current balance.",
@@ -1173,6 +1188,7 @@ export async function POST(req: Request) {
         listContacts: (q) => listContacts(userId, { q }),
         countEntities: (status) => countEntities(userId, { status }),
         countContacts: (status) => countContacts(userId, { status }),
+        countDueFollowups: (staleDays) => countDueFollowups(userId, { staleDays }),
         listDueFollowups: () => listDueFollowups(userId, {}),
         getBilling: () => getBilling(userId),
         getUsage: () => getUsage(userId),

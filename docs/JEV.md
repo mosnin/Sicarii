@@ -717,6 +717,11 @@ Scalar now does that on `/api/agent`:
     descriptions, activities, and (when included) email/call/social
     bodies once before the copy. A live TypeSafe miss denies the share
     when configured. Unconfigured local stays fail-open.
+58. Instant `how many follow-ups`, `how many stale contacts`, and
+    `count follow-ups older than 14 days` skip TypeSafe and skip the
+    generator. The count goes through `countDueFollowups` so the reply
+    is the real total, not a 200-row page. `who needs a follow-up`
+    still lists names. In-app and MCP expose `count_due_followups`.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

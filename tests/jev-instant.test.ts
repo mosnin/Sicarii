@@ -31,6 +31,12 @@ describe("classifyInstant", () => {
     expect(classifyInstant("list companies")).toMatchObject({ tool: "list_entities", query: "" });
     expect(classifyInstant("who needs a follow-up")).toMatchObject({ tool: "list_due_followups" });
     expect(classifyInstant("who should I follow up with")).toMatchObject({ tool: "list_due_followups" });
+    expect(classifyInstant("how many follow-ups")).toMatchObject({ tool: "count_due_followups" });
+    expect(classifyInstant("count follow-ups older than 14 days")).toMatchObject({
+      tool: "count_due_followups",
+      staleDays: 14,
+    });
+    expect(classifyInstant("how many stale contacts")).toMatchObject({ tool: "count_due_followups" });
     expect(classifyInstant("how many credits do I have")).toMatchObject({ tool: "get_billing" });
     expect(classifyInstant("how many companies")).toMatchObject({ tool: "count_entities" });
     expect(classifyInstant("how many contacts do I have")).toMatchObject({ tool: "count_contacts" });

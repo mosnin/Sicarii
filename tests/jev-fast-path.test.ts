@@ -59,6 +59,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "score_fit", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "count_entities", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "count_contacts", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "count_due_followups", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_contact", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_contact", confidence: 0.94 })).toBe(true);
@@ -711,6 +712,36 @@ describe("executeFastPath", () => {
       },
     });
     expect(archived?.text).toBe("You have 3 companies marked archived in the CRM.");
+  });
+
+  it("counts due follow-ups without loading rows", async () => {
+    const result = await executeFastPath({
+      message: "how many follow-ups older than 14 days",
+      decision: { kind: "tool", tool: "count_due_followups", confidence: 0.94 },
+      instant: {
+        tool: "count_due_followups",
+        query: "how many follow-ups older than 14 days",
+        staleDays: 14,
+        source: "instant",
+      },
+      runners: {
+        searchCrm: async () => ({ entities: [], contacts: [] }),
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
+        countDueFollowups: async (staleDays) => (staleDays === 14 ? 7 : 0),
+      },
+    });
+    expect(result?.tool).toBe("count_due_followups");
+    expect(result?.text).toBe("You have 7 contacts due for a follow-up older than 14 days.");
   });
 
   it("lists entities through the list runner, not searchCrm", async () => {

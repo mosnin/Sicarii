@@ -69,6 +69,7 @@ import {
   listDueFollowups,
   countEntities,
   countContacts,
+  countDueFollowups,
   placeContactCall,
   saveCall,
   listContactCalls,
@@ -1205,6 +1206,22 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (a, extra) => run(() => listDueFollowups(userIdFrom(extra), a)),
+    );
+    server.tool(
+      "count_due_followups",
+      "Count contacts due for a follow-up without loading the rows. Optional status and staleDays (default 7). Use this instead of listing when you only need the number.",
+      {
+        status: z
+          .enum(["NEW", "ENRICHED", "CONTACTED", "REPLIED", "QUALIFIED", "WON", "LOST", "ARCHIVED"])
+          .optional(),
+        staleDays: z.number().int().min(0).max(365).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (a, extra) =>
+        run(async () => ({
+          count: await countDueFollowups(userIdFrom(extra), a),
+          ...(a.staleDays != null ? { staleDays: a.staleDays } : {}),
+        })),
     );
     server.tool(
       "add_activity",

@@ -12,7 +12,7 @@ with probabilities. It cannot write email, summaries, or tool arguments as prose
 
 - Route a discover intent (`/api/discover/route-intent` or MCP `jev_decide`)
 - Score fit or rank records (`score_fit` / instant `score Acme`)
-- Count CRM rows (`count_entities` / `count_contacts` / instant `how many companies`)
+- Count CRM rows (`count_entities` / `count_contacts` / `count_due_followups` / instant `how many companies`)
 - Gate a write tool (auto mode) before execute
 - Pick a generation tier (qwen_fast vs qwen_strong vs none)
 - Review a diff (symbolic) or a warden pack (company OS)

@@ -148,6 +148,7 @@ const readOnlyTools = [
   "get_usage",
   "list_contact_calls",
   "list_due_followups",
+  "count_due_followups",
   "list_activities",
 ];
 

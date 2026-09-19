@@ -716,6 +716,20 @@ function parseDomain(text: string): string | undefined {
   return hit;
 }
 
+function parseCountFollowups(text: string): { staleDays?: number } | null {
+  if (!/\b(follow-?ups?|follow\s+ups?|stale contacts?)\b/i.test(text)) return null;
+  const asks =
+    /^(please\s+)?(how many|count|what(?:'s| is) (the )?(?:total )?(?:number of )?)\b/i.test(text) ||
+    /\bfollow-?up counts?\b/i.test(text);
+  if (!asks) return null;
+  if (/\b(who|list|show|names?)\b/i.test(text)) return null;
+  const days = text.match(/\b(?:older than|over|past|stale(?:r than)?)\s+(\d{1,3})\s+days?\b/i)?.[1];
+  if (!days) return {};
+  const staleDays = Number(days);
+  if (!Number.isFinite(staleDays) || staleDays < 1 || staleDays > 365) return null;
+  return { staleDays };
+}
+
 function parseCountCrm(text: string): {
   tool: "count_entities" | "count_contacts";
   entityStatus?: NonNullable<InstantRoute["entityStatus"]>;
@@ -1629,6 +1643,16 @@ export function classifyInstant(
 
   if (/\b(what do you remember|recall|from (our |the )?last (chat|time|conversation))\b/i.test(text)) {
     return { tool: "recall", query: lookupQuery(text), source: "instant" };
+  }
+
+  const countFollowups = parseCountFollowups(text);
+  if (countFollowups && !COMPOUND.test(text) && !DESTRUCTIVE.test(text)) {
+    return {
+      tool: "count_due_followups",
+      query: text,
+      staleDays: countFollowups.staleDays,
+      source: "instant",
+    };
   }
 
   if (
