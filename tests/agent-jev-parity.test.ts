@@ -37,6 +37,10 @@ describe("agent Jev parity", () => {
     expect(AUTO_MODE_TOOLS.has("find_socials")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("pause_autopilot")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("place_call")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("update_segment")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("delete_segment")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("add_to_pipeline")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("delete_pipeline")).toBe(true);
     expect(source).toContain("for (const name of AUTO_MODE_TOOLS)");
   });
 
@@ -58,5 +62,9 @@ describe("agent Jev parity", () => {
     expect(source).toContain("find_socials:");
     expect(source).toContain("pause_autopilot:");
     expect(source).toContain("place_call:");
+    expect(source).toContain("pipeline_metrics:");
+    expect(source).toContain("get_swarm_run:");
+    expect(source).toContain("update_segment:");
+    expect(source).toContain("add_to_pipeline:");
   });
 });

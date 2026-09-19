@@ -38,7 +38,19 @@ describe("classifyInstant", () => {
       query: "SUBJECT",
     });
     expect(classifyInstant("list segments")).toMatchObject({ tool: "list_segments" });
+    expect(classifyInstant("show the Enterprise segment")).toMatchObject({
+      tool: "get_segment",
+      name: "Enterprise",
+    });
     expect(classifyInstant("show my pipelines")).toMatchObject({ tool: "list_pipelines" });
+    expect(classifyInstant("show the Outbound pipeline")).toMatchObject({
+      tool: "get_pipeline",
+      name: "Outbound",
+    });
+    expect(classifyInstant("pipeline metrics for Outbound")).toMatchObject({
+      tool: "pipeline_metrics",
+      name: "Outbound",
+    });
     expect(classifyInstant("show pending drafts")).toMatchObject({ tool: "list_pending_drafts" });
     expect(classifyInstant("list swarm runs")).toMatchObject({ tool: "list_swarm_runs" });
     expect(classifyInstant("autopilot status")).toMatchObject({ tool: "get_autopilot_status" });

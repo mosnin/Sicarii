@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { geocodeCached } from "@/lib/geocode";
-import { OpError, listEntities } from "@/lib/crm-operations";
-import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { OpError, listEntities, createEntity } from "@/lib/crm-operations";
 
 const ENTITY_STATUSES = ["NEW", "ENRICHED", "ARCHIVED"] as const;
 
@@ -71,22 +69,13 @@ export async function POST(req: NextRequest) {
     }
 
     const { enrichment, tags, ...rest } = parsed.data;
+    let entity;
     try {
-      await assertCleanArtifact([parsed.data.notes, parsed.data.description].filter(Boolean).join("\n"), "notes");
+      entity = await createEntity(user.id, { ...rest, tags, enrichment });
     } catch (e) {
       if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
       throw e;
     }
-    const entity = await prisma.entity.create({
-      data: {
-        ...rest,
-        tags: tags ?? [],
-        ...(enrichment
-          ? { enrichment: enrichment as Prisma.InputJsonValue }
-          : {}),
-        userId: user.id,
-      },
-    });
 
     // Geocode in the background so the entity is already on the map when opened.
     if (entity.location) {

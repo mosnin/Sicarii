@@ -59,6 +59,7 @@ import {
   searchCrm,
   listDueFollowups,
   listSwarmRuns,
+  getSwarmRun,
   listContactEmails,
   listActivities,
   listContactCalls,
@@ -68,7 +69,19 @@ import {
   listSocialMessages,
   placeContactCall,
 } from "@/lib/crm-operations";
-import { listSegments, listPipelines, getSegment, getPipeline, createSegment, createPipeline } from "@/lib/field-operations";
+import {
+  listSegments,
+  listPipelines,
+  getSegment,
+  getPipeline,
+  createSegment,
+  createPipeline,
+  updateSegment,
+  deleteSegment,
+  addToPipeline,
+  deletePipeline,
+  pipelineMetrics,
+} from "@/lib/field-operations";
 import { enrichContactField } from "@/lib/contact-enrich";
 import { findContactSocials } from "@/lib/social-find";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
@@ -636,6 +649,44 @@ export async function POST(req: Request) {
       }),
       execute: (args) => exec(() => placeContactCall(userId, args)),
     }),
+    update_segment: tool({
+      description: "Rename a segment or change its goal.",
+      inputSchema: z.object({
+        id: z.string(),
+        name: z.string().min(1).max(200).optional(),
+        goal: z.string().max(2000).optional(),
+      }),
+      execute: ({ id, ...patch }) => exec(() => updateSegment(userId, id, patch)),
+    }),
+    delete_segment: tool({
+      description: "Delete a segment. Membership rows go with it.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: ({ id }) => exec(() => deleteSegment(userId, id)),
+    }),
+    add_to_pipeline: tool({
+      description: "Add contacts or a whole segment to a pipeline.",
+      inputSchema: z.object({
+        pipelineId: z.string(),
+        contactIds: z.array(z.string()).max(500).optional(),
+        segmentId: z.string().optional(),
+      }),
+      execute: ({ pipelineId, ...input }) => exec(() => addToPipeline(userId, pipelineId, input)),
+    }),
+    delete_pipeline: tool({
+      description: "Delete a pipeline and its entries.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: ({ id }) => exec(() => deletePipeline(userId, id)),
+    }),
+    pipeline_metrics: tool({
+      description: "Stage, conversation, and deal-score totals for a pipeline.",
+      inputSchema: z.object({ pipelineId: z.string() }),
+      execute: ({ pipelineId }) => exec(() => pipelineMetrics(userId, pipelineId)),
+    }),
+    get_swarm_run: tool({
+      description: "One swarm run's per-angle counts and company attribution.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: ({ id }) => exec(() => getSwarmRun(userId, id)),
+    }),
   };
 
   // Auto mode (LangChain AutoModeMiddleware): Jev inspects pending tool
@@ -685,6 +736,12 @@ export async function POST(req: Request) {
     find_socials: "Find a contact's social profiles.",
     pause_autopilot: "Pause a running autopilot plan.",
     place_call: "Call a contact via AgentPhone.",
+    update_segment: "Rename a segment or change its goal.",
+    delete_segment: "Delete a segment.",
+    add_to_pipeline: "Add contacts or a segment to a pipeline.",
+    delete_pipeline: "Delete a pipeline.",
+    pipeline_metrics: "Stage and deal-score totals for a pipeline.",
+    get_swarm_run: "Show one swarm run's breakdown.",
   };
   const skillCatalog = Object.fromEntries(SKILLS.map((s) => [s.slug, s.description]));
 
@@ -714,6 +771,10 @@ export async function POST(req: Request) {
             ? listSwarmRuns(userId).catch(() => null)
           : instant?.tool === "list_pending_drafts"
             ? listPendingDrafts(userId, {}).catch(() => null)
+          : instant?.tool === "get_segment"
+            ? listSegments(userId).catch(() => null)
+          : instant?.tool === "get_pipeline" || instant?.tool === "pipeline_metrics"
+            ? listPipelines(userId).catch(() => null)
           : instant?.tool === "pause_autopilot"
             ? getAutopilotStatus(userId).catch(() => null)
           : instant?.tool === "list_emails" ||
@@ -821,6 +882,9 @@ export async function POST(req: Request) {
         },
         enrichContact: (contactId, field) => enrichContactField(userId, contactId, field),
         findSocials: (contactId) => findContactSocials(userId, contactId),
+        getSegment: (id) => getSegment(userId, id),
+        getPipeline: (id) => getPipeline(userId, id),
+        pipelineMetrics: (id) => pipelineMetrics(userId, id),
         scoreFit: productContext
           ? async (rows) => {
               const scores = await scoreFitWithJev(rows, productContext);

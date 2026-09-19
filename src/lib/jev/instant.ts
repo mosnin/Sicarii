@@ -122,6 +122,19 @@ function parseCreateContact(text: string): {
   };
 }
 
+function parseNamedField(text: string, noun: "segment" | "pipeline"): string | null {
+  const called = text.match(
+    new RegExp(`\\b${noun}\\b\\s+(?:called|named)\\s+["']?([^"',.]{1,80})`, "i"),
+  );
+  if (called?.[1]?.trim()) return called[1].trim().slice(0, 120);
+  const theX = text.match(
+    new RegExp(`\\b(?:the|a|an)\\s+["']?([A-Z][^"']{0,80}?)["']?\\s+${noun}\\b`, "i"),
+  );
+  const name = theX?.[1]?.trim();
+  if (name && !/^(all|my|our)$/i.test(name)) return name.slice(0, 120);
+  return null;
+}
+
 function parseNamedCreate(text: string, noun: "segment" | "pipeline"): string | null {
   if (!/\b(add|create|save|new)\b/i.test(text)) return null;
   if (!new RegExp(`\\b${noun}s?\\b`, "i").test(text)) return null;
@@ -217,6 +230,38 @@ export function classifyInstant(
     /\b(status|doing|budget|running|plan)\b/i.test(text)
   ) {
     return { tool: "get_autopilot_status", query: text, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    (/\b(pipeline metrics|pipeline stats|deal scores?)\b/i.test(text) ||
+      (/\bmetrics\b/i.test(text) && /\bpipeline\b/i.test(text)))
+  ) {
+    const name =
+      parseNamedField(text, "pipeline") ||
+      lookupQuery(text)
+        .replace(/\b(pipeline metrics|pipeline stats|metrics|deal scores?|for|the|a|an|pipeline)\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    return { tool: "pipeline_metrics", query: name, name: name || undefined, source: "instant" };
+  }
+  const namedSegment = parseNamedField(text, "segment");
+  if (
+    namedSegment &&
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    /^(please\s+)?(list|show|get|open|tell me about)\b/i.test(text)
+  ) {
+    return { tool: "get_segment", query: namedSegment, name: namedSegment, source: "instant" };
+  }
+  const namedPipeline = parseNamedField(text, "pipeline");
+  if (
+    namedPipeline &&
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    /^(please\s+)?(list|show|get|open|tell me about)\b/i.test(text)
+  ) {
+    return { tool: "get_pipeline", query: namedPipeline, name: namedPipeline, source: "instant" };
   }
   if (
     !COMPOUND.test(text) &&

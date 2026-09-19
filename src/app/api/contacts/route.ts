@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { OpError, listContacts } from "@/lib/crm-operations";
-import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { OpError, listContacts, createContact } from "@/lib/crm-operations";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -87,33 +85,17 @@ export async function POST(req: NextRequest) {
 
     const { enrichment, tags, entityId, ...rest } = parsed.data;
     try {
-      await assertCleanArtifact(parsed.data.notes ?? "", "notes");
+      const contact = await createContact(user.id, {
+        ...rest,
+        tags,
+        enrichment,
+        entityId: entityId ?? null,
+      });
+      return NextResponse.json({ contact }, { status: 201 });
     } catch (e) {
       if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
       throw e;
     }
-
-    // If assigning to an entity, it must belong to this user.
-    if (entityId) {
-      const entity = await prisma.entity.findUnique({ where: { id: entityId } });
-      if (!entity || entity.userId !== user.id) {
-        return NextResponse.json({ error: "Invalid entity" }, { status: 400 });
-      }
-    }
-
-    const contact = await prisma.contact.create({
-      data: {
-        ...rest,
-        tags: tags ?? [],
-        ...(enrichment
-          ? { enrichment: enrichment as Prisma.InputJsonValue }
-          : {}),
-        entityId: entityId ?? undefined,
-        userId: user.id,
-      },
-    });
-
-    return NextResponse.json({ contact }, { status: 201 });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("POST /api/contacts", e);

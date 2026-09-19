@@ -45,6 +45,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "create_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "create_segment", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "pause_autopilot", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "pipeline_metrics", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "get_segment", confidence: 0.94 })).toBe(true);
   });
 });
 
@@ -174,6 +176,20 @@ describe("formatFastReply", () => {
         payload: { name: "Miami dentists", status: "paused" },
       }),
     ).toContain("Paused Miami dentists");
+    expect(
+      formatFastReply({
+        tool: "get_segment",
+        query: "Enterprise",
+        payload: { name: "Enterprise", _count: { members: 3 }, members: [] },
+      }),
+    ).toBe("Segment Enterprise has 3 members.");
+    expect(
+      formatFastReply({
+        tool: "pipeline_metrics",
+        query: "Outbound",
+        payload: { name: "Outbound", total: 12, won: 2, lost: 1, avgDealScore: 44 },
+      }),
+    ).toContain("12 in pipeline");
   });
 
   it("explains an empty CRM lookup", () => {

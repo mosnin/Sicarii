@@ -372,7 +372,10 @@ Two stacked branches off Scalar `main`:
    in-app agent now has get/create segment and pipeline, enrich_contact,
    find_socials, pause_autopilot, and place_call, matching MCP.
    Instant create-segment / create-pipeline / pause-autopilot /
-   enrich-contact / find-socials skip TypeSafe.
+   enrich-contact / find-socials skip TypeSafe. Generate clips huge
+   recent tool dumps. HTTP creates go through the ops layer. Instant
+   named Field gets and pipeline metrics skip TypeSafe. Agent Field
+   writes and metrics match MCP.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -522,9 +525,16 @@ Scalar now does that on `/api/agent`:
     omits enrichment. Agent Field writes and paid contact enrich now
     exist in-app: `create_segment`, `create_pipeline`, `enrich_contact`,
     `find_socials`, `pause_autopilot`, `place_call`, plus the matching
-    getters. Instant `create a segment called X`, `add Outbound as a
+    getters.     Instant `create a segment called X`, `add Outbound as a
     pipeline`, `pause autopilot`, `enrich Jane's linkedin`, and `find
     socials for Jane` skip TypeSafe and skip `streamText`.
+23. Generate turns clip huge recent tool dumps (not just drop old ones).
+    HTTP company and contact creates go through `createEntity` /
+    `createContact`. Instant `show the Enterprise segment` /
+    `show the Outbound pipeline` / `pipeline metrics for Outbound` skip
+    TypeSafe. Agent Field writes (`update_segment`, `delete_segment`,
+    `add_to_pipeline`, `delete_pipeline`) and `pipeline_metrics` /
+    `get_swarm_run` match MCP.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

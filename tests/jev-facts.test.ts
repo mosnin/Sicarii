@@ -143,4 +143,23 @@ describe("compactUiMessages", () => {
     expect(oldAssistant?.parts?.some((p) => String(p.type).startsWith("tool-"))).toBe(false);
     expect(compact.at(-1)?.parts?.some((p) => p.type === "text")).toBe(true);
   });
+
+  it("clips huge recent tool dumps instead of sending the whole blob", () => {
+    const huge = { rows: Array.from({ length: 200 }, (_, i) => ({ id: `e${i}`, notes: "x".repeat(80) })) };
+    const compact = compactUiMessages(
+      [
+        {
+          id: "1",
+          role: "assistant" as const,
+          parts: [
+            { type: "tool-list_entities", toolCallId: "t1", state: "output-available", output: huge },
+          ],
+        },
+      ],
+      8,
+    );
+    const part = compact[0]?.parts?.[0] as { output?: { truncated?: boolean; preview?: string } };
+    expect(part.output?.truncated).toBe(true);
+    expect(part.output?.preview?.length).toBeLessThan(JSON.stringify(huge).length);
+  });
 });

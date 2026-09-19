@@ -42,6 +42,9 @@ export const FAST_PATH_TOOLS = new Set([
   "pause_autopilot",
   "enrich_contact",
   "find_socials",
+  "get_segment",
+  "get_pipeline",
+  "pipeline_metrics",
 ]);
 
 const READ_CORE = [
@@ -51,6 +54,10 @@ const READ_CORE = [
   "get_contact",
   "list_entities",
   "list_contacts",
+  "list_segments",
+  "list_pipelines",
+  "get_segment",
+  "get_pipeline",
 ] as const;
 
 const DISCOVER_CORE = [
@@ -361,6 +368,38 @@ export function formatFastReply(input: {
     return `Enriched ${who}${r.value ? ` (${r.value})` : ""}.`;
   }
 
+  if (tool === "get_segment") {
+    const r = payload as {
+      name?: string;
+      _count?: { members?: number };
+      members?: Array<{ contact?: { name?: string | null } }>;
+    };
+    const n = r._count?.members ?? r.members?.length ?? 0;
+    const people = (r.members ?? [])
+      .slice(0, 6)
+      .map((m) => m.contact?.name)
+      .filter(Boolean);
+    const extra = people.length ? `: ${people.join(", ")}` : "";
+    return `Segment ${r.name ?? query} has ${n} member${n === 1 ? "" : "s"}${extra}.`;
+  }
+
+  if (tool === "get_pipeline") {
+    const r = payload as { name?: string; _count?: { entries?: number } };
+    const n = r._count?.entries ?? 0;
+    return `Pipeline ${r.name ?? query} has ${n} entr${n === 1 ? "y" : "ies"}.`;
+  }
+
+  if (tool === "pipeline_metrics") {
+    const r = payload as {
+      name?: string;
+      total?: number;
+      won?: number;
+      lost?: number;
+      avgDealScore?: number | null;
+    };
+    return `${r.name ?? query}: ${r.total ?? 0} in pipeline, ${r.won ?? 0} won, ${r.lost ?? 0} lost${r.avgDealScore != null ? `, avg score ${r.avgDealScore}` : ""}.`;
+  }
+
   if (tool === "find_socials") {
     const r = payload as {
       saved?: Record<string, unknown> | number;
@@ -413,8 +452,26 @@ export type FastPathRunners = {
   pauseAutopilot?: (prefetch?: unknown) => Promise<unknown>;
   enrichContact?: (contactId: string, field: "linkedin" | "email" | "phone") => Promise<unknown>;
   findSocials?: (contactId: string) => Promise<unknown>;
+  getSegment?: (id: string) => Promise<unknown>;
+  getPipeline?: (id: string) => Promise<unknown>;
+  pipelineMetrics?: (id: string) => Promise<unknown>;
   scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
+
+function matchNamed(
+  rows: unknown,
+  name?: string,
+): { id: string; name?: string } | undefined {
+  const list = Array.isArray(rows) ? rows : [];
+  const needle = name?.trim().toLowerCase() ?? "";
+  const typed = list.filter(
+    (r): r is { id: string; name?: string } =>
+      !!r && typeof r === "object" && "id" in r && typeof (r as { id?: unknown }).id === "string",
+  );
+  if (!needle) return typed.length === 1 ? typed[0] : undefined;
+  return typed.find((r) => (r.name ?? "").trim().toLowerCase() === needle)
+    ?? typed.find((r) => (r.name ?? "").toLowerCase().includes(needle));
+}
 
 export async function executeFastPath(input: {
   message: string;
@@ -611,6 +668,34 @@ async function runTool(
           ? runners.createPipeline(instant?.name ?? query)
           : { error: "Pipeline create is unavailable." },
       );
+    case "get_segment":
+    case "get_pipeline":
+    case "pipeline_metrics": {
+      const listed =
+        prefetch && typeof prefetch === "object"
+          ? prefetch
+          : tool === "get_segment"
+            ? await (runners.listSegments ? runners.listSegments() : [])
+            : await (runners.listPipelines ? runners.listPipelines() : []);
+      const hit = matchNamed(listed, instant?.name ?? query);
+      if (!hit?.id) {
+        return {
+          error:
+            tool === "get_segment"
+              ? `I did not find a segment named "${query}".`
+              : `I did not find a pipeline named "${query || "that"}".`,
+        };
+      }
+      if (tool === "get_segment") {
+        return runners.getSegment ? runners.getSegment(hit.id) : { error: "Segment get is unavailable." };
+      }
+      if (tool === "pipeline_metrics") {
+        return runners.pipelineMetrics
+          ? runners.pipelineMetrics(hit.id)
+          : { error: "Pipeline metrics are unavailable." };
+      }
+      return runners.getPipeline ? runners.getPipeline(hit.id) : { error: "Pipeline get is unavailable." };
+    }
     case "pause_autopilot":
       return write("pause_autopilot", { query }, async () =>
         runners.pauseAutopilot
