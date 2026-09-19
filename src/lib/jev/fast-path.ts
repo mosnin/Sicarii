@@ -587,6 +587,8 @@ export function formatFastReply(input: {
       company?: string | null;
       linkedin?: string | null;
       twitter?: string | null;
+      facebook?: string | null;
+      instagram?: string | null;
       notes?: string | null;
     };
     const who = r.name ?? query;
@@ -596,6 +598,8 @@ export function formatFastReply(input: {
     if (r.company && !r.status) return `Set ${who}'s company to ${r.company}.`;
     if (r.linkedin && !r.status) return `Set ${who}'s LinkedIn to ${r.linkedin}.`;
     if (r.twitter && !r.status) return `Set ${who}'s X to ${r.twitter}.`;
+    if (r.facebook && !r.status) return `Set ${who}'s Facebook to ${r.facebook}.`;
+    if (r.instagram && !r.status) return `Set ${who}'s Instagram to ${r.instagram}.`;
     if (r.notes && !r.status) return `Set ${who}'s notes.`;
     if (r.dealScore != null && !r.status) {
       return `Set ${who}'s deal score to ${r.dealScore}.`;
@@ -809,6 +813,8 @@ export type FastPathRunners = {
       company?: string;
       linkedin?: string;
       twitter?: string;
+      facebook?: string;
+      instagram?: string;
       notes?: string;
     },
   ) => Promise<unknown>;
@@ -1178,8 +1184,22 @@ async function runTool(
       const company = instant?.company?.trim();
       const linkedin = instant?.linkedin?.trim();
       const twitter = instant?.twitter?.trim();
+      const facebook = instant?.facebook?.trim();
+      const instagram = instant?.instagram?.trim();
       const notes = instant?.note?.trim();
-      if (!status && dealScore == null && !title && !email && !phone && !company && !linkedin && !twitter && !notes) {
+      if (
+        !status &&
+        dealScore == null &&
+        !title &&
+        !email &&
+        !phone &&
+        !company &&
+        !linkedin &&
+        !twitter &&
+        !facebook &&
+        !instagram &&
+        !notes
+      ) {
         return { error: "Say which status to set (contacted, qualified, won, lost)." };
       }
       const args: Record<string, string | number> = { id: contactId };
@@ -1191,6 +1211,8 @@ async function runTool(
       if (company) args.company = company;
       if (linkedin) args.linkedin = linkedin;
       if (twitter) args.twitter = twitter;
+      if (facebook) args.facebook = facebook;
+      if (instagram) args.instagram = instagram;
       if (notes) args.notes = notes;
       const patch = {
         ...(status ? { status } : {}),
@@ -1201,6 +1223,8 @@ async function runTool(
         ...(company ? { company } : {}),
         ...(linkedin ? { linkedin } : {}),
         ...(twitter ? { twitter } : {}),
+        ...(facebook ? { facebook } : {}),
+        ...(instagram ? { instagram } : {}),
         ...(notes ? { notes } : {}),
       };
       return write("update_contact", args, async () => {

@@ -651,6 +651,8 @@ Scalar now does that on `/api/agent`:
     interested`, and `set company Acme notes to Series B` skip TypeSafe.
     Creation budget and welcome first-run counts go through `countEntities`
     / `countContacts`.
+44. Instant `set Jane facebook to https://facebook.com/jane` and
+    `set Jane instagram to https://instagram.com/jane` skip TypeSafe.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

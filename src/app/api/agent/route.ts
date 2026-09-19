@@ -1200,6 +1200,8 @@ export async function POST(req: Request) {
             ...(patch.company ? { company: patch.company } : {}),
             ...(patch.linkedin ? { linkedin: patch.linkedin } : {}),
             ...(patch.twitter ? { twitter: patch.twitter } : {}),
+            ...(patch.facebook ? { facebook: patch.facebook } : {}),
+            ...(patch.instagram ? { instagram: patch.instagram } : {}),
             ...(patch.notes ? { notes: patch.notes } : {}),
           }),
         addToPipeline: (pipelineId, contactIds) => addToPipeline(userId, pipelineId, { contactIds }),

@@ -286,6 +286,20 @@ describe("formatFastReply", () => {
     ).toBe("Set Jane's X to https://x.com/jane.");
     expect(
       formatFastReply({
+        tool: "update_contact",
+        query: "Jane",
+        payload: { name: "Jane", facebook: "https://facebook.com/jane" },
+      }),
+    ).toBe("Set Jane's Facebook to https://facebook.com/jane.");
+    expect(
+      formatFastReply({
+        tool: "update_contact",
+        query: "Jane",
+        payload: { name: "Jane", instagram: "https://instagram.com/jane" },
+      }),
+    ).toBe("Set Jane's Instagram to https://instagram.com/jane.");
+    expect(
+      formatFastReply({
         tool: "update_entity",
         query: "Acme",
         payload: { name: "Acme", notes: "Series B fintech" },

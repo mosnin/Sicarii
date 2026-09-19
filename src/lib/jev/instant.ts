@@ -27,6 +27,8 @@ export type InstantRoute = {
   website?: string;
   linkedin?: string;
   twitter?: string;
+  facebook?: string;
+  instagram?: string;
   dealScore?: number;
   direction?: "INBOUND" | "OUTBOUND";
   detail?: boolean;
@@ -266,9 +268,16 @@ function parseEntityNotes(text: string): { query: string; note: string } | null 
 }
 
 function isTwitterHandleOrUrl(value: string): boolean {
+  return isSocialHandleOrUrl(value, ["x.com", "twitter.com"], /^@?[A-Za-z0-9_]{1,15}$/);
+}
+
+function isSocialHandleOrUrl(value: string, hosts: string[], handle = /^@?[A-Za-z0-9._]{1,30}$/): boolean {
   if (value.length > 500) return false;
-  if (/^@?[A-Za-z0-9_]{1,15}$/.test(value)) return true;
-  return /^https?:\/\/(www\.)?(x\.com|twitter\.com)\//i.test(value);
+  if (handle.test(value)) return true;
+  return hosts.some((host) => {
+    const escaped = host.replace(/\./g, "\\.");
+    return new RegExp(`^https?:\\/\\/(www\\.)?${escaped}\\/`, "i").test(value);
+  });
 }
 
 function parseEntityPatch(text: string): {
@@ -307,10 +316,12 @@ function parseContactPatch(text: string): {
   company?: string;
   linkedin?: string;
   twitter?: string;
+  facebook?: string;
+  instagram?: string;
   note?: string;
 } | null {
   const m = text.match(
-    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(title|email|phone|company|linkedin|twitter|x|notes)\s+to\s+(.+)$/i,
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(title|email|phone|company|linkedin|twitter|x|facebook|instagram|notes)\s+to\s+(.+)$/i,
   );
   if (!m?.[3] || !m[4] || !m[5]) return null;
   const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
@@ -338,6 +349,14 @@ function parseContactPatch(text: string): {
   if (field === "twitter" || field === "x") {
     if (!isTwitterHandleOrUrl(value)) return null;
     return { query, twitter: value };
+  }
+  if (field === "facebook") {
+    if (!isSocialHandleOrUrl(value, ["facebook.com"])) return null;
+    return { query, facebook: value };
+  }
+  if (field === "instagram") {
+    if (!isSocialHandleOrUrl(value, ["instagram.com"])) return null;
+    return { query, instagram: value };
   }
   if (field === "title") {
     if (value.length > 80) return null;
@@ -844,6 +863,8 @@ export function classifyInstant(
       company: contactPatch.company,
       linkedin: contactPatch.linkedin,
       twitter: contactPatch.twitter,
+      facebook: contactPatch.facebook,
+      instagram: contactPatch.instagram,
       note: contactPatch.note,
       source: "instant",
     };

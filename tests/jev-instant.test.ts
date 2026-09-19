@@ -115,6 +115,16 @@ describe("classifyInstant", () => {
       query: "Jane",
       twitter: "@jane",
     });
+    expect(classifyInstant("set Jane facebook to https://facebook.com/jane")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      facebook: "https://facebook.com/jane",
+    });
+    expect(classifyInstant("set Jane instagram to https://instagram.com/jane")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      instagram: "https://instagram.com/jane",
+    });
     expect(classifyInstant("set Jane notes to interested in Q4")).toMatchObject({
       tool: "update_contact",
       query: "Jane",
