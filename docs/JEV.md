@@ -722,6 +722,11 @@ Scalar now does that on `/api/agent`:
     generator. The count goes through `countDueFollowups` so the reply
     is the real total, not a 200-row page. `who needs a follow-up`
     still lists names. In-app and MCP expose `count_due_followups`.
+59. Product Context is scanned before persist. Settings PATCH and
+    the welcome first-run ICP both go through `assertCleanArtifact`
+    (`product-context`). That text is injected into every fit score
+    and generate turn, so a live TypeSafe miss denies the save when
+    configured. Unconfigured local stays fail-open.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

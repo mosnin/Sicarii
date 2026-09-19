@@ -24,8 +24,9 @@ import { prisma } from "@/lib/prisma";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
-import { countEntities, createEntity, dedupeAgainstCrm, listEntitiesByIds, updateEntity } from "@/lib/crm-operations";
+import { countEntities, createEntity, dedupeAgainstCrm, listEntitiesByIds, OpError, updateEntity } from "@/lib/crm-operations";
 import { maybeSeedIcpRadar } from "@/lib/radar-seed";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 // --------------------------------------------------------------------------
 // Public types - consumed by the route handler and the client
@@ -131,7 +132,22 @@ export async function runWelcomeOrchestration(
     return;
   }
 
-  // Save the ICP as productContext - one sentence, two jobs.
+  // Save the ICP as productContext - one sentence, two jobs. Scan first:
+  // this text is injected into every fit score and generate turn.
+  try {
+    await assertCleanArtifact(icp, "product-context");
+  } catch (e) {
+    const message = e instanceof OpError ? e.message : "Jev blocked that ICP.";
+    emit({ type: "error", message });
+    emit({
+      type: "done",
+      message: "Setup stopped. Edit the description and try again.",
+      total: 0,
+      enriched: 0,
+      hasNews: 0,
+    });
+    return;
+  }
   await prisma.user.update({
     where: { id: userId },
     data: { productContext: icp },
