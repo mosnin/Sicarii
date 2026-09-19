@@ -753,6 +753,12 @@ Scalar now does that on `/api/agent`:
     so the reply is the real total, not a 50-row page guessed as a
     number. `list swarm runs` still lists. In-app and MCP expose
     `count_swarm_runs`.
+65. Inbound voice transcripts are scanned before any CRM op. The
+    AgentPhone webhook goes through `assertCleanArtifact`
+    (`voice-inbound`) so a hostile utterance cannot reach `voiceIntent`.
+    A live TypeSafe miss denies when configured. Unconfigured local
+    stays fail-open. The spoken refusal still returns 200 so the live
+    caller hears a line.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

@@ -4,6 +4,8 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { voiceIntent } from "@/lib/voice-intent";
 import { classifyVoiceIntentWithJev } from "@/lib/jev";
 import { logAccountActivity } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { OpError } from "@/lib/op-error";
 
 // POST /api/webhooks/agentphone - AgentPhone's inbound-call webhook.
 //
@@ -95,6 +97,19 @@ export async function POST(req: NextRequest) {
     const text = extractTranscript(body);
 
     const heard = text ?? "";
+    if (heard) {
+      try {
+        await assertCleanArtifact(heard, "voice-inbound");
+      } catch (e) {
+        if (e instanceof OpError) {
+          return NextResponse.json({
+            speech: "I cannot run that request.",
+            ok: false,
+          });
+        }
+        throw e;
+      }
+    }
     const classified = heard ? await classifyVoiceIntentWithJev(heard) : null;
     const { speech, intent } =
       classified?.source === "jev"
