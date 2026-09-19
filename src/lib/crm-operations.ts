@@ -83,6 +83,9 @@ export interface EntityInput {
   tags?: string[];
   notes?: string | null;
   logoUrl?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  geocodedAt?: Date | null;
   enrichment?: unknown;
 }
 
@@ -654,6 +657,7 @@ export interface ContactInput {
   source?: string | null;
   tags?: string[];
   notes?: string | null;
+  imageUrl?: string | null;
   enrichment?: unknown;
   entityId?: string | null;
 }

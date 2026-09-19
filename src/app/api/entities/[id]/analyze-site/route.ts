@@ -1,12 +1,11 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
-import { OpError } from "@/lib/crm-operations";
+import { createContact, getEntity, OpError, updateEntity } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { gradePage } from "@/lib/jev";
 
@@ -42,10 +41,7 @@ export async function POST(
     const rate = await checkRateLimit(`analyze-site:${user.id}`, 8, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
-    const entity = await prisma.entity.findUnique({ where: { id } });
-    if (!entity || entity.userId !== user.id) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    const entity = await getEntity(user.id, id);
     const url = entity.website || (entity.domain ? `https://${entity.domain}` : null);
     if (!url) return NextResponse.json({ error: "This entity has no website to analyze." }, { status: 400 });
     if (!isFirecrawlConfigured()) {
@@ -58,32 +54,42 @@ export async function POST(
     const analysis = await analyzeSite(url);
 
     // ── Merge company context (fill empties; store raw under enrichment) ──
+    const stored = entity as { enrichment?: unknown };
     const existing =
-      entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
-        ? (entity.enrichment as Record<string, unknown>)
+      stored.enrichment && typeof stored.enrichment === "object" && !Array.isArray(stored.enrichment)
+        ? (stored.enrichment as Record<string, unknown>)
         : {};
     const { markdown: _markdown, ...analysisForStore } = analysis;
     const pageScore = analysis.markdown ? await gradePage(analysis.markdown) : null;
     void _markdown;
-    const data: Prisma.EntityUncheckedUpdateInput = {
+    const patch: Parameters<typeof updateEntity>[2] = {
       status: "ENRICHED",
       enrichment: {
         ...existing,
         website_analysis: analysisForStore,
         ...(pageScore ? { website_grade: pageScore } : {}),
-      } as unknown as Prisma.InputJsonValue,
+      },
     };
-    if (!entity.industry && analysis.industry) data.industry = analysis.industry;
-    if (!entity.location && analysis.location) data.location = analysis.location;
-    if (!entity.phone && analysis.phone) data.phone = analysis.phone;
-    if (!entity.description && analysis.description) data.description = analysis.description;
-    if (!entity.logoUrl && isHttpUrl(analysis.logoUrl)) data.logoUrl = analysis.logoUrl;
-    await prisma.entity.update({ where: { id }, data });
+    if (!entity.industry && analysis.industry) patch.industry = analysis.industry;
+    if (!entity.location && analysis.location) patch.location = analysis.location;
+    if (!entity.phone && analysis.phone) patch.phone = analysis.phone;
+    if (!entity.description && analysis.description) patch.description = analysis.description;
+    if (!entity.logoUrl && isHttpUrl(analysis.logoUrl)) patch.logoUrl = analysis.logoUrl;
+    const updated = await updateEntity(user.id, id, patch);
 
     // ── Create contacts found on the site (deduped, company-fit emails) ──
     const entityDomain = host(entity.website) ?? entity.domain ?? undefined;
+    const incomingEmails = analysis.contacts
+      .map((p) => (isMeaningful(p.email) ? p.email.trim().toLowerCase() : null))
+      .filter((email): email is string => Boolean(email));
     const existingContacts = await prisma.contact.findMany({
-      where: { userId: user.id, OR: [{ entityId: id }, { email: { not: null } }] },
+      where: {
+        userId: user.id,
+        OR: [
+          { entityId: id },
+          ...(incomingEmails.length > 0 ? [{ email: { in: incomingEmails } }] : []),
+        ],
+      },
       select: { email: true, name: true, entityId: true },
     });
     const existingEmails = new Set(existingContacts.map((c) => c.email?.toLowerCase()).filter(Boolean));
@@ -106,9 +112,8 @@ export async function POST(
       if ((email && existingEmails.has(email)) || namesOnEntity.has(nameKey) || seen.has(nameKey)) { skipped++; continue; }
       seen.add(nameKey);
 
-      await prisma.contact.create({
-        data: {
-          userId: user.id,
+      try {
+        await createContact(user.id, {
           entityId: id,
           name,
           email: email ?? null,
@@ -120,9 +125,12 @@ export async function POST(
           status: "NEW",
           source: "firecrawl",
           tags: ["website"],
-        },
-      });
-      created++;
+        });
+        created++;
+      } catch (err) {
+        if (err instanceof OpError) { skipped++; continue; }
+        throw err;
+      }
     }
 
     // Debit only after the analysis succeeded and was stored - a miss is free.
@@ -132,7 +140,7 @@ export async function POST(
       ok: true,
       created,
       skipped,
-      logo: Boolean(data.logoUrl),
+      logo: Boolean(updated.logoUrl && !entity.logoUrl),
       grade: pageScore,
     });
   } catch (e) {

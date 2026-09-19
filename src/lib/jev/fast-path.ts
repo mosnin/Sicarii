@@ -48,6 +48,8 @@ export const FAST_PATH_TOOLS = new Set([
   "remember",
   "get_provenance",
   "build_smart_segment",
+  "verify_entity",
+  "detect_tech",
 ]);
 
 const READ_CORE = [
@@ -425,6 +427,28 @@ export function formatFastReply(input: {
     return `Built segment ${r.segment?.name ?? query}${r.matched != null ? ` with ${r.matched} matches` : ""}.`;
   }
 
+  if (tool === "verify_entity") {
+    const r = payload as {
+      name?: string;
+      verified?: { gleif?: boolean; companiesHouse?: boolean; secEdgar?: boolean };
+    };
+    const sources = [
+      r.verified?.gleif ? "GLEIF" : null,
+      r.verified?.companiesHouse ? "Companies House" : null,
+      r.verified?.secEdgar ? "SEC EDGAR" : null,
+    ].filter(Boolean);
+    if (sources.length === 0) return `No verified legal record for ${r.name ?? query}.`;
+    return `Verified ${r.name ?? query} via ${sources.join(", ")}.`;
+  }
+
+  if (tool === "detect_tech") {
+    const r = payload as { name?: string; tech?: Array<{ name?: string }> };
+    const names = (r.tech ?? []).map((t) => t.name).filter(Boolean);
+    if (names.length === 0) return `No tech stack detected for ${r.name ?? query}.`;
+    const extra = names.length > 8 ? `, and ${names.length - 8} more` : "";
+    return `${r.name ?? query} uses ${names.slice(0, 8).join(", ")}${extra}.`;
+  }
+
   if (tool === "find_socials") {
     const r = payload as {
       saved?: Record<string, unknown> | number;
@@ -483,6 +507,8 @@ export type FastPathRunners = {
   remember?: (content: string) => Promise<unknown>;
   getProvenance?: (recordType: "contact" | "entity", recordId: string) => Promise<unknown>;
   buildSmartSegment?: (goal: string, name?: string) => Promise<unknown>;
+  verifyEntity?: (id: string) => Promise<unknown>;
+  detectTech?: (id: string) => Promise<unknown>;
   scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
 
@@ -748,6 +774,30 @@ async function runTool(
           ? runners.buildSmartSegment(query, instant?.name)
           : { error: "Smart segment build is unavailable." },
       );
+    case "verify_entity":
+    case "detect_tech": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const first = facts.find((f) => f.kind === "entity" && f.id);
+      if (!first?.id) {
+        return {
+          error: `I did not find "${query}" in the CRM to ${tool === "verify_entity" ? "verify" : "fingerprint"}.`,
+        };
+      }
+      if (tool === "verify_entity") {
+        return write("verify_entity", { id: first.id }, async () =>
+          runners.verifyEntity
+            ? runners.verifyEntity(first.id!)
+            : { error: "Entity verify is unavailable." },
+        );
+      }
+      return write("detect_tech", { id: first.id }, async () =>
+        runners.detectTech
+          ? runners.detectTech(first.id!)
+          : { error: "Tech detect is unavailable." },
+      );
+    }
     case "pause_autopilot":
       return write("pause_autopilot", { query }, async () =>
         runners.pauseAutopilot

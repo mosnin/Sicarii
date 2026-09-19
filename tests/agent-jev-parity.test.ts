@@ -44,6 +44,11 @@ describe("agent Jev parity", () => {
     expect(AUTO_MODE_TOOLS.has("remember")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("build_smart_segment")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("log_call")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("verify_entity")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("detect_tech")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("remove_segment_member")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("remove_pipeline_entry")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("update_pipeline_entry")).toBe(true);
     expect(source).toContain("for (const name of AUTO_MODE_TOOLS)");
   });
 
@@ -74,5 +79,10 @@ describe("agent Jev parity", () => {
     expect(source).toContain("build_smart_segment:");
     expect(source).toContain("sync_call:");
     expect(source).toContain("log_call:");
+    expect(source).toContain("verify_entity:");
+    expect(source).toContain("detect_tech:");
+    expect(source).toContain("remove_segment_member:");
+    expect(source).toContain("remove_pipeline_entry:");
+    expect(source).toContain("update_pipeline_entry:");
   });
 });

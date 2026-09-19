@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaResearchContacts, isExaConfigured, isMeaningful } from "@/lib/exa";
+import { createContact, getEntity, OpError } from "@/lib/crm-operations";
 
 // POST /api/entities/[id]/spawn-contacts - deep-research the decision makers at
 // this company via Exa, then create contacts for any the CRM doesn't already
@@ -21,9 +22,12 @@ export async function POST(
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const entity = await prisma.entity.findUnique({ where: { id } });
-    if (!entity || entity.userId !== user.id) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    let entity;
+    try {
+      entity = await getEntity(user.id, id, { includeEnrichment: false });
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
     }
     if (!isExaConfigured()) {
       return NextResponse.json({ error: "Exa is not configured on this deployment." }, { status: 501 });
@@ -34,9 +38,19 @@ export async function POST(
       return NextResponse.json({ created: 0, skipped: 0, message: "No new contacts found." });
     }
 
-    // Existing contacts: emails (global to user) + names already on this entity.
+    const incomingEmails = found
+      .map((p) => (isMeaningful(p.email) ? p.email.trim().toLowerCase() : null))
+      .filter((email): email is string => Boolean(email));
+
+    // Existing contacts: this entity, plus any row that already owns an incoming email.
     const existingContacts = await prisma.contact.findMany({
-      where: { userId: user.id, OR: [{ entityId: id }, { email: { not: null } }] },
+      where: {
+        userId: user.id,
+        OR: [
+          { entityId: id },
+          ...(incomingEmails.length > 0 ? [{ email: { in: incomingEmails } }] : []),
+        ],
+      },
       select: { email: true, name: true, entityId: true },
     });
     const existingEmails = new Set(
@@ -69,9 +83,8 @@ export async function POST(
       if (email) seen.add(email);
       if (nameKey) seen.add(nameKey);
 
-      await prisma.contact.create({
-        data: {
-          userId: user.id,
+      try {
+        await createContact(user.id, {
           entityId: id,
           name,
           email: email ?? null,
@@ -83,9 +96,12 @@ export async function POST(
           source: "exa:spawn-contacts",
           tags: ["spawned"],
           ...(p.sourceUrl ? { notes: `Researched from ${p.sourceUrl}` } : {}),
-        },
-      });
-      created++;
+        });
+        created++;
+      } catch (err) {
+        if (err instanceof OpError) { skipped++; continue; }
+        throw err;
+      }
     }
 
     return NextResponse.json({ created, skipped });

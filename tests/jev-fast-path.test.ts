@@ -49,6 +49,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "get_segment", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "remember", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_provenance", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "verify_entity", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "detect_tech", confidence: 0.94 })).toBe(true);
   });
 });
 
@@ -206,6 +208,20 @@ describe("formatFastReply", () => {
         payload: { email: { source: "explorium", confidence: 0.9 } },
       }),
     ).toContain("email via explorium");
+    expect(
+      formatFastReply({
+        tool: "verify_entity",
+        query: "Acme",
+        payload: { name: "Acme", verified: { gleif: true, companiesHouse: false, secEdgar: true } },
+      }),
+    ).toBe("Verified Acme via GLEIF, SEC EDGAR.");
+    expect(
+      formatFastReply({
+        tool: "detect_tech",
+        query: "Acme",
+        payload: { name: "Acme", tech: [{ name: "Next.js" }, { name: "Stripe" }] },
+      }),
+    ).toBe("Acme uses Next.js, Stripe.");
   });
 
   it("explains an empty CRM lookup", () => {

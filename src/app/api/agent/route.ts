@@ -84,10 +84,15 @@ import {
   deletePipeline,
   pipelineMetrics,
   buildSmartSegment,
+  removeSegmentMember,
+  removePipelineEntry,
+  updatePipelineEntry,
 } from "@/lib/field-operations";
 import { getProvenanceMap } from "@/lib/provenance";
 import { enrichContactField } from "@/lib/contact-enrich";
 import { findContactSocials } from "@/lib/social-find";
+import { verifyEntity } from "@/lib/enrich/verified-entity";
+import { detectEntityTech } from "@/lib/enrich/technographics";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
 import { proposeAutopilotPlan, getAutopilotStatus, pauseAutopilotPlan } from "@/lib/autopilot-operations";
@@ -742,6 +747,48 @@ export async function POST(req: Request) {
       }),
       execute: (args) => exec(() => saveCall(userId, args)),
     }),
+    verify_entity: tool({
+      description:
+        "Verify a company against GLEIF, Companies House, and SEC EDGAR. Free. Strict legal-name match.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: ({ id }) => exec(() => verifyEntity(userId, id)),
+    }),
+    detect_tech: tool({
+      description:
+        "Fingerprint a company's homepage for CMS, analytics, payments, and hosting. Free. Needs a website or domain.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: ({ id }) => exec(() => detectEntityTech(userId, id)),
+    }),
+    remove_segment_member: tool({
+      description: "Remove one contact from a segment. Keeps the contact and the segment.",
+      inputSchema: z.object({
+        segmentId: z.string(),
+        contactId: z.string(),
+      }),
+      execute: ({ segmentId, contactId }) =>
+        exec(() => removeSegmentMember(userId, segmentId, contactId)),
+    }),
+    remove_pipeline_entry: tool({
+      description: "Drop one contact out of a pipeline. Keeps the contact and the pipeline.",
+      inputSchema: z.object({
+        pipelineId: z.string(),
+        entryId: z.string(),
+      }),
+      execute: ({ pipelineId, entryId }) =>
+        exec(() => removePipelineEntry(userId, pipelineId, entryId)),
+    }),
+    update_pipeline_entry: tool({
+      description: "Move a pipeline entry's stage, deal score, or conversation status.",
+      inputSchema: z.object({
+        pipelineId: z.string(),
+        entryId: z.string(),
+        stage: z.enum(["NEW", "ENRICHED", "PROSPECTING", "ENGAGING", "REPLYING", "WON", "LOST"]).optional(),
+        dealScore: z.number().int().min(0).max(100).nullable().optional(),
+        conversationStatus: z.enum(["OPEN", "AWAITING_REPLY", "STALLED", "CLOSED"]).optional(),
+      }),
+      execute: ({ pipelineId, entryId, ...patch }) =>
+        exec(() => updatePipelineEntry(userId, pipelineId, entryId, patch)),
+    }),
   };
 
   // Auto mode (LangChain AutoModeMiddleware): Jev inspects pending tool
@@ -802,6 +849,11 @@ export async function POST(req: Request) {
     build_smart_segment: "Build a segment by matching prospects to a goal.",
     sync_call: "Refresh a logged call from AgentPhone.",
     log_call: "Log an outside phone call on a contact.",
+    verify_entity: "Verify a company against public legal registries.",
+    detect_tech: "Fingerprint a company's website tech stack.",
+    remove_segment_member: "Remove a contact from a segment.",
+    remove_pipeline_entry: "Remove a contact from a pipeline.",
+    update_pipeline_entry: "Update a pipeline entry's stage or score.",
   };
   const skillCatalog = Object.fromEntries(SKILLS.map((s) => [s.slug, s.description]));
 
@@ -843,7 +895,9 @@ export async function POST(req: Request) {
               instant?.tool === "list_social_messages" ||
               instant?.tool === "enrich_contact" ||
               instant?.tool === "find_socials" ||
-              instant?.tool === "get_provenance"
+              instant?.tool === "get_provenance" ||
+              instant?.tool === "verify_entity" ||
+              instant?.tool === "detect_tech"
             ? searchCrm(userId, instant.query).catch(() => null)
         : prefetchQuery !== null
           ? instant?.tool === "list_entities"
@@ -954,6 +1008,8 @@ export async function POST(req: Request) {
         },
         getProvenance: (recordType, recordId) => getProvenanceMap(recordType, recordId, userId),
         buildSmartSegment: (goal, name) => buildSmartSegment(userId, { goal, name }),
+        verifyEntity: (id) => verifyEntity(userId, id),
+        detectTech: (id) => detectEntityTech(userId, id),
         scoreFit: productContext
           ? async (rows) => {
               const scores = await scoreFitWithJev(rows, productContext);

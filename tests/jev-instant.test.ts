@@ -101,6 +101,18 @@ describe("classifyInstant", () => {
       tool: "build_smart_segment",
       query: "dentists",
     });
+    expect(classifyInstant("verify Acme")).toMatchObject({
+      tool: "verify_entity",
+      query: "Acme",
+    });
+    expect(classifyInstant("what tech does Acme use")).toMatchObject({
+      tool: "detect_tech",
+      query: "Acme",
+    });
+    expect(classifyInstant("detect tech for Acme")).toMatchObject({
+      tool: "detect_tech",
+      query: "Acme",
+    });
   });
 
   it("routes discovery and local maps", () => {

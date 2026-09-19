@@ -297,6 +297,29 @@ export function classifyInstant(
   if (
     !COMPOUND.test(text) &&
     !DESTRUCTIVE.test(text) &&
+    /^(please\s+)?(verify|legal[- ]?verify)\b/i.test(text)
+  ) {
+    const query = lookupQuery(text)
+      .replace(/\b(verify|legal|entity|company|the|a|an)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (query) return { tool: "verify_entity", query, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    (/\b(detect|fingerprint)\b[\s\S]+\b(tech|stack|technograph)/i.test(text) ||
+      /\b(what tech|what stack|tech stack|technographics?)\b/i.test(text))
+  ) {
+    const query = lookupQuery(text)
+      .replace(/\b(detect|fingerprint|tech|stack|technographics?|uses?|does|for|the|a|an|what|company)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (query) return { tool: "detect_tech", query, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
     /^(please\s+)?(list|show|get|open)\b/i.test(text) &&
     /\bsegments?\b/i.test(text)
   ) {

@@ -544,6 +544,13 @@ Scalar now does that on `/api/agent`:
     segment for dentists` skip TypeSafe. Agent `remember`,
     `get_provenance`, `build_smart_segment`, `sync_call`, and `log_call`
     match MCP and sit in auto-mode.
+25. HTTP find-here, spawn-contacts, match-entity, analyze-site, and
+    upsert-enrichment go through the ops layer (`dedupeAgainstCrm` +
+    `filterRealCompanies` + `createEntity` / `createContact`). Instant
+    `verify Acme` and `what tech does Acme use` skip TypeSafe. Agent
+    `verify_entity`, `detect_tech`, `remove_segment_member`,
+    `remove_pipeline_entry`, and `update_pipeline_entry` match MCP and
+    sit in auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.
