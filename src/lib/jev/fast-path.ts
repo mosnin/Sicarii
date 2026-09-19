@@ -823,6 +823,13 @@ export type FastPathRunners = {
     title?: string;
     phone?: string;
     linkedin?: string;
+    facebook?: string;
+    instagram?: string;
+    twitter?: string;
+    website?: string;
+    location?: string;
+    source?: string;
+    tags?: string[];
   }) => Promise<unknown>;
   enrichEntity: (id: string) => Promise<unknown>;
   updateEntity?: (
@@ -1117,6 +1124,13 @@ async function runTool(
           ...(instant?.title ? { title: instant.title } : {}),
           ...(instant?.phone ? { phone: instant.phone } : {}),
           ...(instant?.linkedin ? { linkedin: instant.linkedin } : {}),
+          ...(instant?.facebook ? { facebook: instant.facebook } : {}),
+          ...(instant?.instagram ? { instagram: instant.instagram } : {}),
+          ...(instant?.twitter ? { twitter: instant.twitter } : {}),
+          ...(instant?.website ? { website: instant.website } : {}),
+          ...(instant?.location ? { location: instant.location } : {}),
+          ...(instant?.crmSource ? { source: instant.crmSource } : {}),
+          ...(instant?.tags?.length ? { tags: instant.tags } : {}),
         },
         () =>
           runners.createContact({
@@ -1126,6 +1140,13 @@ async function runTool(
             title: instant?.title,
             phone: instant?.phone,
             linkedin: instant?.linkedin,
+            facebook: instant?.facebook,
+            instagram: instant?.instagram,
+            twitter: instant?.twitter,
+            website: instant?.website,
+            location: instant?.location,
+            source: instant?.crmSource,
+            tags: instant?.tags,
           }),
       );
     case "enrich_entity": {

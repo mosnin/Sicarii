@@ -1128,7 +1128,8 @@ export async function POST(req: Request) {
         getAutopilotStatus: () => getAutopilotStatus(userId),
         createEntity: (name, domain, extra) =>
           createEntity(userId, { name, domain, ...extra, source: "agent" }),
-        createContact: (input) => createContact(userId, { ...input, source: "agent" }),
+        createContact: (input) =>
+          createContact(userId, { ...input, source: input.source || "agent" }),
         enrichEntity: (id) => enrichEntity(userId, id),
         updateEntity: (id, patch) => updateEntity(userId, id, patch),
         listEntities: (q) => listEntities(userId, q),

@@ -790,6 +790,8 @@ function parseCreateEntity(text: string): {
   return null;
 }
 
+const CONTACT_SOURCE_WORDS = /^(linkedin|x|twitter|instagram|facebook|referral|event|inbound|outbound)$/i;
+
 function parseCreateContact(text: string): {
   name?: string;
   email?: string;
@@ -797,6 +799,13 @@ function parseCreateContact(text: string): {
   title?: string;
   phone?: string;
   linkedin?: string;
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  website?: string;
+  location?: string;
+  crmSource?: string;
+  tags?: string[];
 } | null {
   if (!/\b(add|create|save|new)\b/i.test(text)) return null;
   if (!/\b(contact|person)\b/i.test(text)) return null;
@@ -813,17 +822,49 @@ function parseCreateContact(text: string): {
   const name = (named?.[1] ?? addName?.[1])?.trim();
   if (!name && !email) return null;
   const title =
-    text.match(/\btitle\s+["']?([^"',]+?)(?=\s+(?:\d|https?:)|["',]|$)/i)?.[1]?.trim() ??
+    text.match(/\btitle\s+["']?([^"',]+?)(?=\s+(?:\d|https?:|source|tagged|tags|location|website)|["',]|$)/i)?.[1]?.trim() ??
     text.match(/\bas\s+(?!an?\s+(?:contact|person)\b)([A-Z][A-Za-z0-9&/]{1,40}(?:\s+[A-Z][A-Za-z0-9&/]{1,40}){0,3})\b/)?.[1]?.trim();
   const phone = text.match(/\b(\+?[\d][\d .\-()]{6,18}\d)\b/)?.[1]?.trim();
   const linkedin = text.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
+  const facebook = text.match(/https?:\/\/(?:www\.)?facebook\.com\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
+  const instagram = text.match(/https?:\/\/(?:www\.)?instagram\.com\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
+  const twitter = text.match(/https?:\/\/(?:www\.)?(?:twitter|x)\.com\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
+  const website = text
+    .match(/\bwebsite\s+(https?:\/\/[^\s]+)/i)?.[1]
+    ?.replace(/[.,)]+$/, "");
+  const location = text
+    .match(
+      /\b(?:located in|location)\s+["']?([^"',]+?)(?=\s+(?:title|phone|source|tagged|tags|website|https?:)|["',]|$)/i,
+    )?.[1]
+    ?.trim();
+  const sourceWord = text
+    .match(
+      /\bsource\s+["']?([^"',]+?)(?=\s+(?:title|phone|tagged|tags|website|location|https?:)|["',]|$)/i,
+    )?.[1]
+    ?.trim();
+  const tagged = text
+    .match(
+      /\b(?:tagged|tags)\s+(?:as\s+)?["']?([^"']+?)(?=\s+(?:title|phone|source|website|location|https?:)|["']|$)/i,
+    )?.[1]
+    ?.trim();
+  const tags = tagged ? parseTagList(tagged) : null;
+  const atName = atCo?.[1]?.replace(/[.,]+$/, "").trim();
+  const fromSource = atName && CONTACT_SOURCE_WORDS.test(atName) ? atName.toLowerCase() : undefined;
+  const crmSource = (sourceWord || fromSource)?.slice(0, 100);
   return {
     name,
     email,
-    company: atCo?.[1]?.replace(/[.,]+$/, "").trim(),
+    company: fromSource ? undefined : atName,
     ...(title && title.length <= 80 ? { title } : {}),
     ...(phone && phone.length >= 5 && phone.length <= 50 ? { phone } : {}),
     ...(linkedin && linkedin.length <= 500 ? { linkedin } : {}),
+    ...(facebook && facebook.length <= 500 ? { facebook } : {}),
+    ...(instagram && instagram.length <= 500 ? { instagram } : {}),
+    ...(twitter && twitter.length <= 500 ? { twitter } : {}),
+    ...(website && website.length <= 500 ? { website } : {}),
+    ...(location && location.length <= 80 ? { location } : {}),
+    ...(crmSource ? { crmSource } : {}),
+    ...(tags ? { tags } : {}),
   };
 }
 
@@ -1498,6 +1539,13 @@ export function classifyInstant(
       title: contact.title,
       phone: contact.phone,
       linkedin: contact.linkedin,
+      facebook: contact.facebook,
+      instagram: contact.instagram,
+      twitter: contact.twitter,
+      website: contact.website,
+      location: contact.location,
+      crmSource: contact.crmSource,
+      tags: contact.tags,
       source: "instant",
     };
   }

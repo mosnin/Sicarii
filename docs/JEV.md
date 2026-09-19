@@ -698,6 +698,11 @@ Scalar now does that on `/api/agent`:
     tagged enterprise, inbound` keeps phone, size, and tags (MCP
     parity). In-app `create_entity` accepts those fields. `tag company
     Acme as enterprise` stays an update.
+54. Instant `add contact Jane source linkedin location Austin tagged
+    ICP, inbound website https://jane.dev` keeps source, location,
+    tags, website, and social URLs. `add contact Jane from LinkedIn`
+    stores LinkedIn as the lead source, not the company. The in-app
+    runner no longer overwrites an explicit source with `agent`.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

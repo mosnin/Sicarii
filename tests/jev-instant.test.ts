@@ -507,6 +507,24 @@ describe("classifyInstant", () => {
       phone: "512-555-0100",
       linkedin: "https://linkedin.com/in/jane",
     });
+    expect(
+      classifyInstant(
+        "add contact Jane Doe source linkedin location Austin tagged ICP, inbound website https://jane.dev",
+      ),
+    ).toMatchObject({
+      tool: "create_contact",
+      name: "Jane Doe",
+      crmSource: "linkedin",
+      location: "Austin",
+      tags: ["ICP", "inbound"],
+      website: "https://jane.dev",
+    });
+    expect(classifyInstant("add contact Jane from LinkedIn")).toMatchObject({
+      tool: "create_contact",
+      name: "Jane",
+      crmSource: "linkedin",
+    });
+    expect(classifyInstant("add contact Jane from LinkedIn")?.company).toBeUndefined();
   });
 
   it("confirms discovery after an empty CRM miss", () => {

@@ -574,6 +574,55 @@ describe("executeFastPath", () => {
     });
   });
 
+  it("creates a contact with source, tags, website, and location", async () => {
+    let captured: {
+      name?: string;
+      source?: string;
+      tags?: string[];
+      website?: string;
+      location?: string;
+    } | null = null;
+    const result = await executeFastPath({
+      message: "add contact Jane source linkedin location Austin tagged ICP website https://jane.dev",
+      decision: { kind: "tool", tool: "create_contact", confidence: 0.94 },
+      instant: {
+        tool: "create_contact",
+        query: "Jane",
+        name: "Jane",
+        crmSource: "linkedin",
+        location: "Austin",
+        tags: ["ICP"],
+        website: "https://jane.dev",
+        source: "instant",
+      },
+      runners: {
+        searchCrm: async () => ({ entities: [], contacts: [] }),
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async (input) => {
+          captured = input;
+          return { name: input.name };
+        },
+        enrichEntity: async () => ({ name: "x" }),
+      },
+    });
+    expect(result?.tool).toBe("create_contact");
+    expect(captured).toMatchObject({
+      name: "Jane",
+      source: "linkedin",
+      tags: ["ICP"],
+      website: "https://jane.dev",
+      location: "Austin",
+    });
+  });
+
   it("reuses a speculative CRM prefetch", async () => {
     let searches = 0;
     const result = await executeFastPath({
