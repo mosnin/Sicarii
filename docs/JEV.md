@@ -629,6 +629,9 @@ Scalar now does that on `/api/agent`:
     Instant `set Acme industry to SaaS` and `log an inbound linkedin
     message from Jane: thanks` skip TypeSafe and run `update_entity` /
     `log_social_message` under auto-mode.
+39. Instant `set Acme location to Austin`, `set Acme domain to acme.com`,
+    and `set Jane deal score to 80` skip TypeSafe. Deal score writes
+    go through `updateContact` (1-100) on the in-app agent and MCP.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

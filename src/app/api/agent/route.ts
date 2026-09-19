@@ -364,7 +364,7 @@ export async function POST(req: Request) {
       execute: ({ id }) => exec(() => deleteContact(userId, id)),
     }),
     update_contact: tool({
-      description: "Update fields on a contact (including status, entity, social profiles).",
+      description: "Update fields on a contact (including status, deal score, entity, social profiles).",
       inputSchema: z.object({
         id: z.string(),
         name: z.string().optional(),
@@ -377,6 +377,10 @@ export async function POST(req: Request) {
         twitter: z.string().optional(),
         notes: z.string().optional(),
         entityId: z.string().optional(),
+        status: z
+          .enum(["NEW", "ENRICHED", "CONTACTED", "REPLIED", "QUALIFIED", "WON", "LOST", "ARCHIVED"])
+          .optional(),
+        dealScore: z.number().int().min(1).max(100).optional(),
       }),
       execute: ({ id, ...rest }) => exec(() => updateContact(userId, id, rest)),
     }),
@@ -1121,16 +1125,20 @@ export async function POST(req: Request) {
           getContact(userId, id, { includeEnrichment: false, includeChannelHistory: false }),
         updateContact: (id, patch) =>
           updateContact(userId, id, {
-            status: patch.status as
-              | "NEW"
-              | "ENRICHED"
-              | "CONTACTED"
-              | "REPLIED"
-              | "QUALIFIED"
-              | "WON"
-              | "LOST"
-              | "ARCHIVED"
-              | undefined,
+            ...(patch.status
+              ? {
+                  status: patch.status as
+                    | "NEW"
+                    | "ENRICHED"
+                    | "CONTACTED"
+                    | "REPLIED"
+                    | "QUALIFIED"
+                    | "WON"
+                    | "LOST"
+                    | "ARCHIVED",
+                }
+              : {}),
+            ...(patch.dealScore != null ? { dealScore: patch.dealScore } : {}),
           }),
         addToPipeline: (pipelineId, contactIds) => addToPipeline(userId, pipelineId, { contactIds }),
         addToSegment: (segmentId, contactIds) => addToSegment(userId, segmentId, contactIds),

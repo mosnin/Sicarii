@@ -671,6 +671,7 @@ export interface ContactInput {
   imageUrl?: string | null;
   enrichment?: unknown;
   entityId?: string | null;
+  dealScore?: number | null;
 }
 
 export function listContacts(
@@ -764,6 +765,13 @@ export async function updateContact(
   if (!existing || existing.userId !== userId)
     throw new OpError("Contact not found", 404);
   await assertCleanArtifact(input.notes ?? "", "notes");
+  if (input.dealScore !== undefined && input.dealScore !== null) {
+    const score = Math.trunc(input.dealScore);
+    if (!Number.isFinite(score) || score < 1 || score > 100) {
+      throw new OpError("Deal score must be between 1 and 100.", 400);
+    }
+    input.dealScore = score;
+  }
   const { enrichment, entityId, ...rest } = input;
   if (entityId) await assertEntityOwned(userId, entityId);
   const data: Prisma.ContactUncheckedUpdateInput = { ...rest };

@@ -542,6 +542,7 @@ const handler = createMcpHandler(
         notes: z.string().max(10000).nullable().optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().nullable().optional(),
+        dealScore: z.number().int().min(1).max(100).nullable().optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id, ...rest }, extra) =>

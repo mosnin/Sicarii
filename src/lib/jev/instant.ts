@@ -22,6 +22,7 @@ export type InstantRoute = {
   conversationStatus?: "OPEN" | "AWAITING_REPLY" | "STALLED" | "CLOSED";
   subject?: string;
   industry?: string;
+  dealScore?: number;
   direction?: "INBOUND" | "OUTBOUND";
   detail?: boolean;
   source: "instant";
@@ -243,18 +244,39 @@ function parseLogSocial(text: string): {
   return { query, channel, note, direction };
 }
 
-function parseEntityIndustry(text: string): { query: string; industry: string } | null {
+function parseEntityPatch(text: string): {
+  query: string;
+  industry?: string;
+  location?: string;
+  domain?: string;
+} | null {
   const m = text.match(
-    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+industry\s+to\s+(.+)$/i,
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(industry|location|domain)\s+to\s+(.+)$/i,
   );
-  if (!m?.[3] || !m[4]) return null;
+  if (!m?.[3] || !m[4] || !m[5]) return null;
   const query = m[3]
     .replace(/\b(the|a|an|company|business|entity)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
-  const industry = m[4].trim().replace(/[.!?]+$/, "");
-  if (!query || !industry || query.length > 80 || industry.length > 80) return null;
-  return { query, industry };
+  const value = m[5].trim().replace(/[.!?]+$/, "");
+  if (!query || !value || query.length > 80 || value.length > 80) return null;
+  const field = m[4].toLowerCase();
+  if (field === "industry") return { query, industry: value };
+  if (field === "location") return { query, location: value };
+  return { query, domain: value.toLowerCase() };
+}
+
+function parseDealScore(text: string): { query: string; dealScore: number } | null {
+  const m = text.match(
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+deal(?:\s+|-)?score\s+to\s+(\d{1,3})\s*$/i,
+  );
+  if (!m?.[3] || !m[4]) return null;
+  const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const dealScore = Number(m[4]);
+  if (!query || query.length > 80 || !Number.isFinite(dealScore) || dealScore < 1 || dealScore > 100) {
+    return null;
+  }
+  return { query, dealScore };
 }
 
 function parseExtractContacts(text: string): { query: string } | null {
@@ -586,16 +608,25 @@ export function classifyInstant(
   ) {
     return { tool: "get_autopilot_status", query: text, source: "instant" };
   }
+  const dealScoreEarly = parseDealScore(text);
+  if (dealScoreEarly && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_contact",
+      query: dealScoreEarly.query,
+      dealScore: dealScoreEarly.dealScore,
+      source: "instant",
+    };
+  }
   if (
     !COMPOUND.test(text) &&
     !DESTRUCTIVE.test(text) &&
-    (/\b(pipeline metrics|pipeline stats|deal scores?)\b/i.test(text) ||
+    (/\b(pipeline metrics|pipeline stats|deal scores)\b/i.test(text) ||
       (/\bmetrics\b/i.test(text) && /\bpipeline\b/i.test(text)))
   ) {
     const name =
       parseNamedField(text, "pipeline") ||
       lookupQuery(text)
-        .replace(/\b(pipeline metrics|pipeline stats|metrics|deal scores?|for|the|a|an|pipeline)\b/gi, " ")
+        .replace(/\b(pipeline metrics|pipeline stats|metrics|deal scores|for|the|a|an|pipeline)\b/gi, " ")
         .replace(/\s+/g, " ")
         .trim();
     return { tool: "pipeline_metrics", query: name, name: name || undefined, source: "instant" };
@@ -665,12 +696,14 @@ export function classifyInstant(
       source: "instant",
     };
   }
-  const industry = parseEntityIndustry(text);
-  if (industry && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+  const entityPatch = parseEntityPatch(text);
+  if (entityPatch && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
     return {
       tool: "update_entity",
-      query: industry.query,
-      industry: industry.industry,
+      query: entityPatch.query,
+      industry: entityPatch.industry,
+      location: entityPatch.location,
+      domain: entityPatch.domain,
       source: "instant",
     };
   }

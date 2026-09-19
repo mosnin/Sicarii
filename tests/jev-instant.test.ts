@@ -75,6 +75,21 @@ describe("classifyInstant", () => {
       query: "Acme",
       industry: "SaaS",
     });
+    expect(classifyInstant("set Acme location to Austin")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      location: "Austin",
+    });
+    expect(classifyInstant("set Acme domain to acme.com")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      domain: "acme.com",
+    });
+    expect(classifyInstant("set Jane deal score to 80")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      dealScore: 80,
+    });
     expect(classifyInstant("mark Jane as awaiting reply in Outbound")).toMatchObject({
       tool: "update_pipeline_entry",
       query: "Jane",

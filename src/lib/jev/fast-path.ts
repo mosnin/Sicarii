@@ -553,15 +553,25 @@ export function formatFastReply(input: {
   }
 
   if (tool === "update_contact") {
-    const r = payload as { name?: string | null; status?: string | null };
+    const r = payload as { name?: string | null; status?: string | null; dealScore?: number | null };
     const who = r.name ?? query;
+    if (r.dealScore != null && !r.status) {
+      return `Set ${who}'s deal score to ${r.dealScore}.`;
+    }
     const status = (r.status ?? "updated").toLowerCase();
     return `Marked ${who} as ${status}.`;
   }
 
   if (tool === "update_entity") {
-    const r = payload as { name?: string | null; industry?: string | null };
+    const r = payload as {
+      name?: string | null;
+      industry?: string | null;
+      location?: string | null;
+      domain?: string | null;
+    };
     const who = r.name ?? query;
+    if (r.location && !r.industry && !r.domain) return `Set ${who}'s location to ${r.location}.`;
+    if (r.domain && !r.industry && !r.location) return `Set ${who}'s domain to ${r.domain}.`;
     const industry = r.industry ?? "the new industry";
     return `Set ${who}'s industry to ${industry}.`;
   }
@@ -677,7 +687,10 @@ export type FastPathRunners = {
   createEntity: (name: string, domain?: string) => Promise<unknown>;
   createContact: (input: { name?: string; email?: string; company?: string }) => Promise<unknown>;
   enrichEntity: (id: string) => Promise<unknown>;
-  updateEntity?: (id: string, patch: { industry?: string }) => Promise<unknown>;
+  updateEntity?: (
+    id: string,
+    patch: { industry?: string; location?: string; domain?: string },
+  ) => Promise<unknown>;
   listEntities?: (q?: string) => Promise<unknown>;
   listContacts?: (q?: string) => Promise<unknown>;
   listDueFollowups?: () => Promise<unknown>;
@@ -733,7 +746,7 @@ export type FastPathRunners = {
   getPipeline?: (id: string) => Promise<unknown>;
   getEntity?: (id: string) => Promise<unknown>;
   getContact?: (id: string) => Promise<unknown>;
-  updateContact?: (id: string, patch: { status?: string }) => Promise<unknown>;
+  updateContact?: (id: string, patch: { status?: string; dealScore?: number }) => Promise<unknown>;
   addToPipeline?: (pipelineId: string, contactIds: string[]) => Promise<unknown>;
   addToSegment?: (segmentId: string, contactIds: string[]) => Promise<unknown>;
   removePipelineEntry?: (pipelineId: string, entryId: string) => Promise<unknown>;
@@ -924,16 +937,23 @@ async function runTool(
         return { error: `I did not find a company named "${query}" in the CRM.` };
       }
       const industry = instant?.industry?.trim();
-      if (!industry) {
-        return { error: "Say the industry, like set Acme industry to SaaS." };
+      const location = instant?.location?.trim();
+      const domain = instant?.domain?.trim();
+      if (!industry && !location && !domain) {
+        return { error: "Say the field, like set Acme industry to SaaS." };
       }
       const entityId = first.id;
-      return write("update_entity", { id: entityId, industry }, async () => {
+      const patch = {
+        ...(industry ? { industry } : {}),
+        ...(location ? { location } : {}),
+        ...(domain ? { domain } : {}),
+      };
+      return write("update_entity", { id: entityId, ...patch }, async () => {
         const result = runners.updateEntity
-          ? await runners.updateEntity(entityId, { industry })
+          ? await runners.updateEntity(entityId, patch)
           : { error: "Company update is unavailable." };
         if (result && typeof result === "object" && !("error" in result)) {
-          return { ...(result as object), name: first.name ?? query, industry };
+          return { ...(result as object), name: first.name ?? query, ...patch };
         }
         return result;
       });
@@ -1061,14 +1081,26 @@ async function runTool(
       }
       const contactId = contact.id;
       const status = instant?.status;
-      if (!status) {
+      const dealScore = instant?.dealScore;
+      if (!status && dealScore == null) {
         return { error: "Say which status to set (contacted, qualified, won, lost)." };
       }
-      return write("update_contact", { id: contactId, status }, async () =>
-        runners.updateContact
-          ? runners.updateContact(contactId, { status })
-          : { error: "Contact update is unavailable." },
-      );
+      const args: Record<string, string | number> = { id: contactId };
+      if (status) args.status = status;
+      if (dealScore != null) args.dealScore = dealScore;
+      const patch = {
+        ...(status ? { status } : {}),
+        ...(dealScore != null ? { dealScore } : {}),
+      };
+      return write("update_contact", args, async () => {
+        const result = runners.updateContact
+          ? await runners.updateContact(contactId, patch)
+          : { error: "Contact update is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), name: contact.name ?? query, ...patch };
+        }
+        return result;
+      });
     }
     case "add_to_pipeline":
     case "add_to_segment": {
