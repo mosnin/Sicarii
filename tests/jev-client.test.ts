@@ -77,4 +77,27 @@ describe("createJevClient", () => {
       client.evaluate({ state: "x", questions: { u: { type: "noul" } } }),
     ).rejects.toBeInstanceOf(JevError);
   });
+
+  it("redacts xPayment in the outbound TypeSafe body", async () => {
+    let posted: { state?: { xPayment?: unknown; hasPayment?: unknown; credits?: unknown } } = {};
+    const client = createJevClient({
+      typesafeKey: "ts-test",
+      fetchImpl: async (_url, init) => {
+        posted = JSON.parse(String(init?.body ?? "{}")) as typeof posted;
+        return new Response(
+          JSON.stringify({ model: "jev-latest", answers: { u: { type: "noul", noul: 0.2 } } }),
+          { status: 200 },
+        );
+      },
+    });
+    await client.evaluate({
+      state: { xPayment: "secret-header", hasPayment: true, credits: 10 },
+      questions: { u: { type: "noul", instructions: "u" } },
+    });
+    expect(posted.state).toEqual({
+      xPayment: "[redacted]",
+      hasPayment: true,
+      credits: 10,
+    });
+  });
 });

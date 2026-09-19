@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveRequestUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { addCredits, alreadyCredited } from "@/lib/credits";
+import { gateMoney } from "@/lib/jev";
 import {
   buildRequirements,
   grantAfterSettle,
@@ -82,6 +83,19 @@ export async function POST(req: NextRequest) {
     const payload = readPayment(req);
     if (!payload) {
       return NextResponse.json(paymentRequiredBody(requirements), { status: 402 });
+    }
+
+    const spend = await gateMoney({
+      action: "buy_credits",
+      amount: requested,
+      unit: "credits",
+      message: `HTTP x402 topup ${requested}`,
+    });
+    if (!spend.allow) {
+      return NextResponse.json(
+        { error: `Jev blocked this credit purchase (${spend.reasons.join(", ")}).` },
+        { status: 403 },
+      );
     }
 
     const verified = await verifyPayment(payload, requirements);

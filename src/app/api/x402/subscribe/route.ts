@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveRequestUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { applyPlan, alreadyCredited, PLAN_USD, PLANS, type PaidPlanName } from "@/lib/credits";
+import { gateMoney } from "@/lib/jev";
 import {
   buildRequirements,
   grantAfterSettle,
@@ -77,6 +78,19 @@ export async function POST(req: NextRequest) {
     const payload = readPayment(req);
     if (!payload) {
       return NextResponse.json(paymentRequiredBody(requirements), { status: 402 });
+    }
+
+    const spend = await gateMoney({
+      action: `buy_plan:${plan}`,
+      amount: priceUsd,
+      unit: "usd",
+      message: `HTTP x402 subscribe ${plan}`,
+    });
+    if (!spend.allow) {
+      return NextResponse.json(
+        { error: `Jev blocked this plan purchase (${spend.reasons.join(", ")}).` },
+        { status: 403 },
+      );
     }
 
     const verified = await verifyPayment(payload, requirements);

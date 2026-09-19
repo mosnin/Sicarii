@@ -95,10 +95,8 @@ export async function verifyIdentity(
     input.client,
   );
   if (!result) {
-    const closed = denyIfRequired("jev_unavailable");
-    if (closed) return closed;
-    logJevDecision({ surface: "identity", action: "allow", source: "fallback", reasons: ["jev_unavailable"] });
-    return { allow: true, reasons: ["jev_unavailable"], source: "fallback" };
+    logJevDecision({ surface: "identity", action: "block", source: "fallback", reasons: ["jev_unavailable"] });
+    return { allow: false, reasons: ["jev_unavailable"], source: "fallback" };
   }
   const same = asNoul(result.answers.samePerson);
   const nameOnly = asNoul(result.answers.nameOnlyMatch);
@@ -423,7 +421,7 @@ export async function scanMalicious(
     },
     client,
   );
-  if (!result) return denyIfRequired("jev_unavailable") ?? { allow: true, reasons: ["jev_unavailable"], source: "fallback" };
+  if (!result) return { allow: false, reasons: ["jev_unavailable"], source: "fallback" };
   const reasons: string[] = [];
   if (asNoul(result.answers.dataTheft) >= MALICIOUS_THRESHOLD.familyNoul) reasons.push("data_theft");
   if (asNoul(result.answers.hiddenNetwork) >= MALICIOUS_THRESHOLD.familyNoul) reasons.push("hidden_network");

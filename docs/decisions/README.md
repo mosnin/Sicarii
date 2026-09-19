@@ -54,6 +54,9 @@ exponential growth into a plateau.
 - **Unconfigured Jev fails open; a live write-eval miss asks for confirm.**
   Local/dev must boot without secrets. Production sets `JEV_REQUIRED=1`.
   Auto-mode always receives real tool args, never `{}`. _(Card 0015)_
+- **Jev decides, code acts, the generator stays dark.** A lookup or routed
+  discover tool never waits on streamText. That is the 10x, not a hint in
+  the system prompt. _(Card 0015)_
 - **Token-efficient memory = fresh context + recall.** Don't replay history; mint a
   fresh conversation per load and pull top-k vector matches on demand. _(Card 0005)_
 - **One relationship, one thread.** Conversation history is channel-labeled and

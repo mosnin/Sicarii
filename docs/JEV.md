@@ -157,7 +157,7 @@ The app still boots with none of these keys.
 | Situation | Routing / classify | Write tool (auto-mode) | Money / send / memory |
 |-----------|--------------------|------------------------|-----------------------|
 | No Jev key | fail-open (heuristic / allow) | allow unless `JEV_REQUIRED=1` (then confirm) | allow unless `JEV_REQUIRED=1` (then block / stop) |
-| Live evaluate error | fail-open (`null`) | **confirm** if `isWriteTool(name)` | money: block; autopilot: stop; send: block |
+| Live evaluate error | fail-open (`null`) | **confirm** if `isWriteTool(name)` | money: block; autopilot: stop; send: block; identity + malicious scan: block |
 | Jev answers | code applies policy.ts | block destructive/exfil; confirm the rest | `GATES.money.autoAt` |
 
 `isWriteTool` covers prefixed names (`create_contact`, `buy_credits`) **and**
@@ -166,7 +166,10 @@ A live TypeSafe outage on those buckets must ask for confirmation, not allow.
 
 MCP auto-mode receives the **zod-parsed args** (never an empty `{}`). Payment
 blobs (`xPayment`) are not sent to Jev; only `{ credits, hasPayment }` /
-`{ plan, hasPayment }`.
+`{ plan, hasPayment }`. `compactState` / `redactEvaluateState` strip
+`xPayment`, tokens, and secrets from every evaluate (HTTP, MCP, kernel)
+before the request leaves Scalar. HTTP `/api/x402/topup` and
+`/api/x402/subscribe` call `gateMoney` the same way MCP buy tools do.
 
 Unconfigured Jev still silently disables identity, malicious scan, and spend
 authorization **unless** `JEV_REQUIRED=1` (or `true` / `yes`) is set. Production
@@ -228,7 +231,7 @@ picks dimensions and tools. Code fills templates.
 
 | Surface | Jev job | Generator |
 |---------|---------|-----------|
-| `/api/agent` | `decideTurn` + `routeModel` + `runAutoModeThen` + quiet-ask + Foreman (incl. loop nouls) + output guard + `failureClass` retry | Qwen or OpenAI |
+| `/api/agent` | **Fast path:** one `decideTurn`, then code executes lookup/discover tools and streams prose. Chat model only when Jev grants generation. Active tool subset + Foreman on the generate path. Memory embed is off the critical path (`after`). | Qwen or OpenAI, and only if needed |
 | `/api/discover/route-intent` | Choice over the discovery catalog | heuristic params |
 | `/api/crm/fit-score` | Score per record vs product context | none |
 | `/api/crm/semantic-sort` | Noul per record vs intent | none |
@@ -349,7 +352,8 @@ Still owed (documented):
 
 - Live TypeSafe observation (no key in this checkout).
 - Labeled CRM-turn jevcal, then pin `jev-1.13.0`.
-- Identity still fail-opens on a live miss unless `JEV_REQUIRED` is set.
+- Identity and malicious scan fail-closed on a **live** miss. They still
+  fail-open when no key is set, unless `JEV_REQUIRED=1`.
 
 See `docs/engineering/jev-sweep-2026-09-19.md`.
 
@@ -378,7 +382,28 @@ Harness: LangChain "Building a Harness with Jev".
 
 ---
 
-## 14. Debts owed to reality
+## 14. Why this is faster (the X pattern)
+
+TypeSafe and LangChain show 70-500ms System One vs multi-second chat
+classify. The 10x people post is not "Jev sits next to gpt-4o." It is
+**Jev decides, code acts, the generator stays dark.**
+
+Scalar now does that on `/api/agent`:
+
+1. One `decideTurn` (no extra `routeModel` round trip).
+2. If the turn is lookup/analyze or a routed read/discover tool, `executeFastPath`
+   runs the ops layer and `fastPathResponse` streams the same UI SSE the chat
+   widget already understands. No `streamText`. No tool-schema tokens.
+3. If Jev grants generation, `pickActiveTools` hides unused tools so the
+   generator sees a smaller catalog.
+4. `storeMemory` embeddings run in `after()`, not before the first token.
+
+Lookups also work when OpenRouter/OpenAI are unset. Discovery still needs
+its provider keys.
+
+---
+
+## 15. Debts owed to reality
 
 - Live `TYPESAFE_API_KEY` and one observed 70-500ms route-intent.
 - `pnpm jevcal` on **labeled CRM turns** (not only fixtures); then pin

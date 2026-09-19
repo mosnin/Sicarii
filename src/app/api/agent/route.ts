@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import {
   streamText,
   tool,
@@ -8,17 +8,21 @@ import {
 } from "ai";
 import { openai } from "@ai-sdk/openai";
 import {
+  canSkipGeneration,
   classifyFailure,
   decideTurn,
+  executeFastPath,
+  fastPathResponse,
   gateGeneratedOutput,
   generationUnavailableMessage,
   isGenerationConfigured,
+  pickActiveTools,
   quietAskDetermined,
   resolveGenerationModel,
   shouldKeepMemory,
   superviseForeman,
 } from "@/lib/jev";
-import { AUTO_MODE_TOOLS, routeModel, runAutoModeThen } from "@/lib/jev/harness";
+import { AUTO_MODE_TOOLS, runAutoModeThen } from "@/lib/jev/harness";
 import { SKILLS } from "@/lib/skills";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -151,12 +155,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isGenerationConfigured()) {
-    return NextResponse.json(
-      { error: generationUnavailableMessage() },
-      { status: 503 },
-    );
-  }
+  // Generation is only required when Jev cannot finish the turn in code.
+  // Lookups and routed tools skip the chat model.
 
   // Each turn fans out to LLM inference + tool calls, so cap turns per user to
   // bound cost-amplification abuse.
@@ -197,7 +197,7 @@ export async function POST(req: Request) {
     await prisma.message.create({
       data: { conversationId, role: "user", content: lastUserText },
     });
-    await storeMemory(userId, "message", `Operator: ${lastUserText}`, conversationId);
+    after(() => storeMemory(userId, "message", `Operator: ${lastUserText}`, conversationId));
   }
 
   const tools = {
@@ -466,12 +466,6 @@ export async function POST(req: Request) {
       runAutoModeThen(name, args as import("@/lib/jev").Json, lastUserText, () => original(args));
   }
 
-  const modelMessages = await convertToModelMessages(incoming);
-
-  const routed = lastUserText
-    ? await routeModel({ message: lastUserText })
-    : { choice: "qwen_fast", confidence: 0, source: "fallback" as const };
-
   const toolCatalog: Record<string, string> = {
     find_companies: "Discover companies and add new ones to the CRM.",
     maps_leads: "Discover local businesses from Maps.",
@@ -489,7 +483,7 @@ export async function POST(req: Request) {
   let decision = lastUserText
     ? await decideTurn({
         message: lastUserText,
-        currentTier: routed.choice === "qwen_strong" ? "qwen_strong" : routed.choice === "none" ? "none" : "qwen_fast",
+        currentTier: "qwen_fast",
         tools: toolCatalog,
         skills: skillCatalog,
       })
@@ -506,16 +500,50 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "That request is out of scope for Scalar." }, { status: 400 });
   }
 
+  if (lastUserText && canSkipGeneration(decision)) {
+    const fast = await executeFastPath({
+      message: lastUserText,
+      decision,
+      runners: {
+        searchCrm: (q) => searchCrm(userId, q),
+        findCompanies: (query) => findCompanies(userId, { query }),
+        mapsLeads: (query, location) => discoverLocalLeads(userId, { query, location }),
+        swarmDiscover: (goal) => swarmDiscover(userId, { goal }),
+        searchWeb: async (query) => {
+          if (!isTavilyConfigured()) return { error: "Web search isn't configured (TAVILY_API_KEY missing)." };
+          return tavilySearch(query);
+        },
+        googleSearch: (query) => searchGoogle(userId, { query }),
+        recall: (query) => recallMemory(userId, query),
+        listPendingDrafts: () => listPendingDrafts(userId, {}),
+        getAutopilotStatus: () => getAutopilotStatus(userId),
+      },
+    });
+    if (fast) {
+      after(async () => {
+        await prisma.message.create({
+          data: { conversationId: conversationId!, role: "assistant", content: fast.text },
+        });
+        if (await shouldKeepMemory(`Scalar: ${fast.text}`)) {
+          await storeMemory(userId, "message", `Scalar: ${fast.text}`, conversationId);
+        }
+      });
+      return fastPathResponse(fast.text);
+    }
+  }
+
+  if (!isGenerationConfigured()) {
+    return NextResponse.json({ error: generationUnavailableMessage() }, { status: 503 });
+  }
+
+  const modelMessages = await convertToModelMessages(incoming);
+  const active = pickActiveTools(tools, decision);
+  const generateTier = decision.kind === "generate" && decision.effort === "high" ? "qwen_strong" : "qwen_fast";
   const resolved =
     resolveGenerationModel({
-      prefer: routed.choice === "none" ? "openai" : "qwen",
+      prefer: "qwen",
       effort: decision.kind === "generate" ? decision.effort : undefined,
-      tier:
-        routed.choice === "qwen_strong"
-          ? "qwen_strong"
-          : routed.choice === "none"
-            ? "none"
-            : "qwen_fast",
+      tier: generateTier,
     }) ?? { model: openai(MODEL), provider: "openai" as const, id: MODEL };
 
   const jevHint =
@@ -535,9 +563,9 @@ export async function POST(req: Request) {
     model: resolved.model,
     system,
     messages: modelMessages,
-    tools,
+    tools: active,
     stopWhen: [
-      stepCountIs(12),
+      stepCountIs(decision.kind === "generate" ? 8 : 12),
       async ({ steps }) => {
         if (steps.length < 3 || !lastUserText) return false;
         const history = steps

@@ -12,6 +12,7 @@ import {
   gateMoney,
   gradePage,
   isJevConfigured,
+  redactEvaluateState,
   runAutoModeThen,
   scanMalicious,
   triageInbound,
@@ -1261,7 +1262,7 @@ const handler = createMcpHandler(
             throw new OpError("Jev is not configured (TYPESAFE_API_KEY, AI_GATEWAY_API_KEY, or OPENROUTER_API_KEY).", 501);
           }
           const result = await tryEvaluate({
-            state: state as never,
+            state: redactEvaluateState((state ?? {}) as Json),
             questions: questions as QuestionMap,
             onFailure: "fail-closed",
           });
