@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { geocodeCached } from "@/lib/geocode";
 import { checkCreationBudget } from "@/lib/creation-guard";
 import { filterRealCompanies } from "@/lib/jev";
+import { createEntity, OpError } from "@/lib/crm-operations";
 
 export const maxDuration = 60;
 
@@ -96,17 +96,19 @@ export async function POST(req: NextRequest) {
     const toGeocode: { id: string; location: string }[] = [];
     for (const e of toCreate) {
       const { enrichment, tags, ...rest } = e;
-      const entity = await prisma.entity.create({
-        data: {
+      try {
+        const entity = await createEntity(user.id, {
           ...rest,
-          domain: normDomain(e.domain),
-          tags: tags ?? [],
-          ...(enrichment ? { enrichment: enrichment as Prisma.InputJsonValue } : {}),
-          userId: user.id,
-        },
-      });
-      created++;
-      if (entity.location) toGeocode.push({ id: entity.id, location: entity.location });
+          domain: normDomain(e.domain) ?? rest.domain ?? null,
+          tags,
+          enrichment,
+        });
+        created++;
+        if (entity.location) toGeocode.push({ id: entity.id, location: entity.location });
+      } catch (err) {
+        if (err instanceof OpError) continue;
+        throw err;
+      }
     }
 
     // Geocode the new entities in the background so they're already on the map

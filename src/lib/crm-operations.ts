@@ -82,6 +82,7 @@ export interface EntityInput {
   source?: string | null;
   tags?: string[];
   notes?: string | null;
+  logoUrl?: string | null;
   enrichment?: unknown;
 }
 

@@ -68,6 +68,8 @@ import {
   saveEmail,
   listSocialMessages,
   placeContactCall,
+  saveCall,
+  syncContactCall,
 } from "@/lib/crm-operations";
 import {
   listSegments,
@@ -81,7 +83,9 @@ import {
   addToPipeline,
   deletePipeline,
   pipelineMetrics,
+  buildSmartSegment,
 } from "@/lib/field-operations";
+import { getProvenanceMap } from "@/lib/provenance";
 import { enrichContactField } from "@/lib/contact-enrich";
 import { findContactSocials } from "@/lib/social-find";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
@@ -687,6 +691,57 @@ export async function POST(req: Request) {
       inputSchema: z.object({ id: z.string() }),
       execute: ({ id }) => exec(() => getSwarmRun(userId, id)),
     }),
+    remember: tool({
+      description: "Persist a durable fact to long-term memory so a later turn can recall it.",
+      inputSchema: z.object({
+        content: z.string().min(1).max(8000),
+        refId: z.string().optional(),
+      }),
+      execute: ({ content, refId }) =>
+        exec(async () => {
+          const remembered = await storeMemory(userId, "message", content, refId);
+          return remembered
+            ? { remembered: true }
+            : { remembered: false, reason: "Memory is unavailable right now." };
+        }),
+    }),
+    get_provenance: tool({
+      description: "Field-level provenance for a contact or company: who supplied each value and how confident it is.",
+      inputSchema: z.object({
+        recordType: z.enum(["contact", "entity"]),
+        recordId: z.string(),
+      }),
+      execute: ({ recordType, recordId }) => exec(() => getProvenanceMap(recordType, recordId, userId)),
+    }),
+    build_smart_segment: tool({
+      description: "Vector-match eligible prospects into a segment from a goal. Costs credits when it matches.",
+      inputSchema: z.object({
+        goal: z.string().min(1).max(2000),
+        quantity: z.number().int().min(1).max(100).optional(),
+        name: z.string().max(200).optional(),
+      }),
+      execute: (args) => exec(() => buildSmartSegment(userId, args)),
+    }),
+    sync_call: tool({
+      description: "Refresh a logged call from AgentPhone after it ends.",
+      inputSchema: z.object({ logId: z.string() }),
+      execute: ({ logId }) => exec(() => syncContactCall(userId, logId)),
+    }),
+    log_call: tool({
+      description: "Record a phone call that happened outside Scalar. Does not place a call.",
+      inputSchema: z.object({
+        contactId: z.string(),
+        direction: z.enum(["INBOUND", "OUTBOUND"]),
+        toNumber: z.string().max(40).optional(),
+        fromNumber: z.string().max(40).optional(),
+        summary: z.string().max(10000).optional(),
+        transcript: z.string().max(100000).optional(),
+        status: z.string().max(40).optional(),
+        durationSec: z.number().int().min(0).optional(),
+        recordingUrl: z.string().url().max(1000).startsWith("https://").optional(),
+      }),
+      execute: (args) => exec(() => saveCall(userId, args)),
+    }),
   };
 
   // Auto mode (LangChain AutoModeMiddleware): Jev inspects pending tool
@@ -742,6 +797,11 @@ export async function POST(req: Request) {
     delete_pipeline: "Delete a pipeline.",
     pipeline_metrics: "Stage and deal-score totals for a pipeline.",
     get_swarm_run: "Show one swarm run's breakdown.",
+    remember: "Store a durable fact in long-term memory.",
+    get_provenance: "Show where an enriched field came from.",
+    build_smart_segment: "Build a segment by matching prospects to a goal.",
+    sync_call: "Refresh a logged call from AgentPhone.",
+    log_call: "Log an outside phone call on a contact.",
   };
   const skillCatalog = Object.fromEntries(SKILLS.map((s) => [s.slug, s.description]));
 
@@ -782,7 +842,8 @@ export async function POST(req: Request) {
               instant?.tool === "list_contact_calls" ||
               instant?.tool === "list_social_messages" ||
               instant?.tool === "enrich_contact" ||
-              instant?.tool === "find_socials"
+              instant?.tool === "find_socials" ||
+              instant?.tool === "get_provenance"
             ? searchCrm(userId, instant.query).catch(() => null)
         : prefetchQuery !== null
           ? instant?.tool === "list_entities"
@@ -885,6 +946,14 @@ export async function POST(req: Request) {
         getSegment: (id) => getSegment(userId, id),
         getPipeline: (id) => getPipeline(userId, id),
         pipelineMetrics: (id) => pipelineMetrics(userId, id),
+        remember: async (content) => {
+          const remembered = await storeMemory(userId, "message", content);
+          return remembered
+            ? { remembered: true }
+            : { remembered: false, reason: "Memory is unavailable right now." };
+        },
+        getProvenance: (recordType, recordId) => getProvenanceMap(recordType, recordId, userId),
+        buildSmartSegment: (goal, name) => buildSmartSegment(userId, { goal, name }),
         scoreFit: productContext
           ? async (rows) => {
               const scores = await scoreFitWithJev(rows, productContext);

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
-import { OpError } from "@/lib/crm-operations";
-import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { OpError, updateContact, deleteContact } from "@/lib/crm-operations";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -89,32 +87,13 @@ export async function PATCH(
       );
     }
 
-    const { enrichment, entityId, ...rest } = parsed.data;
     try {
-      await assertCleanArtifact(parsed.data.notes ?? "", "notes");
+      const contact = await updateContact(user.id, id, parsed.data);
+      return NextResponse.json({ contact });
     } catch (e) {
       if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
       throw e;
     }
-
-    // If (re)assigning an entity, it must belong to this user.
-    if (entityId) {
-      const entity = await prisma.entity.findUnique({ where: { id: entityId } });
-      if (!entity || entity.userId !== user.id) {
-        return NextResponse.json({ error: "Invalid entity" }, { status: 400 });
-      }
-    }
-
-    const data: Prisma.ContactUncheckedUpdateInput = { ...rest };
-    if (entityId !== undefined) data.entityId = entityId;
-    if (enrichment !== undefined) {
-      data.enrichment =
-        enrichment === null ? Prisma.DbNull : (enrichment as Prisma.InputJsonValue);
-    }
-
-    const contact = await prisma.contact.update({ where: { id }, data });
-
-    return NextResponse.json({ contact });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("PATCH /api/contacts/[id]", e);
@@ -133,8 +112,13 @@ export async function DELETE(
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    await prisma.contact.delete({ where: { id } });
-    return NextResponse.json({ ok: true });
+    try {
+      await deleteContact(user.id, id);
+      return NextResponse.json({ ok: true });
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("DELETE /api/contacts/[id]", e);

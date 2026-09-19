@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
-import { OpError } from "@/lib/crm-operations";
-import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { OpError, updateEntity, deleteEntity } from "@/lib/crm-operations";
 
 const ENTITY_STATUSES = ["NEW", "ENRICHED", "ARCHIVED"] as const;
 
@@ -73,20 +71,13 @@ export async function PATCH(
       );
     }
 
-    const { enrichment, ...rest } = parsed.data;
     try {
-      await assertCleanArtifact([parsed.data.notes, parsed.data.description].filter(Boolean).join("\n"), "notes");
+      const entity = await updateEntity(user.id, id, parsed.data);
+      return NextResponse.json({ entity });
     } catch (e) {
       if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
       throw e;
     }
-    const data: Prisma.EntityUncheckedUpdateInput = { ...rest };
-    if (enrichment !== undefined) {
-      data.enrichment =
-        enrichment === null ? Prisma.DbNull : (enrichment as Prisma.InputJsonValue);
-    }
-    const entity = await prisma.entity.update({ where: { id }, data });
-    return NextResponse.json({ entity });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("PATCH /api/entities/[id]", e);
@@ -103,9 +94,13 @@ export async function DELETE(
     const { id } = await params;
     const existing = await getOwnedEntity(id, user.id);
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    // Contacts are detached (entityId -> null) by the schema's onDelete: SetNull.
-    await prisma.entity.delete({ where: { id } });
-    return NextResponse.json({ ok: true });
+    try {
+      await deleteEntity(user.id, id);
+      return NextResponse.json({ ok: true });
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("DELETE /api/entities/[id]", e);

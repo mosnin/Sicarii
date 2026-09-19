@@ -89,6 +89,18 @@ describe("classifyInstant", () => {
       tool: "find_socials",
       query: "Jane",
     });
+    expect(classifyInstant("remember that Jane is the CFO")).toMatchObject({
+      tool: "remember",
+      query: "Jane is the CFO",
+    });
+    expect(classifyInstant("where did Jane's email come from")).toMatchObject({
+      tool: "get_provenance",
+      query: "Jane",
+    });
+    expect(classifyInstant("build a segment for dentists")).toMatchObject({
+      tool: "build_smart_segment",
+      query: "dentists",
+    });
   });
 
   it("routes discovery and local maps", () => {

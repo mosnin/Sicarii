@@ -375,7 +375,10 @@ Two stacked branches off Scalar `main`:
    enrich-contact / find-socials skip TypeSafe. Generate clips huge
    recent tool dumps. HTTP creates go through the ops layer. Instant
    named Field gets and pipeline metrics skip TypeSafe. Agent Field
-   writes and metrics match MCP.
+   writes and metrics match MCP. HTTP PATCH/DELETE and bulk create go
+   through ops. Instant remember, provenance, and smart-segment skip
+   TypeSafe. Agent memory, provenance, smart-segment, and call log tools
+   match MCP.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -535,6 +538,12 @@ Scalar now does that on `/api/agent`:
     TypeSafe. Agent Field writes (`update_segment`, `delete_segment`,
     `add_to_pipeline`, `delete_pipeline`) and `pipeline_metrics` /
     `get_swarm_run` match MCP.
+24. HTTP company and contact PATCH/DELETE go through the ops layer.
+    Bulk entity create scans via `createEntity`. Instant `remember that
+    Jane is the CFO`, `where did Jane's email come from`, and `build a
+    segment for dentists` skip TypeSafe. Agent `remember`,
+    `get_provenance`, `build_smart_segment`, `sync_call`, and `log_call`
+    match MCP and sit in auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

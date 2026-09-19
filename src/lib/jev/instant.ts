@@ -266,6 +266,37 @@ export function classifyInstant(
   if (
     !COMPOUND.test(text) &&
     !DESTRUCTIVE.test(text) &&
+    /^(please\s+)?(remember that|remember:|remember )\b/i.test(text)
+  ) {
+    const content = text.replace(/^(please\s+)?(remember that|remember:|remember)\s+/i, "").trim();
+    if (content) return { tool: "remember", query: content, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    /\b(provenance|where did .+ come from|source of|how do we know)\b/i.test(text)
+  ) {
+    const query = lookupQuery(text)
+      .replace(/\b(provenance|where did|come from|source of|how do we know|email|linkedin|phone|for|the|a|an)\b/gi, " ")
+      .replace(/'s\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (query) return { tool: "get_provenance", query, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    /\b(build|make) (a |an )?(smart )?segment\b/i.test(text)
+  ) {
+    const goal = lookupQuery(text)
+      .replace(/\b(build|make|a|an|smart|segment|for|called|named)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (goal) return { tool: "build_smart_segment", query: goal, name: goal, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
     /^(please\s+)?(list|show|get|open)\b/i.test(text) &&
     /\bsegments?\b/i.test(text)
   ) {

@@ -45,6 +45,9 @@ export const FAST_PATH_TOOLS = new Set([
   "get_segment",
   "get_pipeline",
   "pipeline_metrics",
+  "remember",
+  "get_provenance",
+  "build_smart_segment",
 ]);
 
 const READ_CORE = [
@@ -400,6 +403,28 @@ export function formatFastReply(input: {
     return `${r.name ?? query}: ${r.total ?? 0} in pipeline, ${r.won ?? 0} won, ${r.lost ?? 0} lost${r.avgDealScore != null ? `, avg score ${r.avgDealScore}` : ""}.`;
   }
 
+  if (tool === "remember") {
+    const r = payload as { remembered?: boolean; reason?: string };
+    if (r.remembered === false) return r.reason ?? "I could not store that memory.";
+    return `I will remember that ${query}.`;
+  }
+
+  if (tool === "get_provenance") {
+    const r = payload as Record<string, { source?: string; confidence?: number }>;
+    const keys = Object.keys(r ?? {}).filter((k) => k !== "error");
+    if (keys.length === 0) return `No provenance on file for "${query}".`;
+    const bits = keys.slice(0, 6).map((k) => {
+      const row = r[k];
+      return `${k} via ${row?.source ?? "unknown"}`;
+    });
+    return `Provenance for ${query}: ${bits.join(", ")}.`;
+  }
+
+  if (tool === "build_smart_segment") {
+    const r = payload as { segment?: { name?: string }; matched?: number };
+    return `Built segment ${r.segment?.name ?? query}${r.matched != null ? ` with ${r.matched} matches` : ""}.`;
+  }
+
   if (tool === "find_socials") {
     const r = payload as {
       saved?: Record<string, unknown> | number;
@@ -455,6 +480,9 @@ export type FastPathRunners = {
   getSegment?: (id: string) => Promise<unknown>;
   getPipeline?: (id: string) => Promise<unknown>;
   pipelineMetrics?: (id: string) => Promise<unknown>;
+  remember?: (content: string) => Promise<unknown>;
+  getProvenance?: (recordType: "contact" | "entity", recordId: string) => Promise<unknown>;
+  buildSmartSegment?: (goal: string, name?: string) => Promise<unknown>;
   scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
 
@@ -696,6 +724,30 @@ async function runTool(
       }
       return runners.getPipeline ? runners.getPipeline(hit.id) : { error: "Pipeline get is unavailable." };
     }
+    case "remember":
+      return write("remember", { content: query }, async () =>
+        runners.remember
+          ? runners.remember(query)
+          : { remembered: false, reason: "Memory is unavailable." },
+      );
+    case "get_provenance": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      const entity = facts.find((f) => f.kind === "entity" && f.id);
+      const record = contact ?? entity;
+      if (!record?.id || !runners.getProvenance) {
+        return { error: `I did not find "${query}" in the CRM to show provenance.` };
+      }
+      return runners.getProvenance(record.kind === "contact" ? "contact" : "entity", record.id);
+    }
+    case "build_smart_segment":
+      return write("build_smart_segment", { goal: query, name: instant?.name ?? query }, async () =>
+        runners.buildSmartSegment
+          ? runners.buildSmartSegment(query, instant?.name)
+          : { error: "Smart segment build is unavailable." },
+      );
     case "pause_autopilot":
       return write("pause_autopilot", { query }, async () =>
         runners.pauseAutopilot

@@ -184,6 +184,7 @@ describe("isWriteTool", () => {
     expect(isWriteTool("remove_segment_member")).toBe(true);
     expect(isWriteTool("remove_pipeline_entry")).toBe(true);
     expect(isWriteTool("pause_autopilot")).toBe(true);
+    expect(isWriteTool("build_smart_segment")).toBe(true);
     expect(isWriteTool("search_web")).toBe(true);
     expect(isWriteTool("search_crm")).toBe(false);
     expect(AUTO_MODE_TOOLS.has("search_web")).toBe(true);

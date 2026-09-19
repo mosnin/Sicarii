@@ -47,6 +47,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "pause_autopilot", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "pipeline_metrics", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_segment", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "remember", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "get_provenance", confidence: 0.94 })).toBe(true);
   });
 });
 
@@ -190,6 +192,20 @@ describe("formatFastReply", () => {
         payload: { name: "Outbound", total: 12, won: 2, lost: 1, avgDealScore: 44 },
       }),
     ).toContain("12 in pipeline");
+    expect(
+      formatFastReply({
+        tool: "remember",
+        query: "Jane is the CFO",
+        payload: { remembered: true },
+      }),
+    ).toContain("Jane is the CFO");
+    expect(
+      formatFastReply({
+        tool: "get_provenance",
+        query: "Jane",
+        payload: { email: { source: "explorium", confidence: 0.9 } },
+      }),
+    ).toContain("email via explorium");
   });
 
   it("explains an empty CRM lookup", () => {
