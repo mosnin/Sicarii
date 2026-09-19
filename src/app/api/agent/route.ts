@@ -1139,6 +1139,10 @@ export async function POST(req: Request) {
                 }
               : {}),
             ...(patch.dealScore != null ? { dealScore: patch.dealScore } : {}),
+            ...(patch.title ? { title: patch.title } : {}),
+            ...(patch.email ? { email: patch.email } : {}),
+            ...(patch.phone ? { phone: patch.phone } : {}),
+            ...(patch.company ? { company: patch.company } : {}),
           }),
         addToPipeline: (pipelineId, contactIds) => addToPipeline(userId, pipelineId, { contactIds }),
         addToSegment: (segmentId, contactIds) => addToSegment(userId, segmentId, contactIds),

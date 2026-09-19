@@ -553,8 +553,20 @@ export function formatFastReply(input: {
   }
 
   if (tool === "update_contact") {
-    const r = payload as { name?: string | null; status?: string | null; dealScore?: number | null };
+    const r = payload as {
+      name?: string | null;
+      status?: string | null;
+      dealScore?: number | null;
+      title?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      company?: string | null;
+    };
     const who = r.name ?? query;
+    if (r.title && !r.status) return `Set ${who}'s title to ${r.title}.`;
+    if (r.email && !r.status) return `Set ${who}'s email to ${r.email}.`;
+    if (r.phone && !r.status) return `Set ${who}'s phone to ${r.phone}.`;
+    if (r.company && !r.status) return `Set ${who}'s company to ${r.company}.`;
     if (r.dealScore != null && !r.status) {
       return `Set ${who}'s deal score to ${r.dealScore}.`;
     }
@@ -746,7 +758,17 @@ export type FastPathRunners = {
   getPipeline?: (id: string) => Promise<unknown>;
   getEntity?: (id: string) => Promise<unknown>;
   getContact?: (id: string) => Promise<unknown>;
-  updateContact?: (id: string, patch: { status?: string; dealScore?: number }) => Promise<unknown>;
+  updateContact?: (
+    id: string,
+    patch: {
+      status?: string;
+      dealScore?: number;
+      title?: string;
+      email?: string;
+      phone?: string;
+      company?: string;
+    },
+  ) => Promise<unknown>;
   addToPipeline?: (pipelineId: string, contactIds: string[]) => Promise<unknown>;
   addToSegment?: (segmentId: string, contactIds: string[]) => Promise<unknown>;
   removePipelineEntry?: (pipelineId: string, entryId: string) => Promise<unknown>;
@@ -1082,15 +1104,27 @@ async function runTool(
       const contactId = contact.id;
       const status = instant?.status;
       const dealScore = instant?.dealScore;
-      if (!status && dealScore == null) {
+      const title = instant?.title?.trim();
+      const email = instant?.email?.trim();
+      const phone = instant?.phone?.trim();
+      const company = instant?.company?.trim();
+      if (!status && dealScore == null && !title && !email && !phone && !company) {
         return { error: "Say which status to set (contacted, qualified, won, lost)." };
       }
       const args: Record<string, string | number> = { id: contactId };
       if (status) args.status = status;
       if (dealScore != null) args.dealScore = dealScore;
+      if (title) args.title = title;
+      if (email) args.email = email;
+      if (phone) args.phone = phone;
+      if (company) args.company = company;
       const patch = {
         ...(status ? { status } : {}),
         ...(dealScore != null ? { dealScore } : {}),
+        ...(title ? { title } : {}),
+        ...(email ? { email } : {}),
+        ...(phone ? { phone } : {}),
+        ...(company ? { company } : {}),
       };
       return write("update_contact", args, async () => {
         const result = runners.updateContact

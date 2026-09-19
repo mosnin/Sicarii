@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getDbUser } from "@/lib/server-user";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { countContacts, countDueFollowups, countEntities } from "@/lib/crm-operations";
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { DashboardPreloader } from "@/components/dashboard/dashboard-preloader";
 import { hasCompletedFirstRun } from "@/lib/welcome-orchestrator";
@@ -25,17 +25,10 @@ async function recentRadarSignals(userId: string): Promise<number> {
 async function countNeedsAttention(
   userId: string,
 ): Promise<{ replied: number; dueFollowup: number; toEnrich: number }> {
-  const followupCutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
   const [replied, dueFollowup, toEnrich] = await Promise.all([
-    prisma.contact.count({ where: { userId, status: "REPLIED" } }),
-    prisma.contact.count({
-      where: {
-        userId,
-        status: "CONTACTED",
-        OR: [{ lastContactedAt: null }, { lastContactedAt: { lt: followupCutoff } }],
-      },
-    }),
-    prisma.entity.count({ where: { userId, status: "NEW" } }),
+    countContacts(userId, { status: "REPLIED" }),
+    countDueFollowups(userId, { staleDays: 3 }),
+    countEntities(userId, { status: "NEW" }),
   ]);
   return { replied, dueFollowup, toEnrich };
 }
@@ -57,20 +50,10 @@ export default async function DashboardPage() {
 
   const [totalContacts, totalCompanies, enriched, inConversation, radarActive] = user
     ? await Promise.all([
-        prisma.contact.count({ where: { userId: user.id } }),
-        prisma.entity.count({ where: { userId: user.id } }),
-        prisma.contact.count({
-          where: {
-            userId: user.id,
-            enrichment: { not: Prisma.AnyNull },
-          },
-        }),
-        prisma.contact.count({
-          where: {
-            userId: user.id,
-            status: { in: ["CONTACTED", "REPLIED", "QUALIFIED"] },
-          },
-        }),
+        countContacts(user.id),
+        countEntities(user.id),
+        countContacts(user.id, { enriched: true }),
+        countContacts(user.id, { status: ["CONTACTED", "REPLIED", "QUALIFIED"] }),
         prisma.intentMonitor.count({ where: { userId: user.id, active: true } }),
       ])
     : [0, 0, 0, 0, 0];

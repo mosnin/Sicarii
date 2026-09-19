@@ -13,6 +13,8 @@ export type InstantRoute = {
   domain?: string;
   email?: string;
   company?: string;
+  title?: string;
+  phone?: string;
   field?: "linkedin" | "email" | "phone";
   status?: "NEW" | "ENRICHED" | "CONTACTED" | "REPLIED" | "QUALIFIED" | "WON" | "LOST" | "ARCHIVED";
   channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other";
@@ -264,6 +266,37 @@ function parseEntityPatch(text: string): {
   if (field === "industry") return { query, industry: value };
   if (field === "location") return { query, location: value };
   return { query, domain: value.toLowerCase() };
+}
+
+function parseContactPatch(text: string): {
+  query: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+} | null {
+  const m = text.match(
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(title|email|phone|company)\s+to\s+(.+)$/i,
+  );
+  if (!m?.[3] || !m[4] || !m[5]) return null;
+  const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const value = m[5].trim().replace(/[.!?]+$/, "");
+  if (!query || !value || query.length > 80 || value.length > 200) return null;
+  const field = m[4].toLowerCase();
+  if (field === "email") {
+    if (!value.includes("@") || value.length > 320) return null;
+    return { query, email: value };
+  }
+  if (field === "phone") {
+    if (value.length < 5 || value.length > 50) return null;
+    return { query, phone: value };
+  }
+  if (field === "title") {
+    if (value.length > 80) return null;
+    return { query, title: value };
+  }
+  if (value.length > 80) return null;
+  return { query, company: value };
 }
 
 function parseDealScore(text: string): { query: string; dealScore: number } | null {
@@ -704,6 +737,18 @@ export function classifyInstant(
       industry: entityPatch.industry,
       location: entityPatch.location,
       domain: entityPatch.domain,
+      source: "instant",
+    };
+  }
+  const contactPatch = parseContactPatch(text);
+  if (contactPatch && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_contact",
+      query: contactPatch.query,
+      title: contactPatch.title,
+      email: contactPatch.email,
+      phone: contactPatch.phone,
+      company: contactPatch.company,
       source: "instant",
     };
   }

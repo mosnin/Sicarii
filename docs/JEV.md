@@ -632,6 +632,11 @@ Scalar now does that on `/api/agent`:
 39. Instant `set Acme location to Austin`, `set Acme domain to acme.com`,
     and `set Jane deal score to 80` skip TypeSafe. Deal score writes
     go through `updateContact` (1-100) on the in-app agent and MCP.
+40. CRM list pages and dashboard counts go through `countContacts` /
+    `countEntities` / `listContactsPage` / `listEntitiesPage` /
+    `countDueFollowups` (enrichment omitted, page size capped at 500).
+    Breakup ownership goes through `getContact`. Instant `set Jane
+    title to CFO` / `set Jane email to jane@acme.com` skip TypeSafe.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

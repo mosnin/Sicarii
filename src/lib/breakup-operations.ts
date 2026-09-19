@@ -18,7 +18,7 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { Prisma, type BreakupDraftStatus, type ContactStatus, type ConversationStatus } from "@prisma/client";
-import { OpError, logOutreach, clampListLimit } from "@/lib/crm-operations";
+import { OpError, getContact, logOutreach, clampListLimit } from "@/lib/crm-operations";
 import { assertCleanArtifact } from "@/lib/clean-artifact";
 import { ensureCredits, spendCredits } from "@/lib/credits";
 import { gateOutboundDraft } from "@/lib/jev";
@@ -90,9 +90,7 @@ export function listStalledDeals(
 /* ---------------------------- Draft generation ------------------------ */
 
 async function assertContactOwned(userId: string, contactId: string) {
-  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
-  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
-  return contact;
+  return getContact(userId, contactId, { includeChannelHistory: false });
 }
 
 // Pull the real, stored history to ground the draft in - never anything

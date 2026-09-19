@@ -118,6 +118,28 @@ export function listEntities(
   });
 }
 
+export function countEntities(userId: string, opts?: { status?: EntityStatus }) {
+  return prisma.entity.count({
+    where: { userId, ...(opts?.status ? { status: opts.status } : {}) },
+  });
+}
+
+export function listEntitiesPage(
+  userId: string,
+  opts: { page?: number; pageSize?: number } = {},
+) {
+  const pageSize = clampListLimit(opts.pageSize, 500);
+  const page = Math.max(1, Math.trunc(opts.page ?? 1) || 1);
+  return prisma.entity.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    include: { _count: { select: { contacts: true } } },
+    omit: { enrichment: true },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  });
+}
+
 export async function getEntity(
   userId: string,
   id: string,
@@ -700,6 +722,37 @@ export function listContacts(
     // Same as listEntities: the enrichment blob belongs to get_contact.
     omit: { enrichment: true },
     take: clampListLimit(limit, ceiling ?? MAX_LIST_LIMIT),
+  });
+}
+
+export function countContacts(
+  userId: string,
+  opts?: { status?: ContactStatus | ContactStatus[]; enriched?: boolean },
+) {
+  return prisma.contact.count({
+    where: {
+      userId,
+      ...(opts?.status
+        ? { status: Array.isArray(opts.status) ? { in: opts.status } : opts.status }
+        : {}),
+      ...(opts?.enriched === true ? { enrichment: { not: Prisma.AnyNull } } : {}),
+    },
+  });
+}
+
+export function listContactsPage(
+  userId: string,
+  opts: { page?: number; pageSize?: number } = {},
+) {
+  const pageSize = clampListLimit(opts.pageSize, 500);
+  const page = Math.max(1, Math.trunc(opts.page ?? 1) || 1);
+  return prisma.contact.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    include: { entity: { select: { id: true, name: true } } },
+    omit: { enrichment: true },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   });
 }
 
