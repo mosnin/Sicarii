@@ -11,9 +11,11 @@ import {
   type Json,
 } from "./contract";
 import { tryEvaluate, type JevClient } from "./client";
-import { GATES, TOOL_GATE } from "./policy";
+import { CLIENT_DEFAULTS, GATES, TOOL_GATE } from "./policy";
 import { INTENT_QUESTIONS } from "./packs/intent";
 import { TOOL_GUARD_QUESTIONS } from "./packs/guard";
+import { classifyInstant } from "./instant";
+import { logJevDecision } from "./telemetry";
 
 export type Handler =
   | { kind: "deterministic"; action: "lookup" | "mutate" | "analyze"; confidence: number }
@@ -28,8 +30,13 @@ export type DecideInput = {
   tools?: Record<string, string>;
   skills?: Record<string, string>;
   currentTier?: "none" | "qwen_fast" | "qwen_strong";
+  priorAssistant?: string;
   client?: JevClient;
 };
+
+export function handlerFromInstant(tool: string): Handler {
+  return { kind: "tool", tool, confidence: 0.94 };
+}
 
 const MODEL_QUESTIONS = {
   tier: {
@@ -148,6 +155,17 @@ export function decideFromAnswers(answers: Record<string, Answer>): Handler {
 }
 
 export async function decideTurn(input: DecideInput): Promise<Handler> {
+  const instant = classifyInstant(input.message, input.priorAssistant);
+  if (instant) {
+    logJevDecision({
+      surface: "decide",
+      action: instant.tool,
+      source: "instant",
+      reasons: ["local"],
+    });
+    return handlerFromInstant(instant.tool);
+  }
+
   const questions = {
     ...INTENT_QUESTIONS,
     ...MODEL_QUESTIONS,
@@ -164,6 +182,8 @@ export async function decideTurn(input: DecideInput): Promise<Handler> {
         currentTier: input.currentTier ?? "none",
       },
       questions,
+      timeoutMs: CLIENT_DEFAULTS.routeTimeoutMs,
+      maxRetries: CLIENT_DEFAULTS.routeRetries,
       onFailure: "fail-open",
     },
     input.client,

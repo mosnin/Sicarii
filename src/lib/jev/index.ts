@@ -42,7 +42,22 @@ export {
   type JevEvaluateRequest,
 } from "./client";
 
-export { decideTurn, decideFromAnswers, type Handler, type DecideInput } from "./decide";
+export {
+  decideTurn,
+  decideFromAnswers,
+  handlerFromInstant,
+  type Handler,
+  type DecideInput,
+} from "./decide";
+export {
+  classifyInstant,
+  looksLikeLookup,
+  tooHardForInstant,
+  extractMissedQuery,
+  type InstantRoute,
+} from "./instant";
+export { lookupQuery, splitLocalQuery } from "./query";
+export { resetJevRuntime, isJevCircuitOpen } from "./runtime";
 export {
   resolveGenerationModel,
   isOpenRouterConfigured,
@@ -111,8 +126,6 @@ export {
   executeFastPath,
   pickActiveTools,
   activeToolNames,
-  lookupQuery,
-  splitLocalQuery,
   formatFastReply,
   FAST_PATH_TOOLS,
   type FastPathRunners,

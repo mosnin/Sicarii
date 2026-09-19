@@ -10,12 +10,15 @@ import { openai } from "@ai-sdk/openai";
 import {
   canSkipGeneration,
   classifyFailure,
+  classifyInstant,
   decideTurn,
   executeFastPath,
   fastPathResponse,
   gateGeneratedOutput,
   generationUnavailableMessage,
   isGenerationConfigured,
+  looksLikeLookup,
+  lookupQuery,
   pickActiveTools,
   quietAskDetermined,
   resolveGenerationModel,
@@ -190,13 +193,18 @@ export async function POST(req: Request) {
     conversationId = (await prisma.conversation.create({ data: { userId } })).id;
   }
 
-  // Persist + remember the latest user turn.
+  // Persist + remember the latest user turn. The row write overlaps decide /
+  // CRM prefetch so it is not on the first-token path.
   const lastUser = [...incoming].reverse().find((m) => m.role === "user");
   const lastUserText = lastUser ? uiMessageText(lastUser) : "";
+  const lastAssistant = [...incoming].reverse().find((m) => m.role === "assistant");
+  const lastAssistantText = lastAssistant ? uiMessageText(lastAssistant) : "";
+  const persistUser = lastUserText
+    ? prisma.message.create({
+        data: { conversationId, role: "user", content: lastUserText },
+      })
+    : Promise.resolve(null);
   if (lastUserText) {
-    await prisma.message.create({
-      data: { conversationId, role: "user", content: lastUserText },
-    });
     after(() => storeMemory(userId, "message", `Operator: ${lastUserText}`, conversationId));
   }
 
@@ -480,16 +488,36 @@ export async function POST(req: Request) {
   };
   const skillCatalog = Object.fromEntries(SKILLS.map((s) => [s.slug, s.description]));
 
-  let decision = lastUserText
-    ? await decideTurn({
-        message: lastUserText,
-        currentTier: "qwen_fast",
-        tools: toolCatalog,
-        skills: skillCatalog,
-      })
-    : { kind: "escalate" as const, reason: "empty" };
+  const instant = lastUserText ? classifyInstant(lastUserText, lastAssistantText) : null;
+  const prefetchQuery =
+    instant && (instant.tool === "search_crm" || instant.tool === "list_entities" || instant.tool === "list_contacts")
+      ? instant.query
+      : lastUserText && !instant && looksLikeLookup(lastUserText)
+        ? lookupQuery(lastUserText)
+        : null;
+  const prefetch = prefetchQuery ? searchCrm(userId, prefetchQuery).catch(() => null) : null;
 
-  if (decision.kind === "escalate" && lastUserText) {
+  const decided = lastUserText
+    ? instant
+      ? Promise.resolve({ kind: "tool" as const, tool: instant.tool, confidence: 0.94 })
+      : decideTurn({
+          message: lastUserText,
+          currentTier: "qwen_fast",
+          tools: toolCatalog,
+          skills: skillCatalog,
+          priorAssistant: lastAssistantText,
+        })
+    : Promise.resolve({ kind: "escalate" as const, reason: "empty" });
+
+  let [decision, , pref] = await Promise.all([
+    decided,
+    persistUser,
+    prefetch ?? Promise.resolve(null),
+  ]);
+
+  // Do not stack a second evaluate after a live miss. quiet-ask is only for
+  // a low-confidence intent, not a down TypeSafe hop.
+  if (decision.kind === "escalate" && decision.reason === "low_intent_confidence" && lastUserText) {
     const quiet = await quietAskDetermined({ message: lastUserText });
     if (quiet.determined) {
       decision = { kind: "deterministic", action: "lookup", confidence: 0.9 };
@@ -504,6 +532,8 @@ export async function POST(req: Request) {
     const fast = await executeFastPath({
       message: lastUserText,
       decision,
+      instant,
+      prefetch: pref ?? undefined,
       runners: {
         searchCrm: (q) => searchCrm(userId, q),
         findCompanies: (query) => findCompanies(userId, { query }),
@@ -517,6 +547,8 @@ export async function POST(req: Request) {
         recall: (query) => recallMemory(userId, query),
         listPendingDrafts: () => listPendingDrafts(userId, {}),
         getAutopilotStatus: () => getAutopilotStatus(userId),
+        createEntity: (name, domain) => createEntity(userId, { name, domain, source: "agent" }),
+        createContact: (input) => createContact(userId, { ...input, source: "agent" }),
       },
     });
     if (fast) {

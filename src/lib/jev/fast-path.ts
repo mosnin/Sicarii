@@ -7,6 +7,8 @@ import type { Handler } from "./decide";
 import { runAutoModeThen } from "./harness";
 import type { Json } from "./contract";
 import { logJevDecision } from "./telemetry";
+import { lookupQuery, splitLocalQuery } from "./query";
+import type { InstantRoute } from "./instant";
 
 export const FAST_PATH_TOOLS = new Set([
   "search_crm",
@@ -20,6 +22,8 @@ export const FAST_PATH_TOOLS = new Set([
   "recall",
   "list_pending_drafts",
   "get_autopilot_status",
+  "create_entity",
+  "create_contact",
 ]);
 
 const READ_CORE = [
@@ -48,21 +52,6 @@ const MUTATE_CORE = [
   "update_contact",
   "enrich_entity",
 ] as const;
-
-export function lookupQuery(message: string): string {
-  const cleaned = message
-    .replace(/^(please\s+)?(show me|find me|find|search for|search|look up|lookup|who is|what is|get|list)\s+/i, "")
-    .replace(/[?!.]+$/g, "")
-    .trim();
-  return (cleaned || message).slice(0, 200);
-}
-
-export function splitLocalQuery(message: string): { query: string; location?: string } {
-  const q = lookupQuery(message);
-  const m = q.match(/^(.+?)\s+(?:in|near|around)\s+(.+)$/i);
-  if (!m?.[1] || !m[2]) return { query: q };
-  return { query: m[1].trim(), location: m[2].trim() };
-}
 
 export function canSkipGeneration(decision: Handler): boolean {
   if (decision.kind === "deterministic") {
@@ -198,6 +187,19 @@ export function formatFastReply(input: {
     return "I pulled the current autopilot status. Open Autopilot on the dashboard for the budget and run ledger.";
   }
 
+  if (tool === "create_entity") {
+    const r = payload as { name?: string; domain?: string | null };
+    const name = r.name ?? query;
+    return `Added ${name}${r.domain ? ` (${r.domain})` : ""} to the CRM.`;
+  }
+
+  if (tool === "create_contact") {
+    const r = payload as { name?: string | null; email?: string | null; company?: string | null };
+    const who = r.name ?? r.email ?? query;
+    const at = r.company ? ` at ${r.company}` : "";
+    return `Added ${who}${at} as a contact.`;
+  }
+
   return "Done.";
 }
 
@@ -211,25 +213,35 @@ export type FastPathRunners = {
   recall: (query: string) => Promise<unknown>;
   listPendingDrafts: () => Promise<unknown>;
   getAutopilotStatus: () => Promise<unknown>;
+  createEntity: (name: string, domain?: string) => Promise<unknown>;
+  createContact: (input: { name?: string; email?: string; company?: string }) => Promise<unknown>;
 };
 
 export async function executeFastPath(input: {
   message: string;
   decision: Handler;
   runners: FastPathRunners;
+  instant?: InstantRoute | null;
+  prefetch?: unknown;
 }): Promise<{ text: string; tool: string } | null> {
   if (!canSkipGeneration(input.decision)) return null;
-  const query = lookupQuery(input.message);
-  const local = splitLocalQuery(input.message);
+  const query = input.instant?.query ?? lookupQuery(input.message);
+  const local = input.instant?.location
+    ? { query: input.instant.query, location: input.instant.location }
+    : splitLocalQuery(input.message);
   const tool =
-    input.decision.kind === "tool"
-      ? input.decision.tool
-      : "search_crm";
+    input.instant?.tool ??
+    (input.decision.kind === "tool" ? input.decision.tool : "search_crm");
 
   const started = Date.now();
   let payload: unknown;
   try {
-    payload = await runTool(tool, query, local, input.runners, input.message);
+    const lookupHit =
+      (tool === "search_crm" || tool === "list_entities" || tool === "list_contacts") &&
+      input.prefetch != null;
+    payload = lookupHit
+      ? input.prefetch
+      : await runTool(tool, query, local, input.runners, input.message, input.instant);
   } catch (e) {
     payload = { error: e instanceof Error ? e.message : "Internal error" };
   }
@@ -238,7 +250,7 @@ export async function executeFastPath(input: {
   logJevDecision({
     surface: "agent-fast-path",
     action: tool,
-    source: "jev",
+    source: input.instant ? "instant" : "jev",
     reasons: [input.decision.kind],
     latencyMs: Date.now() - started,
   });
@@ -251,6 +263,7 @@ async function runTool(
   local: { query: string; location?: string },
   runners: FastPathRunners,
   message: string,
+  instant?: InstantRoute | null,
 ): Promise<unknown> {
   const write = (name: string, args: Json, fn: () => Promise<unknown>) =>
     runAutoModeThen(name, args, message, fn);
@@ -268,6 +281,23 @@ async function runTool(
       return write("search_web", { query }, () => runners.searchWeb(query));
     case "google_search":
       return write("google_search", { query }, () => runners.googleSearch(query));
+    case "create_entity":
+      return write(
+        "create_entity",
+        { name: instant?.name ?? query, domain: instant?.domain ?? null },
+        () => runners.createEntity(instant?.name ?? query, instant?.domain),
+      );
+    case "create_contact":
+      return write(
+        "create_contact",
+        { name: instant?.name ?? null, email: instant?.email ?? null, company: instant?.company ?? null },
+        () =>
+          runners.createContact({
+            name: instant?.name,
+            email: instant?.email,
+            company: instant?.company,
+          }),
+      );
     case "recall":
       return runners.recall(query);
     case "list_pending_drafts":

@@ -6,7 +6,7 @@ import type { Answer } from "./contract";
 export type JevDecisionLog = {
   surface: string;
   action: string;
-  source: "jev" | "fallback";
+  source: "jev" | "fallback" | "instant";
   answers?: Record<string, Answer>;
   reasons?: string[];
   latencyMs?: number;

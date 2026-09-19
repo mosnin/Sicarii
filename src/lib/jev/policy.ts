@@ -53,4 +53,7 @@ export const CLIENT_DEFAULTS = {
   timeoutMs: 2500,
   maxRetries: 2,
   maxStateChars: 28_000,
+  /** Routing must lose fast. Writes keep the longer budget. */
+  routeTimeoutMs: 800,
+  routeRetries: 0,
 } as const;
