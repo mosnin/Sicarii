@@ -668,6 +668,10 @@ export function listSwarmRuns(userId: string, limit?: number) {
   });
 }
 
+export function countSwarmRuns(userId: string) {
+  return prisma.swarmRun.count({ where: { userId } });
+}
+
 /** One swarm run's full breakdown (per-angle counts + per-company attribution). */
 export async function getSwarmRun(userId: string, id: string) {
   const run = await prisma.swarmRun.findUnique({ where: { id } });

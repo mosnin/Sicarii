@@ -64,6 +64,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "count_segments", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "count_pipelines", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "count_pending_drafts", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "count_swarm_runs", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_contact", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_contact", confidence: 0.94 })).toBe(true);
@@ -856,6 +857,31 @@ describe("executeFastPath", () => {
       runners: stubs,
     });
     expect(drafts?.text).toBe("You have 1 pending draft.");
+  });
+
+  it("counts swarm runs without generation", async () => {
+    const result = await executeFastPath({
+      message: "how many swarm runs",
+      decision: { kind: "tool", tool: "count_swarm_runs", confidence: 0.94 },
+      instant: { tool: "count_swarm_runs", query: "how many swarm runs", source: "instant" },
+      runners: {
+        searchCrm: async () => ({ entities: [], contacts: [] }),
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
+        countSwarmRuns: async () => 9,
+      },
+    });
+    expect(result?.tool).toBe("count_swarm_runs");
+    expect(result?.text).toBe("You have 9 swarm runs.");
   });
 
   it("lists entities through the list runner, not searchCrm", async () => {

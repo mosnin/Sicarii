@@ -153,6 +153,7 @@ const readOnlyTools = [
   "count_due_followups",
   "list_pending_drafts",
   "count_pending_drafts",
+  "count_swarm_runs",
   "list_activities",
 ];
 

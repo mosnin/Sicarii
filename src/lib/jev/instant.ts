@@ -740,6 +740,16 @@ function parseCountField(text: string): {
   return { tool: "count_pipelines" };
 }
 
+function parseCountSwarm(text: string): boolean {
+  if (
+    !/^(please\s+)?(how many|count|what(?:'s| is) (the )?(?:total )?(?:number of )?)\b/i.test(text)
+  ) {
+    return false;
+  }
+  if (/\b(who|list|show|names?)\b/i.test(text)) return false;
+  return /\bswarm runs?\b/i.test(text);
+}
+
 function parseCountFollowups(text: string): { staleDays?: number } | null {
   if (!/\b(follow-?ups?|follow\s+ups?|stale contacts?)\b/i.test(text)) return null;
   const asks =
@@ -1565,6 +1575,9 @@ export function classifyInstant(
       /^(what did we (just )?(find|discover)|show what we discovered)\b/i.test(text))
   ) {
     return { tool: "list_recent_discoveries", query: text, source: "instant" };
+  }
+  if (parseCountSwarm(text) && !COMPOUND.test(text) && !DESTRUCTIVE.test(text)) {
+    return { tool: "count_swarm_runs", query: text, source: "instant" };
   }
   if (
     !COMPOUND.test(text) &&

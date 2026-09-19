@@ -748,6 +748,11 @@ Scalar now does that on `/api/agent`:
     (`speech`) before OpenAI TTS. Key minting scans the label
     (`api-key-name`) before persist. A live TypeSafe miss denies
     when configured. Unconfigured local stays fail-open.
+64. Instant `how many swarm runs` and `count swarm runs` skip TypeSafe
+    and skip the generator. The count goes through `countSwarmRuns`
+    so the reply is the real total, not a 50-row page guessed as a
+    number. `list swarm runs` still lists. In-app and MCP expose
+    `count_swarm_runs`.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

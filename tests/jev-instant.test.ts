@@ -362,6 +362,8 @@ describe("classifyInstant", () => {
     });
     expect(classifyInstant("show pending drafts")).toMatchObject({ tool: "list_pending_drafts" });
     expect(classifyInstant("list swarm runs")).toMatchObject({ tool: "list_swarm_runs" });
+    expect(classifyInstant("how many swarm runs")).toMatchObject({ tool: "count_swarm_runs" });
+    expect(classifyInstant("count swarm runs")).toMatchObject({ tool: "count_swarm_runs" });
     expect(classifyInstant("show recent discoveries")).toMatchObject({
       tool: "list_recent_discoveries",
     });

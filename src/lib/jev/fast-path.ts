@@ -86,6 +86,7 @@ export const FAST_PATH_TOOLS = new Set([
   "count_segments",
   "count_pipelines",
   "count_pending_drafts",
+  "count_swarm_runs",
 ]);
 
 const READ_CORE = [
@@ -106,6 +107,7 @@ const READ_CORE = [
   "count_segments",
   "count_pipelines",
   "count_pending_drafts",
+  "count_swarm_runs",
 ] as const;
 
 const DISCOVER_CORE = [
@@ -371,6 +373,17 @@ export function formatFastReply(input: {
           ? n === 1 ? "pipeline" : "pipelines"
           : n === 1 ? "pending draft" : "pending drafts";
     return `You have ${n} ${who}.`;
+  }
+
+  if (tool === "count_swarm_runs") {
+    const r = payload as { count?: number };
+    const n =
+      typeof payload === "number" && Number.isFinite(payload)
+        ? payload
+        : typeof r.count === "number" && Number.isFinite(r.count)
+          ? r.count
+          : 0;
+    return `You have ${n} swarm run${n === 1 ? "" : "s"}.`;
   }
 
   if (tool === "count_due_followups") {
@@ -931,6 +944,7 @@ export type FastPathRunners = {
   countSegments?: () => Promise<unknown>;
   countPipelines?: () => Promise<unknown>;
   countPendingDrafts?: () => Promise<unknown>;
+  countSwarmRuns?: () => Promise<unknown>;
   listDueFollowups?: () => Promise<unknown>;
   getBilling?: () => Promise<unknown>;
   getUsage?: () => Promise<unknown>;
@@ -1462,6 +1476,11 @@ async function runTool(
     case "count_pending_drafts": {
       if (!runners.countPendingDrafts) return { error: "Draft count is unavailable." };
       const count = await runners.countPendingDrafts();
+      return typeof count === "number" ? { count } : count;
+    }
+    case "count_swarm_runs": {
+      if (!runners.countSwarmRuns) return { error: "Swarm run count is unavailable." };
+      const count = await runners.countSwarmRuns();
       return typeof count === "number" ? { count } : count;
     }
     case "list_entities":

@@ -61,6 +61,7 @@ describe("agent Jev parity", () => {
     expect(source).toContain("count_segments:");
     expect(source).toContain("count_pipelines:");
     expect(source).toContain("count_pending_drafts:");
+    expect(source).toContain("count_swarm_runs:");
     expect(source).toContain("count_contacts:");
     expect(source).toContain("count_due_followups:");
     expect(source).toContain("list_segments:");

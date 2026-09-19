@@ -50,6 +50,7 @@ import {
   discoverLocalLeads,
   swarmDiscover,
   listSwarmRuns,
+  countSwarmRuns,
   getSwarmRun,
   extractSiteContacts,
   searchGoogle,
@@ -810,6 +811,14 @@ const handler = createMcpHandler(
       { limit: z.number().int().min(1).max(200).optional() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ limit }, extra) => run(() => listSwarmRuns(userIdFrom(extra), limit)),
+    );
+
+    server.tool(
+      "count_swarm_runs",
+      "Count swarm discovery runs. Use this instead of listing when you only need the number.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(async () => ({ count: await countSwarmRuns(userIdFrom(extra)) })),
     );
 
     server.tool(
