@@ -13,12 +13,13 @@ export type InstantRoute = {
   domain?: string;
   email?: string;
   company?: string;
+  detail?: boolean;
   source: "instant";
 };
 
 const COMPOUND = /\b(and then|then |also |after that|as well as)\b/i;
 const COMPOSE =
-  /\b(draft|write|compose|summarize|rewrite|breakup|subject line|opener|email (them|her|him|jane|this))\b/i;
+  /\b(draft|write|compose|rewrite|breakup|subject line|opener|email (them|her|him|jane|this))\b/i;
 const DESTRUCTIVE = /\b(delete|remove all|wipe|drop table|charge|buy credits|unsubscribe)\b/i;
 const SEND = /\b(send (this|it|the email|them)|approve (this|it|the draft))\b/i;
 
@@ -33,7 +34,7 @@ export function tooHardForInstant(message: string): boolean {
 
 export function looksLikeLookup(message: string): boolean {
   if (tooHardForInstant(message)) return false;
-  return /^(please\s+)?(show|find|search|list|look up|lookup|who is|what is|get|open)\b/i.test(
+  return /^(please\s+)?(show|find|search|list|look up|lookup|who is|what is|get|open|tell me about|summarize|enrich)\b/i.test(
     message.trim(),
   );
 }
@@ -147,6 +148,19 @@ export function classifyInstant(
     return { tool: "get_autopilot_status", query: text, source: "instant" };
   }
 
+  if (/\benrich\b/i.test(text)) {
+    const q = lookupQuery(text);
+    if (q) return { tool: "enrich_entity", query: q, source: "instant" };
+  }
+
+  if (
+    /^(please\s+)?(tell me about|what do you know about|what(?:'s| is) the status of|summarize|who is)\b/i.test(
+      text,
+    )
+  ) {
+    return { tool: "search_crm", query: lookupQuery(text), detail: true, source: "instant" };
+  }
+
   const contact = parseCreateContact(text);
   if (contact) {
     return {
@@ -196,7 +210,9 @@ export function classifyInstant(
   }
 
   if (
-    /^(please\s+)?(show|find|search|list|look up|lookup|who is|what is|get|open)\b/i.test(text) ||
+    /^(please\s+)?(show|find|search|list|look up|lookup|who is|what is|get|open|tell me about|summarize)\b/i.test(
+      text,
+    ) ||
     /\b(in the crm|from the crm|in my crm)\b/i.test(text)
   ) {
     const listOnly = /^(please\s+)?(list|show)\b/i.test(text);

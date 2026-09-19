@@ -117,6 +117,7 @@ describe("executeFastPath", () => {
         getAutopilotStatus: async () => ({}),
         createEntity: async () => ({ name: "x" }),
         createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
       },
     });
     expect(result?.tool).toBe("search_crm");
@@ -139,6 +140,7 @@ describe("executeFastPath", () => {
         getAutopilotStatus: async () => ({}),
         createEntity: async () => ({ name: "x" }),
         createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
       },
     });
     expect(result).toBeNull();
@@ -161,6 +163,7 @@ describe("executeFastPath", () => {
         getAutopilotStatus: async () => ({}),
         createEntity: async (name) => ({ name, domain: null }),
         createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
       },
     });
     expect(result?.tool).toBe("create_entity");
@@ -188,6 +191,7 @@ describe("executeFastPath", () => {
         getAutopilotStatus: async () => ({}),
         createEntity: async () => ({ name: "x" }),
         createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
       },
     });
     expect(searches).toBe(0);
