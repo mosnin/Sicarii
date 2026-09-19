@@ -365,6 +365,8 @@ Two stacked branches off Scalar `main`:
    create/list uses the ops layer. Schedule and monitor queries are
    scanned. Instant email/activity/call/social history skips TypeSafe.
    The in-app agent can save emails and create variants under auto-mode.
+   Live Jev misses on identity, generated output, and log-phase wardens
+   deny. Unconfigured still fails open.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -396,8 +398,10 @@ Still owed (documented):
 
 - Live TypeSafe observation (no key in this checkout).
 - Labeled CRM-turn jevcal, then pin `jev-1.13.0`.
-- Identity and malicious scan fail-closed on a **live** miss. They still
-  fail-open when no key is set, unless `JEV_REQUIRED=1`.
+- Unconfigured identity, scan, money, and write gates still fail-open
+  unless `JEV_REQUIRED=1`. Live evaluate misses on those surfaces now
+  deny (including real-company filter, generated-output scan, and
+  log-phase wardens).
 
 See `docs/engineering/jev-sweep-2026-09-19.md`.
 
@@ -502,6 +506,10 @@ Scalar now does that on `/api/agent`:
 20. Instant `show linkedin messages for Jane` is social history, not
     email. The agent has `list_social_messages`, `save_email_context`,
     and `create_variant` under auto-mode.
+21. A live TypeSafe miss on identity (`filterRealCompanies` /
+    `keepNamedCompanies`) drops the batch instead of inserting unverified
+    companies. Generated output and log-phase wardens deny on a live miss.
+    Unconfigured still fails open.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

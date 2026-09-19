@@ -16,6 +16,8 @@ import {
   classifyFailure,
   evaluateLoop,
   keepNamedCompanies,
+  gateGeneratedOutput,
+  runWardens,
   type JevClient,
 } from "@/lib/jev";
 import type { JevResult, QuestionMap } from "@/lib/jev/contract";
@@ -226,6 +228,32 @@ describe("scanMalicious", () => {
   });
 });
 
+describe("gateGeneratedOutput / runWardens live miss", () => {
+  it("refuses generated text when a live evaluate fails", async () => {
+    const gate = await gateGeneratedOutput("Acme is in Austin", {
+      async evaluate() {
+        throw new Error("typesafe down");
+      },
+    });
+    expect(gate.allow).toBe(false);
+    expect(gate.reasons).toContain("jev_unavailable");
+  });
+
+  it("blocks log-phase wardens when a live evaluate fails", async () => {
+    const gate = await runWardens({
+      payload: "email body",
+      phase: "log",
+      client: {
+        async evaluate() {
+          throw new Error("typesafe down");
+        },
+      },
+    });
+    expect(gate.allow).toBe(false);
+    expect(gate.reasons).toContain("jev_unavailable");
+  });
+});
+
 describe("filterRealCompanies / deriveAnglesWithJev", () => {
   it("keeps only rows Jev marks as real companies", async () => {
     const keep = await filterRealCompanies(
@@ -239,6 +267,27 @@ describe("filterRealCompanies / deriveAnglesWithJev", () => {
       }),
     );
     expect(keep).toEqual(new Set(["acme.com"]));
+  });
+
+  it("drops every company when a live evaluate fails", async () => {
+    const keep = await filterRealCompanies(
+      [{ id: "acme.com", text: "Acme Inc homepage" }],
+      {
+        async evaluate() {
+          throw new Error("typesafe down");
+        },
+      },
+    );
+    expect(keep).toEqual(new Set());
+    const named = await keepNamedCompanies(
+      [{ companyName: "Acme", domain: "acme.com" }],
+      {
+        async evaluate() {
+          throw new Error("typesafe down");
+        },
+      },
+    );
+    expect(named).toEqual([]);
   });
 
   it("builds angle queries from Jev dimension nouls", async () => {
