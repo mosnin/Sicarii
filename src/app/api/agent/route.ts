@@ -64,13 +64,15 @@ import {
   listContactCalls,
   logOutreach,
   addActivity,
+  saveEmail,
+  listSocialMessages,
 } from "@/lib/crm-operations";
 import { listSegments, listPipelines } from "@/lib/field-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
 import { proposeAutopilotPlan, getAutopilotStatus } from "@/lib/autopilot-operations";
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
-import { selectVariant, listVariantStats } from "@/lib/variant-operations";
+import { selectVariant, listVariantStats, createVariant } from "@/lib/variant-operations";
 import { CREDIT_COSTS, getBilling } from "@/lib/credits";
 
 export const maxDuration = 60;
@@ -509,6 +511,63 @@ export async function POST(req: Request) {
           }),
         ),
     }),
+    list_social_messages: tool({
+      description: "List LinkedIn/X/Instagram/Facebook messages with a contact, newest first.",
+      inputSchema: z.object({
+        contactId: z.string(),
+        channel: z.string().max(20).optional(),
+      }),
+      execute: ({ contactId, channel }) =>
+        exec(() =>
+          listSocialMessages(
+            userId,
+            contactId,
+            channel
+              ? requireNormalized(
+                  channel,
+                  normalizeSocialChannel,
+                  "channel",
+                  "linkedin, x, instagram, facebook, other",
+                )
+              : undefined,
+          ),
+        ),
+    }),
+    save_email_context: tool({
+      description: "Save an email exchanged with a contact onto their record.",
+      inputSchema: z.object({
+        contactId: z.string(),
+        direction: z.string().max(20),
+        subject: z.string().max(500).optional(),
+        body: z.string().max(100_000).optional(),
+        fromAddr: z.string().max(320).optional(),
+        toAddr: z.string().max(320).optional(),
+      }),
+      execute: ({ direction, ...rest }) =>
+        exec(() =>
+          saveEmail(userId, {
+            ...rest,
+            direction: requireNormalized(direction, normalizeDirection, "direction", "inbound, outbound"),
+            savedAsContext: true,
+          }),
+        ),
+    }),
+    create_variant: tool({
+      description: "Create a subject-line or opener variant for the outreach bandit.",
+      inputSchema: z.object({
+        kind: z.string().max(20),
+        text: z.string().min(1).max(2000),
+        segmentId: z.string().optional(),
+      }),
+      execute: ({ kind, text, segmentId }) =>
+        exec(() =>
+          createVariant(userId, {
+            kind: requireNormalized(kind, normalizeVariantKind, "kind", "subject, opener"),
+            text,
+            segmentId: segmentId ?? null,
+          }),
+        ),
+    }),
   };
 
   // Auto mode (LangChain AutoModeMiddleware): Jev inspects pending tool
@@ -547,6 +606,9 @@ export async function POST(req: Request) {
     list_contact_calls: "List calls with a contact.",
     log_outreach: "Record an outbound touch.",
     add_activity: "Log a note or activity.",
+    list_social_messages: "List social DMs with a contact.",
+    save_email_context: "Save an email onto a contact.",
+    create_variant: "Create a subject or opener variant.",
   };
   const skillCatalog = Object.fromEntries(SKILLS.map((s) => [s.slug, s.description]));
 
@@ -578,7 +640,8 @@ export async function POST(req: Request) {
             ? listPendingDrafts(userId, {}).catch(() => null)
           : instant?.tool === "list_emails" ||
               instant?.tool === "list_activities" ||
-              instant?.tool === "list_contact_calls"
+              instant?.tool === "list_contact_calls" ||
+              instant?.tool === "list_social_messages"
             ? searchCrm(userId, instant.query).catch(() => null)
         : prefetchQuery !== null
           ? instant?.tool === "list_entities"
@@ -656,6 +719,7 @@ export async function POST(req: Request) {
         listEmails: (contactId) => listContactEmails(userId, contactId),
         listActivities: (input) => listActivities(userId, input),
         listContactCalls: (contactId) => listContactCalls(userId, contactId),
+        listSocialMessages: (contactId) => listSocialMessages(userId, contactId),
         scoreFit: productContext
           ? async (rows) => {
               const scores = await scoreFitWithJev(rows, productContext);

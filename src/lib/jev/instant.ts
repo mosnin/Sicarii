@@ -52,7 +52,7 @@ export function extractMissedQuery(prior?: string | null): string | null {
 export function historySubject(text: string): string {
   return lookupQuery(text)
     .replace(
-      /\b(the |a |an )?(emails?|inbox|messages|activities|activity|calls?|history|thread|trail)\b/gi,
+      /\b(the |a |an )?(emails?|inbox|messages|activities|activity|calls?|history|thread|trail|dms?|linkedin|instagram|facebook|twitter|social)\b/gi,
       " ",
     )
     .replace(/\b(for|with|from|about)\b/gi, " ")
@@ -222,7 +222,14 @@ export function classifyInstant(
     /^(please\s+)?(list|show|get|open)\b/i.test(text)
   ) {
     const who = historySubject(text);
-    if (who && /\b(emails?|inbox|messages)\b/i.test(text)) {
+    if (
+      who &&
+      /\b(linkedin|instagram|facebook|twitter|\bx\b|dms?|social)\b/i.test(text) &&
+      /\b(messages?|dms?|thread|history)\b/i.test(text)
+    ) {
+      return { tool: "list_social_messages", query: who, source: "instant" };
+    }
+    if (who && /\b(emails?|inbox)\b/i.test(text)) {
       return { tool: "list_emails", query: who, source: "instant" };
     }
     if (who && /\b(activit(?:y|ies)|trail)\b/i.test(text)) {

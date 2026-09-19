@@ -363,8 +363,8 @@ Two stacked branches off Scalar `main`:
    rate-limited at the ops layer. Segment/pipeline/autopilot text is
    scanned. Inngest crons take at most 50 due jobs. HTTP Field
    create/list uses the ops layer. Schedule and monitor queries are
-   scanned. Instant email/activity/call history skips TypeSafe. The
-   in-app agent can log outreach and notes under auto-mode.
+   scanned. Instant email/activity/call/social history skips TypeSafe.
+   The in-app agent can save emails and create variants under auto-mode.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -499,6 +499,9 @@ Scalar now does that on `/api/agent`:
     `show calls for Jane` skip TypeSafe. The in-app agent now has
     `list_emails`, `list_activities`, `list_contact_calls`, `log_outreach`,
     and `add_activity` (auto-mode), matching MCP.
+20. Instant `show linkedin messages for Jane` is social history, not
+    email. The agent has `list_social_messages`, `save_email_context`,
+    and `create_variant` under auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

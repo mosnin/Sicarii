@@ -29,6 +29,8 @@ describe("agent Jev parity", () => {
     expect(AUTO_MODE_TOOLS.has("search_web")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("google_search")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("add_activity")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("save_email_context")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("create_variant")).toBe(true);
     expect(source).toContain("for (const name of AUTO_MODE_TOOLS)");
   });
 
@@ -38,6 +40,9 @@ describe("agent Jev parity", () => {
     expect(source).toContain("list_swarm_runs:");
     expect(source).toContain("list_emails:");
     expect(source).toContain("list_activities:");
+    expect(source).toContain("list_social_messages:");
     expect(source).toContain("log_outreach:");
+    expect(source).toContain("save_email_context:");
+    expect(source).toContain("create_variant:");
   });
 });

@@ -36,6 +36,7 @@ export const FAST_PATH_TOOLS = new Set([
   "list_emails",
   "list_activities",
   "list_contact_calls",
+  "list_social_messages",
 ]);
 
 const READ_CORE = [
@@ -324,6 +325,15 @@ export function formatFastReply(input: {
     return `${rows.length} call${rows.length === 1 ? "" : "s"} on file for ${query}.`;
   }
 
+  if (tool === "list_social_messages") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return `No social messages on file for "${query}".`;
+    const latest = rows[0] as { channel?: string | null; body?: string | null };
+    const ch = latest.channel ? ` on ${latest.channel}` : "";
+    const snippet = (latest.body ?? "").trim().slice(0, 80);
+    return `${rows.length} social message${rows.length === 1 ? "" : "s"} with ${query}${ch}${snippet ? `: ${snippet}` : "."}`;
+  }
+
   return "Done.";
 }
 
@@ -352,6 +362,7 @@ export type FastPathRunners = {
   listEmails?: (contactId: string) => Promise<unknown>;
   listActivities?: (input: { contactId?: string; entityId?: string }) => Promise<unknown>;
   listContactCalls?: (contactId: string) => Promise<unknown>;
+  listSocialMessages?: (contactId: string) => Promise<unknown>;
   scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
 
@@ -515,7 +526,8 @@ async function runTool(
       return runners.listSwarmRuns ? runners.listSwarmRuns() : [];
     case "list_emails":
     case "list_activities":
-    case "list_contact_calls": {
+    case "list_contact_calls":
+    case "list_social_messages": {
       const found =
         prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
       const facts = factsFromSearch(found);
@@ -531,6 +543,9 @@ async function runTool(
       }
       if (tool === "list_emails") {
         return runners.listEmails ? runners.listEmails(contact.id) : [];
+      }
+      if (tool === "list_social_messages") {
+        return runners.listSocialMessages ? runners.listSocialMessages(contact.id) : [];
       }
       return runners.listContactCalls ? runners.listContactCalls(contact.id) : [];
     }

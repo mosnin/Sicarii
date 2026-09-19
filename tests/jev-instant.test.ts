@@ -54,6 +54,11 @@ describe("classifyInstant", () => {
       tool: "list_contact_calls",
       query: "Jane",
     });
+    expect(classifyInstant("show linkedin messages for Jane")).toMatchObject({
+      tool: "list_social_messages",
+      query: "Jane",
+    });
+    expect(classifyInstant("show emails for Jane")).toMatchObject({ tool: "list_emails" });
   });
 
   it("routes discovery and local maps", () => {

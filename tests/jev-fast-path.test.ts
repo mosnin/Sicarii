@@ -151,6 +151,13 @@ describe("formatFastReply", () => {
         payload: [{ subject: "Intro", direction: "OUTBOUND" }],
       }),
     ).toContain("1 email with Jane");
+    expect(
+      formatFastReply({
+        tool: "list_social_messages",
+        query: "Jane",
+        payload: [{ channel: "LINKEDIN", body: "Great to connect" }],
+      }),
+    ).toContain("1 social message with Jane");
   });
 
   it("explains an empty CRM lookup", () => {

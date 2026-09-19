@@ -201,6 +201,8 @@ export const AUTO_MODE_TOOLS = new Set([
   "log_social_message",
   "log_outreach",
   "add_activity",
+  "save_email_context",
+  "create_variant",
   "place_call",
   "buy_credits",
   "buy_plan",
