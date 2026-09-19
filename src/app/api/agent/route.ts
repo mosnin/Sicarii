@@ -922,7 +922,7 @@ export async function POST(req: Request) {
             ? getUsage(userId).catch(() => null)
         : instant?.tool === "get_autopilot_status"
           ? getAutopilotStatus(userId).catch(() => null)
-          : instant?.tool === "enrich_entity"
+          : instant?.tool === "enrich_entity" || instant?.tool === "update_entity"
             ? searchCrm(userId, instant.query).catch(() => null)
           : instant?.tool === "list_variant_stats"
             ? listVariantStats(userId, {}).catch(() => null)
@@ -1042,6 +1042,7 @@ export async function POST(req: Request) {
         createEntity: (name, domain) => createEntity(userId, { name, domain, source: "agent" }),
         createContact: (input) => createContact(userId, { ...input, source: "agent" }),
         enrichEntity: (id) => enrichEntity(userId, id),
+        updateEntity: (id, patch) => updateEntity(userId, id, patch),
         listEntities: (q) => listEntities(userId, q),
         listContacts: (q) => listContacts(userId, { q }),
         listDueFollowups: () => listDueFollowups(userId, {}),
@@ -1073,7 +1074,7 @@ export async function POST(req: Request) {
               "channel",
               "linkedin, x, instagram, facebook, other",
             ),
-            direction: "OUTBOUND",
+            direction: input.direction === "INBOUND" ? "INBOUND" : "OUTBOUND",
             body: input.body,
           }),
         extractSiteContacts: (url) => extractSiteContacts(userId, url),

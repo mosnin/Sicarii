@@ -121,15 +121,16 @@ export function listEntities(
 export async function getEntity(
   userId: string,
   id: string,
-  opts?: { includeEnrichment?: boolean },
+  opts?: { includeEnrichment?: boolean; includeContacts?: boolean },
 ) {
   const includeEnrichment = opts?.includeEnrichment ?? true;
+  const includeContacts = opts?.includeContacts ?? true;
   const entity = await prisma.entity.findUnique({
     where: { id },
     include: {
       contacts: {
         orderBy: { updatedAt: "desc" },
-        take: 100,
+        take: includeContacts ? 100 : 0,
         ...(includeEnrichment ? {} : { omit: { enrichment: true } }),
       },
     },
@@ -711,7 +712,7 @@ export async function getContact(
   const contact = await prisma.contact.findUnique({
     where: { id },
     include: {
-      entity: { select: { id: true, name: true } },
+      entity: { select: { id: true, name: true, domain: true, website: true } },
       ...(includeChannelHistory
         ? {
             emails: { orderBy: { sentAt: "desc" as const }, take: 50 },

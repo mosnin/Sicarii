@@ -32,6 +32,7 @@ export const FAST_PATH_TOOLS = new Set([
   "list_variant_stats",
   "select_variant",
   "create_variant",
+  "update_entity",
   "log_social_message",
   "extract_contact_details",
   "list_segments",
@@ -407,10 +408,17 @@ export function formatFastReply(input: {
   }
 
   if (tool === "log_social_message") {
-    const r = payload as { name?: string | null; channel?: string | null };
+    const r = payload as {
+      name?: string | null;
+      channel?: string | null;
+      direction?: string | null;
+    };
     const who = r.name ?? query;
     const channel = (r.channel ?? "social").toLowerCase();
-    return `Logged a ${channel} message with ${who}.`;
+    const inbound = (r.direction ?? "").toUpperCase() === "INBOUND";
+    return inbound
+      ? `Logged an inbound ${channel} message from ${who}.`
+      : `Logged a ${channel} message with ${who}.`;
   }
 
   if (tool === "extract_contact_details") {
@@ -551,6 +559,13 @@ export function formatFastReply(input: {
     return `Marked ${who} as ${status}.`;
   }
 
+  if (tool === "update_entity") {
+    const r = payload as { name?: string | null; industry?: string | null };
+    const who = r.name ?? query;
+    const industry = r.industry ?? "the new industry";
+    return `Set ${who}'s industry to ${industry}.`;
+  }
+
   if (tool === "add_to_pipeline" || tool === "add_to_segment") {
     const r = payload as { name?: string | null; who?: string | null; added?: number };
     const who = r.who ?? query;
@@ -662,6 +677,7 @@ export type FastPathRunners = {
   createEntity: (name: string, domain?: string) => Promise<unknown>;
   createContact: (input: { name?: string; email?: string; company?: string }) => Promise<unknown>;
   enrichEntity: (id: string) => Promise<unknown>;
+  updateEntity?: (id: string, patch: { industry?: string }) => Promise<unknown>;
   listEntities?: (q?: string) => Promise<unknown>;
   listContacts?: (q?: string) => Promise<unknown>;
   listDueFollowups?: () => Promise<unknown>;
@@ -695,6 +711,7 @@ export type FastPathRunners = {
     contactId: string;
     channel: NonNullable<InstantRoute["channel"]>;
     body: string;
+    direction?: NonNullable<InstantRoute["direction"]>;
   }) => Promise<unknown>;
   extractSiteContacts?: (url: string) => Promise<unknown>;
   findPipelineEntry?: (
@@ -897,6 +914,29 @@ async function runTool(
         return { error: `I did not find "${query}" in the CRM to enrich. Say the word if you want me to discover it.` };
       }
       return write("enrich_entity", { id: first.id }, () => runners.enrichEntity(first.id!));
+    }
+    case "update_entity": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const first = facts.find((f) => f.kind === "entity" && f.id);
+      if (!first?.id) {
+        return { error: `I did not find a company named "${query}" in the CRM.` };
+      }
+      const industry = instant?.industry?.trim();
+      if (!industry) {
+        return { error: "Say the industry, like set Acme industry to SaaS." };
+      }
+      const entityId = first.id;
+      return write("update_entity", { id: entityId, industry }, async () => {
+        const result = runners.updateEntity
+          ? await runners.updateEntity(entityId, { industry })
+          : { error: "Company update is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), name: first.name ?? query, industry };
+        }
+        return result;
+      });
     }
     case "recall":
       return runners.recall(query);
@@ -1346,15 +1386,16 @@ async function runTool(
       }
       const contactId = contact.id;
       const channel = instant?.channel ?? "other";
+      const direction = instant?.direction ?? "OUTBOUND";
       return write(
         "log_social_message",
-        { contactId, channel, direction: "OUTBOUND", body },
+        { contactId, channel, direction, body },
         async () => {
           const result = runners.saveSocialMessage
-            ? await runners.saveSocialMessage({ contactId, channel, body })
+            ? await runners.saveSocialMessage({ contactId, channel, body, direction })
             : { error: "Social log is unavailable." };
           if (result && typeof result === "object" && !("error" in result)) {
-            return { ...(result as object), name: contact.name ?? query, channel };
+            return { ...(result as object), name: contact.name ?? query, channel, direction };
           }
           return result;
         },

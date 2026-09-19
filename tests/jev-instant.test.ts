@@ -54,12 +54,26 @@ describe("classifyInstant", () => {
       query: "Jane",
       channel: "linkedin",
       note: "thanks for the intro",
+      direction: "OUTBOUND",
     });
     expect(classifyInstant("save this twitter dm to Jane Doe: circling back")).toMatchObject({
       tool: "log_social_message",
       query: "Jane Doe",
       channel: "x",
       note: "circling back",
+      direction: "OUTBOUND",
+    });
+    expect(classifyInstant("log an inbound linkedin message from Jane: thanks")).toMatchObject({
+      tool: "log_social_message",
+      query: "Jane",
+      channel: "linkedin",
+      note: "thanks",
+      direction: "INBOUND",
+    });
+    expect(classifyInstant("set Acme industry to SaaS")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      industry: "SaaS",
     });
     expect(classifyInstant("mark Jane as awaiting reply in Outbound")).toMatchObject({
       tool: "update_pipeline_entry",

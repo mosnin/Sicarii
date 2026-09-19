@@ -623,6 +623,12 @@ Scalar now does that on `/api/agent`:
     TypeSafe and run `log_social_message` / `update_pipeline_entry` /
     `extract_contact_details` under auto-mode. Paid extract still
     meters at the ops layer.
+38. Contact-field enrich, social-find, legal verify, and tech detect
+    load through `getContact` / `getEntity` (company domain and website
+    stay on the contact join; verify/tech skip the 100-contact include).
+    Instant `set Acme industry to SaaS` and `log an inbound linkedin
+    message from Jane: thanks` skip TypeSafe and run `update_entity` /
+    `log_social_message` under auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

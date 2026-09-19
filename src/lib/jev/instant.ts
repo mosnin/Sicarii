@@ -21,6 +21,8 @@ export type InstantRoute = {
   stage?: "NEW" | "ENRICHED" | "PROSPECTING" | "ENGAGING" | "REPLYING" | "WON" | "LOST";
   conversationStatus?: "OPEN" | "AWAITING_REPLY" | "STALLED" | "CLOSED";
   subject?: string;
+  industry?: string;
+  direction?: "INBOUND" | "OUTBOUND";
   detail?: boolean;
   source: "instant";
 };
@@ -216,12 +218,13 @@ function parseLogSocial(text: string): {
   query: string;
   channel: NonNullable<InstantRoute["channel"]>;
   note: string;
+  direction: NonNullable<InstantRoute["direction"]>;
 } | null {
   const m = text.match(
-    /^(please\s+)?(save|log|record)\s+(?:this |the |a |an )?(linkedin|x|twitter|instagram|facebook|social)\s+(dm|message|comment)\s+(?:to|on|with|for)\s+(.+?)[:\-]\s*(.+)$/i,
+    /^(please\s+)?(save|log|record)\s+(?:this |the |a |an )?(inbound\s+)?(linkedin|x|twitter|instagram|facebook|social)\s+(dm|message|comment)\s+(to|from|on|with|for)\s+(.+?)[:\-]\s*(.+)$/i,
   );
-  if (!m?.[3] || !m[5] || !m[6]) return null;
-  const raw = m[3].toLowerCase();
+  if (!m?.[4] || !m[6] || !m[7] || !m[8]) return null;
+  const raw = m[4].toLowerCase();
   const channel: NonNullable<InstantRoute["channel"]> =
     raw === "linkedin"
       ? "linkedin"
@@ -232,10 +235,26 @@ function parseLogSocial(text: string): {
           : raw === "facebook"
             ? "facebook"
             : "other";
-  const query = m[5].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
-  const note = m[6].trim();
+  const query = m[7].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const note = m[8].trim();
+  const direction: NonNullable<InstantRoute["direction"]> =
+    m[3] || m[6].toLowerCase() === "from" ? "INBOUND" : "OUTBOUND";
   if (!query || !note || query.length > 80 || note.length > 10_000) return null;
-  return { query, channel, note };
+  return { query, channel, note, direction };
+}
+
+function parseEntityIndustry(text: string): { query: string; industry: string } | null {
+  const m = text.match(
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+industry\s+to\s+(.+)$/i,
+  );
+  if (!m?.[3] || !m[4]) return null;
+  const query = m[3]
+    .replace(/\b(the|a|an|company|business|entity)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const industry = m[4].trim().replace(/[.!?]+$/, "");
+  if (!query || !industry || query.length > 80 || industry.length > 80) return null;
+  return { query, industry };
 }
 
 function parseExtractContacts(text: string): { query: string } | null {
@@ -646,6 +665,15 @@ export function classifyInstant(
       source: "instant",
     };
   }
+  const industry = parseEntityIndustry(text);
+  if (industry && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_entity",
+      query: industry.query,
+      industry: industry.industry,
+      source: "instant",
+    };
+  }
   const removeFromField = parseRemoveFromField(text);
   if (removeFromField && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
     return {
@@ -694,6 +722,7 @@ export function classifyInstant(
       query: logSocial.query,
       note: logSocial.note,
       channel: logSocial.channel,
+      direction: logSocial.direction,
       source: "instant",
     };
   }

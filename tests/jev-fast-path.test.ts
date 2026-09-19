@@ -72,6 +72,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "create_variant", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "log_social_message", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "extract_contact_details", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "update_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });

@@ -5,8 +5,7 @@
 // rather than bundle the community ruleset (which is GPL-3.0 / copyleft).
 import { fetchWithTimeout } from "@/lib/http";
 import { safeHttpUrl, resolvesToPublicIp } from "@/lib/ssrf";
-import { prisma } from "@/lib/prisma";
-import { OpError, updateEntity } from "@/lib/crm-operations";
+import { OpError, getEntity, updateEntity } from "@/lib/crm-operations";
 import { recordProvenance, CONFIDENCE } from "@/lib/provenance";
 
 type Fingerprint = {
@@ -112,8 +111,8 @@ export async function detectSiteTech(url: string): Promise<DetectedTech[]> {
 
 /** Detect and store an entity's tech stack under enrichment.tech. Free. */
 export async function detectEntityTech(userId: string, entityId: string) {
-  const entity = await prisma.entity.findUnique({ where: { id: entityId } });
-  if (!entity || entity.userId !== userId) throw new OpError("Entity not found", 404);
+  const loaded = await getEntity(userId, entityId, { includeContacts: false });
+  const entity = loaded as typeof loaded & { enrichment?: unknown };
   const url = entity.website || entity.domain;
   if (!url) throw new OpError("Entity has no website or domain to analyze.", 400);
 
