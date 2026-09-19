@@ -68,6 +68,7 @@ vi.mock("@/lib/voice-intent", () => ({
 
 vi.mock("@/lib/jev", () => ({
   classifyVoiceIntentWithJev: async () => ({ intent: "unknown" as const, source: "heuristic" as const }),
+  scanMalicious: async () => ({ allow: true, reasons: [] }),
 }));
 
 import { POST } from "@/app/api/webhooks/agentphone/route";
