@@ -11,6 +11,7 @@ import { runAutopilotPlanOnce } from "@/lib/autopilot-run";
 import { rolloverAutopilotWindow, cadenceMs } from "@/lib/autopilot-operations";
 import { checkCreationBudget } from "@/lib/creation-guard";
 import { spendCredits } from "@/lib/credits";
+import { applyScheduledResearch } from "@/lib/research-notes";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -147,17 +148,21 @@ export const runResearchSchedules = inngest.createFunction(
         ].filter(Boolean).join("\n\n");
 
         if (schedule.targetType === "entity" && schedule.targetId) {
-          await prisma.entity.updateMany({
-            where: { id: schedule.targetId, userId: schedule.userId },
-            data: { notes: researchNote || undefined, status: "ENRICHED" },
+          const applied = await applyScheduledResearch({
+            userId: schedule.userId,
+            targetType: "entity",
+            targetId: schedule.targetId,
+            researchNote,
           });
-          created.push({ id: schedule.targetId, kind: "entity" });
+          if (applied.applied) created.push({ id: schedule.targetId, kind: "entity" });
         } else if (schedule.targetType === "contact" && schedule.targetId) {
-          await prisma.contact.updateMany({
-            where: { id: schedule.targetId, userId: schedule.userId },
-            data: { notes: researchNote || undefined, status: "ENRICHED" },
+          const applied = await applyScheduledResearch({
+            userId: schedule.userId,
+            targetType: "contact",
+            targetId: schedule.targetId,
+            researchNote,
           });
-          created.push({ id: schedule.targetId, kind: "contact" });
+          if (applied.applied) created.push({ id: schedule.targetId, kind: "contact" });
         } else {
           for (const source of sources.slice(0, 5)) {
             // Creation circuit breaker: this direct-create path must also honor
