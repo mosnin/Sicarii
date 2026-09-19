@@ -59,6 +59,17 @@ export {
 export { lookupQuery, splitLocalQuery } from "./query";
 export { resetJevRuntime, isJevCircuitOpen } from "./runtime";
 export {
+  factsFromSearch,
+  factsFromMemory,
+  factCard,
+  inventedClaims,
+  formatDetailCard,
+  compactCrmPayload,
+  groundedRefusal,
+  type CrmFact,
+} from "./facts";
+export { compactUiMessages, shouldKeepToolBlob } from "./compact";
+export {
   resolveGenerationModel,
   isOpenRouterConfigured,
   isGenerationConfigured,

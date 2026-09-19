@@ -9,6 +9,7 @@ import type { Json } from "./contract";
 import { logJevDecision } from "./telemetry";
 import { lookupQuery, splitLocalQuery } from "./query";
 import type { InstantRoute } from "./instant";
+import { factsFromSearch, formatDetailCard } from "./facts";
 
 export const FAST_PATH_TOOLS = new Set([
   "search_crm",
@@ -24,6 +25,7 @@ export const FAST_PATH_TOOLS = new Set([
   "get_autopilot_status",
   "create_entity",
   "create_contact",
+  "enrich_entity",
 ]);
 
 const READ_CORE = [
@@ -112,6 +114,8 @@ export function formatFastReply(input: {
   tool: string;
   payload: unknown;
   query: string;
+  detail?: boolean;
+  ranked?: string;
 }): string {
   const { tool, payload, query } = input;
   if (payload && typeof payload === "object" && "error" in payload) {
@@ -123,6 +127,13 @@ export function formatFastReply(input: {
     const box = payload as { entities?: Named[]; contacts?: Named[] };
     const entities = box.entities ?? (tool === "list_entities" ? (payload as Named[]) : []);
     const contacts = box.contacts ?? (tool === "list_contacts" ? (payload as Named[]) : []);
+    if (entities.length === 0 && contacts.length === 0) {
+      return `I did not find companies or people in the CRM for "${query}". Say the word if you want me to discover new ones.`;
+    }
+    if (input.detail || entities.length + contacts.length <= 2) {
+      const card = formatDetailCard(factsFromSearch(payload), query);
+      if (card) return input.ranked ? `${card} ${input.ranked}` : card;
+    }
     const bits: string[] = [];
     if (Array.isArray(entities) && entities.length > 0) {
       bits.push(formatNamedList("In the CRM the companies", entities, ""));
@@ -136,9 +147,7 @@ export function formatFastReply(input: {
         ),
       );
     }
-    if (bits.length === 0) {
-      return `I did not find companies or people in the CRM for "${query}". Say the word if you want me to discover new ones.`;
-    }
+    if (input.ranked) bits.push(input.ranked);
     return bits.filter(Boolean).join(" ");
   }
 
@@ -200,6 +209,11 @@ export function formatFastReply(input: {
     return `Added ${who}${at} as a contact.`;
   }
 
+  if (tool === "enrich_entity") {
+    const r = payload as { name?: string; domain?: string | null };
+    return `Enriched ${r.name ?? query}${r.domain ? ` (${r.domain})` : ""}. Open the company on the dashboard for the new firmographics.`;
+  }
+
   return "Done.";
 }
 
@@ -215,6 +229,8 @@ export type FastPathRunners = {
   getAutopilotStatus: () => Promise<unknown>;
   createEntity: (name: string, domain?: string) => Promise<unknown>;
   createContact: (input: { name?: string; email?: string; company?: string }) => Promise<unknown>;
+  enrichEntity: (id: string) => Promise<unknown>;
+  scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
 
 export async function executeFastPath(input: {
@@ -246,7 +262,35 @@ export async function executeFastPath(input: {
     payload = { error: e instanceof Error ? e.message : "Internal error" };
   }
 
-  const text = formatFastReply({ tool, payload, query });
+  let ranked: string | undefined;
+  if (
+    input.decision.kind === "deterministic" &&
+    input.decision.action === "analyze" &&
+    input.runners.scoreFit &&
+    payload &&
+    typeof payload === "object"
+  ) {
+    const facts = factsFromSearch(payload).filter((f) => f.kind === "entity" && f.id);
+    if (facts.length > 0) {
+      const scores = await input.runners.scoreFit(
+        facts.map((f) => ({
+          id: f.id!,
+          text: [f.name, f.domain, f.industry, f.location].filter(Boolean).join(" "),
+        })),
+      );
+      const best = [...scores].sort((a, b) => b.score - a.score)[0];
+      const name = facts.find((f) => f.id === best?.id)?.name;
+      if (best && name) ranked = `Best ICP fit is ${name} (${best.score.toFixed(1)}).`;
+    }
+  }
+
+  const text = formatFastReply({
+    tool,
+    payload,
+    query,
+    detail: input.instant?.detail,
+    ranked,
+  });
   logJevDecision({
     surface: "agent-fast-path",
     action: tool,
@@ -298,6 +342,15 @@ async function runTool(
             company: instant?.company,
           }),
       );
+    case "enrich_entity": {
+      const found = await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const first = facts.find((f) => f.kind === "entity" && f.id);
+      if (!first?.id) {
+        return { error: `I did not find "${query}" in the CRM to enrich. Say the word if you want me to discover it.` };
+      }
+      return write("enrich_entity", { id: first.id }, () => runners.enrichEntity(first.id!));
+    }
     case "recall":
       return runners.recall(query);
     case "list_pending_drafts":

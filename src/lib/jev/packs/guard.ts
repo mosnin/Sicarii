@@ -32,6 +32,13 @@ export const OUTPUT_GUARD_QUESTIONS = {
     true: "API keys, passwords, tokens, or private keys are present.",
     false: "No secrets in the output.",
   }),
+  inventedCrm: noul(
+    "Does this output name a company, person, email, or domain that is not in crm_facts?",
+    {
+      true: "A proper name, email, or domain appears that crm_facts does not contain.",
+      false: "Every named record is in crm_facts, or the output refuses to invent.",
+    },
+  ),
   failureClass: choice("What kind of failure is this?", {
     no_failure: "Succeeded or nothing to fix",
     transient: "Retry unchanged (timeout, 429, reset)",

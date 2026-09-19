@@ -97,6 +97,8 @@ src/lib/jev/
   instant.ts       regex System One for obvious CRM turns
   query.ts         lookup prefix strip / maps split
   runtime.ts       evaluate memo + circuit breaker
+  facts.ts         CRM fact card + invented-name check
+  compact.ts       hermes-style transcript prune
   harness.ts       model router + auto-mode
   gates.ts         identity, slop, warden, triage, citations, money, ...
   generate.ts      Qwen / OpenAI generation picker (not evaluate)
@@ -234,7 +236,7 @@ picks dimensions and tools. Code fills templates.
 
 | Surface | Jev job | Generator |
 |---------|---------|-----------|
-| `/api/agent` | **Instant path:** obvious lookups / discover / create / "yes, find them" skip TypeSafe and the chat model. Speculative CRM search overlaps decide. Routing evaluate uses an 800ms / 0-retry budget and a circuit breaker. Chat model only when Jev grants generation. Memory embed is off the critical path (`after`). | Qwen or OpenAI, and only if needed |
+| `/api/agent` | Instant path (lookups, discover, create, enrich, tell-me-about, yes-after-miss). Unique CRM hits become a fact card, not a chat turn. Generate path uses a short grounded system prompt, compacted transcript (hermes-jev-compact), slim tool results, and a local invented-name gate. | Qwen or OpenAI, and only if needed |
 | `/api/discover/route-intent` | Choice over the discovery catalog | heuristic params |
 | `/api/crm/fit-score` | Score per record vs product context | none |
 | `/api/crm/semantic-sort` | Noul per record vs intent | none |
@@ -325,6 +327,18 @@ Two stacked branches off Scalar `main`:
    Foreman loop nouls, `failureClass` retry, MCP auto-mode **args**, write
    buckets without a prefix.
 
+3. **`cursor/jev-fast-path-bb09` (PR #102).** Skip `streamText` after Jev
+   picks a lookup/discover tool. `after()` memory. HTTP x402 `gateMoney`,
+   live-miss identity/scan block, evaluate redaction.
+
+4. **`cursor/jev-instant-core-bb09` (PR #103).** Local instant routes,
+   800ms routing budget, circuit breaker, evaluate memo, speculative CRM
+   prefetch.
+
+5. **`cursor/jev-grounded-core-bb09`.** Fact cards, invented-name gate,
+   hermes transcript prune, slim tool results, unique-record cards, instant
+   enrich / tell-me-about, ICP score overlay on analyze.
+
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
 
@@ -408,6 +422,16 @@ Scalar now does that on `/api/agent`:
 5. If Jev grants generation, `pickActiveTools` hides unused tools so the
    generator sees a smaller catalog.
 6. `storeMemory` embeddings run in `after()`, not before the first token.
+7. Unique CRM hits become a **fact card** (name, domain, industry, people).
+   "Tell me about Acme" does not open Qwen.
+8. Generate path is grounded: short system prompt, last 8 turns, tool dumps
+   dropped on older turns (hermes-jev-compact), tool results slimmed to
+   id/name/domain, `<crm-facts>` injected from prefetch + recall.
+9. Local invented-name gate: if Qwen names a company/email/domain that is
+   not in the fact card, the reply is replaced with a refusal. Jev
+   `inventedCrm` is backup when keys are present.
+10. Instant `enrich Acme` resolves the record and runs enrich under auto-mode.
+    Analyze turns overlay ICP fit when product context exists.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

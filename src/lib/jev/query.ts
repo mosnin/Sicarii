@@ -1,7 +1,10 @@
 /** Strip lookup prefixes so "show me Acme" becomes a CRM query. */
 export function lookupQuery(message: string): string {
   const cleaned = message
-    .replace(/^(please\s+)?(show me|find me|find|search for|search|look up|lookup|who is|what is|get|list)\s+/i, "")
+    .replace(
+      /^(please\s+)?(show me|find me|tell me about|what do you know about|what(?:'s| is) the status of|summarize|enrich|find|search for|search|look up|lookup|who is|what is|get|list)\s+/i,
+      "",
+    )
     .replace(/[?!.]+$/g, "")
     .trim();
   return (cleaned || message).slice(0, 200);

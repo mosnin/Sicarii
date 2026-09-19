@@ -11,6 +11,7 @@ import {
   type Answer,
   type Json,
 } from "./contract";
+import { factCard, inventedClaims, type CrmFact } from "./facts";
 import { isJevConfigured, isJevRequired, tryEvaluate, type JevClient } from "./client";
 import {
   CITATION_MIN_SUPPORT,
@@ -489,11 +490,23 @@ export async function shouldKeepMemory(
 export async function gateGeneratedOutput(
   text: string,
   client?: JevClient,
+  facts?: CrmFact[],
 ): Promise<GateResult> {
-  if (!text.trim() || !configured(client)) return { allow: true, reasons: [], source: "fallback" };
+  if (!text.trim()) return { allow: true, reasons: [], source: "fallback" };
+  if (facts && facts.length > 0) {
+    const invented = inventedClaims(text, facts);
+    if (invented.length > 0) {
+      return { allow: false, reasons: [`invented:${invented.slice(0, 3).join(",")}`], source: "fallback" };
+    }
+  }
+  if (!configured(client)) return { allow: true, reasons: [], source: "fallback" };
   const result = await tryEvaluate(
     {
-      state: { output: text.slice(0, 4000), rule: "Scan for secrets. Do not rewrite." },
+      state: {
+        output: text.slice(0, 4000),
+        crm_facts: facts ? factCard(facts) : null,
+        rule: "Scan for secrets and invented CRM names. Do not rewrite.",
+      },
       questions: OUTPUT_GUARD_QUESTIONS,
       onFailure: "fail-open",
     },
@@ -502,6 +515,9 @@ export async function gateGeneratedOutput(
   if (!result) return denyIfRequired("jev_unavailable") ?? { allow: true, reasons: ["jev_unavailable"], source: "fallback" };
   const reasons: string[] = [];
   if (asNoul(result.answers.leaksSecret) >= TOOL_GATE.leaksSecret) reasons.push("secret");
+  if (facts && facts.length > 0 && asNoul(result.answers.inventedCrm) >= 0.8) {
+    reasons.push("invented");
+  }
   return { allow: reasons.length === 0, reasons, source: "jev", answers: result.answers };
 }
 

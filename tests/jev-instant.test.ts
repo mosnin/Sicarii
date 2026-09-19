@@ -8,6 +8,18 @@ import {
 } from "@/lib/jev";
 
 describe("classifyInstant", () => {
+  it("routes enrich and tell-me-about as grounded CRM turns", () => {
+    expect(classifyInstant("enrich Acme")).toMatchObject({
+      tool: "enrich_entity",
+      query: "Acme",
+    });
+    expect(classifyInstant("tell me about Acme")).toMatchObject({
+      tool: "search_crm",
+      query: "Acme",
+      detail: true,
+    });
+  });
+
   it("routes an obvious CRM lookup without TypeSafe", () => {
     expect(classifyInstant("show me acme")).toMatchObject({
       tool: "search_crm",
