@@ -4,7 +4,7 @@
 // real rows in the DB, so it holds across serverless instances (unlike the
 // in-memory request rate limiter).
 
-import { prisma } from "@/lib/prisma";
+import { countContacts, countEntities } from "@/lib/crm-operations";
 
 export interface BudgetResult {
   ok: boolean;
@@ -28,8 +28,8 @@ export async function checkCreationBudget(
   const since = new Date(Date.now() - windowMinutes * 60_000);
 
   const [entities, contacts] = await Promise.all([
-    prisma.entity.count({ where: { userId, createdAt: { gte: since } } }),
-    prisma.contact.count({ where: { userId, createdAt: { gte: since } } }),
+    countEntities(userId, { createdAfter: since }),
+    countContacts(userId, { createdAfter: since }),
   ]);
 
   const recent = entities + contacts;

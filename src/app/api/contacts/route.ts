@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { OpError, listContacts, createContact, deleteContacts } from "@/lib/crm-operations";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -47,29 +46,13 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
     const status = searchParams.get("status")?.trim();
+    const rawLimit = Number(searchParams.get("limit"));
 
-    const contacts = await prisma.contact.findMany({
-      where: {
-        userId: user.id,
-        ...(status &&
-        (CONTACT_STATUSES as readonly string[]).includes(status)
-          ? { status: status as (typeof CONTACT_STATUSES)[number] }
-          : {}),
-        ...(q
-          ? {
-              OR: [
-                { name: { contains: q, mode: "insensitive" } },
-                { email: { contains: q, mode: "insensitive" } },
-                { company: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: { updatedAt: "desc" },
-      // The enrichment blob (often KBs per row) belongs to GET /api/contacts/[id];
-      // shipping it 500x per list call bloats payloads for no consumer.
-      omit: { enrichment: true },
-      take: 500,
+    const contacts = await listContacts(user.id, {
+      q: q || undefined,
+      status: status || undefined,
+      limit: Number.isFinite(rawLimit) ? rawLimit : 500,
+      ceiling: 500,
     });
 
     return NextResponse.json({ contacts });
@@ -100,28 +83,18 @@ export async function POST(req: NextRequest) {
     }
 
     const { enrichment, tags, entityId, ...rest } = parsed.data;
-
-    // If assigning to an entity, it must belong to this user.
-    if (entityId) {
-      const entity = await prisma.entity.findUnique({ where: { id: entityId } });
-      if (!entity || entity.userId !== user.id) {
-        return NextResponse.json({ error: "Invalid entity" }, { status: 400 });
-      }
-    }
-
-    const contact = await prisma.contact.create({
-      data: {
+    try {
+      const contact = await createContact(user.id, {
         ...rest,
-        tags: tags ?? [],
-        ...(enrichment
-          ? { enrichment: enrichment as Prisma.InputJsonValue }
-          : {}),
-        entityId: entityId ?? undefined,
-        userId: user.id,
-      },
-    });
-
-    return NextResponse.json({ contact }, { status: 201 });
+        tags,
+        enrichment,
+        entityId: entityId ?? null,
+      });
+      return NextResponse.json({ contact }, { status: 201 });
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("POST /api/contacts", e);
@@ -141,10 +114,8 @@ export async function DELETE(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Provide ids: string[]" }, { status: 400 });
     }
-    const result = await prisma.contact.deleteMany({
-      where: { userId: user.id, id: { in: parsed.data.ids } },
-    });
-    return NextResponse.json({ deleted: result.count });
+    const result = await deleteContacts(user.id, parsed.data.ids);
+    return NextResponse.json({ deleted: result.deleted });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("DELETE /api/contacts", e);

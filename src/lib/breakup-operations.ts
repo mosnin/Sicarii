@@ -18,7 +18,8 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { Prisma, type BreakupDraftStatus, type ContactStatus, type ConversationStatus } from "@prisma/client";
-import { OpError, logOutreach, clampListLimit } from "@/lib/crm-operations";
+import { OpError, getContact, logOutreach, clampListLimit } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 import { ensureCredits, spendCredits } from "@/lib/credits";
 import { gateOutboundDraft } from "@/lib/jev";
 
@@ -89,9 +90,7 @@ export function listStalledDeals(
 /* ---------------------------- Draft generation ------------------------ */
 
 async function assertContactOwned(userId: string, contactId: string) {
-  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
-  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
-  return contact;
+  return getContact(userId, contactId, { includeChannelHistory: false });
 }
 
 // Pull the real, stored history to ground the draft in - never anything
@@ -320,6 +319,10 @@ export interface PendingDraft {
 
 /** The review queue: pending drafts oldest first (the coldest deal has been
  *  waiting longest for a decision). */
+export function countPendingDrafts(userId: string) {
+  return prisma.breakupDraft.count({ where: { userId, status: "PENDING" } });
+}
+
 export function listPendingDrafts(
   userId: string,
   input: { limit?: number } = {},
@@ -350,6 +353,17 @@ export async function updateBreakupDraft(
   const subject = input.subject?.trim();
   const body = input.body?.trim();
   if (subject === "" || body === "") throw new OpError("Subject and body cannot be empty", 400);
+  const nextSubject = subject ?? draft.subject;
+  const nextBody = body ?? draft.body;
+  await assertCleanArtifact([nextSubject, nextBody].join("\n"), "breakup");
+  const outbound = await gateOutboundDraft({
+    subject: nextSubject,
+    body: nextBody,
+    phase: "draft",
+  });
+  if (!outbound.allow) {
+    throw new OpError(`Jev blocked this breakup edit (${outbound.reasons.join(", ")}).`, 422);
+  }
   return prisma.breakupDraft.update({
     where: { id },
     data: {

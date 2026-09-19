@@ -31,6 +31,9 @@ import {
   clampListLimit,
   DEFAULT_LIST_LIMIT,
   MAX_LIST_LIMIT,
+  sanitizeImportSources,
+  DEFAULT_IMPORT_SOURCES,
+  crmDomainKey,
 } from "@/lib/crm-operations";
 
 beforeEach(() => {
@@ -55,6 +58,8 @@ describe("clampListLimit", () => {
     expect(clampListLimit(2.9)).toBe(2);
     expect(clampListLimit(MAX_LIST_LIMIT)).toBe(MAX_LIST_LIMIT);
     expect(clampListLimit(9999)).toBe(MAX_LIST_LIMIT);
+    expect(clampListLimit(500, 500)).toBe(500);
+    expect(clampListLimit(9999, 500)).toBe(500);
   });
 });
 
@@ -78,6 +83,10 @@ describe("listEntities", () => {
   it("caps take at the ceiling", async () => {
     await listEntities("u1", undefined, 100000);
     expect(entityFindMany.mock.calls[0][0].take).toBe(MAX_LIST_LIMIT);
+  });
+  it("lets HTTP raise the ceiling without changing agent defaults", async () => {
+    await listEntities("u1", undefined, 500, 500);
+    expect(entityFindMany.mock.calls[0][0].take).toBe(500);
   });
   it("applies the query as a filter and always scopes by userId", async () => {
     await listEntities("u1", "acme", 5);
@@ -135,5 +144,25 @@ describe("listContactEmails", () => {
     const call = contactEmailFindMany.mock.calls[0][0];
     expect(call.where).toEqual({ contactId: "c1" });
     expect(call.orderBy).toEqual({ sentAt: "desc" });
+  });
+});
+
+describe("sanitizeImportSources", () => {
+  it("falls back to the webhook source when the body is missing or dirty", () => {
+    expect(sanitizeImportSources(undefined)).toEqual(DEFAULT_IMPORT_SOURCES);
+    expect(sanitizeImportSources([])).toEqual(DEFAULT_IMPORT_SOURCES);
+    expect(sanitizeImportSources([1, "ok"])).toEqual(DEFAULT_IMPORT_SOURCES);
+  });
+  it("keeps unique short strings and caps at 50", () => {
+    expect(sanitizeImportSources(["ok", "ok", "x".repeat(101), "also"])).toEqual(["ok", "also"]);
+    const many = Array.from({ length: 60 }, (_, i) => `src-${i}`);
+    expect(sanitizeImportSources(many)).toHaveLength(50);
+  });
+});
+
+describe("crmDomainKey", () => {
+  it("lowercases and strips a leading www", () => {
+    expect(crmDomainKey("Www.Acme.com")).toBe("acme.com");
+    expect(crmDomainKey(" acme.com ")).toBe("acme.com");
   });
 });

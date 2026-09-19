@@ -14,13 +14,16 @@ import {
   isJevConfigured,
   redactEvaluateState,
   runAutoModeThen,
+  stripHeavyFields,
   scanMalicious,
   triageInbound,
   tryEvaluate,
   verifyCitations,
+  scoreFirstCrmFit,
   type Json,
   type QuestionMap,
 } from "@/lib/jev";
+import { prisma } from "@/lib/prisma";
 import {
   topUpHint,
   isX402Configured,
@@ -47,6 +50,7 @@ import {
   discoverLocalLeads,
   swarmDiscover,
   listSwarmRuns,
+  countSwarmRuns,
   getSwarmRun,
   extractSiteContacts,
   searchGoogle,
@@ -64,6 +68,9 @@ import {
   addActivity,
   listActivities,
   listDueFollowups,
+  countEntities,
+  countContacts,
+  countDueFollowups,
   placeContactCall,
   saveCall,
   listContactCalls,
@@ -83,6 +90,7 @@ import {
   spendCredits,
   ensureCredits,
   getBilling,
+  getUsage,
   addCredits,
   alreadyCredited,
   applyPlan,
@@ -97,6 +105,7 @@ import { verifyEntity } from "@/lib/enrich/verified-entity";
 import { detectEntityTech } from "@/lib/enrich/technographics";
 import {
   listSegments,
+  countSegments,
   getSegment,
   createSegment,
   updateSegment,
@@ -104,9 +113,12 @@ import {
   removeSegmentMember,
   buildSmartSegment,
   listPipelines,
+  countPipelines,
   getPipeline,
   createPipeline,
+  updatePipeline,
   addToPipeline,
+  addToSegment,
   deletePipeline,
   removePipelineEntry,
   updatePipelineEntry,
@@ -117,7 +129,7 @@ import {
   getAutopilotStatus,
   pauseAutopilotPlan,
 } from "@/lib/autopilot-operations";
-import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
+import { draftBreakups, listPendingDrafts, countPendingDrafts } from "@/lib/breakup-operations";
 import { createVariant, selectVariant, listVariantStats } from "@/lib/variant-operations";
 
 type ToolResult = {
@@ -126,7 +138,7 @@ type ToolResult = {
 };
 
 const ok = (data: unknown): ToolResult => ({
-  content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+  content: [{ type: "text", text: JSON.stringify(stripHeavyFields(data)) }],
 });
 const fail = (message: string): ToolResult => ({
   content: [{ type: "text", text: message }],
@@ -207,6 +219,8 @@ const MCP_AUTO_MODE_BUCKETS = new Set([
   "build_segment",
   "create_pipeline",
   "add_to_pipeline",
+  "add_to_segment",
+  "update_pipeline",
   "update_pipeline_entry",
   "autopilot_propose",
   "remember",
@@ -222,6 +236,12 @@ const MCP_AUTO_MODE_BUCKETS = new Set([
   "create_variant",
   "search_web",
   "serp_search",
+  "update_segment",
+  "delete_segment",
+  "remove_segment_member",
+  "delete_pipeline",
+  "remove_pipeline_entry",
+  "pause_autopilot",
   ...AUTO_MODE_TOOLS,
 ]);
 
@@ -378,11 +398,25 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "count_entities",
+      "Count companies in the CRM. Optional status NEW, ENRICHED, or ARCHIVED. Use this instead of listing when you only need the number.",
+      { status: z.enum(["NEW", "ENRICHED", "ARCHIVED"]).optional() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ status }, extra) =>
+        run(async () => ({
+          count: await countEntities(userIdFrom(extra), { status }),
+          kind: "company",
+          ...(status ? { status } : {}),
+        })),
+    );
+
+    server.tool(
       "get_entity",
       "Get one business by id, including its contacts.",
       { id: z.string() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => getEntity(userIdFrom(extra), id)),
+      async ({ id }, extra) =>
+        run(() => getEntity(userIdFrom(extra), id, { includeEnrichment: false })),
     );
 
     server.tool(
@@ -460,11 +494,38 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "count_contacts",
+      "Count people in the CRM. Optional status filter. Use this instead of listing when you only need the number.",
+      {
+        status: z.enum([
+          "NEW",
+          "ENRICHED",
+          "CONTACTED",
+          "REPLIED",
+          "QUALIFIED",
+          "WON",
+          "LOST",
+          "ARCHIVED",
+        ]).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ status }, extra) =>
+        run(async () => ({
+          count: await countContacts(userIdFrom(extra), { status }),
+          kind: "contact",
+          ...(status ? { status } : {}),
+        })),
+    );
+
+    server.tool(
       "get_contact",
       "Get one contact by id, including linked entity and saved email context.",
       { id: z.string() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => getContact(userIdFrom(extra), id)),
+      async ({ id }, extra) =>
+        run(() =>
+          getContact(userIdFrom(extra), id, { includeEnrichment: false, includeChannelHistory: false }),
+        ),
     );
 
     server.tool(
@@ -526,6 +587,7 @@ const handler = createMcpHandler(
         notes: z.string().max(10000).nullable().optional(),
         tags: z.array(z.string().max(50)).max(50).optional(),
         entityId: z.string().nullable().optional(),
+        dealScore: z.number().int().min(1).max(100).nullable().optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id, ...rest }, extra) =>
@@ -752,6 +814,14 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "count_swarm_runs",
+      "Count swarm discovery runs. Use this instead of listing when you only need the number.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(async () => ({ count: await countSwarmRuns(userIdFrom(extra)) })),
+    );
+
+    server.tool(
       "get_swarm_run",
       "Get one swarm run's full breakdown: per-angle found/credited counts and per-company attribution (which angle(s) surfaced each company, and whether it was added or was already in the CRM).",
       { id: z.string() },
@@ -792,6 +862,14 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "count_segments",
+      "Count saved segments. Use this instead of listing when you only need the number.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(async () => ({ count: await countSegments(userIdFrom(extra)) })),
+    );
+
+    server.tool(
       "get_segment",
       "Get a segment and its member contacts.",
       { id: z.string() },
@@ -811,7 +889,9 @@ const handler = createMcpHandler(
       "update_segment",
       "Update a segment's name and/or goal.",
       { id: z.string(), name: z.string().max(200).optional(), goal: z.string().max(2000).optional() },
-      async ({ id, ...patch }, extra) => run(() => updateSegment(userIdFrom(extra), id, patch)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ id, ...patch }, extra) =>
+        gated(extra, "update_segment", 60, (userId) => updateSegment(userId, id, patch), { id, ...patch } as Json),
     );
 
     server.tool(
@@ -819,7 +899,8 @@ const handler = createMcpHandler(
       "Permanently delete a segment by id, including its membership. The member contacts themselves are kept. Use to clean up junk or stale segments.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => deleteSegment(userIdFrom(extra), id)),
+      async ({ id }, extra) =>
+        gated(extra, "delete_segment", 30, (userId) => deleteSegment(userId, id), { id }),
     );
 
     server.tool(
@@ -827,7 +908,11 @@ const handler = createMcpHandler(
       "Remove one contact from a segment without deleting the segment or the contact.",
       { segmentId: z.string(), contactId: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ segmentId, contactId }, extra) => run(() => removeSegmentMember(userIdFrom(extra), segmentId, contactId)),
+      async ({ segmentId, contactId }, extra) =>
+        gated(extra, "remove_segment_member", 60, (userId) => removeSegmentMember(userId, segmentId, contactId), {
+          segmentId,
+          contactId,
+        }),
     );
 
     server.tool(
@@ -849,6 +934,14 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "count_pipelines",
+      "Count pipelines. Use this instead of listing when you only need the number.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(async () => ({ count: await countPipelines(userIdFrom(extra)) })),
+    );
+
+    server.tool(
       "get_pipeline",
       "Get a pipeline with its entries (stage, deal score, conversation status) and contacts.",
       { id: z.string() },
@@ -865,6 +958,15 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "update_pipeline",
+      "Update a pipeline's name and/or goal.",
+      { id: z.string(), name: z.string().max(200).optional(), goal: z.string().max(2000).optional() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ id, ...patch }, extra) =>
+        gated(extra, "update_pipeline", 60, (userId) => updatePipeline(userId, id, patch), { id, ...patch } as Json),
+    );
+
+    server.tool(
       "add_to_pipeline",
       "Add contacts (by ids and/or a whole segment) to a pipeline as new entries.",
       { pipelineId: z.string(), contactIds: z.array(z.string()).max(1000).optional(), segmentId: z.string().optional() },
@@ -874,11 +976,21 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "add_to_segment",
+      "Add contacts to an existing segment by id.",
+      { segmentId: z.string(), contactIds: z.array(z.string()).max(500) },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ segmentId, contactIds }, extra) =>
+        gated(extra, "add_to_segment", 60, (userId) => addToSegment(userId, segmentId, contactIds), { segmentId, contactIds } as Json),
+    );
+
+    server.tool(
       "delete_pipeline",
       "Permanently delete a pipeline by id, including its entries. The member contacts themselves are kept. Use to clean up junk or stale pipelines.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => deletePipeline(userIdFrom(extra), id)),
+      async ({ id }, extra) =>
+        gated(extra, "delete_pipeline", 30, (userId) => deletePipeline(userId, id), { id }),
     );
 
     server.tool(
@@ -886,7 +998,11 @@ const handler = createMcpHandler(
       "Remove one entry from a pipeline (drop that contact out of the deal flow) without deleting the pipeline or the contact.",
       { pipelineId: z.string(), entryId: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ pipelineId, entryId }, extra) => run(() => removePipelineEntry(userIdFrom(extra), pipelineId, entryId)),
+      async ({ pipelineId, entryId }, extra) =>
+        gated(extra, "remove_pipeline_entry", 60, (userId) => removePipelineEntry(userId, pipelineId, entryId), {
+          pipelineId,
+          entryId,
+        }),
     );
 
     server.tool(
@@ -951,7 +1067,10 @@ const handler = createMcpHandler(
       { planId: z.string(), reason: z.string().max(500).optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ planId, reason }, extra) =>
-        run(() => pauseAutopilotPlan(userIdFrom(extra), planId, { reason, actor: actorFrom(extra) })),
+        gated(extra, "pause_autopilot", 20, (userId) => pauseAutopilotPlan(userId, planId, { reason, actor: actorFrom(extra) }), {
+          planId,
+          reason: reason ?? null,
+        }),
     );
 
     /* --------------------------- Memory --------------------------- */
@@ -998,21 +1117,8 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (_args, extra) =>
         run(async () => {
-          const b = await getBilling(userIdFrom(extra));
-          return {
-            creditsRemaining: b.creditsRemaining,
-            plan: b.plan,
-            usdPerCredit: USD_PER_CREDIT,
-            actionCosts: CREDIT_COSTS,
-            plans: (Object.keys(PLAN_USD) as PaidPlanName[]).map((plan) => ({
-              plan,
-              usd: PLAN_USD[plan],
-              credits: PLANS[plan].credits,
-              period: "30 days",
-            })),
-            topUp: { minCredits: 100, maxCredits: 100000 },
-            paymentsConfigured: isX402Configured(),
-          };
+          const usage = await getUsage(userIdFrom(extra));
+          return { ...usage, usdPerCredit: USD_PER_CREDIT, paymentsConfigured: isX402Configured() };
         }),
     );
     server.tool(
@@ -1129,6 +1235,22 @@ const handler = createMcpHandler(
       async (a, extra) => run(() => listDueFollowups(userIdFrom(extra), a)),
     );
     server.tool(
+      "count_due_followups",
+      "Count contacts due for a follow-up without loading the rows. Optional status and staleDays (default 7). Use this instead of listing when you only need the number.",
+      {
+        status: z
+          .enum(["NEW", "ENRICHED", "CONTACTED", "REPLIED", "QUALIFIED", "WON", "LOST", "ARCHIVED"])
+          .optional(),
+        staleDays: z.number().int().min(0).max(365).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (a, extra) =>
+        run(async () => ({
+          count: await countDueFollowups(userIdFrom(extra), a),
+          ...(a.staleDays != null ? { staleDays: a.staleDays } : {}),
+        })),
+    );
+    server.tool(
       "add_activity",
       "Log a timestamped note, call, or reply on a contact or company without overwriting its notes field. kind accepts note, call, outreach, reply, status_change - any casing.",
       {
@@ -1190,6 +1312,13 @@ const handler = createMcpHandler(
       { limit: z.number().int().min(1).max(200).optional() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (a, extra) => run(() => listPendingDrafts(userIdFrom(extra), a)),
+    );
+    server.tool(
+      "count_pending_drafts",
+      "Count breakup drafts awaiting human review. Use this instead of listing when you only need the number.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(async () => ({ count: await countPendingDrafts(userIdFrom(extra)) })),
     );
 
     server.tool(
@@ -1274,10 +1403,10 @@ const handler = createMcpHandler(
     server.tool(
       "jev_decide",
       "Run Scalar's Jev turn orchestrator: intent, risk, tool, generation gate. Returns refuse / escalate / deterministic / tool / generate. Qwen is used for prose only after this says generate.",
-      { message: z.string().max(4000) },
+      { message: z.string().max(4000), priorAssistant: z.string().max(4000).optional() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      async ({ message }, extra) =>
-        gated(extra, "jev_decide", 40, async () => decideTurn({ message })),
+      async ({ message, priorAssistant }, extra) =>
+        gated(extra, "jev_decide", 40, async () => decideTurn({ message, priorAssistant })),
     );
 
     server.tool(
@@ -1331,6 +1460,23 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ goal, history }, extra) =>
         gated(extra, "jev_loop", 40, async () => evaluateLoop({ goal, history })),
+    );
+
+    server.tool(
+      "score_fit",
+      "Score how well a CRM company or contact fits the saved Product Context using Jev (0-100). Does not write CRM state.",
+      { query: z.string().max(80) },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ query }, extra) =>
+        gated(extra, "score_fit", 40, async () => {
+          const userId = userIdFrom(extra);
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { productContext: true },
+          });
+          const found = await searchCrm(userId, query);
+          return scoreFirstCrmFit(found, user?.productContext ?? "", query);
+        }),
     );
   },
   {

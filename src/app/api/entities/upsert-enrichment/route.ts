@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { createEntity, findEntityByDomainOrName, OpError, updateEntity } from "@/lib/crm-operations";
 
 const schema = z.object({
   domain: z.string().trim().min(1).max(255),
@@ -38,39 +37,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No data to attach for this domain." }, { status: 404 });
     }
 
-    const existing = await prisma.entity.findFirst({
-      where: { userId: user.id, domain },
-    });
+    const existing = await findEntityByDomainOrName(user.id, { domain });
 
     const mergedEnrichment = {
       ...(existing && existing.enrichment && typeof existing.enrichment === "object" && !Array.isArray(existing.enrichment)
         ? (existing.enrichment as Record<string, unknown>)
         : {}),
       [key]: data,
-    } as Prisma.InputJsonValue;
+    };
 
     if (existing) {
-      const entity = await prisma.entity.update({
-        where: { id: existing.id },
-        data: { enrichment: mergedEnrichment, status: "ENRICHED" },
+      const entity = await updateEntity(user.id, existing.id, {
+        enrichment: mergedEnrichment,
+        status: "ENRICHED",
       });
       return NextResponse.json({ entity, created: false });
     }
 
-    const entity = await prisma.entity.create({
-      data: {
-        userId: user.id,
-        name: name?.trim() || domain,
-        domain,
-        website: `https://${domain}`,
-        status: "ENRICHED",
-        source: "discover:enrichment",
-        enrichment: mergedEnrichment,
-      },
+    const entity = await createEntity(user.id, {
+      name: name?.trim() || domain,
+      domain,
+      website: `https://${domain}`,
+      status: "ENRICHED",
+      source: "discover:enrichment",
+      enrichment: mergedEnrichment,
     });
     return NextResponse.json({ entity, created: true });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("POST /api/entities/upsert-enrichment", e);
     return NextResponse.json({ error: "Failed to attach enrichment" }, { status: 500 });
   }

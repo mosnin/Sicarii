@@ -13,7 +13,7 @@ import { ContactRows } from "@/components/dashboard/crm-rows";
 import { EntityRows } from "@/components/dashboard/crm-rows";
 import { CrmHeaderMenu } from "@/components/dashboard/crm-header-menu";
 import { getDbUser } from "@/lib/server-user";
-import { prisma } from "@/lib/prisma";
+import { countContacts, countEntities, listContactsPage, listEntitiesPage } from "@/lib/crm-operations";
 
 type Tab = "contacts" | "entities";
 
@@ -43,8 +43,8 @@ export default async function CrmPage({
   }
 
   const [contactCount, entityCount] = await Promise.all([
-    prisma.contact.count({ where: { userId: user.id } }),
-    prisma.entity.count({ where: { userId: user.id } }),
+    countContacts(user.id),
+    countEntities(user.id),
   ]);
 
   return (
@@ -164,15 +164,7 @@ function TabLink({
 }
 
 async function ContactsList({ userId, page }: { userId: string; page: number }) {
-  const contacts = await prisma.contact.findMany({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
-    include: { entity: { select: { id: true, name: true } } },
-    // The list row never renders the enrichment blob; skip pulling KBs per row.
-    omit: { enrichment: true },
-    skip: (page - 1) * PAGE,
-    take: PAGE,
-  });
+  const contacts = await listContactsPage(userId, { page, pageSize: PAGE });
 
   if (contacts.length === 0) {
     return (
@@ -215,15 +207,7 @@ async function ContactsList({ userId, page }: { userId: string; page: number }) 
 }
 
 async function EntitiesList({ userId, page }: { userId: string; page: number }) {
-  const entities = await prisma.entity.findMany({
-    where: { userId },
-    orderBy: { updatedAt: "desc" },
-    include: { _count: { select: { contacts: true } } },
-    // The list row never renders the enrichment blob; skip pulling KBs per row.
-    omit: { enrichment: true },
-    skip: (page - 1) * PAGE,
-    take: PAGE,
-  });
+  const entities = await listEntitiesPage(userId, { page, pageSize: PAGE });
 
   if (entities.length === 0) {
     return (

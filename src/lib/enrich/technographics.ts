@@ -3,11 +3,9 @@
 // cost and NO third-party data licence (it's our own derived data, so fully
 // resale-safe). We write our own fingerprints for the technologies that matter
 // rather than bundle the community ruleset (which is GPL-3.0 / copyleft).
-import { Prisma } from "@prisma/client";
 import { fetchWithTimeout } from "@/lib/http";
 import { safeHttpUrl, resolvesToPublicIp } from "@/lib/ssrf";
-import { prisma } from "@/lib/prisma";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, getEntity, updateEntity } from "@/lib/crm-operations";
 import { recordProvenance, CONFIDENCE } from "@/lib/provenance";
 
 type Fingerprint = {
@@ -113,8 +111,8 @@ export async function detectSiteTech(url: string): Promise<DetectedTech[]> {
 
 /** Detect and store an entity's tech stack under enrichment.tech. Free. */
 export async function detectEntityTech(userId: string, entityId: string) {
-  const entity = await prisma.entity.findUnique({ where: { id: entityId } });
-  if (!entity || entity.userId !== userId) throw new OpError("Entity not found", 404);
+  const loaded = await getEntity(userId, entityId, { includeContacts: false });
+  const entity = loaded as typeof loaded & { enrichment?: unknown };
   const url = entity.website || entity.domain;
   if (!url) throw new OpError("Entity has no website or domain to analyze.", 400);
 
@@ -127,9 +125,8 @@ export async function detectEntityTech(userId: string, entityId: string) {
     entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
       ? (entity.enrichment as Record<string, unknown>)
       : {};
-  const updated = await prisma.entity.update({
-    where: { id: entityId },
-    data: { enrichment: { ...existing, tech } as unknown as Prisma.InputJsonValue },
+  const updated = await updateEntity(userId, entityId, {
+    enrichment: { ...existing, tech },
   });
   await recordProvenance({
     recordType: "entity",

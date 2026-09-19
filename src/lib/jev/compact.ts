@@ -7,7 +7,7 @@ import { isJevConfigured, tryEvaluate, type JevClient } from "./client";
 import { CLIENT_DEFAULTS } from "./policy";
 import { COMPACT_QUESTIONS } from "./packs/loop";
 
-type CompactPart = { type: string; text?: string };
+type CompactPart = { type: string; text?: string; [key: string]: unknown };
 
 export const COMPACT_MAX_TURNS = 8;
 export const COMPACT_RECENT_KEEP = 2;
@@ -19,7 +19,28 @@ function isToolPart(type: string): boolean {
   return type.startsWith("tool-") || type === "dynamic-tool" || type.includes("tool");
 }
 
-/** Keep the last N turns. Older turns lose tool parts and long text. */
+function shrinkValue(value: unknown, cap: number): unknown {
+  if (typeof value === "string") {
+    return value.length > cap ? `${value.slice(0, cap)}…` : value;
+  }
+  if (value && typeof value === "object") {
+    const json = JSON.stringify(value);
+    if (json.length <= cap) return value;
+    return { truncated: true, preview: json.slice(0, cap) };
+  }
+  return value;
+}
+
+function compactToolPart(part: CompactPart, cap: number): CompactPart {
+  const next: Record<string, unknown> = { ...part };
+  for (const key of ["output", "result", "input", "args", "text"] as const) {
+    if (next[key] !== undefined) next[key] = shrinkValue(next[key], cap);
+  }
+  return next as CompactPart;
+}
+
+/** Keep the last N turns. Older turns lose tool parts and long text.
+ *  Recent tool dumps are kept but clipped so Qwen does not re-read KBs. */
 export function compactUiMessages<T extends { parts?: readonly unknown[] }>(
   messages: T[],
   maxTurns = COMPACT_MAX_TURNS,
@@ -33,7 +54,10 @@ export function compactUiMessages<T extends { parts?: readonly unknown[] }>(
         const text = p.text.length > cap ? `${p.text.slice(0, cap)}…` : p.text;
         return [{ ...p, text }];
       }
-      if (!isRecent && isToolPart(String(p.type))) return [];
+      if (isToolPart(String(p.type))) {
+        if (!isRecent) return [];
+        return [compactToolPart(p, COMPACT_BLOB_CHARS)];
+      }
       return [p];
     });
     return { ...m, parts } as T;

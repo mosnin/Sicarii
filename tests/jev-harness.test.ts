@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { autoMode, routeModel, type JevClient } from "@/lib/jev";
+import { AUTO_MODE_TOOLS, autoMode, isWriteTool, routeModel, type JevClient } from "@/lib/jev";
 import type { JevResult, QuestionMap } from "@/lib/jev/contract";
 
 function mockClient(answers: JevResult["answers"]): JevClient {
@@ -175,5 +175,27 @@ describe("autoMode", () => {
       }),
     });
     expect(verdict).toEqual({ action: "allow" });
+  });
+});
+
+describe("isWriteTool", () => {
+  it("treats segment and pipeline deletes as writes", () => {
+    expect(isWriteTool("delete_segment")).toBe(true);
+    expect(isWriteTool("remove_segment_member")).toBe(true);
+    expect(isWriteTool("add_to_segment")).toBe(true);
+    expect(isWriteTool("update_pipeline")).toBe(true);
+    expect(isWriteTool("remove_pipeline_entry")).toBe(true);
+    expect(isWriteTool("pause_autopilot")).toBe(true);
+    expect(isWriteTool("build_smart_segment")).toBe(true);
+    expect(isWriteTool("search_web")).toBe(true);
+    expect(isWriteTool("search_crm")).toBe(false);
+    expect(isWriteTool("extract_contact_details")).toBe(true);
+    expect(isWriteTool("find_socials")).toBe(true);
+    expect(isWriteTool("contact_extract")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("search_web")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("google_search")).toBe(true);
+    for (const tool of AUTO_MODE_TOOLS) {
+      expect(isWriteTool(tool), tool).toBe(true);
+    }
   });
 });

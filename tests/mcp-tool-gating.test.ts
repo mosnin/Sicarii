@@ -63,6 +63,8 @@ const mustBeGated = [
   "build_smart_segment",
   "create_pipeline",
   "add_to_pipeline",
+  "add_to_segment",
+  "update_pipeline",
   "update_pipeline_entry",
   "remember",
   // recall reads only the user's own memory (0 credits) but still embeds the
@@ -96,6 +98,17 @@ const mustBeGated = [
   "jev_grade_page",
   "jev_scan_malicious",
   "jev_loop",
+  "score_fit",
+  "update_segment",
+  "delete_segment",
+  "remove_segment_member",
+  "delete_pipeline",
+  "remove_pipeline_entry",
+  "pause_autopilot",
+  "swarm_discover",
+  "draft_breakups",
+  "propose_autopilot_plan",
+  "create_variant",
 ];
 
 describe("MCP route: write tools are rate-limited", () => {
@@ -119,20 +132,28 @@ describe("MCP route: write tools are rate-limited", () => {
 // pins them so a future edit doesn't silently start throttling reads too.
 const readOnlyTools = [
   "list_entities",
+  "count_entities",
   "get_entity",
   "list_contacts",
+  "count_contacts",
   "get_contact",
   "list_social_messages",
   "search_crm",
   "list_segments",
+  "count_segments",
   "get_segment",
   "list_pipelines",
+  "count_pipelines",
   "get_pipeline",
   "pipeline_metrics",
   "get_balance",
   "get_usage",
   "list_contact_calls",
   "list_due_followups",
+  "count_due_followups",
+  "list_pending_drafts",
+  "count_pending_drafts",
+  "count_swarm_runs",
   "list_activities",
 ];
 

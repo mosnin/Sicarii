@@ -65,6 +65,7 @@ export {
   inventedClaims,
   formatDetailCard,
   compactCrmPayload,
+  stripHeavyFields,
   groundedRefusal,
   type CrmFact,
 } from "./facts";
@@ -78,7 +79,7 @@ export {
   QWEN_STRONG_MODEL,
 } from "./generate";
 export { routeIntentWithJev, type RoutedIntent } from "./route-intent";
-export { scoreFitWithJev, rankWithJev } from "./score";
+export { scoreFitWithJev, rankWithJev, scoreFirstCrmFit, crmFitText } from "./score";
 export {
   classifyVoiceIntentWithJev,
   transcribeAudio,

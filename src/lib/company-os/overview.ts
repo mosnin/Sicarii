@@ -1,8 +1,14 @@
 // Deterministic Company OS overview (opencompany shape): presentation reads
 // live CRM aggregates. No LLM. Jev wardens run on write paths, not here.
 
-import { prisma } from "@/lib/prisma";
-import { listDueFollowups } from "@/lib/crm-operations";
+import {
+  countContacts,
+  countDueFollowups,
+  countEntities,
+  listRecentActivities,
+} from "@/lib/crm-operations";
+import { countPendingDrafts } from "@/lib/breakup-operations";
+import { countActiveAutopilot } from "@/lib/autopilot-operations";
 
 export type CompanyOsOverview = {
   workspaceId: string;
@@ -23,17 +29,12 @@ export type CompanyOsOverview = {
 
 export async function loadCompanyOsOverview(userId: string): Promise<CompanyOsOverview> {
   const [entities, contacts, followups, pendingDrafts, autopilotActive, recent] = await Promise.all([
-    prisma.entity.count({ where: { userId } }),
-    prisma.contact.count({ where: { userId } }),
-    listDueFollowups(userId, { limit: 200 }),
-    prisma.breakupDraft.count({ where: { userId, status: "PENDING" } }),
-    prisma.autopilotPlan.count({ where: { userId, status: "active" } }),
-    prisma.activity.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: 8,
-      select: { id: true, kind: true, body: true, createdAt: true },
-    }),
+    countEntities(userId),
+    countContacts(userId),
+    countDueFollowups(userId),
+    countPendingDrafts(userId),
+    countActiveAutopilot(userId),
+    listRecentActivities(userId, 8),
   ]);
 
   return {
@@ -41,7 +42,7 @@ export async function loadCompanyOsOverview(userId: string): Promise<CompanyOsOv
     counts: {
       entities,
       contacts,
-      followupsDue: followups.length,
+      followupsDue: followups,
       pendingDrafts,
       autopilotActive,
     },

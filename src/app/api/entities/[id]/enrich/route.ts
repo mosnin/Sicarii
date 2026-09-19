@@ -1,7 +1,6 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
@@ -12,7 +11,7 @@ import {
   isExploriumConfigured,
 } from "@/lib/explorium";
 import { getCompanyOverview, getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
-import { OpError } from "@/lib/crm-operations";
+import { getEntity, OpError, updateEntity } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 
@@ -61,10 +60,7 @@ export async function POST(
       return NextResponse.json({ error: "Unknown enrichment type." }, { status: 400 });
     }
 
-    const entity = await prisma.entity.findUnique({ where: { id } });
-    if (!entity || entity.userId !== user.id) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    const entity = await getEntity(user.id, id);
     const domain = entity.domain?.trim();
     if (!domain) {
       return NextResponse.json({ error: "This entity has no domain to enrich from." }, { status: 400 });
@@ -126,13 +122,22 @@ export async function POST(
       return NextResponse.json({ error: `No ${LABELS[type].toLowerCase()} found for ${domain}.` }, { status: 404 });
     }
 
+    const stored = entity as { enrichment?: unknown };
     const existing =
-      entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
-        ? (entity.enrichment as Record<string, unknown>)
+      stored.enrichment && typeof stored.enrichment === "object" && !Array.isArray(stored.enrichment)
+        ? (stored.enrichment as Record<string, unknown>)
         : {};
     data.enrichment = { ...existing, [storeKey]: payload } as Prisma.InputJsonValue;
 
-    const updated = await prisma.entity.update({ where: { id }, data });
+    const updated = await updateEntity(user.id, id, {
+      status: "ENRICHED",
+      enrichment: { ...existing, [storeKey]: payload },
+      ...(typeof data.industry === "string" ? { industry: data.industry } : {}),
+      ...(typeof data.location === "string" ? { location: data.location } : {}),
+      ...(typeof data.phone === "string" ? { phone: data.phone } : {}),
+      ...(typeof data.description === "string" ? { description: data.description } : {}),
+      ...(typeof data.website === "string" ? { website: data.website } : {}),
+    });
 
     // Debit only after a non-empty payload was stored - a miss costs nothing.
     await spendCredits(user.id, "company_aspect", { ref: id });

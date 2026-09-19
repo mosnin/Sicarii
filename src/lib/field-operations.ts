@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 import { buildSegmentMatches } from "@/lib/segment-build";
 import { ensureCredits, spendCredits } from "@/lib/credits";
 
@@ -19,13 +20,24 @@ export function listSegments(userId: string) {
     where: { userId },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { members: true } } },
+    take: 50,
   });
+}
+
+export function countSegments(userId: string) {
+  return prisma.segment.count({ where: { userId } });
 }
 
 export async function getSegment(userId: string, id: string) {
   const segment = await prisma.segment.findUnique({
     where: { id },
-    include: { members: { include: { contact: { select: { id: true, name: true, email: true, company: true, title: true } } } } },
+    include: {
+      _count: { select: { members: true } },
+      members: {
+        take: 100,
+        include: { contact: { select: { id: true, name: true, email: true, company: true, title: true } } },
+      },
+    },
   });
   if (!segment || segment.userId !== userId) throw new OpError("Segment not found", 404);
   return segment;
@@ -33,6 +45,7 @@ export async function getSegment(userId: string, id: string) {
 
 export async function createSegment(userId: string, input: { name: string; goal?: string; contactIds?: string[] }) {
   if (!input.name?.trim()) throw new OpError("Segment name is required", 400);
+  await assertCleanArtifact([input.name, input.goal].filter(Boolean).join("\n"), "segment");
   const segment = await prisma.segment.create({ data: { userId, name: input.name.trim(), goal: input.goal, source: "manual" } });
   if (input.contactIds?.length) {
     const owned = await prisma.contact.findMany({ where: { userId, id: { in: input.contactIds } }, select: { id: true } });
@@ -48,6 +61,7 @@ export async function updateSegment(userId: string, id: string, patch: { name?: 
   const existing = await prisma.segment.findUnique({ where: { id } });
   if (!existing || existing.userId !== userId) throw new OpError("Segment not found", 404);
   if (patch.name !== undefined && !patch.name.trim()) throw new OpError("Segment name cannot be empty", 400);
+  await assertCleanArtifact([patch.name, patch.goal].filter(Boolean).join("\n"), "segment");
   return prisma.segment.update({
     where: { id },
     data: { ...(patch.name !== undefined ? { name: patch.name.trim() } : {}), ...(patch.goal !== undefined ? { goal: patch.goal } : {}) },
@@ -71,6 +85,20 @@ export async function removeSegmentMember(userId: string, segmentId: string, con
   return { ok: true };
 }
 
+export async function addToSegment(userId: string, segmentId: string, contactIds: string[]) {
+  const segment = await prisma.segment.findUnique({ where: { id: segmentId } });
+  if (!segment || segment.userId !== userId) throw new OpError("Segment not found", 404);
+  const unique = [...new Set(contactIds.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 500);
+  if (unique.length === 0) throw new OpError("No contacts to add", 400);
+  const owned = await prisma.contact.findMany({ where: { userId, id: { in: unique } }, select: { id: true } });
+  if (owned.length === 0) throw new OpError("No contacts to add", 400);
+  const res = await prisma.contactSegment.createMany({
+    data: owned.map((c) => ({ segmentId, contactId: c.id })),
+    skipDuplicates: true,
+  });
+  return { added: res.count, name: segment.name };
+}
+
 // Smart segment: vector-match the closest eligible prospects to a goal.
 // Embeds up to ~200 candidate contacts plus the goal via OpenAI in one call
 // (see buildSegmentMatches / src/lib/segment-build.ts) - gate on credits
@@ -81,6 +109,7 @@ export async function removeSegmentMember(userId: string, segmentId: string, con
 export async function buildSmartSegment(userId: string, input: { goal: string; quantity?: number; name?: string }) {
   if (!input.goal?.trim()) throw new OpError("Describe the segment goal", 400);
   if (!process.env.OPENAI_API_KEY) throw new OpError("Segment building needs OPENAI_API_KEY", 501);
+  await assertCleanArtifact(input.goal, "segment");
   const quantity = Math.min(Math.max(input.quantity ?? 20, 1), 100);
 
   await ensureCredits(userId, "build_segment");
@@ -110,14 +139,21 @@ export function listPipelines(userId: string) {
     where: { userId },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { entries: true } } },
+    take: 50,
   });
+}
+
+export function countPipelines(userId: string) {
+  return prisma.pipeline.count({ where: { userId } });
 }
 
 export async function getPipeline(userId: string, id: string) {
   const pipeline = await prisma.pipeline.findUnique({
     where: { id },
     include: {
+      _count: { select: { entries: true } },
       entries: {
+        take: 100,
         orderBy: [{ stage: "asc" }, { updatedAt: "desc" }],
         include: { contact: { select: { id: true, name: true, email: true, title: true, company: true } } },
       },
@@ -129,9 +165,27 @@ export async function getPipeline(userId: string, id: string) {
 
 export async function createPipeline(userId: string, input: { name: string; goal?: string; segmentId?: string }) {
   if (!input.name?.trim()) throw new OpError("Pipeline name is required", 400);
+  await assertCleanArtifact([input.name, input.goal].filter(Boolean).join("\n"), "pipeline");
   const pipeline = await prisma.pipeline.create({ data: { userId, name: input.name.trim(), goal: input.goal } });
-  if (input.segmentId) await addToPipeline(userId, pipeline.id, { segmentId: input.segmentId });
+  if (input.segmentId) {
+    try {
+      await addToPipeline(userId, pipeline.id, { segmentId: input.segmentId });
+    } catch (e) {
+      if (!(e instanceof OpError && e.message === "No contacts to add")) throw e;
+    }
+  }
   return pipeline;
+}
+
+export async function updatePipeline(userId: string, id: string, patch: { name?: string; goal?: string }) {
+  const existing = await prisma.pipeline.findUnique({ where: { id } });
+  if (!existing || existing.userId !== userId) throw new OpError("Pipeline not found", 404);
+  if (patch.name !== undefined && !patch.name.trim()) throw new OpError("Pipeline name cannot be empty", 400);
+  await assertCleanArtifact([patch.name, patch.goal].filter(Boolean).join("\n"), "pipeline");
+  return prisma.pipeline.update({
+    where: { id },
+    data: { ...(patch.name !== undefined ? { name: patch.name.trim() } : {}), ...(patch.goal !== undefined ? { goal: patch.goal } : {}) },
+  });
 }
 
 export async function addToPipeline(userId: string, pipelineId: string, input: { contactIds?: string[]; segmentId?: string }) {
@@ -139,9 +193,20 @@ export async function addToPipeline(userId: string, pipelineId: string, input: {
   if (!pipeline || pipeline.userId !== userId) throw new OpError("Pipeline not found", 404);
 
   let ids = input.contactIds ?? [];
+  let truncated = false;
   if (input.segmentId) {
-    const seg = await prisma.segment.findUnique({ where: { id: input.segmentId }, include: { members: { select: { contactId: true } } } });
+    const seg = await prisma.segment.findUnique({
+      where: { id: input.segmentId },
+      include: { members: { select: { contactId: true }, take: 500 } },
+    });
     if (seg && seg.userId === userId) ids = [...ids, ...seg.members.map((m) => m.contactId)];
+  }
+  const unique = [...new Set(ids)];
+  if (unique.length > 500) {
+    truncated = true;
+    ids = unique.slice(0, 500);
+  } else {
+    ids = unique;
   }
   if (ids.length === 0) throw new OpError("No contacts to add", 400);
 
@@ -150,7 +215,7 @@ export async function addToPipeline(userId: string, pipelineId: string, input: {
     data: owned.map((c) => ({ userId, pipelineId, contactId: c.id })),
     skipDuplicates: true,
   });
-  return { added: res.count };
+  return { added: res.count, ...(truncated ? { truncated: true, cap: 500 } : {}) };
 }
 
 // PipelineEntry.pipeline is onDelete: Cascade in the schema, so deleting the
@@ -168,6 +233,21 @@ export async function removePipelineEntry(userId: string, pipelineId: string, en
   if (!entry || entry.userId !== userId || entry.pipelineId !== pipelineId) throw new OpError("Entry not found", 404);
   await prisma.pipelineEntry.delete({ where: { id: entryId } });
   return { ok: true };
+}
+
+export async function findPipelineEntryByContact(
+  userId: string,
+  pipelineId: string,
+  contactId: string,
+) {
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline || pipeline.userId !== userId) throw new OpError("Pipeline not found", 404);
+  const entry = await prisma.pipelineEntry.findFirst({
+    where: { userId, pipelineId, contactId },
+    select: { id: true, stage: true, contactId: true, pipelineId: true },
+  });
+  if (!entry) throw new OpError("Entry not found", 404);
+  return entry;
 }
 
 export async function updatePipelineEntry(
@@ -193,29 +273,40 @@ export async function pipelineMetrics(userId: string, pipelineId: string) {
   const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
   if (!pipeline || pipeline.userId !== userId) throw new OpError("Pipeline not found", 404);
 
-  const entries = await prisma.pipelineEntry.findMany({
-    where: { userId, pipelineId },
-    select: { stage: true, dealScore: true, conversationStatus: true },
-  });
+  const [stageGroups, convoGroups, scoreAgg, total] = await Promise.all([
+    prisma.pipelineEntry.groupBy({
+      by: ["stage"],
+      where: { userId, pipelineId },
+      _count: { _all: true },
+    }),
+    prisma.pipelineEntry.groupBy({
+      by: ["conversationStatus"],
+      where: { userId, pipelineId },
+      _count: { _all: true },
+    }),
+    prisma.pipelineEntry.aggregate({
+      where: { userId, pipelineId, dealScore: { not: null } },
+      _avg: { dealScore: true },
+      _count: { dealScore: true },
+    }),
+    prisma.pipelineEntry.count({ where: { userId, pipelineId } }),
+  ]);
 
   const byStage = Object.fromEntries(STAGES.map((s) => [s, 0])) as Record<Stage, number>;
   const byConversation = Object.fromEntries(CONVO.map((c) => [c, 0])) as Record<Convo, number>;
-  let scoreSum = 0, scored = 0;
-  for (const e of entries) {
-    byStage[e.stage as Stage]++;
-    byConversation[e.conversationStatus as Convo]++;
-    if (e.dealScore != null) { scoreSum += e.dealScore; scored++; }
-  }
+  for (const row of stageGroups) byStage[row.stage as Stage] = row._count._all;
+  for (const row of convoGroups) byConversation[row.conversationStatus as Convo] = row._count._all;
+  const scored = scoreAgg._count.dealScore;
   return {
     name: pipeline.name,
     objective: pipeline.goal,
-    total: entries.length,
+    total,
     byStage,
     byConversation,
     won: byStage.WON,
     lost: byStage.LOST,
-    avgDealScore: scored ? Math.round(scoreSum / scored) : null,
+    avgDealScore: scored ? Math.round(scoreAgg._avg.dealScore ?? 0) : null,
     scored,
-    openConversations: entries.length - byConversation.CLOSED,
+    openConversations: total - byConversation.CLOSED,
   };
 }

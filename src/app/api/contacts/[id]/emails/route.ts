@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { OpError, getContact } from "@/lib/crm-operations";
 import { getThreadsForContact, isAgentMailConfigured } from "@/lib/agentmail";
 
 // GET /api/contacts/[id]/emails - AgentMail threads involving this contact.
@@ -13,10 +13,10 @@ export async function GET(
     const user = await getAuthenticatedUser();
     const { id } = await params;
 
-    const contact = await prisma.contact.findUnique({ where: { id } });
-    if (!contact || contact.userId !== user.id) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    const contact = await getContact(user.id, id, {
+      includeEnrichment: false,
+      includeChannelHistory: false,
+    });
 
     const key = user.agentMailApiKey;
     if (!isAgentMailConfigured(key)) {
@@ -35,6 +35,7 @@ export async function GET(
     }
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("GET /api/contacts/[id]/emails", e);
     return NextResponse.json({ error: "Failed to load emails" }, { status: 500 });
   }

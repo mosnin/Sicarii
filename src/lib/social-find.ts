@@ -7,8 +7,7 @@
 // returned as an unverified candidate for a human or agent to review; we prefer
 // an empty field over a wrong one.
 
-import { prisma } from "@/lib/prisma";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, getContact, updateContact } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { tavilySearch, isTavilyConfigured, type TavilyResult } from "@/lib/tavily";
 import { recordProvenanceBulk, type ProvenanceInput } from "@/lib/provenance";
@@ -133,11 +132,7 @@ export async function findContactSocials(
   if (!isTavilyConfigured())
     throw new OpError("Social discovery is not configured (TAVILY_API_KEY missing).", 501);
 
-  const contact = await prisma.contact.findUnique({
-    where: { id: contactId },
-    include: { entity: { select: { name: true, domain: true, website: true } } },
-  });
-  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  const contact = await getContact(userId, contactId, { includeChannelHistory: false });
   if (!contact.name)
     throw new OpError("Add the contact's name first - we never match profiles without one.", 400);
 
@@ -208,7 +203,7 @@ export async function findContactSocials(
     });
   }
   if (Object.keys(saved).length > 0) {
-    await prisma.contact.update({ where: { id: contactId }, data: saved });
+    await updateContact(userId, contactId, saved);
     await recordProvenanceBulk(provenanceRows);
   }
 

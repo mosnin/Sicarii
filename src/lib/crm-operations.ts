@@ -26,6 +26,16 @@ import {
 export { OpError } from "@/lib/op-error";
 import { OpError } from "@/lib/op-error";
 import { keepNamedCompanies, rerankHits, runWardens, scanMalicious, triageInbound } from "@/lib/jev";
+export { assertCleanArtifact } from "@/lib/clean-artifact";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { geocodeCached } from "@/lib/geocode";
+
+async function assertPaidOpRate(userId: string, op: string, limit: number) {
+  if (process.env.VITEST) return;
+  const rate = await checkRateLimit(`crm:${op}:${userId}`, limit, 60_000);
+  if (!rate.success) throw new OpError(`${op} rate limit reached. Try again in a moment.`, 429);
+}
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -51,9 +61,11 @@ function asJson(v: unknown): Prisma.InputJsonValue | undefined {
 // smaller than the ceiling: ask for more when you mean it.
 export const DEFAULT_LIST_LIMIT = 50;
 export const MAX_LIST_LIMIT = 200;
-export function clampListLimit(limit?: number): number {
-  if (limit == null || !Number.isFinite(limit)) return DEFAULT_LIST_LIMIT;
-  return Math.min(Math.max(Math.trunc(limit), 1), MAX_LIST_LIMIT);
+export function clampListLimit(limit?: number, ceiling: number = MAX_LIST_LIMIT): number {
+  const cap =
+    Number.isFinite(ceiling) && ceiling > 0 ? Math.trunc(ceiling) : MAX_LIST_LIMIT;
+  if (limit == null || !Number.isFinite(limit)) return Math.min(DEFAULT_LIST_LIMIT, cap);
+  return Math.min(Math.max(Math.trunc(limit), 1), cap);
 }
 
 /* ----------------------------- Entities ----------------------------- */
@@ -71,10 +83,19 @@ export interface EntityInput {
   source?: string | null;
   tags?: string[];
   notes?: string | null;
+  logoUrl?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  geocodedAt?: Date | null;
   enrichment?: unknown;
 }
 
-export function listEntities(userId: string, q?: string, limit?: number) {
+export function listEntities(
+  userId: string,
+  q?: string,
+  limit?: number,
+  ceiling: number = MAX_LIST_LIMIT,
+) {
   return prisma.entity.findMany({
     where: {
       userId,
@@ -93,20 +114,93 @@ export function listEntities(userId: string, q?: string, limit?: number) {
     // Lists are for scanning; the enrichment blob (often KBs per row) belongs
     // to get_entity. Omitting it keeps agent token usage and payloads sane.
     omit: { enrichment: true },
-    take: clampListLimit(limit),
+    take: clampListLimit(limit, ceiling),
   });
 }
 
-export async function getEntity(userId: string, id: string) {
+export function countEntities(
+  userId: string,
+  opts?: { status?: EntityStatus; createdAfter?: Date; notManual?: boolean },
+) {
+  return prisma.entity.count({
+    where: {
+      userId,
+      ...(opts?.status ? { status: opts.status } : {}),
+      ...(opts?.createdAfter ? { createdAt: { gt: opts.createdAfter } } : {}),
+      ...(opts?.notManual
+        ? { OR: [{ source: null }, { source: { notIn: ["manual", "import"] } }] }
+        : {}),
+    },
+  });
+}
+
+export function listRecentEntities(
+  userId: string,
+  opts: { createdAfter?: Date; notManual?: boolean; take?: number } = {},
+) {
+  return prisma.entity.findMany({
+    where: {
+      userId,
+      ...(opts.createdAfter ? { createdAt: { gt: opts.createdAfter } } : {}),
+      ...(opts.notManual
+        ? { OR: [{ source: null }, { source: { notIn: ["manual", "import"] } }] }
+        : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: clampListLimit(opts.take, 50),
+    select: { name: true, domain: true, industry: true, description: true },
+  });
+}
+
+export function listRecentActivities(userId: string, limit?: number) {
+  return prisma.activity.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: clampListLimit(limit, 50),
+    select: { id: true, kind: true, body: true, createdAt: true },
+  });
+}
+
+export function listEntitiesPage(
+  userId: string,
+  opts: { page?: number; pageSize?: number } = {},
+) {
+  const pageSize = clampListLimit(opts.pageSize, 500);
+  const page = Math.max(1, Math.trunc(opts.page ?? 1) || 1);
+  return prisma.entity.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    include: { _count: { select: { contacts: true } } },
+    omit: { enrichment: true },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  });
+}
+
+export async function getEntity(
+  userId: string,
+  id: string,
+  opts?: { includeEnrichment?: boolean; includeContacts?: boolean },
+) {
+  const includeEnrichment = opts?.includeEnrichment ?? true;
+  const includeContacts = opts?.includeContacts ?? true;
   const entity = await prisma.entity.findUnique({
     where: { id },
-    include: { contacts: { orderBy: { updatedAt: "desc" }, take: 100 } },
+    include: {
+      contacts: {
+        orderBy: { updatedAt: "desc" },
+        take: includeContacts ? 100 : 0,
+        ...(includeEnrichment ? {} : { omit: { enrichment: true } }),
+      },
+    },
+    ...(includeEnrichment ? {} : { omit: { enrichment: true } }),
   });
   if (!entity || entity.userId !== userId) throw new OpError("Entity not found", 404);
   return entity;
 }
 
-export function createEntity(userId: string, input: EntityInput) {
+export async function createEntity(userId: string, input: EntityInput) {
+  await assertCleanArtifact([input.notes, input.description].filter(Boolean).join("\n"), "notes");
   const { enrichment, tags, ...rest } = input;
   return prisma.entity.create({
     data: {
@@ -126,6 +220,7 @@ export async function updateEntity(
   const existing = await prisma.entity.findUnique({ where: { id } });
   if (!existing || existing.userId !== userId)
     throw new OpError("Entity not found", 404);
+  await assertCleanArtifact([input.notes, input.description].filter(Boolean).join("\n"), "notes");
   const { enrichment, ...rest } = input;
   const data: Prisma.EntityUncheckedUpdateInput = { ...rest };
   if (enrichment !== undefined) {
@@ -143,6 +238,15 @@ export async function deleteEntity(userId: string, id: string) {
   return { ok: true };
 }
 
+export async function deleteEntities(userId: string, ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 500);
+  if (unique.length === 0) return { deleted: 0 };
+  const result = await prisma.entity.deleteMany({
+    where: { userId, id: { in: unique } },
+  });
+  return { deleted: result.count };
+}
+
 /** Enrich a business via Explorium using its domain; fills empty columns and
  *  stores firmographics under enrichment. Never persists null. */
 export async function enrichEntity(userId: string, id: string) {
@@ -152,6 +256,7 @@ export async function enrichEntity(userId: string, id: string) {
   if (!entity.domain) throw new OpError("Entity has no domain to enrich from", 400);
   if (!isExploriumConfigured())
     throw new OpError("Enrichment is not configured (EXPLORIUM_API_KEY missing)", 501);
+  await assertPaidOpRate(userId, "enrich_entity", 20);
 
   // Idempotency: don't re-charge Explorium if firmographics are already present
   // (an agent re-calling enrich_entity on the same id otherwise pays every time).
@@ -219,14 +324,41 @@ export async function enrichEntity(userId: string, id: string) {
 // Shared by every "discover and add" path - findCompanies, discoverLocalLeads,
 // swarmDiscover - so the dedup rule can never drift between them; before this
 // each caller reimplemented the same norm()+Set logic separately.
-async function dedupeAgainstCrm<T extends { companyName: string; domain?: string | null }>(
+function domainLookupKeys(domain?: string | null): string[] {
+  const raw = domain?.trim();
+  const normalized = normalizeDomain(domain);
+  const keys = new Set<string>();
+  if (raw) keys.add(raw);
+  if (normalized) {
+    keys.add(normalized);
+    keys.add(`www.${normalized}`);
+  }
+  return [...keys];
+}
+
+export async function dedupeAgainstCrm<T extends { companyName: string; domain?: string | null }>(
   userId: string,
   found: T[],
 ): Promise<{ fresh: T[]; skipped: number }> {
-  const existing = await prisma.entity.findMany({
-    where: { userId },
-    select: { domain: true, name: true },
-  });
+  if (found.length === 0) return { fresh: [], skipped: 0 };
+
+  const domains = [...new Set(found.flatMap((c) => domainLookupKeys(c.domain)))];
+  const names = [...new Set(found.map((c) => c.companyName.trim()).filter(Boolean))];
+  const existing =
+    domains.length === 0 && names.length === 0
+      ? []
+      : await prisma.entity.findMany({
+          where: {
+            userId,
+            OR: [
+              ...(domains.length ? [{ domain: { in: domains, mode: "insensitive" as const } }] : []),
+              ...names.map((name) => ({
+                name: { equals: name, mode: "insensitive" as const },
+              })),
+            ],
+          },
+          select: { domain: true, name: true },
+        });
   const seenDomains = new Set(
     existing.map((e) => normalizeDomain(e.domain)).filter(Boolean) as string[],
   );
@@ -261,6 +393,7 @@ export async function findCompanies(
 ) {
   if (!isExaConfigured())
     throw new OpError("Discovery is not configured (EXA_API_KEY missing)", 501);
+  await assertPaidOpRate(userId, "find_companies", 10);
   // Gate before the paid Exa call; debit below only when it returns companies.
   await ensureCredits(userId, "find_companies");
   const count = Math.min(Math.max(input.count ?? 10, 1), 25);
@@ -303,6 +436,7 @@ export async function discoverLocalLeads(
 ) {
   if (!isApifyConfigured())
     throw new OpError("Local lead discovery is not configured (APIFY_TOKEN missing)", 501);
+  await assertPaidOpRate(userId, "maps_leads", 10);
   // Gate before the paid Apify run; debit below only when it returns leads.
   await ensureCredits(userId, "maps_leads");
   const count = Math.min(Math.max(input.count ?? 12, 1), 20);
@@ -404,6 +538,7 @@ export async function swarmDiscover(userId: string, input: SwarmDiscoverInput) {
     if (angles.length === 0) throw new OpError("Could not derive any search angles from that goal.", 502);
     angleSource = "derived";
   }
+  await assertPaidOpRate(userId, "swarm_discover", 5);
 
   // Gate up front for the worst case (see credit-model note above). Nothing
   // paid has happened yet - this only bounds the ceiling.
@@ -533,6 +668,10 @@ export function listSwarmRuns(userId: string, limit?: number) {
   });
 }
 
+export function countSwarmRuns(userId: string) {
+  return prisma.swarmRun.count({ where: { userId } });
+}
+
 /** One swarm run's full breakdown (per-angle counts + per-company attribution). */
 export async function getSwarmRun(userId: string, id: string) {
   const run = await prisma.swarmRun.findUnique({ where: { id } });
@@ -547,6 +686,7 @@ export async function getSwarmRun(userId: string, id: string) {
 export async function extractSiteContacts(userId: string, url: string) {
   if (!isApifyConfigured())
     throw new OpError("Contact extraction is not configured (APIFY_TOKEN missing)", 501);
+  await assertPaidOpRate(userId, "contact_extract", 15);
   await ensureCredits(userId, "contact_extract");
   const contacts = await scrapeSiteContacts(url);
   if (contacts.length > 0) await spendCredits(userId, "contact_extract");
@@ -561,6 +701,7 @@ export async function searchGoogle(
 ) {
   if (!isApifyConfigured())
     throw new OpError("Web search via Apify is not configured (APIFY_TOKEN missing)", 501);
+  await assertPaidOpRate(userId, "serp_search", 20);
   await ensureCredits(userId, "serp_search");
   const raw = await apifyGoogleSearch(input.query, input.limit ?? 15);
   const results = await rerankHits(
@@ -590,15 +731,17 @@ export interface ContactInput {
   source?: string | null;
   tags?: string[];
   notes?: string | null;
+  imageUrl?: string | null;
   enrichment?: unknown;
   entityId?: string | null;
+  dealScore?: number | null;
 }
 
 export function listContacts(
   userId: string,
-  opts: { q?: string; status?: string; limit?: number } = {}
+  opts: { q?: string; status?: string; limit?: number; ceiling?: number } = {}
 ) {
-  const { q, status, limit } = opts;
+  const { q, status, limit, ceiling } = opts;
   return prisma.contact.findMany({
     where: {
       userId,
@@ -619,24 +762,73 @@ export function listContacts(
     include: { entity: { select: { id: true, name: true } } },
     // Same as listEntities: the enrichment blob belongs to get_contact.
     omit: { enrichment: true },
-    take: clampListLimit(limit),
+    take: clampListLimit(limit, ceiling ?? MAX_LIST_LIMIT),
   });
 }
 
-export async function getContact(userId: string, id: string) {
+export function countContacts(
+  userId: string,
+  opts?: { status?: ContactStatus | ContactStatus[]; enriched?: boolean; createdAfter?: Date },
+) {
+  return prisma.contact.count({
+    where: {
+      userId,
+      ...(opts?.status
+        ? { status: Array.isArray(opts.status) ? { in: opts.status } : opts.status }
+        : {}),
+      ...(opts?.enriched === true ? { enrichment: { not: Prisma.AnyNull } } : {}),
+      ...(opts?.createdAfter ? { createdAt: { gt: opts.createdAfter } } : {}),
+    },
+  });
+}
+
+export function listContactsPage(
+  userId: string,
+  opts: { page?: number; pageSize?: number } = {},
+) {
+  const pageSize = clampListLimit(opts.pageSize, 500);
+  const page = Math.max(1, Math.trunc(opts.page ?? 1) || 1);
+  return prisma.contact.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    include: { entity: { select: { id: true, name: true } } },
+    omit: { enrichment: true },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  });
+}
+
+export async function getContact(
+  userId: string,
+  id: string,
+  opts?: { includeEnrichment?: boolean; includeChannelHistory?: boolean },
+) {
+  const includeEnrichment = opts?.includeEnrichment ?? true;
+  const includeChannelHistory = opts?.includeChannelHistory ?? true;
   const contact = await prisma.contact.findUnique({
     where: { id },
     include: {
-      entity: { select: { id: true, name: true } },
-      // Capped: a long relationship otherwise blows up the payload (and an
-      // agent's context) with every message ever saved.
-      emails: { orderBy: { sentAt: "desc" }, take: 50 },
-      socialMessages: { orderBy: { createdAt: "desc" }, take: 50 },
+      entity: { select: { id: true, name: true, domain: true, website: true } },
+      ...(includeChannelHistory
+        ? {
+            emails: { orderBy: { sentAt: "desc" as const }, take: 50 },
+            socialMessages: { orderBy: { createdAt: "desc" as const }, take: 50 },
+          }
+        : {}),
     },
+    ...(includeEnrichment ? {} : { omit: { enrichment: true } }),
   });
   if (!contact || contact.userId !== userId)
     throw new OpError("Contact not found", 404);
   return contact;
+}
+
+/** Cron/re-verify lookup: id only, then the caller writes via updateContact. */
+export async function getContactFieldSnapshot(id: string) {
+  return prisma.contact.findUnique({
+    where: { id },
+    select: { userId: true, email: true, phone: true, linkedin: true },
+  });
 }
 
 async function assertEntityOwned(userId: string, entityId: string) {
@@ -647,6 +839,7 @@ async function assertEntityOwned(userId: string, entityId: string) {
 export async function createContact(userId: string, input: ContactInput) {
   const { enrichment, tags, entityId, ...rest } = input;
   if (entityId) await assertEntityOwned(userId, entityId);
+  await assertCleanArtifact(input.notes ?? "", "notes");
   return prisma.contact.create({
     data: {
       ...rest,
@@ -666,6 +859,14 @@ export async function updateContact(
   const existing = await prisma.contact.findUnique({ where: { id } });
   if (!existing || existing.userId !== userId)
     throw new OpError("Contact not found", 404);
+  await assertCleanArtifact(input.notes ?? "", "notes");
+  if (input.dealScore !== undefined && input.dealScore !== null) {
+    const score = Math.trunc(input.dealScore);
+    if (!Number.isFinite(score) || score < 1 || score > 100) {
+      throw new OpError("Deal score must be between 1 and 100.", 400);
+    }
+    input.dealScore = score;
+  }
   const { enrichment, entityId, ...rest } = input;
   if (entityId) await assertEntityOwned(userId, entityId);
   const data: Prisma.ContactUncheckedUpdateInput = { ...rest };
@@ -683,6 +884,15 @@ export async function deleteContact(userId: string, id: string) {
     throw new OpError("Contact not found", 404);
   await prisma.contact.delete({ where: { id } });
   return { ok: true };
+}
+
+export async function deleteContacts(userId: string, ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 500);
+  if (unique.length === 0) return { deleted: 0 };
+  const result = await prisma.contact.deleteMany({
+    where: { userId, id: { in: unique } },
+  });
+  return { deleted: result.count };
 }
 
 /* --------------------------- Email context -------------------------- */
@@ -907,6 +1117,7 @@ export async function logOutreach(
   if (!existing || existing.userId !== userId) throw new OpError("Contact not found", 404);
 
   if (input.variantId) await assertVariantOwned(userId, input.variantId);
+  await assertCleanArtifact(input.summary, "outreach");
 
   const nextStatus =
     input.status ?? (ADVANCE_FROM_OUTREACH.has(existing.status) ? "CONTACTED" : existing.status);
@@ -965,6 +1176,7 @@ export async function addActivity(
     const e = await prisma.entity.findUnique({ where: { id: input.entityId } });
     if (!e || e.userId !== userId) throw new OpError("Entity not found", 404);
   }
+  await assertCleanArtifact(input.body, "activity");
   return prisma.activity.create({
     data: {
       userId,
@@ -1000,19 +1212,26 @@ export async function listActivities(
 /** Who needs a follow-up: contacts in a status (default CONTACTED) not touched
  *  in the last N days (default 7), oldest first. A null lastContactedAt counts
  *  as due. This is how an autonomous agent finds who to chase next. */
-export async function listDueFollowups(
+function dueFollowupWhere(
   userId: string,
-  input: { status?: ContactStatus; staleDays?: number; limit?: number }
+  input: { status?: string; staleDays?: number },
 ) {
   const status = (input.status ?? "CONTACTED") as ContactStatus;
   const staleDays = input.staleDays ?? 7;
   const cutoff = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000);
+  return {
+    userId,
+    status,
+    OR: [{ lastContactedAt: null }, { lastContactedAt: { lt: cutoff } }],
+  };
+}
+
+export async function listDueFollowups(
+  userId: string,
+  input: { status?: string; staleDays?: number; limit?: number }
+) {
   return prisma.contact.findMany({
-    where: {
-      userId,
-      status,
-      OR: [{ lastContactedAt: null }, { lastContactedAt: { lt: cutoff } }],
-    },
+    where: dueFollowupWhere(userId, input),
     orderBy: { lastContactedAt: { sort: "asc", nulls: "first" } },
     take: Math.min(Math.max(input.limit ?? 50, 1), 200),
     select: {
@@ -1024,6 +1243,14 @@ export async function listDueFollowups(
       lastContactedAt: true,
     },
   });
+}
+
+/** Count due follow-ups without loading rows. Used by Company OS. */
+export function countDueFollowups(
+  userId: string,
+  input: { status?: string; staleDays?: number } = {},
+) {
+  return prisma.contact.count({ where: dueFollowupWhere(userId, input) });
 }
 
 // ─── Phone calls (AgentPhone) ────────────────────────────────────────────────
@@ -1047,6 +1274,7 @@ export interface CallInput {
 export async function saveCall(userId: string, input: CallInput) {
   const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
   if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  await assertCleanArtifact([input.summary, input.transcript].filter(Boolean).join("\n"), "call");
   const { contactId, ...rest } = input;
   return prisma.contactCall.create({ data: { contactId, ...rest } });
 }
@@ -1077,6 +1305,17 @@ export async function placeContactCall(
   const toNumber = (input.toNumber || contact.phone || "").trim();
   if (!toNumber)
     throw new OpError("No phone number for this contact - add one or pass toNumber in E.164 form.", 400);
+
+  const prompt = [input.systemPrompt, input.initialGreeting].filter(Boolean).join("\n");
+  const warden = await runWardens({
+    payload: prompt,
+    goal: `call ${contact.name ?? contact.id}`,
+    phase: "send",
+  });
+  if (!warden.allow) {
+    throw new OpError(`Jev blocked this outbound call (${warden.reasons.join(", ")}).`, 422);
+  }
+  await assertCleanArtifact(prompt, "call");
 
   const placed = await placeCall(user.agentPhoneApiKey, {
     toNumber,
@@ -1156,5 +1395,350 @@ export async function syncContactCall(userId: string, callLogId: string) {
       transcript: detail.transcript ?? call.transcript,
       recordingUrl: detail.recordingUrl ?? call.recordingUrl,
     },
+  });
+}
+
+/* ------------------------ Geo, export, cleanup ------------------------ */
+
+export const GEO_MAP_LIMIT = 2000;
+export const MAX_EXPORT_ROWS = 10_000;
+export const DEFAULT_IMPORT_SOURCES = ["synthoz-webhook"];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Stamp lat/lng on one owned entity after a Nominatim (or cache) hit. */
+export async function applyEntityGeocode(userId: string, entityId: string, location: string) {
+  const { result, cached } = await geocodeCached(location);
+  await updateEntity(userId, entityId, {
+    lat: result?.lat ?? null,
+    lng: result?.lng ?? null,
+    geocodedAt: new Date(),
+  });
+  return { cached, geocoded: Boolean(result) };
+}
+
+/** Backfill coordinates for entities that have a location but no lat/lng. */
+export async function geocodeEntities(userId: string, take = 20) {
+  const batch = await prisma.entity.findMany({
+    where: { userId, lat: null, geocodedAt: null, location: { not: null } },
+    select: { id: true, location: true },
+    take: clampListLimit(take, 50),
+  });
+
+  let geocoded = 0;
+  for (const e of batch) {
+    if (!e.location) {
+      await updateEntity(userId, e.id, { geocodedAt: new Date() });
+      continue;
+    }
+    const { result, cached } = await geocodeCached(e.location);
+    await updateEntity(userId, e.id, {
+      lat: result?.lat ?? null,
+      lng: result?.lng ?? null,
+      geocodedAt: new Date(),
+    });
+    if (result) geocoded++;
+    if (!cached) await sleep(1100);
+  }
+
+  const remaining = await prisma.entity.count({
+    where: { userId, lat: null, geocodedAt: null, location: { not: null } },
+  });
+  return { geocoded, processed: batch.length, remaining };
+}
+
+export async function listGeoEntities(userId: string) {
+  const [entities, missing] = await Promise.all([
+    prisma.entity.findMany({
+      where: { userId, lat: { not: null }, lng: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        lat: true,
+        lng: true,
+        location: true,
+        domain: true,
+        industry: true,
+        logoUrl: true,
+      },
+      take: GEO_MAP_LIMIT,
+    }),
+    prisma.entity.count({
+      where: { userId, lat: null, geocodedAt: null, location: { not: null } },
+    }),
+  ]);
+  return { entities, missing };
+}
+
+export function listContactsExport(userId: string) {
+  return prisma.contact.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      company: true,
+      title: true,
+      website: true,
+      linkedin: true,
+      twitter: true,
+      instagram: true,
+      facebook: true,
+      location: true,
+      status: true,
+      source: true,
+      tags: true,
+      notes: true,
+      createdAt: true,
+      entity: { select: { name: true } },
+    },
+    take: MAX_EXPORT_ROWS,
+  });
+}
+
+export function listEntitiesExport(userId: string) {
+  return prisma.entity.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    select: {
+      name: true,
+      domain: true,
+      website: true,
+      phone: true,
+      industry: true,
+      location: true,
+      size: true,
+      status: true,
+      source: true,
+      tags: true,
+      notes: true,
+      createdAt: true,
+    },
+    take: MAX_EXPORT_ROWS,
+  });
+}
+
+export function sanitizeImportSources(
+  raw: unknown,
+  fallback: string[] = DEFAULT_IMPORT_SOURCES,
+): string[] {
+  if (!Array.isArray(raw) || raw.length === 0 || !raw.every((s) => typeof s === "string")) {
+    return fallback;
+  }
+  return [...new Set((raw as string[]).filter((s) => s.length > 0 && s.length <= 100))].slice(0, 50);
+}
+
+/** Bulk-delete the caller's entities and contacts that came from auto-import sources. */
+export async function deleteImportedBySource(userId: string, sources: unknown) {
+  const clean = sanitizeImportSources(sources);
+  if (clean.length === 0) return { deletedContacts: 0, deletedEntities: 0, sources: clean };
+  const [contacts, entities] = await prisma.$transaction([
+    prisma.contact.deleteMany({ where: { userId, source: { in: clean } } }),
+    prisma.entity.deleteMany({ where: { userId, source: { in: clean } } }),
+  ]);
+  return {
+    deletedContacts: contacts.count,
+    deletedEntities: entities.count,
+    sources: clean,
+  };
+}
+
+/** Exact email/domain match for the Discover "already in CRM?" check. */
+export async function matchDiscover(
+  userId: string,
+  input: { email?: string | null; domain?: string | null },
+) {
+  const email = input.email?.trim().toLowerCase() || null;
+  const domain = input.domain?.trim().toLowerCase() || null;
+  const [contact, entity] = await Promise.all([
+    email
+      ? prisma.contact.findFirst({
+          where: { userId, email: { equals: email, mode: "insensitive" } },
+          omit: { enrichment: true },
+        })
+      : Promise.resolve(null),
+    domain
+      ? prisma.entity.findFirst({
+          where: { userId, domain: { equals: domain, mode: "insensitive" } },
+          omit: { enrichment: true },
+        })
+      : Promise.resolve(null),
+  ]);
+  return { contact, entity };
+}
+
+export const DISCOVERY_SOURCES = [
+  "discover",
+  "discover:enrichment",
+  "discover:find-entities",
+  "match-entity",
+  "intent-monitor",
+  "exa-webhook",
+  "research-schedule",
+  "exa:spawn-contacts",
+] as const;
+
+export function crmDomainKey(domain: string): string {
+  return domain.trim().toLowerCase().replace(/^www\./, "");
+}
+
+export async function findEntityIdsByDomains(userId: string, domains: string[]) {
+  const clean = [
+    ...new Set(
+      domains
+        .filter((d): d is string => typeof d === "string" && d.length > 0)
+        .map(crmDomainKey),
+    ),
+  ].slice(0, 200);
+  if (clean.length === 0) return new Map<string, string>();
+  const existing = await prisma.entity.findMany({
+    where: { userId, domain: { in: clean } },
+    select: { id: true, domain: true },
+    take: 200,
+  });
+  return new Map(
+    existing
+      .filter((e): e is { id: string; domain: string } => typeof e.domain === "string" && e.domain.length > 0)
+      .map((e) => [crmDomainKey(e.domain), e.id]),
+  );
+}
+
+export async function listRecentDiscoveries(userId: string, take = 20) {
+  const limit = clampListLimit(take, 50);
+  const [contacts, entities] = await Promise.all([
+    prisma.contact.findMany({
+      where: { userId, source: { in: [...DISCOVERY_SOURCES] } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: { id: true, name: true, email: true, company: true, title: true, source: true, createdAt: true },
+    }),
+    prisma.entity.findMany({
+      where: { userId, source: { in: [...DISCOVERY_SOURCES] } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: { id: true, name: true, domain: true, location: true, source: true, createdAt: true },
+    }),
+  ]);
+  return [
+    ...contacts.map((c) => ({ ...c, kind: "contact" as const })),
+    ...entities.map((e) => ({ ...e, kind: "entity" as const })),
+  ]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, limit);
+}
+
+export async function listContactDedupKeys(
+  userId: string,
+  input: { entityId?: string; emails?: string[] },
+) {
+  const emails = [
+    ...new Set(
+      (input.emails ?? [])
+        .filter((e): e is string => typeof e === "string")
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => e.length > 0 && e.length <= 320),
+    ),
+  ].slice(0, 200);
+  if (!input.entityId && emails.length === 0) return [];
+  return prisma.contact.findMany({
+    where: {
+      userId,
+      OR: [
+        ...(input.entityId ? [{ entityId: input.entityId }] : []),
+        ...(emails.length > 0 ? [{ email: { in: emails } }] : []),
+      ],
+    },
+    select: { email: true, name: true, entityId: true },
+    take: 500,
+  });
+}
+
+export async function findContactDupe(
+  userId: string,
+  input: { email?: string | null; name?: string | null; company?: string | null },
+) {
+  const email = input.email?.trim();
+  const name = input.name?.trim();
+  if (!email && !name) return null;
+  const company = input.company?.trim();
+  return prisma.contact.findFirst({
+    where: {
+      userId,
+      OR: [
+        ...(email ? [{ email: { equals: email, mode: "insensitive" as const } }] : []),
+        ...(name
+          ? [
+              {
+                name: { equals: name, mode: "insensitive" as const },
+                ...(company
+                  ? { company: { equals: company, mode: "insensitive" as const } }
+                  : {}),
+              },
+            ]
+          : []),
+      ],
+    },
+    select: { id: true },
+  });
+}
+
+export async function logAccountActivity(
+  userId: string,
+  input: {
+    kind: "note" | "call" | "outreach" | "reply" | "status_change";
+    body: string;
+    channel?: string | null;
+  },
+) {
+  await assertCleanArtifact(input.body, "activity");
+  return prisma.activity.create({
+    data: {
+      userId,
+      kind: input.kind,
+      body: input.body,
+      channel: input.channel ?? null,
+    },
+  });
+}
+
+export async function findEntityByDomainOrName(
+  userId: string,
+  input: { domain?: string | null; name?: string | null },
+) {
+  const domain = input.domain ? crmDomainKey(input.domain) : "";
+  if (domain) {
+    const byDomain = await prisma.entity.findFirst({
+      where: { userId, domain },
+    });
+    if (byDomain) return byDomain;
+  }
+  const name = input.name?.trim();
+  if (!name) return null;
+  return prisma.entity.findFirst({
+    where: { userId, name: { equals: name, mode: "insensitive" } },
+  });
+}
+
+export async function listContactsByIds(userId: string, ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 25);
+  if (unique.length === 0) return [];
+  return prisma.contact.findMany({
+    where: { userId, id: { in: unique } },
+    include: { entity: { select: { domain: true, website: true, name: true } } },
+    omit: { enrichment: true },
+  });
+}
+
+export async function listEntitiesByIds(
+  userId: string,
+  ids: string[],
+  opts?: { includeEnrichment?: boolean },
+) {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 25);
+  if (unique.length === 0) return [];
+  return prisma.entity.findMany({
+    where: { userId, id: { in: unique } },
+    ...(opts?.includeEnrichment === false ? { omit: { enrichment: true } } : {}),
   });
 }

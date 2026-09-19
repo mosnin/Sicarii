@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { geocodeCached } from "@/lib/geocode";
 import { checkCreationBudget } from "@/lib/creation-guard";
 import { filterRealCompanies } from "@/lib/jev";
+import { applyEntityGeocode, createEntity, findEntityIdsByDomains, OpError } from "@/lib/crm-operations";
 
 export const maxDuration = 60;
 
@@ -68,13 +66,8 @@ export async function POST(req: NextRequest) {
     const domains = parsed.data.entities
       .map((e) => normDomain(e.domain))
       .filter((d): d is string => Boolean(d));
-    const existing = domains.length
-      ? await prisma.entity.findMany({
-          where: { userId: user.id, domain: { in: domains } },
-          select: { domain: true },
-        })
-      : [];
-    const existingDomains = new Set(existing.map((e) => normDomain(e.domain ?? undefined)));
+    const existing = await findEntityIdsByDomains(user.id, domains);
+    const existingDomains = new Set(existing.keys());
 
     const seenInBatch = new Set<string>();
     const unique = parsed.data.entities.filter((e) => {
@@ -96,17 +89,19 @@ export async function POST(req: NextRequest) {
     const toGeocode: { id: string; location: string }[] = [];
     for (const e of toCreate) {
       const { enrichment, tags, ...rest } = e;
-      const entity = await prisma.entity.create({
-        data: {
+      try {
+        const entity = await createEntity(user.id, {
           ...rest,
-          domain: normDomain(e.domain),
-          tags: tags ?? [],
-          ...(enrichment ? { enrichment: enrichment as Prisma.InputJsonValue } : {}),
-          userId: user.id,
-        },
-      });
-      created++;
-      if (entity.location) toGeocode.push({ id: entity.id, location: entity.location });
+          domain: normDomain(e.domain) ?? rest.domain ?? null,
+          tags,
+          enrichment,
+        });
+        created++;
+        if (entity.location) toGeocode.push({ id: entity.id, location: entity.location });
+      } catch (err) {
+        if (err instanceof OpError) continue;
+        throw err;
+      }
     }
 
     // Geocode the new entities in the background so they're already on the map
@@ -116,13 +111,7 @@ export async function POST(req: NextRequest) {
       after(async () => {
         for (const e of toGeocode.slice(0, 40)) {
           try {
-            const { result, cached } = await geocodeCached(e.location);
-            await prisma.entity.update({
-              where: { id: e.id },
-              data: result
-                ? { lat: result.lat, lng: result.lng, geocodedAt: new Date() }
-                : { geocodedAt: new Date() },
-            });
+            const { cached } = await applyEntityGeocode(user.id, e.id, e.location);
             if (!cached) await sleep(1100);
           } catch {
             /* leave it for the map backfill loop */

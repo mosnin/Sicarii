@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, firecrawlSearch, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
-import { OpError } from "@/lib/crm-operations";
+import { createContact, getEntity, listContactDedupKeys, OpError, updateEntity } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { scoreFitWithJev, verifyCitations } from "@/lib/jev";
 
@@ -80,13 +78,8 @@ export async function POST(
       return NextResponse.json({ error: "Deep report needs FIRECRAWL_API_KEY." }, { status: 501 });
     }
 
-    const entity = await prisma.entity.findUnique({
-      where: { id },
-      include: { contacts: { select: { name: true, email: true } } },
-    });
-    if (!entity || entity.userId !== user.id) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    const entity = await getEntity(user.id, id);
+    const stored = entity as { enrichment?: unknown };
 
     // Gate before the paid Firecrawl + LLM work; the debit on success is below.
     await ensureCredits(user.id, "deep_report");
@@ -102,8 +95,8 @@ export async function POST(
     ]);
 
     const knownContacts = entity.contacts.map((c) => c.name).filter(Boolean).join(", ") || "none";
-    const knownEnrichment = entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
-      ? Object.keys(entity.enrichment as object).join(", ") : "none";
+    const knownEnrichment = stored.enrichment && typeof stored.enrichment === "object" && !Array.isArray(stored.enrichment)
+      ? Object.keys(stored.enrichment as object).join(", ") : "none";
 
     // ── Synthesize one coherent, non-overlapping report ──
     const { object: report } = await generateObject({
@@ -183,21 +176,30 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
         }
       : { ...report.icpFit, source: "llm" as const };
 
-    const existing = entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
-      ? (entity.enrichment as Record<string, unknown>) : {};
-    const data: Prisma.EntityUncheckedUpdateInput = {
+    const existing = stored.enrichment && typeof stored.enrichment === "object" && !Array.isArray(stored.enrichment)
+      ? (stored.enrichment as Record<string, unknown>) : {};
+    const patch: Parameters<typeof updateEntity>[2] = {
       status: "ENRICHED",
-      enrichment: { ...existing, deepReport: { ...citedReport, icpFit, generatedAt: new Date().toISOString() } } as unknown as Prisma.InputJsonValue,
+      enrichment: { ...existing, deepReport: { ...citedReport, icpFit, generatedAt: new Date().toISOString() } },
     };
-    if (!entity.description && report.summary) data.description = report.summary;
-    if (!entity.industry && analysis?.industry) data.industry = analysis.industry;
-    if (!entity.location && analysis?.location) data.location = analysis.location;
-    if (!entity.phone && analysis?.phone) data.phone = analysis.phone;
-    if (!entity.logoUrl && analysis?.logoUrl && /^https?:\/\//.test(analysis.logoUrl)) data.logoUrl = analysis.logoUrl;
-    await prisma.entity.update({ where: { id }, data });
+    if (!entity.description && report.summary) patch.description = report.summary;
+    if (!entity.industry && analysis?.industry) patch.industry = analysis.industry;
+    if (!entity.location && analysis?.location) patch.location = analysis.location;
+    if (!entity.phone && analysis?.phone) patch.phone = analysis.phone;
+    if (!entity.logoUrl && analysis?.logoUrl && /^https?:\/\//.test(analysis.logoUrl)) patch.logoUrl = analysis.logoUrl;
+    await updateEntity(user.id, id, patch);
 
     // ── Verify + add new decision makers as contacts ──
-    const existingEmails = new Set(entity.contacts.map((c) => c.email?.toLowerCase()).filter(Boolean));
+    const incomingEmails = report.keyDecisionMakers
+      .map((p) => (isMeaningful(p.email) ? p.email.trim().toLowerCase() : null))
+      .filter((email): email is string => Boolean(email));
+    const extraEmails = incomingEmails.length
+      ? await listContactDedupKeys(user.id, { emails: incomingEmails })
+      : [];
+    const existingEmails = new Set([
+      ...entity.contacts.map((c) => c.email?.toLowerCase()),
+      ...extraEmails.map((c) => c.email?.toLowerCase()),
+    ].filter(Boolean));
     const existingNames = new Set(entity.contacts.map((c) => c.name?.trim().toLowerCase()).filter(Boolean));
     let created = 0;
     const seen = new Set<string>();
@@ -211,9 +213,8 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
       const email = emailRaw && emailRaw.includes("@") &&
         (!entityDomain || sameCompany(emailRaw.split("@")[1], entityDomain)) ? emailRaw : undefined;
       if (email && existingEmails.has(email)) continue;
-      await prisma.contact.create({
-        data: {
-          userId: user.id,
+      try {
+        await createContact(user.id, {
           entityId: id,
           name,
           email: email ?? null,
@@ -224,9 +225,12 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
           status: "NEW",
           source: "deep-report",
           tags: ["report"],
-        },
-      });
-      created++;
+        });
+        created++;
+      } catch (err) {
+        if (err instanceof OpError) continue;
+        throw err;
+      }
     }
 
     // Debit only after the report was built and stored - a failed run is free.

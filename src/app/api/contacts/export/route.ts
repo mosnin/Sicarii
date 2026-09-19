@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { toCsv } from "@/lib/csv";
+import { OpError, listContactsExport } from "@/lib/crm-operations";
 
 const COLUMNS = [
   "name",
@@ -34,29 +34,7 @@ export async function GET() {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const contacts = await prisma.contact.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "asc" },
-      select: {
-        name: true,
-        email: true,
-        phone: true,
-        company: true,
-        title: true,
-        website: true,
-        linkedin: true,
-        twitter: true,
-        instagram: true,
-        facebook: true,
-        location: true,
-        status: true,
-        source: true,
-        tags: true,
-        notes: true,
-        createdAt: true,
-        entity: { select: { name: true } },
-      },
-    });
+    const contacts = await listContactsExport(user.id);
 
     const rows = contacts.map(({ entity, tags, ...rest }) => ({
       ...rest,
@@ -75,6 +53,7 @@ export async function GET() {
     });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("GET /api/contacts/export", e);
     return NextResponse.json({ error: "Failed to export contacts" }, { status: 500 });
   }

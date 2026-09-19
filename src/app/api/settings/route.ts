@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { OpError } from "@/lib/op-error";
 
 const patchSchema = z.object({
   productContext: z.string().max(20000).optional(),
@@ -41,6 +43,7 @@ export async function PATCH(req: NextRequest) {
       autoRadar?: boolean;
     } = {};
     if (parsed.data.productContext !== undefined) {
+      await assertCleanArtifact(parsed.data.productContext, "product-context");
       data.productContext = parsed.data.productContext;
     }
     if (parsed.data.agentMailApiKey !== undefined) {
@@ -82,6 +85,7 @@ export async function PATCH(req: NextRequest) {
     });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("PATCH /api/settings", e);
     return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
   }

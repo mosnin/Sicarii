@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { OpError } from "@/lib/crm-operations";
+import { addToPipeline, updatePipelineEntry } from "@/lib/field-operations";
 
 const STAGES = ["NEW", "ENRICHED", "PROSPECTING", "ENGAGING", "REPLYING", "WON", "LOST"] as const;
 const CONVO = ["OPEN", "AWAITING_REPLY", "STALLED", "CLOSED"] as const;
-
-async function ownPipeline(id: string, userId: string) {
-  const p = await prisma.pipeline.findUnique({ where: { id } });
-  return p && p.userId === userId ? p : null;
-}
 
 const addSchema = z.object({
   contactIds: z.array(z.string().uuid()).max(500).optional(),
@@ -21,29 +17,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    if (!(await ownPipeline(id, user.id))) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
     const parsed = addSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-
-    let ids = parsed.data.contactIds ?? [];
-    if (parsed.data.segmentId) {
-      const seg = await prisma.segment.findUnique({
-        where: { id: parsed.data.segmentId },
-        include: { members: { select: { contactId: true } } },
-      });
-      if (seg && seg.userId === user.id) ids = [...ids, ...seg.members.map((m) => m.contactId)];
-    }
-    if (ids.length === 0) return NextResponse.json({ error: "No contacts to add" }, { status: 400 });
-
-    const owned = await prisma.contact.findMany({ where: { userId: user.id, id: { in: ids } }, select: { id: true } });
-    const res = await prisma.pipelineEntry.createMany({
-      data: owned.map((c) => ({ userId: user.id, pipelineId: id, contactId: c.id })),
-      skipDuplicates: true,
-    });
-    return NextResponse.json({ added: res.count });
+    const result = await addToPipeline(user.id, id, parsed.data);
+    return NextResponse.json({ added: result.added, ...(result.truncated ? { truncated: true, cap: 500 } : {}) });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("POST pipeline entries", e);
     return NextResponse.json({ error: "Failed to add entries" }, { status: 500 });
   }
@@ -61,24 +41,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    if (!(await ownPipeline(id, user.id))) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
     const parsed = patchSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid update" }, { status: 400 });
     const { entryId, ...rest } = parsed.data;
-
-    const entry = await prisma.pipelineEntry.findUnique({ where: { id: entryId } });
-    if (!entry || entry.userId !== user.id || entry.pipelineId !== id) {
-      return NextResponse.json({ error: "Entry not found" }, { status: 404 });
-    }
-
-    const updated = await prisma.pipelineEntry.update({
-      where: { id: entryId },
-      data: { ...rest, lastActivityAt: new Date() },
-    });
+    const updated = await updatePipelineEntry(user.id, id, entryId, rest);
     return NextResponse.json({ entry: updated });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("PATCH pipeline entries", e);
     return NextResponse.json({ error: "Failed to update entry" }, { status: 500 });
   }

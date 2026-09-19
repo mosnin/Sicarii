@@ -70,6 +70,9 @@ function toolQuestions(tools: Record<string, string>) {
   };
 }
 
+const WRITEISH =
+  /\b(delete|remove|wipe|update|create|add|charge|buy|send|enrich|drop table)\b/i;
+
 function skillQuestions(skills: Record<string, string>) {
   return {
     route: {
@@ -169,7 +172,7 @@ export async function decideTurn(input: DecideInput): Promise<Handler> {
   const questions = {
     ...INTENT_QUESTIONS,
     ...MODEL_QUESTIONS,
-    ...TOOL_GUARD_QUESTIONS,
+    ...(WRITEISH.test(input.message) ? TOOL_GUARD_QUESTIONS : {}),
     ...(input.tools && Object.keys(input.tools).length > 0 ? toolQuestions(input.tools) : {}),
     ...(input.skills && Object.keys(input.skills).length > 0 ? skillQuestions(input.skills) : {}),
   };

@@ -6,6 +6,7 @@ import {
   factsFromSearch,
   formatDetailCard,
   inventedClaims,
+  stripHeavyFields,
 } from "@/lib/jev";
 
 describe("factsFromSearch / formatDetailCard", () => {
@@ -62,6 +63,52 @@ describe("compactCrmPayload", () => {
     expect(slim.entities[0]?.name).toBe("Acme");
     expect(slim.entities[0]?.enrichment).toBeUndefined();
   });
+
+  it("strips nested transcripts on a lone record", () => {
+    const slim = compactCrmPayload({
+      id: "c1",
+      name: "Jane",
+      transcript: "secret call",
+      enrichment: { blob: true },
+    }) as { name?: string; transcript?: unknown; enrichment?: unknown };
+    expect(slim.name).toBe("Jane");
+    expect(slim.transcript).toBeUndefined();
+    expect(slim.enrichment).toBeUndefined();
+  });
+});
+
+describe("stripHeavyFields", () => {
+  it("drops enrichment and transcripts without flattening answers", () => {
+    const slim = stripHeavyFields({
+      id: "e1",
+      name: "Acme",
+      enrichment: { blob: "x".repeat(400) },
+      transcript: "secret call",
+      answers: { intent: { type: "noul", noul: 0.9 } },
+      contacts: [{ name: "Jane", enrichment: { skip: true } }],
+    }) as {
+      name?: string;
+      enrichment?: unknown;
+      transcript?: unknown;
+      answers?: { intent?: { noul?: number } };
+      contacts?: Array<{ name?: string; enrichment?: unknown }>;
+    };
+    expect(slim.name).toBe("Acme");
+    expect(slim.enrichment).toBeUndefined();
+    expect(slim.transcript).toBeUndefined();
+    expect(slim.answers?.intent?.noul).toBe(0.9);
+    expect(slim.contacts?.[0]?.name).toBe("Jane");
+    expect(slim.contacts?.[0]?.enrichment).toBeUndefined();
+  });
+
+  it("truncates long note and body fields", () => {
+    const slim = stripHeavyFields({
+      notes: "n".repeat(800),
+      body: "b".repeat(800),
+    }) as { notes?: string; body?: string };
+    expect(slim.notes).toHaveLength(400);
+    expect(slim.body).toHaveLength(400);
+  });
 });
 
 describe("compactUiMessages", () => {
@@ -95,5 +142,24 @@ describe("compactUiMessages", () => {
     const oldAssistant = compact[1];
     expect(oldAssistant?.parts?.some((p) => String(p.type).startsWith("tool-"))).toBe(false);
     expect(compact.at(-1)?.parts?.some((p) => p.type === "text")).toBe(true);
+  });
+
+  it("clips huge recent tool dumps instead of sending the whole blob", () => {
+    const huge = { rows: Array.from({ length: 200 }, (_, i) => ({ id: `e${i}`, notes: "x".repeat(80) })) };
+    const compact = compactUiMessages(
+      [
+        {
+          id: "1",
+          role: "assistant" as const,
+          parts: [
+            { type: "tool-list_entities", toolCallId: "t1", state: "output-available", output: huge },
+          ],
+        },
+      ],
+      8,
+    );
+    const part = compact[0]?.parts?.[0] as { output?: { truncated?: boolean; preview?: string } };
+    expect(part.output?.truncated).toBe(true);
+    expect(part.output?.preview?.length).toBeLessThan(JSON.stringify(huge).length);
   });
 });

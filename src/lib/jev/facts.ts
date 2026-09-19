@@ -194,25 +194,29 @@ export function formatDetailCard(facts: CrmFact[], query: string): string | null
   return null;
 }
 
+function slimRow(row: unknown) {
+  const o = asRecord(row);
+  if (!o) return row;
+  return {
+    id: o.id,
+    name: o.name ?? o.companyName ?? o.title,
+    domain: o.domain,
+    email: o.email,
+    company: o.company,
+    title: o.title,
+    industry: o.industry,
+    location: o.location,
+    status: o.status,
+    url: o.url,
+  };
+}
+
 export function compactCrmPayload(payload: unknown, limit = 8): unknown {
+  if (Array.isArray(payload)) {
+    return stripHeavyFields(payload.slice(0, limit).map(slimRow));
+  }
   const box = asRecord(payload);
   if (!box) return payload;
-  const slimRow = (row: unknown) => {
-    const o = asRecord(row);
-    if (!o) return row;
-    return {
-      id: o.id,
-      name: o.name ?? o.companyName ?? o.title,
-      domain: o.domain,
-      email: o.email,
-      company: o.company,
-      title: o.title,
-      industry: o.industry,
-      location: o.location,
-      status: o.status,
-      url: o.url,
-    };
-  };
   const next: Record<string, unknown> = {};
   if (Array.isArray(box.entities)) next.entities = box.entities.slice(0, limit).map(slimRow);
   if (Array.isArray(box.contacts)) next.contacts = box.contacts.slice(0, limit).map(slimRow);
@@ -221,8 +225,44 @@ export function compactCrmPayload(payload: unknown, limit = 8): unknown {
   if (box.added != null) next.added = box.added;
   if (box.skipped != null) next.skipped = box.skipped;
   if (box.error != null) next.error = box.error;
-  if (box.id != null && !next.entities && !next.contacts) return slimRow(box);
-  return Object.keys(next).length > 0 ? next : slimRow(box);
+  const compacted =
+    box.id != null && !next.entities && !next.contacts
+      ? slimRow(box)
+      : Object.keys(next).length > 0
+        ? next
+        : slimRow(box);
+  return stripHeavyFields(compacted);
+}
+
+const HEAVY_KEYS = new Set([
+  "enrichment",
+  "transcript",
+  "embedding",
+  "embeddings",
+  "raw",
+  "html",
+  "rawHtml",
+]);
+
+const TRUNCATE_KEYS = new Set(["body", "notes", "description", "content", "subject"]);
+
+/** Drop blob fields and cap nested arrays so MCP/tool dumps stay small. */
+export function stripHeavyFields(payload: unknown, depth = 0): unknown {
+  if (payload == null || depth > 6) return payload;
+  if (Array.isArray(payload)) {
+    return payload.slice(0, 50).map((row) => stripHeavyFields(row, depth + 1));
+  }
+  if (typeof payload !== "object") return payload;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+    if (HEAVY_KEYS.has(key)) continue;
+    if (typeof value === "string" && TRUNCATE_KEYS.has(key) && value.length > 400) {
+      out[key] = value.slice(0, 400);
+      continue;
+    }
+    out[key] = stripHeavyFields(value, depth + 1);
+  }
+  return out;
 }
 
 export function groundedRefusal(facts: CrmFact[]): string {

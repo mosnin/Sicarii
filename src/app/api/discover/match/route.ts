@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { OpError, matchDiscover } from "@/lib/crm-operations";
 
 /**
  * GET /api/discover/match?email=<>&domain=<>
@@ -16,28 +16,11 @@ export async function GET(req: NextRequest) {
     const email = searchParams.get("email")?.trim().toLowerCase() || null;
     const domain = searchParams.get("domain")?.trim().toLowerCase() || null;
 
-    const [contact, entity] = await Promise.all([
-      email
-        ? prisma.contact.findFirst({
-            where: {
-              userId: user.id,
-              email: { equals: email, mode: "insensitive" },
-            },
-          })
-        : Promise.resolve(null),
-      domain
-        ? prisma.entity.findFirst({
-            where: {
-              userId: user.id,
-              domain: { equals: domain, mode: "insensitive" },
-            },
-          })
-        : Promise.resolve(null),
-    ]);
-
+    const { contact, entity } = await matchDiscover(user.id, { email, domain });
     return NextResponse.json({ contact, entity });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("GET /api/discover/match", e);
     return NextResponse.json({ error: "Match lookup failed" }, { status: 500 });
   }

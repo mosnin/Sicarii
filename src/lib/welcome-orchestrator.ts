@@ -24,9 +24,9 @@ import { prisma } from "@/lib/prisma";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
-import { createEntity } from "@/lib/crm-operations";
+import { countEntities, createEntity, dedupeAgainstCrm, listEntitiesByIds, OpError, updateEntity } from "@/lib/crm-operations";
 import { maybeSeedIcpRadar } from "@/lib/radar-seed";
-import { Prisma } from "@prisma/client";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 // --------------------------------------------------------------------------
 // Public types - consumed by the route handler and the client
@@ -132,7 +132,22 @@ export async function runWelcomeOrchestration(
     return;
   }
 
-  // Save the ICP as productContext - one sentence, two jobs.
+  // Save the ICP as productContext - one sentence, two jobs. Scan first:
+  // this text is injected into every fit score and generate turn.
+  try {
+    await assertCleanArtifact(icp, "product-context");
+  } catch (e) {
+    const message = e instanceof OpError ? e.message : "Jev blocked that ICP.";
+    emit({ type: "error", message });
+    emit({
+      type: "done",
+      message: "Setup stopped. Edit the description and try again.",
+      total: 0,
+      enriched: 0,
+      hasNews: 0,
+    });
+    return;
+  }
   await prisma.user.update({
     where: { id: userId },
     data: { productContext: icp },
@@ -192,29 +207,10 @@ export async function runWelcomeOrchestration(
     } else {
       emit({ type: "status", message: `Found ${found.length} compan${found.length === 1 ? "y" : "ies"}. Building your CRM...` });
 
-      // Deduplicate by domain/name against existing CRM rows + within this batch.
-      const existing = await prisma.entity.findMany({
-        where: { userId },
-        select: { domain: true, name: true },
-      });
-      const norm = (d?: string | null) =>
-        d?.toLowerCase().replace(/^www\./, "").trim() || undefined;
-      const seenDomains = new Set(
-        existing.map((e) => norm(e.domain)).filter(Boolean) as string[],
-      );
-      const seenNames = new Set(
-        existing.map((e) => e.name.trim().toLowerCase()),
-      );
+      // Targeted domain/name lookup, not a full-table load.
+      const { fresh } = await dedupeAgainstCrm(userId, found);
 
-      for (const c of found) {
-        const domain = norm(c.domain);
-        const nameKey = c.companyName.trim().toLowerCase();
-        if ((domain && seenDomains.has(domain)) || seenNames.has(nameKey)) {
-          continue;
-        }
-        if (domain) seenDomains.add(domain);
-        seenNames.add(nameKey);
-
+      for (const c of fresh) {
         // Persist via crm-operations so the row is in the dashboard immediately.
         let entity: { id: string; name: string; domain: string | null; industry: string | null; location: string | null; description: string | null };
         try {
@@ -288,29 +284,26 @@ export async function runWelcomeOrchestration(
         if (enriched) {
           const fields = enriched.fields;
           // Persist enrichment back to the entity.
-          const existing = await prisma.entity.findUnique({ where: { id: row.id } });
-          if (existing && existing.userId === userId) {
+          const [existing] = await listEntitiesByIds(userId, [row.id]);
+          if (existing) {
             const existing_enrichment =
               existing.enrichment &&
               typeof existing.enrichment === "object" &&
               !Array.isArray(existing.enrichment)
                 ? (existing.enrichment as Record<string, unknown>)
                 : {};
-            const data: Prisma.EntityUncheckedUpdateInput = {
+            await updateEntity(userId, row.id, {
               status: "ENRICHED",
               enrichment: {
                 ...existing_enrichment,
                 firmographics: enriched.raw,
-              } as Prisma.InputJsonValue,
-            };
-            if (fields) {
-              if (!existing.industry && fields.industry) data.industry = fields.industry;
-              if (!existing.location && fields.address) data.location = fields.address;
-              if (!existing.phone && fields.phone) data.phone = fields.phone;
-              if (!existing.description && fields.description) data.description = fields.description;
-              if (!existing.website && fields.website) data.website = fields.website;
-            }
-            await prisma.entity.update({ where: { id: row.id }, data });
+              },
+              ...(fields && !existing.industry && fields.industry ? { industry: fields.industry } : {}),
+              ...(fields && !existing.location && fields.address ? { location: fields.address } : {}),
+              ...(fields && !existing.phone && fields.phone ? { phone: fields.phone } : {}),
+              ...(fields && !existing.description && fields.description ? { description: fields.description } : {}),
+              ...(fields && !existing.website && fields.website ? { website: fields.website } : {}),
+            });
           }
 
           const updated: WelcomeCompanyRow = {
@@ -359,21 +352,18 @@ export async function runWelcomeOrchestration(
             newsHeadline: headline,
           };
           // Store the headline in the entity's enrichment blob.
-          const existing = await prisma.entity.findUnique({ where: { id: row.id } });
-          if (existing && existing.userId === userId) {
+          const [existing] = await listEntitiesByIds(userId, [row.id]);
+          if (existing) {
             const existing_enrichment =
               existing.enrichment &&
               typeof existing.enrichment === "object" &&
               !Array.isArray(existing.enrichment)
                 ? (existing.enrichment as Record<string, unknown>)
                 : {};
-            await prisma.entity.update({
-              where: { id: row.id },
-              data: {
-                enrichment: {
-                  ...existing_enrichment,
-                  recentNews: { headline, fetchedAt: new Date().toISOString() },
-                } as Prisma.InputJsonValue,
+            await updateEntity(userId, row.id, {
+              enrichment: {
+                ...existing_enrichment,
+                recentNews: { headline, fetchedAt: new Date().toISOString() },
               },
             });
           }
@@ -462,7 +452,7 @@ export async function hasCompletedFirstRun(userId: string): Promise<boolean> {
       where: { id: userId },
       select: { productContext: true },
     }),
-    prisma.entity.count({ where: { userId } }),
+    countEntities(userId),
   ]);
   return Boolean(user?.productContext) || entityCount > 0;
 }

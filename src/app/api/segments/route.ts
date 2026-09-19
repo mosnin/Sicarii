@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { OpError } from "@/lib/crm-operations";
+import { createSegment, listSegments } from "@/lib/field-operations";
 
 // GET /api/segments - list segments with member counts.
 export async function GET() {
   try {
     const user = await getAuthenticatedUser();
-    const segments = await prisma.segment.findMany({
-      where: { userId: user.id },
-      orderBy: { updatedAt: "desc" },
-      include: { _count: { select: { members: true } } },
-    });
+    const segments = await listSegments(user.id);
     return NextResponse.json({ segments });
   } catch (e) {
     if (e instanceof NextResponse) return e;
@@ -35,26 +32,12 @@ export async function POST(req: NextRequest) {
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid segment" }, { status: 400 });
     const { name, goal, contactIds } = parsed.data;
-
-    const segment = await prisma.segment.create({
-      data: { userId: user.id, name, goal, source: "manual" },
-    });
-
-    if (contactIds?.length) {
-      // Only attach contacts the user owns.
-      const owned = await prisma.contact.findMany({
-        where: { userId: user.id, id: { in: contactIds } },
-        select: { id: true },
-      });
-      await prisma.contactSegment.createMany({
-        data: owned.map((c) => ({ segmentId: segment.id, contactId: c.id })),
-        skipDuplicates: true,
-      });
-    }
+    const segment = await createSegment(user.id, { name, goal, contactIds });
 
     return NextResponse.json({ segment }, { status: 201 });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("POST /api/segments", e);
     return NextResponse.json({ error: "Failed to create segment" }, { status: 500 });
   }

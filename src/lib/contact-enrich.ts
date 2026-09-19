@@ -8,8 +8,7 @@
 // domain; people-directory matches require first AND last name to match. Prefer
 // returning nothing over a wrong value.
 
-import { prisma } from "@/lib/prisma";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, getContact, updateContact } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
@@ -140,11 +139,7 @@ export async function enrichContactField(
   contactId: string,
   field: Field,
 ): Promise<EnrichContactResult> {
-  const contact = await prisma.contact.findUnique({
-    where: { id: contactId },
-    include: { entity: { select: { domain: true, website: true, name: true } } },
-  });
-  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  const contact = await getContact(userId, contactId, { includeChannelHistory: false });
   if (contact[field]) return { contact, message: `${field} already set.` };
 
   // Gate before any paid provider call (a found value debits the same action
@@ -276,12 +271,9 @@ export async function enrichContactField(
     throw new OpError(`Couldn't find a ${field} for this contact.`, 404);
   }
 
-  const updated = await prisma.contact.update({
-    where: { id: contactId },
-    data: {
-      [field]: value,
-      ...(contact.status === "NEW" ? { status: "ENRICHED" } : {}),
-    },
+  const updated = await updateContact(userId, contactId, {
+    [field]: value,
+    ...(contact.status === "NEW" ? { status: "ENRICHED" as const } : {}),
   });
 
   // Debit only on a hit (the not-found paths above throw before this point);

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { OpError, deleteEntity, getEntity, updateEntity } from "@/lib/crm-operations";
 
 const ENTITY_STATUSES = ["NEW", "ENRICHED", "ARCHIVED"] as const;
 
@@ -23,12 +22,6 @@ const updateEntitySchema = z.object({
   enrichment: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
-async function getOwnedEntity(id: string, userId: string) {
-  const entity = await prisma.entity.findUnique({ where: { id } });
-  if (!entity || entity.userId !== userId) return null;
-  return entity;
-}
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,15 +29,13 @@ export async function GET(
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    const entity = await getOwnedEntity(id, user.id);
-    if (!entity) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    const contacts = await prisma.contact.findMany({
-      where: { entityId: id, userId: user.id },
-      orderBy: { updatedAt: "desc" },
-    });
-    return NextResponse.json({ entity, contacts });
+    const row = await getEntity(user.id, id);
+    const { contacts, ...entity } = row;
+    const slim = contacts.map(({ enrichment: _enrichment, ...c }) => c);
+    return NextResponse.json({ entity, contacts: slim });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("GET /api/entities/[id]", e);
     return NextResponse.json({ error: "Failed to load entity" }, { status: 500 });
   }
@@ -57,8 +48,6 @@ export async function PATCH(
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    const existing = await getOwnedEntity(id, user.id);
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const json = await req.json().catch(() => null);
     const parsed = updateEntitySchema.safeParse(json);
@@ -69,16 +58,11 @@ export async function PATCH(
       );
     }
 
-    const { enrichment, ...rest } = parsed.data;
-    const data: Prisma.EntityUncheckedUpdateInput = { ...rest };
-    if (enrichment !== undefined) {
-      data.enrichment =
-        enrichment === null ? Prisma.DbNull : (enrichment as Prisma.InputJsonValue);
-    }
-    const entity = await prisma.entity.update({ where: { id }, data });
+    const entity = await updateEntity(user.id, id, parsed.data);
     return NextResponse.json({ entity });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("PATCH /api/entities/[id]", e);
     return NextResponse.json({ error: "Failed to update entity" }, { status: 500 });
   }
@@ -91,13 +75,11 @@ export async function DELETE(
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    const existing = await getOwnedEntity(id, user.id);
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    // Contacts are detached (entityId -> null) by the schema's onDelete: SetNull.
-    await prisma.entity.delete({ where: { id } });
+    await deleteEntity(user.id, id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("DELETE /api/entities/[id]", e);
     return NextResponse.json({ error: "Failed to delete entity" }, { status: 500 });
   }

@@ -8,11 +8,14 @@ hardened (audits 2026-06-06 -> 09; PRs #19-#29) - and still **unfelt**. Nothing
 has been observed running end to end, and the product has zero choreographed
 moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
 
-**Parallel cycle shipped: 0015 - Jev System One** (`0015-jev-system-one.md`).
-Scalar decisions are Jev. Generation is Qwen via OpenRouter. Voice is OpenAI.
-The in-app agent now **skips the chat model** on lookup/discover turns
-(`src/lib/jev/fast-path.ts`): Jev decides, code executes, Qwen stays dark.
-Owed: live TypeSafe key + labeled jevcal + pin `jev-1.13.0`.
+**Parallel cycle shipped and wrapped: 0015 - Jev System One**
+(`0015-jev-system-one.md`). Scalar decisions are Jev. Generation is Qwen
+via OpenRouter. Voice is OpenAI. Instant CRM (lookups, lists, counts,
+creates, field writes, outreach, Field, discover, score, scan) skips
+TypeSafe and skips the generator (`src/lib/jev/instant.ts` +
+`fast-path.ts`). The leftover loop on `cursor/jev-loop-core-bb09` is
+closed. `docs/JEV.md` is the finished install. Owed: live TypeSafe key +
+labeled jevcal + pin `jev-1.13.0` + `JEV_REQUIRED=1` on production.
 
 **The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
 

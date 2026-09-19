@@ -1,8 +1,8 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { crmDomainKey, findEntityIdsByDomains } from "@/lib/crm-operations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { tavilySearch, tavilyExtract, tavilyCrawl, isTavilyConfigured } from "@/lib/tavily";
 import { googleSerp, scrapeUrl, isBrightDataConfigured } from "@/lib/brightdata";
@@ -94,17 +94,12 @@ async function companyListResult(userId: string, companies: CompanyLike[]) {
   const domains = deduped
     .map((c) => c.domain ?? host(c.website))
     .filter((d): d is string => Boolean(d));
-  const existing = domains.length
-    ? await prisma.entity.findMany({
-        where: { userId, domain: { in: domains } },
-        select: { id: true, domain: true },
-      })
-    : [];
-  const byDomain = new Map(existing.map((e) => [e.domain, e.id]));
+  const byDomain = await findEntityIdsByDomains(userId, domains);
 
   return {
     companies: deduped.map((c) => {
       const domain = c.domain ?? host(c.website);
+      const key = domain ? crmDomainKey(domain) : "";
       return {
         __kind: "company" as const,
         companyName: c.companyName,
@@ -116,8 +111,8 @@ async function companyListResult(userId: string, companies: CompanyLike[]) {
         description: c.description,
         keyDecisionMakers: c.keyDecisionMakers,
         sourceUrl: c.sourceUrl,
-        inCrm: domain ? byDomain.has(domain) : false,
-        existingId: domain ? byDomain.get(domain) ?? null : null,
+        inCrm: key ? byDomain.has(key) : false,
+        existingId: key ? byDomain.get(key) ?? null : null,
       };
     }),
   };

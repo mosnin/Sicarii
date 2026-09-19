@@ -6,9 +6,12 @@ overview. It sits inside write turns as **warden packs** (openwork).
 
 ## Reads
 
-`GET /api/company-os/overview` returns deterministic Prisma aggregates for the
+`GET /api/company-os/overview` returns deterministic aggregates for the
 signed-in workspace: entity/contact counts, follow-ups due, pending breakup
-drafts, active autopilot plans, recent activity.
+drafts, active autopilot plans, recent activity. Counts go through
+`countEntities` / `countContacts` / `countDueFollowups` /
+`countPendingDrafts` / `countActiveAutopilot` so the overview is a total,
+not a page guessed as a number.
 
 `GET /.well-known/company-os-app` advertises the OS surface to connectors.
 

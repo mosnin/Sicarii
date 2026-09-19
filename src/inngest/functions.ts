@@ -11,6 +11,13 @@ import { runAutopilotPlanOnce } from "@/lib/autopilot-run";
 import { rolloverAutopilotWindow, cadenceMs } from "@/lib/autopilot-operations";
 import { checkCreationBudget } from "@/lib/creation-guard";
 import { spendCredits } from "@/lib/credits";
+import {
+  createEntity,
+  findEntityByDomainOrName,
+  OpError,
+  updateContact,
+  updateEntity,
+} from "@/lib/crm-operations";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -39,6 +46,8 @@ export const runIntentMonitors = inngest.createFunction(
     const now = new Date();
     const monitors = await prisma.intentMonitor.findMany({
       where: { active: true, nextRunAt: { lte: now } },
+      orderBy: { nextRunAt: "asc" },
+      take: 50,
     });
 
     let saved = 0;
@@ -104,6 +113,8 @@ export const runResearchSchedules = inngest.createFunction(
     const now = new Date();
     const schedules = await prisma.researchSchedule.findMany({
       where: { active: true, nextRunAt: { lte: now } },
+      orderBy: { nextRunAt: "asc" },
+      take: 50,
     });
 
     let updated = 0;
@@ -147,17 +158,25 @@ export const runResearchSchedules = inngest.createFunction(
         ].filter(Boolean).join("\n\n");
 
         if (schedule.targetType === "entity" && schedule.targetId) {
-          await prisma.entity.updateMany({
-            where: { id: schedule.targetId, userId: schedule.userId },
-            data: { notes: researchNote || undefined, status: "ENRICHED" },
-          });
-          created.push({ id: schedule.targetId, kind: "entity" });
+          try {
+            await updateEntity(schedule.userId, schedule.targetId, {
+              notes: researchNote || null,
+              status: "ENRICHED",
+            });
+            created.push({ id: schedule.targetId, kind: "entity" });
+          } catch (e) {
+            if (!(e instanceof OpError)) throw e;
+          }
         } else if (schedule.targetType === "contact" && schedule.targetId) {
-          await prisma.contact.updateMany({
-            where: { id: schedule.targetId, userId: schedule.userId },
-            data: { notes: researchNote || undefined, status: "ENRICHED" },
-          });
-          created.push({ id: schedule.targetId, kind: "contact" });
+          try {
+            await updateContact(schedule.userId, schedule.targetId, {
+              notes: researchNote || null,
+              status: "ENRICHED",
+            });
+            created.push({ id: schedule.targetId, kind: "contact" });
+          } catch (e) {
+            if (!(e instanceof OpError)) throw e;
+          }
         } else {
           for (const source of sources.slice(0, 5)) {
             // Creation circuit breaker: this direct-create path must also honor
@@ -170,24 +189,23 @@ export const runResearchSchedules = inngest.createFunction(
             const name = isMeaningful(source.title) ? source.title : domain;
             if (!isMeaningful(name)) continue;
 
-            const exists = await prisma.entity.findFirst({
-              where: { userId: schedule.userId, domain },
-              select: { id: true },
-            });
+            const exists = await findEntityByDomainOrName(schedule.userId, { domain });
             if (exists) continue;
 
-            const entity = await prisma.entity.create({
-              data: {
-                userId: schedule.userId,
+            try {
+              const entity = await createEntity(schedule.userId, {
                 name,
                 domain,
                 website: source.url,
-                description: source.snippet ?? undefined,
+                description: source.snippet ?? null,
                 source: "research-schedule",
                 tags: ["research"],
-              },
-            });
-            created.push({ id: entity.id, kind: "entity", name: entity.name, domain: entity.domain, url: entity.website });
+              });
+              created.push({ id: entity.id, kind: "entity", name: entity.name, domain: entity.domain, url: entity.website });
+            } catch (e) {
+              if (e instanceof OpError) continue;
+              throw e;
+            }
           }
         }
 
@@ -242,6 +260,8 @@ export const runAutopilotPlans = inngest.createFunction(
     const plans = await prisma.autopilotPlan.findMany({
       where: { status: "active", nextRunAt: { lte: now } },
       include: { allocations: true },
+      orderBy: { nextRunAt: "asc" },
+      take: 50,
     });
 
     let processed = 0;

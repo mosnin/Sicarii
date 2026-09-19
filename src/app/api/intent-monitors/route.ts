@@ -3,6 +3,8 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { createExaMonitor, deleteExaMonitor, isExaConfigured, exaWebhookToken } from "@/lib/exa";
 import { planFor } from "@/lib/credits";
+import { OpError } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 // GET /api/intent-monitors - list all monitors for the current user.
 export async function GET() {
@@ -12,6 +14,7 @@ export async function GET() {
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { runs: true } } },
+      take: 50,
     });
     return NextResponse.json({ monitors });
   } catch (e) {
@@ -40,6 +43,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "query or name is too long" }, { status: 400 });
     }
     const name = (body.name?.trim() || body.query.slice(0, 60)).slice(0, 200);
+    try {
+      await assertCleanArtifact([name, body.query].join("\n"), "monitor");
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
 
     if (!isExaConfigured()) {
       return NextResponse.json({ error: "EXA_API_KEY is not configured" }, { status: 501 });

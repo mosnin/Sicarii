@@ -15,6 +15,8 @@ import { Prisma, type AutopilotCategory, type AutopilotStatus } from "@prisma/cl
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
 import type { ActivityActor } from "@/lib/crm-operations";
+import { gateMoney } from "@/lib/jev";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 export const AUTOPILOT_CATEGORIES = ["discovery", "enrichment", "outreach", "other"] as const;
 export type Category = (typeof AUTOPILOT_CATEGORIES)[number];
@@ -78,6 +80,17 @@ export async function proposeAutopilotPlan(userId: string, input: ProposeInput) 
     );
   }
   if (sum === 0) throw new OpError("at least one category must have a nonzero allocation", 400);
+  await assertCleanArtifact([input.name, input.discoveryQuery].filter(Boolean).join("\n"), "autopilot");
+
+  const spend = await gateMoney({
+    action: "autopilot_propose",
+    amount: input.totalCredits,
+    unit: "credits",
+    message: input.name,
+  });
+  if (!spend.allow) {
+    throw new OpError(`Jev blocked this autopilot budget (${spend.reasons.join(", ")}).`, 422);
+  }
 
   const cadence = isCadence(input.cadence) ? input.cadence : "weekly";
 
@@ -119,6 +132,10 @@ export async function getAutopilotPlan(userId: string, id: string) {
   });
   if (!plan || plan.userId !== userId) throw new OpError("Autopilot plan not found", 404);
   return plan;
+}
+
+export function countActiveAutopilot(userId: string) {
+  return prisma.autopilotPlan.count({ where: { userId, status: "active" } });
 }
 
 /** Status + budget summary for an agent to check before/instead of a full

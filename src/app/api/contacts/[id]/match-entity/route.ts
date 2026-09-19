@@ -1,9 +1,9 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaFindCompanies, isExaConfigured, isMeaningful } from "@/lib/exa";
+import { createEntity, findEntityByDomainOrName, getContact, getEntity, OpError, updateContact } from "@/lib/crm-operations";
 
 const FREEMAIL = new Set([
   "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com",
@@ -55,13 +55,21 @@ export async function POST(
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const contact = await prisma.contact.findUnique({ where: { id } });
-    if (!contact || contact.userId !== user.id) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    let contact;
+    try {
+      contact = await getContact(user.id, id, { includeEnrichment: false, includeChannelHistory: false });
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
     }
     if (contact.entityId) {
-      const entity = await prisma.entity.findUnique({ where: { id: contact.entityId } });
-      return NextResponse.json({ entity, created: false, alreadyLinked: true });
+      try {
+        const entity = await getEntity(user.id, contact.entityId, { includeEnrichment: false });
+        return NextResponse.json({ entity, created: false, alreadyLinked: true });
+      } catch (e) {
+        if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+        throw e;
+      }
     }
 
     // Establish what we know about the company.
@@ -107,18 +115,13 @@ export async function POST(
     }
 
     // Find an existing entity (no duplicates): by domain, else by name.
-    const existing = domain
-      ? await prisma.entity.findFirst({ where: { userId: user.id, domain } })
-      : await prisma.entity.findFirst({
-          where: { userId: user.id, name: { equals: name!, mode: "insensitive" } },
-        });
+    const existing = await findEntityByDomainOrName(user.id, { domain, name });
 
     let entity = existing;
     let created = false;
     if (!entity) {
-      entity = await prisma.entity.create({
-        data: {
-          userId: user.id,
+      try {
+        entity = await createEntity(user.id, {
           name: name || domain!,
           domain,
           website: website ?? (domain ? `https://${domain}` : null),
@@ -127,19 +130,23 @@ export async function POST(
           phone: phone ?? null,
           source: "match-entity",
           status: "NEW",
-        },
-      });
-      created = true;
+        });
+        created = true;
+      } catch (e) {
+        if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+        throw e;
+      }
     }
 
-    await prisma.contact.update({
-      where: { id },
-      data: {
+    try {
+      await updateContact(user.id, id, {
         entityId: entity.id,
-        // Backfill the contact's company name if it was empty.
         ...(!contact.company && entity.name ? { company: entity.name } : {}),
-      },
-    });
+      });
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
 
     return NextResponse.json({ entity, created });
   } catch (e) {

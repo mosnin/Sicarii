@@ -47,6 +47,9 @@ vi.mock("@/lib/pipe0", () => ({
 vi.mock("@/lib/crm-operations", () => {
   let counter = 0;
   return {
+    dedupeAgainstCrm: vi.fn().mockImplementation(
+      async (_userId: string, found: unknown[]) => ({ fresh: found, skipped: 0 }),
+    ),
     createEntity: vi.fn().mockImplementation(
       (_userId: string, input: { name: string; domain?: string | null; industry?: string | null; location?: string | null; description?: string | null }) => {
         counter++;
@@ -61,6 +64,8 @@ vi.mock("@/lib/crm-operations", () => {
       },
     ),
     updateEntity: vi.fn().mockResolvedValue({}),
+    countEntities: vi.fn().mockResolvedValue(0),
+    listEntitiesByIds: vi.fn().mockResolvedValue([]),
     OpError: class OpError extends Error {
       status: number;
       constructor(message: string, status = 400) {
