@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkCreationBudget } from "@/lib/creation-guard";
 import { filterRealCompanies } from "@/lib/jev";
-import { applyEntityGeocode, createEntity, OpError } from "@/lib/crm-operations";
+import { applyEntityGeocode, createEntity, findEntityIdsByDomains, OpError } from "@/lib/crm-operations";
 
 export const maxDuration = 60;
 
@@ -67,13 +66,8 @@ export async function POST(req: NextRequest) {
     const domains = parsed.data.entities
       .map((e) => normDomain(e.domain))
       .filter((d): d is string => Boolean(d));
-    const existing = domains.length
-      ? await prisma.entity.findMany({
-          where: { userId: user.id, domain: { in: domains } },
-          select: { domain: true },
-        })
-      : [];
-    const existingDomains = new Set(existing.map((e) => normDomain(e.domain ?? undefined)));
+    const existing = await findEntityIdsByDomains(user.id, domains);
+    const existingDomains = new Set(existing.keys());
 
     const seenInBatch = new Set<string>();
     const unique = parsed.data.entities.filter((e) => {

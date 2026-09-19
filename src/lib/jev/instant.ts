@@ -18,6 +18,8 @@ export type InstantRoute = {
   channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other";
   note?: string;
   durationSec?: number;
+  stage?: "NEW" | "ENRICHED" | "PROSPECTING" | "ENGAGING" | "REPLYING" | "WON" | "LOST";
+  subject?: string;
   detail?: boolean;
   source: "instant";
 };
@@ -150,6 +152,71 @@ function parseAddToField(text: string): {
     name,
     tool: m[5].toLowerCase() === "segment" ? "add_to_segment" : "add_to_pipeline",
   };
+}
+
+const PIPELINE_STAGE_WORDS: Record<string, NonNullable<InstantRoute["stage"]>> = {
+  new: "NEW",
+  enriched: "ENRICHED",
+  prospecting: "PROSPECTING",
+  engaging: "ENGAGING",
+  replying: "REPLYING",
+  won: "WON",
+  lost: "LOST",
+};
+
+function parsePipelineStage(text: string): {
+  query: string;
+  name: string;
+  stage: NonNullable<InstantRoute["stage"]>;
+} | null {
+  const m = text.match(
+    /^(please\s+)?(move|advance|set)\s+(.+?)\s+to\s+(?:the\s+)?(new|enriched|prospecting|engaging|replying|won|lost)(?:\s+stage)?\s+(?:in|on|of)\s+(?:the\s+)?(.+?)$/i,
+  );
+  if (!m?.[3] || !m[4] || !m[5]) return null;
+  const stage = PIPELINE_STAGE_WORDS[m[4].toLowerCase()];
+  const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const name = m[5]
+    .replace(/\s+pipeline\s*$/i, "")
+    .replace(/\b(the|a|an)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!stage || !query || !name || query.length > 80 || name.length > 80) return null;
+  return { query, name, stage };
+}
+
+function parseSaveEmail(text: string): { query: string; note: string; subject?: string } | null {
+  const m = text.match(
+    /^(please\s+)?(save|log|record)\s+(?:this |the |an )?(email|message)\s+(?:on|for|to|with)\s+(.+?)[:\-]\s*(.+)$/i,
+  );
+  if (!m?.[4] || !m[5]) return null;
+  const query = m[4].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const raw = m[5].trim();
+  if (!query || !raw || query.length > 80 || raw.length > 10_000) return null;
+  const nl = raw.indexOf("\n");
+  if (nl > 0 && nl <= 120) {
+    const subject = raw.slice(0, nl).trim();
+    const note = raw.slice(nl + 1).trim();
+    if (!note) return { query, note: raw, subject };
+    return { query, subject, note };
+  }
+  return { query, note: raw, subject: raw.slice(0, 80) };
+}
+
+function parseGetSwarmRun(text: string): { query: string } | null {
+  if (/\bswarm runs\b/i.test(text)) return null;
+  if (
+    /^(please\s+)?(show|get|open|tell me about)\s+(the\s+)?(last|latest|most recent)\s+swarm run\b/i.test(
+      text,
+    )
+  ) {
+    return { query: "" };
+  }
+  const m = text.match(
+    /^(please\s+)?(show|get|open|tell me about)\s+(the\s+)?swarm run(?:\s+for)?\s+(.+)$/i,
+  );
+  const query = (m?.[4] ?? "").replace(/\b(the|a|an|run)\b/gi, " ").replace(/\s+/g, " ").trim();
+  if (!query || query.length > 120) return null;
+  return { query };
 }
 
 function parseStatusUpdate(text: string): { query: string; status: NonNullable<InstantRoute["status"]> } | null {
@@ -446,6 +513,16 @@ export function classifyInstant(
   ) {
     return { tool: "get_pipeline", query: namedPipeline, name: namedPipeline, source: "instant" };
   }
+  const pipelineStage = parsePipelineStage(text);
+  if (pipelineStage && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_pipeline_entry",
+      query: pipelineStage.query,
+      name: pipelineStage.name,
+      stage: pipelineStage.stage,
+      source: "instant",
+    };
+  }
   const statusUpdate = parseStatusUpdate(text);
   if (statusUpdate && !COMPOUND.test(text) && !DESTRUCTIVE.test(text)) {
     return {
@@ -484,6 +561,16 @@ export function classifyInstant(
       query: outsideCall.query,
       note: outsideCall.note,
       durationSec: outsideCall.durationSec,
+      source: "instant",
+    };
+  }
+  const saveEmail = parseSaveEmail(text);
+  if (saveEmail && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text) && !COMPOSE.test(text)) {
+    return {
+      tool: "save_email_context",
+      query: saveEmail.query,
+      note: saveEmail.note,
+      subject: saveEmail.subject,
       source: "instant",
     };
   }
@@ -587,10 +674,14 @@ export function classifyInstant(
   if (
     !COMPOUND.test(text) &&
     !DESTRUCTIVE.test(text) &&
-    (/\b(swarm runs?|recent swarm)\b/i.test(text) ||
-      /^(list|show) (the )?(swarm runs?)\b/i.test(text))
+    (/\b(swarm runs|recent swarm)\b/i.test(text) ||
+      /^(list|show) (the )?(swarm runs)\b/i.test(text))
   ) {
     return { tool: "list_swarm_runs", query: text, source: "instant" };
+  }
+  const swarmRun = parseGetSwarmRun(text);
+  if (swarmRun && !COMPOUND.test(text) && !DESTRUCTIVE.test(text)) {
+    return { tool: "get_swarm_run", query: swarmRun.query, name: swarmRun.query || undefined, source: "instant" };
   }
 
   const segmentName = parseNamedCreate(text, "segment");

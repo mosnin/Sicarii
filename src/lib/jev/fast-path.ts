@@ -57,6 +57,9 @@ export const FAST_PATH_TOOLS = new Set([
   "update_pipeline",
   "sync_call",
   "log_call",
+  "update_pipeline_entry",
+  "save_email_context",
+  "get_swarm_run",
   "pipeline_metrics",
   "remember",
   "get_provenance",
@@ -375,6 +378,31 @@ export function formatFastReply(input: {
     return `Synced ${who}'s last call${r.status ? ` (${r.status})` : ""}.`;
   }
 
+  if (tool === "update_pipeline_entry") {
+    const r = payload as { name?: string | null; who?: string | null; stage?: string | null };
+    const who = r.who ?? query;
+    const dest = r.name ?? "the pipeline";
+    const stage = (r.stage ?? "the next stage").toLowerCase();
+    return `Moved ${who} to ${stage} in ${dest}.`;
+  }
+
+  if (tool === "save_email_context") {
+    const r = payload as { name?: string | null; subject?: string | null };
+    const who = r.name ?? query;
+    const subject = (r.subject ?? "").trim();
+    return `Saved email on ${who}${subject ? `: ${subject}` : "."}`;
+  }
+
+  if (tool === "get_swarm_run") {
+    const r = payload as {
+      goal?: string | null;
+      found?: number;
+      added?: number;
+      skipped?: number;
+    };
+    return `Swarm "${r.goal ?? (query || "latest")}": ${r.found ?? 0} found, ${r.added ?? 0} added, ${r.skipped ?? 0} already in CRM.`;
+  }
+
   if (tool === "log_call") {
     const r = payload as { name?: string | null };
     return `Logged a call with ${r.name ?? query}.`;
@@ -612,6 +640,17 @@ export type FastPathRunners = {
     summary?: string;
     durationSec?: number;
   }) => Promise<unknown>;
+  updatePipelineEntry?: (
+    pipelineId: string,
+    entryId: string,
+    patch: { stage?: InstantRoute["stage"] },
+  ) => Promise<unknown>;
+  findPipelineEntry?: (
+    pipelineId: string,
+    contactId: string,
+  ) => Promise<{ id: string } | null>;
+  saveEmail?: (input: { contactId: string; subject?: string; body?: string }) => Promise<unknown>;
+  getSwarmRun?: (id: string) => Promise<unknown>;
   listEmails?: (contactId: string) => Promise<unknown>;
   listActivities?: (input: { contactId?: string; entityId?: string }) => Promise<unknown>;
   listContactCalls?: (contactId: string) => Promise<unknown>;
@@ -655,6 +694,23 @@ function matchNamed(
   if (!needle) return typed.length === 1 ? typed[0] : undefined;
   return typed.find((r) => (r.name ?? "").trim().toLowerCase() === needle)
     ?? typed.find((r) => (r.name ?? "").toLowerCase().includes(needle));
+}
+
+function matchSwarm(
+  rows: unknown,
+  goal?: string,
+): { id: string; goal?: string } | undefined {
+  const list = Array.isArray(rows) ? rows : [];
+  const typed = list.filter(
+    (r): r is { id: string; goal?: string } =>
+      !!r && typeof r === "object" && "id" in r && typeof (r as { id?: unknown }).id === "string",
+  );
+  const needle = goal?.trim().toLowerCase() ?? "";
+  if (!needle) return typed[0];
+  return (
+    typed.find((r) => (r.goal ?? "").trim().toLowerCase() === needle) ??
+    typed.find((r) => (r.goal ?? "").toLowerCase().includes(needle))
+  );
 }
 
 export async function executeFastPath(input: {
@@ -1091,6 +1147,97 @@ async function runTool(
         }
         return result;
       });
+    }
+    case "update_pipeline_entry": {
+      const packed =
+        prefetch && typeof prefetch === "object" && prefetch !== null && "crm" in prefetch
+          ? (prefetch as { crm: unknown; fields?: unknown })
+          : null;
+      const found = packed?.crm ?? (prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query));
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const listed =
+        packed?.fields ?? (await (runners.listPipelines ? runners.listPipelines() : []));
+      const hit = matchNamed(listed, instant?.name ?? query);
+      if (!hit?.id) {
+        return { error: `I did not find a pipeline named "${instant?.name ?? query}".` };
+      }
+      const stage = instant?.stage;
+      if (!stage) {
+        return { error: "Say the stage, like move Jane to Engaging in Outbound." };
+      }
+      const contactId = contact.id;
+      const pipelineId = hit.id;
+      const entry = runners.findPipelineEntry
+        ? await runners.findPipelineEntry(pipelineId, contactId)
+        : null;
+      if (!entry?.id) {
+        return { error: `${contact.name ?? query} is not in ${hit.name ?? instant?.name ?? "that pipeline"}.` };
+      }
+      const entryId = entry.id;
+      return write("update_pipeline_entry", { pipelineId, entryId, stage }, async () => {
+        const result = runners.updatePipelineEntry
+          ? await runners.updatePipelineEntry(pipelineId, entryId, { stage })
+          : { error: "Pipeline stage update is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), who: contact.name ?? query, name: hit.name ?? instant?.name, stage };
+        }
+        return result;
+      });
+    }
+    case "save_email_context": {
+      const found =
+        prefetch && typeof prefetch === "object" && prefetch !== null && !("crm" in prefetch)
+          ? prefetch
+          : prefetch && typeof prefetch === "object" && prefetch !== null && "crm" in prefetch
+            ? (prefetch as { crm: unknown }).crm
+            : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const body = instant?.note?.trim();
+      if (!body) return { error: "Say the email after a colon, like save this email on Jane: following up." };
+      const contactId = contact.id;
+      const subject = instant?.subject?.trim();
+      const run = async () => {
+        const result = runners.saveEmail
+          ? await runners.saveEmail({ contactId, subject, body })
+          : { error: "Email save is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), name: contact.name ?? query, subject };
+        }
+        return result;
+      };
+      if (subject) {
+        return write(
+          "save_email_context",
+          { contactId, direction: "OUTBOUND", savedAsContext: true, subject, body },
+          run,
+        );
+      }
+      return write(
+        "save_email_context",
+        { contactId, direction: "OUTBOUND", savedAsContext: true, body },
+        run,
+      );
+    }
+    case "get_swarm_run": {
+      const listed =
+        prefetch && typeof prefetch === "object"
+          ? prefetch
+          : await (runners.listSwarmRuns ? runners.listSwarmRuns() : []);
+      const hit = matchSwarm(listed, instant?.name ?? query);
+      if (!hit?.id) {
+        return { error: query ? `I did not find a swarm run for "${query}".` : "There are no swarm runs yet." };
+      }
+      return runners.getSwarmRun
+        ? runners.getSwarmRun(hit.id)
+        : { error: "Swarm run get is unavailable." };
     }
     case "get_segment":
     case "get_pipeline":

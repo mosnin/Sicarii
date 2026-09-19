@@ -594,6 +594,13 @@ Scalar now does that on `/api/agent`:
     (enrichment omitted on contact batches). Instant `sync Jane's last
     call` and `log a 12 minute call with Jane` skip TypeSafe and run
     `sync_call` / `log_call` under auto-mode.
+34. Provenance re-verify field clear/restore goes through
+    `getContactFieldSnapshot` / `updateContact`. Bulk existing-domain
+    checks use `findEntityIdsByDomains`. Research-schedule targets go
+    through `getContact` / `getEntity`. Instant `move Jane to Engaging
+    in Outbound`, `save this email on Jane: following up`, and `show
+    swarm run dentists` skip TypeSafe and run `update_pipeline_entry` /
+    `save_email_context` / `get_swarm_run` under auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

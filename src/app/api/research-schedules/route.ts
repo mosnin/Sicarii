@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, getContact, getEntity } from "@/lib/crm-operations";
 import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 // GET /api/research-schedules - list all schedules for the current user.
@@ -55,14 +55,20 @@ export async function POST(req: NextRequest) {
     // A target must belong to the caller - never let a schedule reference another
     // user's entity/contact by id.
     if (body.targetId) {
-      const owned =
-        body.targetType === "contact"
-          ? await prisma.contact.findFirst({ where: { id: body.targetId, userId: user.id }, select: { id: true } })
-          : body.targetType === "entity"
-            ? await prisma.entity.findFirst({ where: { id: body.targetId, userId: user.id }, select: { id: true } })
-            : null;
-      if (!owned) {
-        return NextResponse.json({ error: "Invalid target" }, { status: 400 });
+      try {
+        if (body.targetType === "contact") {
+          await getContact(user.id, body.targetId, {
+            includeEnrichment: false,
+            includeChannelHistory: false,
+          });
+        } else if (body.targetType === "entity") {
+          await getEntity(user.id, body.targetId, { includeEnrichment: false });
+        } else {
+          return NextResponse.json({ error: "Invalid target" }, { status: 400 });
+        }
+      } catch (e) {
+        if (e instanceof OpError) return NextResponse.json({ error: "Invalid target" }, { status: 400 });
+        throw e;
       }
     }
 

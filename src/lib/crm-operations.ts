@@ -726,6 +726,14 @@ export async function getContact(
   return contact;
 }
 
+/** Cron/re-verify lookup: id only, then the caller writes via updateContact. */
+export async function getContactFieldSnapshot(id: string) {
+  return prisma.contact.findUnique({
+    where: { id },
+    select: { userId: true, email: true, phone: true, linkedin: true },
+  });
+}
+
 async function assertEntityOwned(userId: string, entityId: string) {
   const entity = await prisma.entity.findUnique({ where: { id: entityId } });
   if (!entity || entity.userId !== userId) throw new OpError("Invalid entity", 400);

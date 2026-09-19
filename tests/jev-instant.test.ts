@@ -127,6 +127,30 @@ describe("classifyInstant", () => {
       query: "Jane",
       note: "talked pricing",
     });
+    expect(classifyInstant("move Jane to Engaging in Outbound")).toMatchObject({
+      tool: "update_pipeline_entry",
+      query: "Jane",
+      name: "Outbound",
+      stage: "ENGAGING",
+    });
+    expect(classifyInstant("move Jane to won")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      status: "WON",
+    });
+    expect(classifyInstant("save this email on Jane: following up next week")).toMatchObject({
+      tool: "save_email_context",
+      query: "Jane",
+      note: "following up next week",
+    });
+    expect(classifyInstant("show swarm run dentists")).toMatchObject({
+      tool: "get_swarm_run",
+      query: "dentists",
+    });
+    expect(classifyInstant("show the last swarm run")).toMatchObject({
+      tool: "get_swarm_run",
+      query: "",
+    });
     expect(classifyInstant("autopilot status")).toMatchObject({ tool: "get_autopilot_status" });
     expect(classifyInstant("show emails for Jane")).toMatchObject({
       tool: "list_emails",

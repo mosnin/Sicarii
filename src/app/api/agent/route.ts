@@ -92,6 +92,7 @@ import {
   removeSegmentMember,
   removePipelineEntry,
   updatePipelineEntry,
+  findPipelineEntryByContact,
 } from "@/lib/field-operations";
 import { getProvenanceMap } from "@/lib/provenance";
 import { enrichContactField } from "@/lib/contact-enrich";
@@ -929,7 +930,7 @@ export async function POST(req: Request) {
             ? listSegments(userId).catch(() => null)
           : instant?.tool === "list_pipelines"
             ? listPipelines(userId).catch(() => null)
-          : instant?.tool === "list_swarm_runs"
+          : instant?.tool === "list_swarm_runs" || instant?.tool === "get_swarm_run"
             ? listSwarmRuns(userId).catch(() => null)
           : instant?.tool === "list_recent_discoveries"
             ? listRecentDiscoveries(userId).catch(() => null)
@@ -945,9 +946,10 @@ export async function POST(req: Request) {
               instant?.tool === "update_contact" ||
               instant?.tool === "log_outreach" ||
               instant?.tool === "sync_call" ||
-              instant?.tool === "log_call"
+              instant?.tool === "log_call" ||
+              instant?.tool === "save_email_context"
             ? searchCrm(userId, instant.query).catch(() => null)
-          : instant?.tool === "add_to_pipeline"
+          : instant?.tool === "add_to_pipeline" || instant?.tool === "update_pipeline_entry"
             ? Promise.all([
                 searchCrm(userId, instant.query),
                 listPipelines(userId),
@@ -1053,6 +1055,19 @@ export async function POST(req: Request) {
         updatePipeline: (id, patch) => updatePipeline(userId, id, patch),
         syncCall: (logId) => syncContactCall(userId, logId),
         logCall: (input) => saveCall(userId, { ...input, direction: "OUTBOUND" }),
+        updatePipelineEntry: (pipelineId, entryId, patch) =>
+          updatePipelineEntry(userId, pipelineId, entryId, { stage: patch.stage }),
+        findPipelineEntry: (pipelineId, contactId) =>
+          findPipelineEntryByContact(userId, pipelineId, contactId).catch(() => null),
+        saveEmail: (input) =>
+          saveEmail(userId, {
+            contactId: input.contactId,
+            body: input.body,
+            ...(input.subject ? { subject: input.subject } : {}),
+            direction: "OUTBOUND",
+            savedAsContext: true,
+          }),
+        getSwarmRun: (id) => getSwarmRun(userId, id),
         listEmails: (contactId) => listContactEmails(userId, contactId),
         listActivities: (input) => listActivities(userId, input),
         listContactCalls: (contactId) => listContactCalls(userId, contactId),

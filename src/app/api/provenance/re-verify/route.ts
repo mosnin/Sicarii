@@ -28,6 +28,7 @@ import {
 } from "@/lib/provenance";
 import { enrichContactField } from "@/lib/contact-enrich";
 import type { Field } from "@/lib/contact-enrich";
+import { getContactFieldSnapshot, updateContact } from "@/lib/crm-operations";
 
 const ENRICHABLE_CONTACT_FIELDS: Field[] = ["linkedin", "email", "phone"];
 
@@ -62,18 +63,15 @@ export async function POST(req: NextRequest) {
     try {
       if (row.recordType === "contact" && (ENRICHABLE_CONTACT_FIELDS as string[]).includes(row.field)) {
         // Look up which user owns this contact so we can call the metered path.
-        const contact = await prisma.contact.findUnique({
-          where: { id: row.recordId },
-          select: { userId: true, email: true, phone: true, linkedin: true },
-        });
+        const contact = await getContactFieldSnapshot(row.recordId);
         if (!contact) {
           // Record is gone - clean up the orphan provenance row.
           await prisma.fieldProvenance.delete({ where: { id: row.id } }).catch(() => {});
           continue;
         }
 
-        // Safe cast: we only process enrichable contact fields (email/phone/linkedin).
-        const existingValue = (contact as Record<string, string | null>)[row.field] ?? null;
+        const field = row.field as Field;
+        const existingValue = contact[field] ?? null;
         // Only re-fetch if the field is actually still null or matches the
         // snapshot (if a human has since manually updated it to a different
         // value, leave it alone).
@@ -92,14 +90,11 @@ export async function POST(req: NextRequest) {
         // (it no-ops when the field is already set). Only do this when
         // the field exactly matches what we stored - safety guard.
         if (existingValue && snapshotStillMatches) {
-          await prisma.contact.update({
-            where: { id: row.recordId },
-            data: { [row.field]: null },
-          });
+          await updateContact(contact.userId, row.recordId, { [field]: null });
         }
 
         try {
-          const result = await enrichContactField(contact.userId, row.recordId, row.field as Field);
+          const result = await enrichContactField(contact.userId, row.recordId, field);
           if (result.value) {
             refreshed++;
             // resolveProvenanceAfterVerify is already called inside
@@ -114,10 +109,7 @@ export async function POST(req: NextRequest) {
           // Re-enrich failed (out of credits, provider down, etc.) -
           // restore the old value to avoid data loss and mark stale again.
           if (existingValue) {
-            await prisma.contact.update({
-              where: { id: row.recordId },
-              data: { [row.field]: existingValue },
-            }).catch(() => {});
+            await updateContact(contact.userId, row.recordId, { [field]: existingValue }).catch(() => {});
           }
           errors++;
         }

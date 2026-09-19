@@ -227,6 +227,21 @@ export async function removePipelineEntry(userId: string, pipelineId: string, en
   return { ok: true };
 }
 
+export async function findPipelineEntryByContact(
+  userId: string,
+  pipelineId: string,
+  contactId: string,
+) {
+  const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
+  if (!pipeline || pipeline.userId !== userId) throw new OpError("Pipeline not found", 404);
+  const entry = await prisma.pipelineEntry.findFirst({
+    where: { userId, pipelineId, contactId },
+    select: { id: true, stage: true, contactId: true, pipelineId: true },
+  });
+  if (!entry) throw new OpError("Entry not found", 404);
+  return entry;
+}
+
 export async function updatePipelineEntry(
   userId: string,
   pipelineId: string,
