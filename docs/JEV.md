@@ -228,7 +228,7 @@ picks dimensions and tools. Code fills templates.
 
 | Surface | Jev job | Generator |
 |---------|---------|-----------|
-| `/api/agent` | `decideTurn` + `routeModel` + `runAutoModeThen` + quiet-ask + Foreman (incl. loop nouls) + output guard + `failureClass` retry | Qwen or OpenAI |
+| `/api/agent` | **Fast path:** one `decideTurn`, then code executes lookup/discover tools and streams prose. Chat model only when Jev grants generation. Active tool subset + Foreman on the generate path. Memory embed is off the critical path (`after`). | Qwen or OpenAI, and only if needed |
 | `/api/discover/route-intent` | Choice over the discovery catalog | heuristic params |
 | `/api/crm/fit-score` | Score per record vs product context | none |
 | `/api/crm/semantic-sort` | Noul per record vs intent | none |
@@ -378,7 +378,28 @@ Harness: LangChain "Building a Harness with Jev".
 
 ---
 
-## 14. Debts owed to reality
+## 14. Why this is faster (the X pattern)
+
+TypeSafe and LangChain show 70-500ms System One vs multi-second chat
+classify. The 10x people post is not "Jev sits next to gpt-4o." It is
+**Jev decides, code acts, the generator stays dark.**
+
+Scalar now does that on `/api/agent`:
+
+1. One `decideTurn` (no extra `routeModel` round trip).
+2. If the turn is lookup/analyze or a routed read/discover tool, `executeFastPath`
+   runs the ops layer and `fastPathResponse` streams the same UI SSE the chat
+   widget already understands. No `streamText`. No tool-schema tokens.
+3. If Jev grants generation, `pickActiveTools` hides unused tools so the
+   generator sees a smaller catalog.
+4. `storeMemory` embeddings run in `after()`, not before the first token.
+
+Lookups also work when OpenRouter/OpenAI are unset. Discovery still needs
+its provider keys.
+
+---
+
+## 15. Debts owed to reality
 
 - Live `TYPESAFE_API_KEY` and one observed 70-500ms route-intent.
 - `pnpm jevcal` on **labeled CRM turns** (not only fixtures); then pin

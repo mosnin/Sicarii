@@ -104,4 +104,16 @@ export {
   type PageGradeResult,
   type NamedCompany,
 } from "./gates";
+export {
+  canSkipGeneration,
+  executeFastPath,
+  pickActiveTools,
+  activeToolNames,
+  lookupQuery,
+  splitLocalQuery,
+  formatFastReply,
+  FAST_PATH_TOOLS,
+  type FastPathRunners,
+} from "./fast-path";
+export { fastPathResponse } from "./ui-stream";
 export { logJevDecision } from "./telemetry";
