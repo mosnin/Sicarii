@@ -29,6 +29,7 @@ import { keepNamedCompanies, rerankHits, runWardens, scanMalicious, triageInboun
 export { assertCleanArtifact } from "@/lib/clean-artifact";
 import { assertCleanArtifact } from "@/lib/clean-artifact";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { geocodeCached } from "@/lib/geocode";
 
 async function assertPaidOpRate(userId: string, op: string, limit: number) {
   if (process.env.VITEST) return;
@@ -1283,4 +1284,149 @@ export async function syncContactCall(userId: string, callLogId: string) {
       recordingUrl: detail.recordingUrl ?? call.recordingUrl,
     },
   });
+}
+
+/* ------------------------ Geo, export, cleanup ------------------------ */
+
+export const GEO_MAP_LIMIT = 2000;
+export const MAX_EXPORT_ROWS = 10_000;
+export const DEFAULT_IMPORT_SOURCES = ["synthoz-webhook"];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Stamp lat/lng on one owned entity after a Nominatim (or cache) hit. */
+export async function applyEntityGeocode(userId: string, entityId: string, location: string) {
+  const { result } = await geocodeCached(location);
+  return updateEntity(userId, entityId, {
+    lat: result?.lat ?? null,
+    lng: result?.lng ?? null,
+    geocodedAt: new Date(),
+  });
+}
+
+/** Backfill coordinates for entities that have a location but no lat/lng. */
+export async function geocodeEntities(userId: string, take = 20) {
+  const batch = await prisma.entity.findMany({
+    where: { userId, lat: null, geocodedAt: null, location: { not: null } },
+    select: { id: true, location: true },
+    take: clampListLimit(take, 50),
+  });
+
+  let geocoded = 0;
+  for (const e of batch) {
+    if (!e.location) {
+      await updateEntity(userId, e.id, { geocodedAt: new Date() });
+      continue;
+    }
+    const { result, cached } = await geocodeCached(e.location);
+    await updateEntity(userId, e.id, {
+      lat: result?.lat ?? null,
+      lng: result?.lng ?? null,
+      geocodedAt: new Date(),
+    });
+    if (result) geocoded++;
+    if (!cached) await sleep(1100);
+  }
+
+  const remaining = await prisma.entity.count({
+    where: { userId, lat: null, geocodedAt: null, location: { not: null } },
+  });
+  return { geocoded, processed: batch.length, remaining };
+}
+
+export async function listGeoEntities(userId: string) {
+  const [entities, missing] = await Promise.all([
+    prisma.entity.findMany({
+      where: { userId, lat: { not: null }, lng: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        lat: true,
+        lng: true,
+        location: true,
+        domain: true,
+        industry: true,
+        logoUrl: true,
+      },
+      take: GEO_MAP_LIMIT,
+    }),
+    prisma.entity.count({
+      where: { userId, lat: null, geocodedAt: null, location: { not: null } },
+    }),
+  ]);
+  return { entities, missing };
+}
+
+export function listContactsExport(userId: string) {
+  return prisma.contact.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      company: true,
+      title: true,
+      website: true,
+      linkedin: true,
+      twitter: true,
+      instagram: true,
+      facebook: true,
+      location: true,
+      status: true,
+      source: true,
+      tags: true,
+      notes: true,
+      createdAt: true,
+      entity: { select: { name: true } },
+    },
+    take: MAX_EXPORT_ROWS,
+  });
+}
+
+export function listEntitiesExport(userId: string) {
+  return prisma.entity.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    select: {
+      name: true,
+      domain: true,
+      website: true,
+      phone: true,
+      industry: true,
+      location: true,
+      size: true,
+      status: true,
+      source: true,
+      tags: true,
+      notes: true,
+      createdAt: true,
+    },
+    take: MAX_EXPORT_ROWS,
+  });
+}
+
+export function sanitizeImportSources(
+  raw: unknown,
+  fallback: string[] = DEFAULT_IMPORT_SOURCES,
+): string[] {
+  if (!Array.isArray(raw) || raw.length === 0 || !raw.every((s) => typeof s === "string")) {
+    return fallback;
+  }
+  return [...new Set((raw as string[]).filter((s) => s.length > 0 && s.length <= 100))].slice(0, 50);
+}
+
+/** Bulk-delete the caller's entities and contacts that came from auto-import sources. */
+export async function deleteImportedBySource(userId: string, sources: unknown) {
+  const clean = sanitizeImportSources(sources);
+  if (clean.length === 0) return { deletedContacts: 0, deletedEntities: 0, sources: clean };
+  const [contacts, entities] = await prisma.$transaction([
+    prisma.contact.deleteMany({ where: { userId, source: { in: clean } } }),
+    prisma.entity.deleteMany({ where: { userId, source: { in: clean } } }),
+  ]);
+  return {
+    deletedContacts: contacts.count,
+    deletedEntities: entities.count,
+    sources: clean,
+  };
 }

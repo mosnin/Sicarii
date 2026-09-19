@@ -81,6 +81,20 @@ export async function removeSegmentMember(userId: string, segmentId: string, con
   return { ok: true };
 }
 
+export async function addToSegment(userId: string, segmentId: string, contactIds: string[]) {
+  const segment = await prisma.segment.findUnique({ where: { id: segmentId } });
+  if (!segment || segment.userId !== userId) throw new OpError("Segment not found", 404);
+  const unique = [...new Set(contactIds.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 500);
+  if (unique.length === 0) throw new OpError("No contacts to add", 400);
+  const owned = await prisma.contact.findMany({ where: { userId, id: { in: unique } }, select: { id: true } });
+  if (owned.length === 0) throw new OpError("No contacts to add", 400);
+  const res = await prisma.contactSegment.createMany({
+    data: owned.map((c) => ({ segmentId, contactId: c.id })),
+    skipDuplicates: true,
+  });
+  return { added: res.count, name: segment.name };
+}
+
 // Smart segment: vector-match the closest eligible prospects to a goal.
 // Embeds up to ~200 candidate contacts plus the goal via OpenAI in one call
 // (see buildSegmentMatches / src/lib/segment-build.ts) - gate on credits

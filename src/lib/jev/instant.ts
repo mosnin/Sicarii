@@ -30,6 +30,25 @@ const CONTACT_STATUS_WORDS: Record<string, NonNullable<InstantRoute["status"]>> 
   archived: "ARCHIVED",
 };
 
+function parseAddToField(text: string): {
+  query: string;
+  name: string;
+  tool: "add_to_pipeline" | "add_to_segment";
+} | null {
+  const m = text.match(
+    /^(please\s+)?(add|put)\s+(.+?)\s+(?:to|into|in)\s+(?:the\s+)?(.+?)\s+(pipeline|segment)\b/i,
+  );
+  if (!m?.[3] || !m[4] || !m[5]) return null;
+  const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const name = m[4].replace(/\b(the|a|an)\b/gi, " ").replace(/\s+/g, " ").trim();
+  if (!query || !name || query.length > 80 || name.length > 80) return null;
+  return {
+    query,
+    name,
+    tool: m[5].toLowerCase() === "segment" ? "add_to_segment" : "add_to_pipeline",
+  };
+}
+
 function parseStatusUpdate(text: string): { query: string; status: NonNullable<InstantRoute["status"]> } | null {
   const m = text.match(
     /^(please\s+)?(mark|set|move)\s+(.+?)\s+(as|to)\s+(new|enriched|contacted|replied|qualified|won|lost|archived)\b/i,
@@ -330,6 +349,15 @@ export function classifyInstant(
       tool: "update_contact",
       query: statusUpdate.query,
       status: statusUpdate.status,
+      source: "instant",
+    };
+  }
+  const addToField = parseAddToField(text);
+  if (addToField && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: addToField.tool,
+      query: addToField.query,
+      name: addToField.name,
       source: "instant",
     };
   }

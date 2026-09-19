@@ -83,6 +83,7 @@ import {
   updateSegment,
   deleteSegment,
   addToPipeline,
+  addToSegment,
   deletePipeline,
   pipelineMetrics,
   buildSmartSegment,
@@ -698,6 +699,14 @@ export async function POST(req: Request) {
       }),
       execute: ({ pipelineId, ...input }) => exec(() => addToPipeline(userId, pipelineId, input)),
     }),
+    add_to_segment: tool({
+      description: "Add contacts to an existing segment.",
+      inputSchema: z.object({
+        segmentId: z.string(),
+        contactIds: z.array(z.string()).max(500),
+      }),
+      execute: ({ segmentId, contactIds }) => exec(() => addToSegment(userId, segmentId, contactIds)),
+    }),
     delete_pipeline: tool({
       description: "Delete a pipeline and its entries.",
       inputSchema: z.object({ id: z.string() }),
@@ -861,6 +870,7 @@ export async function POST(req: Request) {
     update_segment: "Rename a segment or change its goal.",
     delete_segment: "Delete a segment.",
     add_to_pipeline: "Add contacts or a segment to a pipeline.",
+    add_to_segment: "Add contacts to a segment.",
     delete_pipeline: "Delete a pipeline.",
     pipeline_metrics: "Stage and deal-score totals for a pipeline.",
     get_swarm_run: "Show one swarm run's breakdown.",
@@ -911,6 +921,16 @@ export async function POST(req: Request) {
             ? listEntities(userId, instant.query || undefined).catch(() => null)
           : instant?.tool === "get_contact" || instant?.tool === "update_contact"
             ? searchCrm(userId, instant.query).catch(() => null)
+          : instant?.tool === "add_to_pipeline"
+            ? Promise.all([
+                searchCrm(userId, instant.query),
+                listPipelines(userId),
+              ]).then(([crm, fields]) => ({ crm, fields })).catch(() => null)
+          : instant?.tool === "add_to_segment"
+            ? Promise.all([
+                searchCrm(userId, instant.query),
+                listSegments(userId),
+              ]).then(([crm, fields]) => ({ crm, fields })).catch(() => null)
           : instant?.tool === "get_pipeline" || instant?.tool === "pipeline_metrics"
             ? listPipelines(userId).catch(() => null)
           : instant?.tool === "pause_autopilot"
@@ -1042,6 +1062,8 @@ export async function POST(req: Request) {
               | "ARCHIVED"
               | undefined,
           }),
+        addToPipeline: (pipelineId, contactIds) => addToPipeline(userId, pipelineId, { contactIds }),
+        addToSegment: (segmentId, contactIds) => addToSegment(userId, segmentId, contactIds),
         pipelineMetrics: (id) => pipelineMetrics(userId, id),
         remember: async (content) => {
           const remembered = await storeMemory(userId, "message", content);

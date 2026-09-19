@@ -40,6 +40,7 @@ describe("agent Jev parity", () => {
     expect(AUTO_MODE_TOOLS.has("update_segment")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("delete_segment")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("add_to_pipeline")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("add_to_segment")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("delete_pipeline")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("remember")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("build_smart_segment")).toBe(true);
@@ -76,6 +77,7 @@ describe("agent Jev parity", () => {
     expect(source).toContain("get_swarm_run:");
     expect(source).toContain("update_segment:");
     expect(source).toContain("add_to_pipeline:");
+    expect(source).toContain("add_to_segment:");
     expect(source).toContain("remember:");
     expect(source).toContain("get_provenance:");
     expect(source).toContain("build_smart_segment:");

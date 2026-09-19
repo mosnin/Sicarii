@@ -55,6 +55,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "get_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_contact", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_contact", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "add_to_pipeline", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "add_to_segment", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });
@@ -255,6 +257,20 @@ describe("formatFastReply", () => {
         payload: { name: "Jane", status: "CONTACTED" },
       }),
     ).toBe("Marked Jane as contacted.");
+    expect(
+      formatFastReply({
+        tool: "add_to_pipeline",
+        query: "Jane",
+        payload: { who: "Jane", name: "Outbound", added: 1 },
+      }),
+    ).toBe("Added Jane to Outbound.");
+    expect(
+      formatFastReply({
+        tool: "add_to_segment",
+        query: "Jane",
+        payload: { who: "Jane", name: "ICP", added: 0 },
+      }),
+    ).toBe("Jane is already in ICP.");
   });
 
   it("explains an empty CRM lookup", () => {

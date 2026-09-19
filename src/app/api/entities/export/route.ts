@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { toCsv } from "@/lib/csv";
+import { OpError, listEntitiesExport } from "@/lib/crm-operations";
 
 const COLUMNS = [
   "name",
@@ -29,24 +29,7 @@ export async function GET() {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    const entities = await prisma.entity.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "asc" },
-      select: {
-        name: true,
-        domain: true,
-        website: true,
-        phone: true,
-        industry: true,
-        location: true,
-        size: true,
-        status: true,
-        source: true,
-        tags: true,
-        notes: true,
-        createdAt: true,
-      },
-    });
+    const entities = await listEntitiesExport(user.id);
 
     const rows = entities.map(({ tags, ...rest }) => ({
       ...rest,
@@ -64,6 +47,7 @@ export async function GET() {
     });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("GET /api/entities/export", e);
     return NextResponse.json({ error: "Failed to export entities" }, { status: 500 });
   }

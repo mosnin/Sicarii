@@ -109,6 +109,7 @@ import {
   getPipeline,
   createPipeline,
   addToPipeline,
+  addToSegment,
   deletePipeline,
   removePipelineEntry,
   updatePipelineEntry,
@@ -209,6 +210,7 @@ const MCP_AUTO_MODE_BUCKETS = new Set([
   "build_segment",
   "create_pipeline",
   "add_to_pipeline",
+  "add_to_segment",
   "update_pipeline_entry",
   "autopilot_propose",
   "remember",
@@ -890,6 +892,15 @@ const handler = createMcpHandler(
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ pipelineId, ...rest }, extra) =>
         gated(extra, "add_to_pipeline", 60, (userId) => addToPipeline(userId, pipelineId, rest), { pipelineId, ...rest } as Json),
+    );
+
+    server.tool(
+      "add_to_segment",
+      "Add contacts to an existing segment by id.",
+      { segmentId: z.string(), contactIds: z.array(z.string()).max(500) },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ segmentId, contactIds }, extra) =>
+        gated(extra, "add_to_segment", 60, (userId) => addToSegment(userId, segmentId, contactIds), { segmentId, contactIds } as Json),
     );
 
     server.tool(

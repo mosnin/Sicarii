@@ -65,6 +65,16 @@ describe("classifyInstant", () => {
       tool: "update_contact",
       status: "QUALIFIED",
     });
+    expect(classifyInstant("add Jane to the Outbound pipeline")).toMatchObject({
+      tool: "add_to_pipeline",
+      query: "Jane",
+      name: "Outbound",
+    });
+    expect(classifyInstant("put Jane in the ICP segment")).toMatchObject({
+      tool: "add_to_segment",
+      query: "Jane",
+      name: "ICP",
+    });
     expect(classifyInstant("show my pipelines")).toMatchObject({ tool: "list_pipelines" });
     expect(classifyInstant("show the Outbound pipeline")).toMatchObject({
       tool: "get_pipeline",

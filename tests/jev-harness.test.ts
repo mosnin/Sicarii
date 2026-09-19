@@ -182,6 +182,7 @@ describe("isWriteTool", () => {
   it("treats segment and pipeline deletes as writes", () => {
     expect(isWriteTool("delete_segment")).toBe(true);
     expect(isWriteTool("remove_segment_member")).toBe(true);
+    expect(isWriteTool("add_to_segment")).toBe(true);
     expect(isWriteTool("remove_pipeline_entry")).toBe(true);
     expect(isWriteTool("pause_autopilot")).toBe(true);
     expect(isWriteTool("build_smart_segment")).toBe(true);

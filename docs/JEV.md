@@ -568,6 +568,13 @@ Scalar now does that on `/api/agent`:
     `addToPipeline` / `updatePipelineEntry`. Instant `mark Jane as
     contacted` / `set Jane to qualified` skip TypeSafe, resolve the
     contact, and run `update_contact` under auto-mode.
+29. HTTP contact emails/calls, CSV export, map geo, geocode backfill,
+    create-entity background geocode, and imported-source cleanup go through
+    the ops layer (`getContact` / `listContactCalls` / `list*Export` /
+    `listGeoEntities` / `geocodeEntities` / `applyEntityGeocode` /
+    `deleteImportedBySource`). Instant `add Jane to the Outbound pipeline`
+    / `put Jane in the ICP segment` skip TypeSafe and run `add_to_pipeline`
+    / `add_to_segment` under auto-mode. Agent and MCP gain `add_to_segment`.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

@@ -31,6 +31,8 @@ import {
   clampListLimit,
   DEFAULT_LIST_LIMIT,
   MAX_LIST_LIMIT,
+  sanitizeImportSources,
+  DEFAULT_IMPORT_SOURCES,
 } from "@/lib/crm-operations";
 
 beforeEach(() => {
@@ -141,5 +143,18 @@ describe("listContactEmails", () => {
     const call = contactEmailFindMany.mock.calls[0][0];
     expect(call.where).toEqual({ contactId: "c1" });
     expect(call.orderBy).toEqual({ sentAt: "desc" });
+  });
+});
+
+describe("sanitizeImportSources", () => {
+  it("falls back to the webhook source when the body is missing or dirty", () => {
+    expect(sanitizeImportSources(undefined)).toEqual(DEFAULT_IMPORT_SOURCES);
+    expect(sanitizeImportSources([])).toEqual(DEFAULT_IMPORT_SOURCES);
+    expect(sanitizeImportSources([1, "ok"])).toEqual(DEFAULT_IMPORT_SOURCES);
+  });
+  it("keeps unique short strings and caps at 50", () => {
+    expect(sanitizeImportSources(["ok", "ok", "x".repeat(101), "also"])).toEqual(["ok", "also"]);
+    const many = Array.from({ length: 60 }, (_, i) => `src-${i}`);
+    expect(sanitizeImportSources(many)).toHaveLength(50);
   });
 });

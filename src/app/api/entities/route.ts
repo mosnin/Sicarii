@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { geocodeCached } from "@/lib/geocode";
-import { OpError, listEntities, createEntity, deleteEntities } from "@/lib/crm-operations";
+import { OpError, listEntities, createEntity, deleteEntities, applyEntityGeocode } from "@/lib/crm-operations";
 
 const ENTITY_STATUSES = ["NEW", "ENRICHED", "ARCHIVED"] as const;
 
@@ -81,13 +79,7 @@ export async function POST(req: NextRequest) {
     if (entity.location) {
       after(async () => {
         try {
-          const { result } = await geocodeCached(entity.location!);
-          await prisma.entity.update({
-            where: { id: entity.id },
-            data: result
-              ? { lat: result.lat, lng: result.lng, geocodedAt: new Date() }
-              : { geocodedAt: new Date() },
-          });
+          await applyEntityGeocode(user.id, entity.id, entity.location!);
         } catch {
           /* leave it for the map backfill loop */
         }

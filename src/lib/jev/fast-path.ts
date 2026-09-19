@@ -48,6 +48,8 @@ export const FAST_PATH_TOOLS = new Set([
   "get_entity",
   "get_contact",
   "update_contact",
+  "add_to_pipeline",
+  "add_to_segment",
   "pipeline_metrics",
   "remember",
   "get_provenance",
@@ -445,6 +447,14 @@ export function formatFastReply(input: {
     return `Marked ${who} as ${status}.`;
   }
 
+  if (tool === "add_to_pipeline" || tool === "add_to_segment") {
+    const r = payload as { name?: string | null; who?: string | null; added?: number };
+    const who = r.who ?? query;
+    const dest = r.name ?? (tool === "add_to_segment" ? "the segment" : "the pipeline");
+    if (r.added === 0) return `${who} is already in ${dest}.`;
+    return `Added ${who} to ${dest}.`;
+  }
+
   if (tool === "pipeline_metrics") {
     const r = payload as {
       name?: string;
@@ -558,6 +568,8 @@ export type FastPathRunners = {
   getEntity?: (id: string) => Promise<unknown>;
   getContact?: (id: string) => Promise<unknown>;
   updateContact?: (id: string, patch: { status?: string }) => Promise<unknown>;
+  addToPipeline?: (pipelineId: string, contactIds: string[]) => Promise<unknown>;
+  addToSegment?: (segmentId: string, contactIds: string[]) => Promise<unknown>;
   pipelineMetrics?: (id: string) => Promise<unknown>;
   remember?: (content: string) => Promise<unknown>;
   getProvenance?: (recordType: "contact" | "entity", recordId: string) => Promise<unknown>;
@@ -828,6 +840,57 @@ async function runTool(
           ? runners.updateContact(contactId, { status })
           : { error: "Contact update is unavailable." },
       );
+    }
+    case "add_to_pipeline":
+    case "add_to_segment": {
+      const packed =
+        prefetch && typeof prefetch === "object" && prefetch !== null && "crm" in prefetch
+          ? (prefetch as { crm: unknown; fields?: unknown })
+          : null;
+      const found = packed?.crm ?? (prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query));
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const listed =
+        packed?.fields ??
+        (tool === "add_to_segment"
+          ? await (runners.listSegments ? runners.listSegments() : [])
+          : await (runners.listPipelines ? runners.listPipelines() : []));
+      const hit = matchNamed(listed, instant?.name ?? query);
+      if (!hit?.id) {
+        return {
+          error:
+            tool === "add_to_segment"
+              ? `I did not find a segment named "${instant?.name ?? query}".`
+              : `I did not find a pipeline named "${instant?.name ?? query}".`,
+        };
+      }
+      const contactId = contact.id;
+      const fieldId = hit.id;
+      const who = contact.name ?? query;
+      const dest = hit.name ?? instant?.name ?? query;
+      if (tool === "add_to_segment") {
+        return write("add_to_segment", { segmentId: fieldId, contactIds: [contactId] }, async () => {
+          const result = runners.addToSegment
+            ? await runners.addToSegment(fieldId, [contactId])
+            : { error: "Segment add is unavailable." };
+          if (result && typeof result === "object" && !("error" in result)) {
+            return { ...(result as object), who, name: dest };
+          }
+          return result;
+        });
+      }
+      return write("add_to_pipeline", { pipelineId: fieldId, contactIds: [contactId] }, async () => {
+        const result = runners.addToPipeline
+          ? await runners.addToPipeline(fieldId, [contactId])
+          : { error: "Pipeline add is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), who, name: dest };
+        }
+        return result;
+      });
     }
     case "get_segment":
     case "get_pipeline":
