@@ -731,6 +731,11 @@ Scalar now does that on `/api/agent`:
     and in-app `create_contact` already accept them). `add a note
     on Jane: follow up Q4` stays an activity write. Ops still scan
     the notes before persist.
+61. Instant `verify citations: claim: ... quote: ...` skips TypeSafe
+    and skips the generator. Only structured claim/quote pairs are
+    instant. `verify Acme` stays a company legal verify. Unstructured
+    `verify citations: hello` is not instant. In-app and MCP already
+    expose `jev_verify_citations`.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

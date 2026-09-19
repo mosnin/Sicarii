@@ -219,6 +219,25 @@ describe("classifyInstant", () => {
       tool: "jev_grade_page",
       note: "Scalar finds the right companies",
     });
+    expect(
+      classifyInstant(
+        "verify citations: claim: Acme raised Series B quote: Acme announced Series B url: https://news.example/acme",
+      ),
+    ).toMatchObject({
+      tool: "jev_verify_citations",
+      claims: [
+        {
+          claim: "Acme raised Series B",
+          quote: "Acme announced Series B",
+          url: "https://news.example/acme",
+        },
+      ],
+    });
+    expect(classifyInstant("verify citations: hello")).toBeNull();
+    expect(classifyInstant("verify Acme")).toMatchObject({
+      tool: "verify_entity",
+      query: "Acme",
+    });
     expect(classifyInstant("score Acme")).toMatchObject({
       tool: "score_fit",
       query: "Acme",

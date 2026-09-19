@@ -39,6 +39,7 @@ export type InstantRoute = {
   staleDays?: number;
   cadence?: "hourly" | "daily" | "weekly";
   totalCredits?: number;
+  claims?: Array<{ claim: string; quote: string; url?: string }>;
   detail?: boolean;
   source: "instant";
 };
@@ -1039,6 +1040,38 @@ function parseJevGrade(text: string): { note: string } | null {
   return { note };
 }
 
+function parseJevVerify(text: string): {
+  claims: Array<{ claim: string; quote: string; url?: string }>;
+} | null {
+  if (
+    !/^(please\s+)?verify (this |the following )?(citations?|claim\/quote pairs?)[:\-]/i.test(
+      text,
+    )
+  ) {
+    return null;
+  }
+  const body = text.replace(
+    /^(please\s+)?verify (this |the following )?(citations?|claim\/quote pairs?)[:\-]\s*/i,
+    "",
+  );
+  const claims: Array<{ claim: string; quote: string; url?: string }> = [];
+  const blocks = body.split(/(?=claim\s*:)/i);
+  for (const block of blocks) {
+    const claim = block.match(/\bclaim\s*:\s*(.+?)(?=\s+(?:quote|url)\s*:|$)/i)?.[1]?.trim();
+    const quote = block.match(/\bquote\s*:\s*(.+?)(?=\s+(?:claim|url)\s*:|$)/i)?.[1]?.trim();
+    const url = block.match(/\burl\s*:\s*(\S+)/i)?.[1]?.trim();
+    if (!claim || !quote) continue;
+    if (claim.length > 400 || quote.length > 600) continue;
+    claims.push({
+      claim,
+      quote,
+      ...(url && url.length <= 500 ? { url } : {}),
+    });
+    if (claims.length >= 20) break;
+  }
+  return claims.length > 0 ? { claims } : null;
+}
+
 function parseMaps(text: string): { query: string; location: string } | null {
   if (!/\b(dentist|dentists|restaurant|restaurants|salon|salons|lawyer|lawyers|plumber|plumbers|clinic|gym|coffee|barbershop|local)\b/i.test(
     text,
@@ -1101,6 +1134,20 @@ export function classifyInstant(
   const jevGrade = parseJevGrade(text);
   if (jevGrade && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
     return { tool: "jev_grade_page", query: jevGrade.note.slice(0, 80), note: jevGrade.note, source: "instant" };
+  }
+  if (
+    /^(please\s+)?verify (this |the following )?(citations?|claim\/quote pairs?)[:\-]/i.test(text)
+  ) {
+    const jevVerify = parseJevVerify(text);
+    if (!jevVerify || COMPOUND.test(text) || DESTRUCTIVE.test(text) || SEND.test(text)) {
+      return null;
+    }
+    return {
+      tool: "jev_verify_citations",
+      query: jevVerify.claims[0]?.claim.slice(0, 80) ?? "citations",
+      claims: jevVerify.claims,
+      source: "instant",
+    };
   }
 
   // COMPOSE matches "draft" / "breakup", so these reads must win first.

@@ -78,6 +78,7 @@ export const FAST_PATH_TOOLS = new Set([
   "jev_triage",
   "jev_scan_malicious",
   "jev_grade_page",
+  "jev_verify_citations",
   "score_fit",
   "count_entities",
   "count_contacts",
@@ -518,6 +519,19 @@ export function formatFastReply(input: {
     const r = payload as { score?: number; grade?: string };
     if (r.score == null) return "Jev could not grade that page.";
     return `Page score ${r.score}${r.grade ? ` (${r.grade})` : ""}.`;
+  }
+
+  if (tool === "jev_verify_citations") {
+    const err = payload as { error?: string };
+    if (err && typeof err === "object" && !Array.isArray(err) && err.error) {
+      return err.error;
+    }
+    const rows = Array.isArray(payload)
+      ? (payload as Array<{ keep?: boolean; relation?: string }>)
+      : [];
+    if (rows.length === 0) return "Jev could not verify those citations.";
+    const kept = rows.filter((r) => r.keep).length;
+    return `Checked ${rows.length} citation${rows.length === 1 ? "" : "s"}: ${kept} kept, ${rows.length - kept} dropped.`;
   }
 
   if (tool === "score_fit") {
@@ -1314,6 +1328,18 @@ async function runTool(
       const text = instant?.note?.trim() || query;
       if (!text) return { error: "Say the page after a colon, like grade this page: ..." };
       return runners.gradePage ? runners.gradePage(text) : { error: "Jev could not grade that page." };
+    }
+    case "jev_verify_citations": {
+      const claims = instant?.claims ?? [];
+      if (claims.length === 0) {
+        return {
+          error:
+            "Say claim: and quote: after a colon, like verify citations: claim: Acme raised Series B quote: Acme announced Series B.",
+        };
+      }
+      return runners.verifyCitations
+        ? runners.verifyCitations(claims)
+        : { error: "Jev could not verify those citations." };
     }
     case "score_fit": {
       const found =

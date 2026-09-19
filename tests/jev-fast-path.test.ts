@@ -56,6 +56,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "jev_triage", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "jev_scan_malicious", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "jev_grade_page", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "jev_verify_citations", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "score_fit", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "count_entities", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "count_contacts", confidence: 0.94 })).toBe(true);
@@ -666,6 +667,41 @@ describe("executeFastPath", () => {
     });
     expect(result?.tool).toBe("create_contact");
     expect(captured).toMatchObject({ name: "Jane", notes: "follow up Q4" });
+  });
+
+  it("verifies structured citations without generation", async () => {
+    let captured: Array<{ claim: string; quote: string; url?: string }> | null = null;
+    const result = await executeFastPath({
+      message: "verify citations: claim: Acme raised Series B quote: Acme announced Series B",
+      decision: { kind: "tool", tool: "jev_verify_citations", confidence: 0.94 },
+      instant: {
+        tool: "jev_verify_citations",
+        query: "Acme raised Series B",
+        claims: [{ claim: "Acme raised Series B", quote: "Acme announced Series B" }],
+        source: "instant",
+      },
+      runners: {
+        searchCrm: async () => ({ entities: [], contacts: [] }),
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
+        verifyCitations: async (claims) => {
+          captured = claims;
+          return [{ index: 0, relation: "supports", supports: 0.9, keep: true }];
+        },
+      },
+    });
+    expect(result?.tool).toBe("jev_verify_citations");
+    expect(result?.text).toBe("Checked 1 citation: 1 kept, 0 dropped.");
+    expect(captured).toEqual([{ claim: "Acme raised Series B", quote: "Acme announced Series B" }]);
   });
 
   it("reuses a speculative CRM prefetch", async () => {
