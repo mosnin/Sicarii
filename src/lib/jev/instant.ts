@@ -25,6 +25,7 @@ export type InstantRoute = {
   subject?: string;
   industry?: string;
   website?: string;
+  description?: string;
   linkedin?: string;
   twitter?: string;
   facebook?: string;
@@ -280,24 +281,76 @@ function isSocialHandleOrUrl(value: string, hosts: string[], handle = /^@?[A-Za-
   });
 }
 
+function parseQualifiedContactPatch(text: string): {
+  query: string;
+  website?: string;
+  location?: string;
+} | null {
+  const prefixed = text.match(
+    /^(please\s+)?(set|update|change)\s+(?:the\s+)?(?:contact|person)\s+(.+?)(?:'s)?\s+(website|location)\s+to\s+(.+)$/i,
+  );
+  const suffixed = text.match(
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(?:contact|person)\s+(website|location)\s+to\s+(.+)$/i,
+  );
+  const query = (prefixed?.[3] ?? suffixed?.[3] ?? "")
+    .replace(/\b(the|a|an|contact|person)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const field = (prefixed?.[4] ?? suffixed?.[4] ?? "").toLowerCase();
+  const value = (prefixed?.[5] ?? suffixed?.[5] ?? "").trim().replace(/[.!?]+$/, "");
+  if (!query || !value || query.length > 80) return null;
+  if (field === "website") {
+    if (value.length > 500) return null;
+    return { query, website: value };
+  }
+  if (field === "location") {
+    if (value.length > 200) return null;
+    return { query, location: value };
+  }
+  return null;
+}
+
+function parseEntityPhone(text: string): { query: string; phone: string } | null {
+  const prefixed = text.match(
+    /^(please\s+)?(set|update|change)\s+(?:the\s+)?(?:company|entity)\s+(.+?)(?:'s)?\s+phone\s+to\s+(.+)$/i,
+  );
+  const suffixed = text.match(
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(?:company|entity)\s+phone\s+to\s+(.+)$/i,
+  );
+  const query = (prefixed?.[3] ?? suffixed?.[3] ?? "")
+    .replace(/\b(the|a|an|company|business|entity)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const phone = (prefixed?.[4] ?? suffixed?.[4] ?? "").trim().replace(/[.!?]+$/, "");
+  if (!query || !phone || query.length > 80 || phone.length < 5 || phone.length > 50) return null;
+  return { query, phone };
+}
+
 function parseEntityPatch(text: string): {
   query: string;
   industry?: string;
   location?: string;
   domain?: string;
   website?: string;
+  description?: string;
 } | null {
   const m = text.match(
-    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(industry|location|domain|website)\s+to\s+(.+)$/i,
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(industry|location|domain|website|description)\s+to\s+(.+)$/i,
   );
   if (!m?.[3] || !m[4] || !m[5]) return null;
   const query = m[3]
     .replace(/\b(the|a|an|company|business|entity)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
-  const value = m[5].trim().replace(/[.!?]+$/, "");
-  if (!query || !value || query.length > 80) return null;
   const field = m[4].toLowerCase();
+  if (!query || query.length > 80) return null;
+  if (field === "description") {
+    const description = m[5].trim();
+    if (!description || description.length > 2000) return null;
+    return { query, description };
+  }
+  const value = m[5].trim().replace(/[.!?]+$/, "");
+  if (!value) return null;
   if (field === "website") {
     if (value.length > 500) return null;
     return { query, website: value };
@@ -840,6 +893,25 @@ export function classifyInstant(
       source: "instant",
     };
   }
+  const qualifiedContact = parseQualifiedContactPatch(text);
+  if (qualifiedContact && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_contact",
+      query: qualifiedContact.query,
+      website: qualifiedContact.website,
+      location: qualifiedContact.location,
+      source: "instant",
+    };
+  }
+  const entityPhone = parseEntityPhone(text);
+  if (entityPhone && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_entity",
+      query: entityPhone.query,
+      phone: entityPhone.phone,
+      source: "instant",
+    };
+  }
   const entityPatch = parseEntityPatch(text);
   if (entityPatch && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
     return {
@@ -849,6 +921,7 @@ export function classifyInstant(
       location: entityPatch.location,
       domain: entityPatch.domain,
       website: entityPatch.website,
+      description: entityPatch.description,
       source: "instant",
     };
   }

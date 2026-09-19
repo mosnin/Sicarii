@@ -140,6 +140,26 @@ describe("classifyInstant", () => {
       query: "Acme",
       note: "Series B fintech",
     });
+    expect(classifyInstant("set Acme description to B2B payments for clinics")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      description: "B2B payments for clinics",
+    });
+    expect(classifyInstant("set company Acme phone to 512-555-0100")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      phone: "512-555-0100",
+    });
+    expect(classifyInstant("set contact Jane website to https://jane.dev")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      website: "https://jane.dev",
+    });
+    expect(classifyInstant("set Jane contact location to Austin")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      location: "Austin",
+    });
     expect(classifyInstant("triage this: thanks for the intro last week")).toMatchObject({
       tool: "jev_triage",
       note: "thanks for the intro last week",

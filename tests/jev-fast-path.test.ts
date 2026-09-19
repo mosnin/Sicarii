@@ -307,6 +307,20 @@ describe("formatFastReply", () => {
     ).toBe("Set Acme's notes.");
     expect(
       formatFastReply({
+        tool: "update_entity",
+        query: "Acme",
+        payload: { name: "Acme", description: "B2B payments for clinics" },
+      }),
+    ).toBe("Set Acme's description.");
+    expect(
+      formatFastReply({
+        tool: "update_contact",
+        query: "Jane",
+        payload: { name: "Jane", website: "https://jane.dev" },
+      }),
+    ).toBe("Set Jane's website to https://jane.dev.");
+    expect(
+      formatFastReply({
         tool: "add_to_pipeline",
         query: "Jane",
         payload: { who: "Jane", name: "Outbound", added: 1 },

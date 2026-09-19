@@ -653,6 +653,10 @@ Scalar now does that on `/api/agent`:
     / `countContacts`.
 44. Instant `set Jane facebook to https://facebook.com/jane` and
     `set Jane instagram to https://instagram.com/jane` skip TypeSafe.
+45. In-app `update_entity` / `update_contact` accept website and the
+    other MCP leftover fields. Instant `set Acme description to ...`,
+    `set company Acme phone to ...`, `set contact Jane website to ...`,
+    and `set Jane contact location to Austin` skip TypeSafe.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

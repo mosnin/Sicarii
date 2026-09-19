@@ -99,5 +99,7 @@ describe("agent Jev parity", () => {
     expect(source).toContain("jev_scan_malicious:");
     expect(source).toContain("jev_grade_page:");
     expect(source).toContain("jev_verify_citations:");
+    expect(source).toMatch(/update_entity:[\s\S]*website: z\.string\(\)/);
+    expect(source).toMatch(/update_contact:[\s\S]*website: z\.string\(\)/);
   });
 });

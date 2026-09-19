@@ -589,6 +589,8 @@ export function formatFastReply(input: {
       twitter?: string | null;
       facebook?: string | null;
       instagram?: string | null;
+      website?: string | null;
+      location?: string | null;
       notes?: string | null;
     };
     const who = r.name ?? query;
@@ -600,6 +602,8 @@ export function formatFastReply(input: {
     if (r.twitter && !r.status) return `Set ${who}'s X to ${r.twitter}.`;
     if (r.facebook && !r.status) return `Set ${who}'s Facebook to ${r.facebook}.`;
     if (r.instagram && !r.status) return `Set ${who}'s Instagram to ${r.instagram}.`;
+    if (r.website && !r.status) return `Set ${who}'s website to ${r.website}.`;
+    if (r.location && !r.status) return `Set ${who}'s location to ${r.location}.`;
     if (r.notes && !r.status) return `Set ${who}'s notes.`;
     if (r.dealScore != null && !r.status) {
       return `Set ${who}'s deal score to ${r.dealScore}.`;
@@ -616,9 +620,19 @@ export function formatFastReply(input: {
       domain?: string | null;
       website?: string | null;
       notes?: string | null;
+      description?: string | null;
+      phone?: string | null;
     };
     const who = r.name ?? query;
-    if (r.notes && !r.industry && !r.location && !r.domain && !r.website) return `Set ${who}'s notes.`;
+    if (r.notes && !r.industry && !r.location && !r.domain && !r.website && !r.description && !r.phone) {
+      return `Set ${who}'s notes.`;
+    }
+    if (r.description && !r.industry && !r.location && !r.domain && !r.website && !r.phone) {
+      return `Set ${who}'s description.`;
+    }
+    if (r.phone && !r.industry && !r.location && !r.domain && !r.website) {
+      return `Set ${who}'s phone to ${r.phone}.`;
+    }
     if (r.location && !r.industry && !r.domain && !r.website) return `Set ${who}'s location to ${r.location}.`;
     if (r.domain && !r.industry && !r.location && !r.website) return `Set ${who}'s domain to ${r.domain}.`;
     if (r.website && !r.industry && !r.location && !r.domain) return `Set ${who}'s website to ${r.website}.`;
@@ -739,7 +753,15 @@ export type FastPathRunners = {
   enrichEntity: (id: string) => Promise<unknown>;
   updateEntity?: (
     id: string,
-    patch: { industry?: string; location?: string; domain?: string; website?: string; notes?: string },
+    patch: {
+      industry?: string;
+      location?: string;
+      domain?: string;
+      website?: string;
+      notes?: string;
+      description?: string;
+      phone?: string;
+    },
   ) => Promise<unknown>;
   listEntities?: (q?: string) => Promise<unknown>;
   listContacts?: (q?: string) => Promise<unknown>;
@@ -815,6 +837,8 @@ export type FastPathRunners = {
       twitter?: string;
       facebook?: string;
       instagram?: string;
+      website?: string;
+      location?: string;
       notes?: string;
     },
   ) => Promise<unknown>;
@@ -1013,7 +1037,9 @@ async function runTool(
       const domain = instant?.domain?.trim();
       const website = instant?.website?.trim();
       const notes = instant?.note?.trim();
-      if (!industry && !location && !domain && !website && !notes) {
+      const description = instant?.description?.trim();
+      const phone = instant?.phone?.trim();
+      if (!industry && !location && !domain && !website && !notes && !description && !phone) {
         return { error: "Say the field, like set Acme industry to SaaS." };
       }
       const entityId = first.id;
@@ -1023,6 +1049,8 @@ async function runTool(
         ...(domain ? { domain } : {}),
         ...(website ? { website } : {}),
         ...(notes ? { notes } : {}),
+        ...(description ? { description } : {}),
+        ...(phone ? { phone } : {}),
       };
       return write("update_entity", { id: entityId, ...patch }, async () => {
         const result = runners.updateEntity
@@ -1187,6 +1215,8 @@ async function runTool(
       const facebook = instant?.facebook?.trim();
       const instagram = instant?.instagram?.trim();
       const notes = instant?.note?.trim();
+      const website = instant?.website?.trim();
+      const location = instant?.location?.trim();
       if (
         !status &&
         dealScore == null &&
@@ -1198,7 +1228,9 @@ async function runTool(
         !twitter &&
         !facebook &&
         !instagram &&
-        !notes
+        !notes &&
+        !website &&
+        !location
       ) {
         return { error: "Say which status to set (contacted, qualified, won, lost)." };
       }
@@ -1214,6 +1246,8 @@ async function runTool(
       if (facebook) args.facebook = facebook;
       if (instagram) args.instagram = instagram;
       if (notes) args.notes = notes;
+      if (website) args.website = website;
+      if (location) args.location = location;
       const patch = {
         ...(status ? { status } : {}),
         ...(dealScore != null ? { dealScore } : {}),
@@ -1226,6 +1260,8 @@ async function runTool(
         ...(facebook ? { facebook } : {}),
         ...(instagram ? { instagram } : {}),
         ...(notes ? { notes } : {}),
+        ...(website ? { website } : {}),
+        ...(location ? { location } : {}),
       };
       return write("update_contact", args, async () => {
         const result = runners.updateContact
