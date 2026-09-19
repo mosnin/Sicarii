@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { OpError, listContacts, createContact } from "@/lib/crm-operations";
+import { OpError, listContacts, createContact, deleteContacts } from "@/lib/crm-operations";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -115,10 +114,8 @@ export async function DELETE(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Provide ids: string[]" }, { status: 400 });
     }
-    const result = await prisma.contact.deleteMany({
-      where: { userId: user.id, id: { in: parsed.data.ids } },
-    });
-    return NextResponse.json({ deleted: result.count });
+    const result = await deleteContacts(user.id, parsed.data.ids);
+    return NextResponse.json({ deleted: result.deleted });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("DELETE /api/contacts", e);

@@ -32,6 +32,8 @@ describe("classifyInstant", () => {
     expect(classifyInstant("who needs a follow-up")).toMatchObject({ tool: "list_due_followups" });
     expect(classifyInstant("who should I follow up with")).toMatchObject({ tool: "list_due_followups" });
     expect(classifyInstant("how many credits do I have")).toMatchObject({ tool: "get_billing" });
+    expect(classifyInstant("what do credits cost")).toMatchObject({ tool: "get_usage" });
+    expect(classifyInstant("show the price list")).toMatchObject({ tool: "get_usage" });
     expect(classifyInstant("show variant stats")).toMatchObject({ tool: "list_variant_stats" });
     expect(classifyInstant("pick a subject line")).toMatchObject({
       tool: "select_variant",

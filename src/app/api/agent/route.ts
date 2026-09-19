@@ -45,6 +45,7 @@ import {
   getEntity,
   createEntity,
   updateEntity,
+  deleteEntity,
   enrichEntity,
   findCompanies,
   discoverLocalLeads,
@@ -55,6 +56,7 @@ import {
   getContact,
   createContact,
   updateContact,
+  deleteContact,
   saveSocialMessage,
   searchCrm,
   listDueFollowups,
@@ -98,7 +100,7 @@ import { storeMemory, recallMemory } from "@/lib/memory";
 import { proposeAutopilotPlan, getAutopilotStatus, pauseAutopilotPlan } from "@/lib/autopilot-operations";
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats, createVariant } from "@/lib/variant-operations";
-import { CREDIT_COSTS, getBilling } from "@/lib/credits";
+import { CREDIT_COSTS, getBilling, getUsage } from "@/lib/credits";
 
 export const maxDuration = 60;
 
@@ -311,6 +313,11 @@ export async function POST(req: Request) {
       inputSchema: z.object({ id: z.string() }),
       execute: ({ id }) => exec(() => enrichEntity(userId, id)),
     }),
+    delete_entity: tool({
+      description: "Permanently delete a company. Contacts stay, unlinked.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: ({ id }) => exec(() => deleteEntity(userId, id)),
+    }),
     list_contacts: tool({
       description: "List people (contacts). Optional search query and status.",
       inputSchema: z.object({
@@ -346,6 +353,11 @@ export async function POST(req: Request) {
       }),
       execute: (args) =>
         exec(() => createContact(userId, { ...args, source: args.source || "agent" })),
+    }),
+    delete_contact: tool({
+      description: "Permanently delete a person from the CRM.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: ({ id }) => exec(() => deleteContact(userId, id)),
     }),
     update_contact: tool({
       description: "Update fields on a contact (including status, entity, social profiles).",
@@ -470,6 +482,11 @@ export async function POST(req: Request) {
       description: "Show remaining credits and the current plan.",
       inputSchema: z.object({}),
       execute: () => exec(() => getBilling(userId)),
+    }),
+    get_usage: tool({
+      description: "Price list: credit costs per action, plans, and current balance.",
+      inputSchema: z.object({}),
+      execute: () => exec(() => getUsage(userId)),
     }),
     list_segments: tool({
       description: "List saved segments (named contact groups) with member counts.",
@@ -814,6 +831,9 @@ export async function POST(req: Request) {
     propose_autopilot_plan: "Propose a budgeted autopilot plan.",
     list_due_followups: "List contacts due for a follow-up.",
     get_billing: "Show remaining credits and plan.",
+    get_usage: "Show the credit price list and current balance.",
+    delete_entity: "Permanently delete a company.",
+    delete_contact: "Permanently delete a person.",
     search_web: "Research pages on the web.",
     list_entities: "List companies.",
     list_contacts: "List people.",
@@ -867,8 +887,10 @@ export async function POST(req: Request) {
   const prefetch =
     instant?.tool === "list_due_followups"
       ? listDueFollowups(userId, {}).catch(() => null)
-      : instant?.tool === "get_billing"
+          : instant?.tool === "get_billing"
         ? getBilling(userId).catch(() => null)
+          : instant?.tool === "get_usage"
+            ? getUsage(userId).catch(() => null)
         : instant?.tool === "get_autopilot_status"
           ? getAutopilotStatus(userId).catch(() => null)
           : instant?.tool === "enrich_entity"
@@ -967,6 +989,7 @@ export async function POST(req: Request) {
         listContacts: (q) => listContacts(userId, { q }),
         listDueFollowups: () => listDueFollowups(userId, {}),
         getBilling: () => getBilling(userId),
+        getUsage: () => getUsage(userId),
         listVariantStats: () => listVariantStats(userId, {}),
         selectVariant: (kind) => selectVariant(userId, { kind }),
         listSegments: () => listSegments(userId),

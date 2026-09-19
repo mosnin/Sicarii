@@ -453,3 +453,21 @@ export async function getBilling(userId: string): Promise<{
   if (!user) throw new OpError("User not found", 404);
   return user;
 }
+
+/** Price list plus current balance. Shared by MCP get_usage and the in-app agent. */
+export async function getUsage(userId: string) {
+  const b = await getBilling(userId);
+  return {
+    creditsRemaining: b.creditsRemaining,
+    plan: b.plan,
+    usdPerCredit: 0.01,
+    actionCosts: CREDIT_COSTS,
+    plans: (Object.keys(PLAN_USD) as PaidPlanName[]).map((plan) => ({
+      plan,
+      usd: PLAN_USD[plan],
+      credits: PLANS[plan].credits,
+      period: "30 days" as const,
+    })),
+    topUp: { minCredits: 100, maxCredits: 100000 },
+  };
+}

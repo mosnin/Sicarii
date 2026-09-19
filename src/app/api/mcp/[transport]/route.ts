@@ -84,6 +84,7 @@ import {
   spendCredits,
   ensureCredits,
   getBilling,
+  getUsage,
   addCredits,
   alreadyCredited,
   applyPlan,
@@ -1024,21 +1025,8 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (_args, extra) =>
         run(async () => {
-          const b = await getBilling(userIdFrom(extra));
-          return {
-            creditsRemaining: b.creditsRemaining,
-            plan: b.plan,
-            usdPerCredit: USD_PER_CREDIT,
-            actionCosts: CREDIT_COSTS,
-            plans: (Object.keys(PLAN_USD) as PaidPlanName[]).map((plan) => ({
-              plan,
-              usd: PLAN_USD[plan],
-              credits: PLANS[plan].credits,
-              period: "30 days",
-            })),
-            topUp: { minCredits: 100, maxCredits: 100000 },
-            paymentsConfigured: isX402Configured(),
-          };
+          const usage = await getUsage(userIdFrom(extra));
+          return { ...usage, usdPerCredit: USD_PER_CREDIT, paymentsConfigured: isX402Configured() };
         }),
     );
     server.tool(

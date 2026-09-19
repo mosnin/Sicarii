@@ -28,6 +28,7 @@ export const FAST_PATH_TOOLS = new Set([
   "enrich_entity",
   "list_due_followups",
   "get_billing",
+  "get_usage",
   "list_variant_stats",
   "select_variant",
   "list_segments",
@@ -275,6 +276,19 @@ export function formatFastReply(input: {
     return `You have ${b.creditsRemaining ?? 0} credits remaining on the ${b.plan ?? "current"} plan.`;
   }
 
+  if (tool === "get_usage") {
+    const u = payload as {
+      creditsRemaining?: number;
+      plan?: string;
+      actionCosts?: Record<string, number>;
+    };
+    const costs = Object.entries(u.actionCosts ?? {})
+      .slice(0, 6)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(", ");
+    return `You have ${u.creditsRemaining ?? 0} credits on the ${u.plan ?? "current"} plan.${costs ? ` Costs: ${costs}.` : ""}`;
+  }
+
   if (tool === "list_variant_stats") {
     const rows = Array.isArray(payload) ? payload : [];
     if (rows.length === 0) return "There are no outreach variants yet. Create a subject line or opener first.";
@@ -487,6 +501,7 @@ export type FastPathRunners = {
   listContacts?: (q?: string) => Promise<unknown>;
   listDueFollowups?: () => Promise<unknown>;
   getBilling?: () => Promise<unknown>;
+  getUsage?: () => Promise<unknown>;
   listVariantStats?: () => Promise<unknown>;
   selectVariant?: (kind: "SUBJECT" | "OPENER") => Promise<unknown>;
   listSegments?: () => Promise<unknown>;
@@ -552,6 +567,7 @@ export async function executeFastPath(input: {
         tool === "list_contacts" ||
         tool === "list_due_followups" ||
         tool === "get_billing" ||
+        tool === "get_usage" ||
         tool === "get_autopilot_status" ||
         tool === "list_variant_stats" ||
         tool === "list_segments" ||
@@ -667,6 +683,10 @@ async function runTool(
       return runners.listDueFollowups ? runners.listDueFollowups() : [];
     case "get_billing":
       return runners.getBilling ? runners.getBilling() : { creditsRemaining: 0, plan: "unknown" };
+    case "get_usage":
+      return runners.getUsage
+        ? runners.getUsage()
+        : { creditsRemaining: 0, plan: "unknown", actionCosts: {} };
     case "list_variant_stats":
       return runners.listVariantStats ? runners.listVariantStats() : [];
     case "select_variant": {

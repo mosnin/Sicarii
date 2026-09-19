@@ -474,6 +474,16 @@ export function classifyInstant(
   }
 
   if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    (/\b(price list|credit costs?|action costs?)\b/i.test(text) ||
+      /\bwhat do (credits?|actions?|tools?) cost\b/i.test(text) ||
+      /\bhow much (does|do) .{0,40} cost\b/i.test(text))
+  ) {
+    return { tool: "get_usage", query: text, source: "instant" };
+  }
+
+  if (
     /\b(credits? remaining|credit balance|my credits|our credits|usage|billing)\b/i.test(text) ||
     /^(how many|what(?:'s| is)|show|check|get)\b.+\b(credits?|usage|balance)\b/i.test(text)
   ) {

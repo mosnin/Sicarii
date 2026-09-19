@@ -551,6 +551,12 @@ Scalar now does that on `/api/agent`:
     `verify_entity`, `detect_tech`, `remove_segment_member`,
     `remove_pipeline_entry`, and `update_pipeline_entry` match MCP and
     sit in auto-mode.
+26. HTTP deep-report persists through `updateEntity` / `createContact`.
+    Bulk company and contact deletes go through `deleteEntities` /
+    `deleteContacts`. Instant `what do credits cost` / `show the price
+    list` skip TypeSafe. Agent `get_usage`, `delete_entity`, and
+    `delete_contact` match MCP. Deletes stay off the instant path and
+    still pass auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

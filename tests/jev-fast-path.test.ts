@@ -51,6 +51,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "get_provenance", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "verify_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "detect_tech", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "get_usage", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });
 
@@ -222,6 +224,13 @@ describe("formatFastReply", () => {
         payload: { name: "Acme", tech: [{ name: "Next.js" }, { name: "Stripe" }] },
       }),
     ).toBe("Acme uses Next.js, Stripe.");
+    expect(
+      formatFastReply({
+        tool: "get_usage",
+        query: "price list",
+        payload: { creditsRemaining: 80, plan: "starter", actionCosts: { enrich: 8, find_companies: 12 } },
+      }),
+    ).toContain("Costs: enrich 8");
   });
 
   it("explains an empty CRM lookup", () => {

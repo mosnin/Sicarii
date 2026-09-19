@@ -177,6 +177,15 @@ export async function deleteEntity(userId: string, id: string) {
   return { ok: true };
 }
 
+export async function deleteEntities(userId: string, ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 500);
+  if (unique.length === 0) return { deleted: 0 };
+  const result = await prisma.entity.deleteMany({
+    where: { userId, id: { in: unique } },
+  });
+  return { deleted: result.count };
+}
+
 /** Enrich a business via Explorium using its domain; fills empty columns and
  *  stores firmographics under enrichment. Never persists null. */
 export async function enrichEntity(userId: string, id: string) {
@@ -762,6 +771,15 @@ export async function deleteContact(userId: string, id: string) {
     throw new OpError("Contact not found", 404);
   await prisma.contact.delete({ where: { id } });
   return { ok: true };
+}
+
+export async function deleteContacts(userId: string, ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 500);
+  if (unique.length === 0) return { deleted: 0 };
+  const result = await prisma.contact.deleteMany({
+    where: { userId, id: { in: unique } },
+  });
+  return { deleted: result.count };
 }
 
 /* --------------------------- Email context -------------------------- */

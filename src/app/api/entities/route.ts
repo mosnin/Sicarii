@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { geocodeCached } from "@/lib/geocode";
-import { OpError, listEntities, createEntity } from "@/lib/crm-operations";
+import { OpError, listEntities, createEntity, deleteEntities } from "@/lib/crm-operations";
 
 const ENTITY_STATUSES = ["NEW", "ENRICHED", "ARCHIVED"] as const;
 
@@ -115,10 +115,8 @@ export async function DELETE(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Provide ids: string[]" }, { status: 400 });
     }
-    const result = await prisma.entity.deleteMany({
-      where: { userId: user.id, id: { in: parsed.data.ids } },
-    });
-    return NextResponse.json({ deleted: result.count });
+    const result = await deleteEntities(user.id, parsed.data.ids);
+    return NextResponse.json({ deleted: result.deleted });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     console.error("DELETE /api/entities", e);

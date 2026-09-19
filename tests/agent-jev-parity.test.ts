@@ -49,6 +49,8 @@ describe("agent Jev parity", () => {
     expect(AUTO_MODE_TOOLS.has("remove_segment_member")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("remove_pipeline_entry")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("update_pipeline_entry")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("delete_entity")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("delete_contact")).toBe(true);
     expect(source).toContain("for (const name of AUTO_MODE_TOOLS)");
   });
 
@@ -84,5 +86,8 @@ describe("agent Jev parity", () => {
     expect(source).toContain("remove_segment_member:");
     expect(source).toContain("remove_pipeline_entry:");
     expect(source).toContain("update_pipeline_entry:");
+    expect(source).toContain("delete_entity:");
+    expect(source).toContain("delete_contact:");
+    expect(source).toContain("get_usage:");
   });
 });
