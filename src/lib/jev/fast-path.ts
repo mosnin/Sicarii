@@ -33,6 +33,7 @@ export const FAST_PATH_TOOLS = new Set([
   "list_variant_stats",
   "select_variant",
   "create_variant",
+  "draft_breakups",
   "update_entity",
   "log_social_message",
   "extract_contact_details",
@@ -245,6 +246,23 @@ export function formatFastReply(input: {
     const rows = Array.isArray(payload) ? payload : [];
     if (rows.length === 0) return "There are no breakup drafts waiting for review.";
     return `There ${rows.length === 1 ? "is 1 breakup draft" : `are ${rows.length} breakup drafts`} waiting for review on the dashboard.`;
+  }
+
+  if (tool === "draft_breakups") {
+    const r = payload as {
+      drafted?: number;
+      skipped?: number;
+      scanned?: number;
+      staleDays?: number;
+    };
+    if ((r.drafted ?? 0) === 0 && (r.skipped ?? 0) === 0) {
+      return "No stalled deals needed a breakup draft.";
+    }
+    const drafted = r.drafted ?? 0;
+    const skipped = r.skipped ?? 0;
+    const skip =
+      skipped > 0 ? `, skipped ${skipped} already pending` : "";
+    return `Drafted ${drafted} breakup email${drafted === 1 ? "" : "s"} for review${skip}.`;
   }
 
   if (tool === "get_autopilot_status") {
@@ -817,6 +835,7 @@ export type FastPathRunners = {
   listVariantStats?: () => Promise<unknown>;
   selectVariant?: (kind: "SUBJECT" | "OPENER") => Promise<unknown>;
   createVariant?: (kind: "SUBJECT" | "OPENER", text: string) => Promise<unknown>;
+  draftBreakups?: (input?: { staleDays?: number }) => Promise<unknown>;
   listSegments?: () => Promise<unknown>;
   listPipelines?: () => Promise<unknown>;
   listSwarmRuns?: () => Promise<unknown>;
@@ -1221,6 +1240,14 @@ async function runTool(
           return { ...(result as object), kind, text };
         }
         return result;
+      });
+    }
+    case "draft_breakups": {
+      const staleDays = instant?.staleDays;
+      return write("draft_breakups", staleDays != null ? { staleDays } : {}, async () => {
+        return runners.draftBreakups
+          ? runners.draftBreakups(staleDays != null ? { staleDays } : undefined)
+          : { error: "Breakup drafts are unavailable." };
       });
     }
     case "list_entities":

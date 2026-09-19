@@ -49,6 +49,13 @@ describe("classifyInstant", () => {
       query: "OPENER",
       note: "hey, saw your launch",
     });
+    expect(classifyInstant("draft breakups")).toMatchObject({ tool: "draft_breakups" });
+    expect(classifyInstant("draft breakup emails")).toMatchObject({ tool: "draft_breakups" });
+    expect(classifyInstant("draft breakups older than 21 days")).toMatchObject({
+      tool: "draft_breakups",
+      staleDays: 21,
+    });
+    expect(classifyInstant("draft a careful note")).toBeNull();
     expect(classifyInstant("log a linkedin message to Jane: thanks for the intro")).toMatchObject({
       tool: "log_social_message",
       query: "Jane",

@@ -683,6 +683,11 @@ Scalar now does that on `/api/agent`:
     of guessing. Workspace policy checks deny the write when TypeSafe
     is configured but the live call misses. Unconfigured local stays
     fail-open.
+51. Instant `draft breakups`, `draft breakup emails`, and
+    `draft breakups older than 21 days` skip TypeSafe and skip the
+    generator. Drafts still go through scanned ops and auto-mode.
+    `list pending drafts` stays a read. `draft a careful note` is not
+    instant.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

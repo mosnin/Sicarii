@@ -36,6 +36,7 @@ export type InstantRoute = {
   entityStatus?: "NEW" | "ENRICHED" | "ARCHIVED";
   crmSource?: string;
   tags?: string[];
+  staleDays?: number;
   detail?: boolean;
   source: "instant";
 };
@@ -533,6 +534,22 @@ function parseDealScore(text: string): { query: string; dealScore: number } | nu
   return { query, dealScore };
 }
 
+function parseDraftBreakups(text: string): { staleDays?: number } | null {
+  if (/\b(pending drafts?|draft queue)\b/i.test(text)) return null;
+  if (/^(please\s+)?(list|show)\b/i.test(text)) return null;
+  if (!/\bbreakup/i.test(text) && !/\bstalled deals?\b/i.test(text)) return null;
+  if (!/^(please\s+)?(draft|write|compose)\b/i.test(text)) return null;
+  if (SEND.test(text) || COMPOUND.test(text) || DESTRUCTIVE.test(text)) return null;
+  if (/\b(for|to|about)\s+[A-Z][a-z]+\b/.test(text)) return null;
+  if (/\ba breakup email\b/i.test(text) && !/\b(stalled|cold|stale)\b/i.test(text)) return null;
+  const days = text.match(/\b(\d{1,3})\s*-?\s*days?\b/i)?.[1];
+  const staleDays = days ? Number(days) : undefined;
+  if (staleDays != null && (!Number.isFinite(staleDays) || staleDays < 1 || staleDays > 365)) {
+    return null;
+  }
+  return staleDays != null ? { staleDays } : {};
+}
+
 function parseExtractContacts(text: string): { query: string } | null {
   if (!/\b(extract|scrape|pull)\b/i.test(text)) return null;
   if (!/\b(contacts?|emails?|phones?|socials?)\b/i.test(text)) return null;
@@ -929,6 +946,15 @@ export function classifyInstant(
       /^(list|show) (the )?(pending |breakup )?drafts\b/i.test(text))
   ) {
     return { tool: "list_pending_drafts", query: text, source: "instant" };
+  }
+  const draftBreakups = parseDraftBreakups(text);
+  if (draftBreakups) {
+    return {
+      tool: "draft_breakups",
+      query: text,
+      staleDays: draftBreakups.staleDays,
+      source: "instant",
+    };
   }
   if (
     !COMPOUND.test(text) &&

@@ -1140,6 +1140,7 @@ export async function POST(req: Request) {
         listVariantStats: () => listVariantStats(userId, {}),
         selectVariant: (kind) => selectVariant(userId, { kind }),
         createVariant: (kind, text) => createVariant(userId, { kind, text }),
+        draftBreakups: (input) => draftBreakups(userId, input ?? {}),
         listSegments: () => listSegments(userId),
         listPipelines: () => listPipelines(userId),
         listSwarmRuns: () => listSwarmRuns(userId),

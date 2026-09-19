@@ -75,6 +75,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "remove_pipeline_entry", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "remove_segment_member", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "create_variant", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "draft_breakups", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "log_social_message", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "extract_contact_details", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_entity", confidence: 0.94 })).toBe(true);
@@ -425,6 +426,20 @@ describe("formatFastReply", () => {
         payload: { name: "Acme", tags: ["enterprise"] },
       }),
     ).toBe("Tagged Acme as enterprise.");
+    expect(
+      formatFastReply({
+        tool: "draft_breakups",
+        query: "",
+        payload: { drafted: 3, skipped: 1, scanned: 4, staleDays: 14 },
+      }),
+    ).toBe("Drafted 3 breakup emails for review, skipped 1 already pending.");
+    expect(
+      formatFastReply({
+        tool: "draft_breakups",
+        query: "",
+        payload: { drafted: 0, skipped: 0, scanned: 0 },
+      }),
+    ).toBe("No stalled deals needed a breakup draft.");
   });
 
   it("explains an empty CRM lookup", () => {
