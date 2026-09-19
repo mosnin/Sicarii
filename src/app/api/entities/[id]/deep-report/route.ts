@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, firecrawlSearch, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
-import { createContact, getEntity, OpError, updateEntity } from "@/lib/crm-operations";
+import { createContact, getEntity, listContactDedupKeys, OpError, updateEntity } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { scoreFitWithJev, verifyCitations } from "@/lib/jev";
 
@@ -195,10 +194,7 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
       .map((p) => (isMeaningful(p.email) ? p.email.trim().toLowerCase() : null))
       .filter((email): email is string => Boolean(email));
     const extraEmails = incomingEmails.length
-      ? await prisma.contact.findMany({
-          where: { userId: user.id, email: { in: incomingEmails } },
-          select: { email: true },
-        })
+      ? await listContactDedupKeys(user.id, { emails: incomingEmails })
       : [];
     const existingEmails = new Set([
       ...entity.contacts.map((c) => c.email?.toLowerCase()),

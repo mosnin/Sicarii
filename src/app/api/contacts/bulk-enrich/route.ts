@@ -1,12 +1,11 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
-import { OpError, updateContact } from "@/lib/crm-operations";
+import { OpError, listContactsByIds, updateContact } from "@/lib/crm-operations";
 import { spendCredits, hasCredits, type CreditAction } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
@@ -72,10 +71,7 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Provide ids: string[]" }, { status: 400 });
 
-    const contacts = await prisma.contact.findMany({
-      where: { userId: user.id, id: { in: parsed.data.ids } },
-      include: { entity: { select: { domain: true, website: true, name: true } } },
-    });
+    const contacts = await listContactsByIds(user.id, parsed.data.ids);
 
     const exaOn = isExaConfigured();
     const pipe0On = isPipe0Configured();

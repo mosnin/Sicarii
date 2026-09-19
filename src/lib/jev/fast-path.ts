@@ -55,6 +55,8 @@ export const FAST_PATH_TOOLS = new Set([
   "list_recent_discoveries",
   "update_segment",
   "update_pipeline",
+  "sync_call",
+  "log_call",
   "pipeline_metrics",
   "remember",
   "get_provenance",
@@ -367,6 +369,17 @@ export function formatFastReply(input: {
     return `Renamed ${query} to ${r.name ?? "the new name"}.`;
   }
 
+  if (tool === "sync_call") {
+    const r = payload as { name?: string | null; status?: string | null };
+    const who = r.name ?? query;
+    return `Synced ${who}'s last call${r.status ? ` (${r.status})` : ""}.`;
+  }
+
+  if (tool === "log_call") {
+    const r = payload as { name?: string | null };
+    return `Logged a call with ${r.name ?? query}.`;
+  }
+
   if (tool === "list_emails") {
     const rows = Array.isArray(payload) ? payload : [];
     if (rows.length === 0) return `No emails on file for "${query}".`;
@@ -593,6 +606,12 @@ export type FastPathRunners = {
   addActivity?: (input: { contactId?: string; entityId?: string; body: string }) => Promise<unknown>;
   updateSegment?: (id: string, patch: { name?: string }) => Promise<unknown>;
   updatePipeline?: (id: string, patch: { name?: string }) => Promise<unknown>;
+  syncCall?: (logId: string) => Promise<unknown>;
+  logCall?: (input: {
+    contactId: string;
+    summary?: string;
+    durationSec?: number;
+  }) => Promise<unknown>;
   listEmails?: (contactId: string) => Promise<unknown>;
   listActivities?: (input: { contactId?: string; entityId?: string }) => Promise<unknown>;
   listContactCalls?: (contactId: string) => Promise<unknown>;
@@ -1027,6 +1046,51 @@ async function runTool(
           ? runners.updatePipeline(fieldId, { name: nextName })
           : { error: "Pipeline rename is unavailable." },
       );
+    }
+    case "sync_call": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const calls = runners.listContactCalls ? await runners.listContactCalls(contact.id) : [];
+      const latest = Array.isArray(calls) ? (calls[0] as { id?: string; status?: string } | undefined) : undefined;
+      if (!latest?.id) {
+        return { error: `I do not have a logged call for ${contact.name ?? query} to sync.` };
+      }
+      const logId = latest.id;
+      return write("sync_call", { logId }, async () => {
+        const result = runners.syncCall
+          ? await runners.syncCall(logId)
+          : { error: "Call sync is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), name: contact.name ?? query };
+        }
+        return result;
+      });
+    }
+    case "log_call": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const contactId = contact.id;
+      const summary = instant?.note?.trim() || "Logged an outside call from chat.";
+      const durationSec = instant?.durationSec;
+      return write("log_call", { contactId, direction: "OUTBOUND", summary, durationSec: durationSec ?? null }, async () => {
+        const result = runners.logCall
+          ? await runners.logCall({ contactId, summary, durationSec })
+          : { error: "Call log is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), name: contact.name ?? query };
+        }
+        return result;
+      });
     }
     case "get_segment":
     case "get_pipeline":

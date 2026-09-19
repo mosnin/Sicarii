@@ -1559,3 +1559,26 @@ export async function findEntityByDomainOrName(
     where: { userId, name: { equals: name, mode: "insensitive" } },
   });
 }
+
+export async function listContactsByIds(userId: string, ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 25);
+  if (unique.length === 0) return [];
+  return prisma.contact.findMany({
+    where: { userId, id: { in: unique } },
+    include: { entity: { select: { domain: true, website: true, name: true } } },
+    omit: { enrichment: true },
+  });
+}
+
+export async function listEntitiesByIds(
+  userId: string,
+  ids: string[],
+  opts?: { includeEnrichment?: boolean },
+) {
+  const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(0, 25);
+  if (unique.length === 0) return [];
+  return prisma.entity.findMany({
+    where: { userId, id: { in: unique } },
+    ...(opts?.includeEnrichment === false ? { omit: { enrichment: true } } : {}),
+  });
+}

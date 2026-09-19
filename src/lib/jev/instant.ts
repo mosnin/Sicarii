@@ -17,6 +17,7 @@ export type InstantRoute = {
   status?: "NEW" | "ENRICHED" | "CONTACTED" | "REPLIED" | "QUALIFIED" | "WON" | "LOST" | "ARCHIVED";
   channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other";
   note?: string;
+  durationSec?: number;
   detail?: boolean;
   source: "instant";
 };
@@ -43,6 +44,43 @@ const OUTREACH_CHANNEL: Record<string, NonNullable<InstantRoute["channel"]>> = {
   linkedin: "linkedin",
   linkedined: "linkedin",
 };
+
+function parseSyncCall(text: string): { query: string } | null {
+  if (!/^(please\s+)?(sync|refresh)\b/i.test(text) || !/\bcall\b/i.test(text)) return null;
+  const query = text
+    .replace(/^(please\s+)?(sync|refresh)\s+/i, "")
+    .replace(/\b(the|a|an|contact|person|last|call|with|for)\b/gi, " ")
+    .replace(/'s\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!query || query.length > 80) return null;
+  return { query };
+}
+
+function parseOutsideCall(text: string): { query: string; note?: string; durationSec?: number } | null {
+  const timed = text.match(
+    /^(please\s+)?log (?:an? )?(\d+)[ -]?(minute|min|hour|hr)s? (?:outside )?call with (.+?)(?:[:\-]\s*(.+))?$/i,
+  );
+  const outside = text.match(
+    /^(please\s+)?log (?:an? )?outside call with (.+?)(?:[:\-]\s*(.+))?$/i,
+  );
+  if (timed?.[4]) {
+    const n = Number(timed[2]);
+    const unit = (timed[3] ?? "minute").toLowerCase();
+    const durationSec = Number.isFinite(n) ? Math.round(n * (unit.startsWith("h") ? 3600 : 60)) : undefined;
+    const query = timed[4].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+    const note = timed[5]?.trim();
+    if (!query || query.length > 80) return null;
+    return { query, note, durationSec };
+  }
+  if (outside?.[2]) {
+    const query = outside[2].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+    const note = outside[3]?.trim();
+    if (!query || query.length > 80) return null;
+    return { query, note };
+  }
+  return null;
+}
 
 function parseRenameField(text: string): {
   query: string;
@@ -432,6 +470,20 @@ export function classifyInstant(
       tool: rename.tool,
       query: rename.query,
       name: rename.name,
+      source: "instant",
+    };
+  }
+  const syncCall = parseSyncCall(text);
+  if (syncCall && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return { tool: "sync_call", query: syncCall.query, source: "instant" };
+  }
+  const outsideCall = parseOutsideCall(text);
+  if (outsideCall && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "log_call",
+      query: outsideCall.query,
+      note: outsideCall.note,
+      durationSec: outsideCall.durationSec,
       source: "instant",
     };
   }

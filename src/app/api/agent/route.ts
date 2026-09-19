@@ -943,7 +943,9 @@ export async function POST(req: Request) {
             ? listEntities(userId, instant.query || undefined).catch(() => null)
           : instant?.tool === "get_contact" ||
               instant?.tool === "update_contact" ||
-              instant?.tool === "log_outreach"
+              instant?.tool === "log_outreach" ||
+              instant?.tool === "sync_call" ||
+              instant?.tool === "log_call"
             ? searchCrm(userId, instant.query).catch(() => null)
           : instant?.tool === "add_to_pipeline"
             ? Promise.all([
@@ -1049,6 +1051,8 @@ export async function POST(req: Request) {
         addActivity: (input) => addActivity(userId, { ...input, kind: "note" }),
         updateSegment: (id, patch) => updateSegment(userId, id, patch),
         updatePipeline: (id, patch) => updatePipeline(userId, id, patch),
+        syncCall: (logId) => syncContactCall(userId, logId),
+        logCall: (input) => saveCall(userId, { ...input, direction: "OUTBOUND" }),
         listEmails: (contactId) => listContactEmails(userId, contactId),
         listActivities: (input) => listActivities(userId, input),
         listContactCalls: (contactId) => listContactCalls(userId, contactId),

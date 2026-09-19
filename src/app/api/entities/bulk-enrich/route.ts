@@ -2,11 +2,10 @@ export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
-import { OpError, updateEntity } from "@/lib/crm-operations";
+import { OpError, listEntitiesByIds, updateEntity } from "@/lib/crm-operations";
 import { spendCredits, hasCredits } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
@@ -25,9 +24,7 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Provide ids: string[]" }, { status: 400 });
 
-    const entities = await prisma.entity.findMany({
-      where: { userId: user.id, id: { in: parsed.data.ids } },
-    });
+    const entities = await listEntitiesByIds(user.id, parsed.data.ids);
 
     let enriched = 0;
     let skipped = 0;

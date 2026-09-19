@@ -113,6 +113,20 @@ describe("classifyInstant", () => {
       query: "ICP",
       name: "Dentists",
     });
+    expect(classifyInstant("sync Jane's last call")).toMatchObject({
+      tool: "sync_call",
+      query: "Jane",
+    });
+    expect(classifyInstant("log a 12 minute call with Jane")).toMatchObject({
+      tool: "log_call",
+      query: "Jane",
+      durationSec: 720,
+    });
+    expect(classifyInstant("log an outside call with Jane: talked pricing")).toMatchObject({
+      tool: "log_call",
+      query: "Jane",
+      note: "talked pricing",
+    });
     expect(classifyInstant("autopilot status")).toMatchObject({ tool: "get_autopilot_status" });
     expect(classifyInstant("show emails for Jane")).toMatchObject({
       tool: "list_emails",

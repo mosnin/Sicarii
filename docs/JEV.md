@@ -589,6 +589,11 @@ Scalar now does that on `/api/agent`:
     `findEntityByDomainOrName`. Instant `rename the Outbound pipeline to
     Enterprise` / `rename segment ICP to Dentists` skip TypeSafe.
     Agent and MCP gain `update_pipeline`.
+33. Bulk-enrich and deep-report leftover reads go through
+    `listContactsByIds` / `listEntitiesByIds` / `listContactDedupKeys`
+    (enrichment omitted on contact batches). Instant `sync Jane's last
+    call` and `log a 12 minute call with Jane` skip TypeSafe and run
+    `sync_call` / `log_call` under auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

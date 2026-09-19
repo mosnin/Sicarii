@@ -62,6 +62,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "list_recent_discoveries", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_segment", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_pipeline", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "sync_call", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "log_call", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });
@@ -304,6 +306,20 @@ describe("formatFastReply", () => {
         payload: { name: "Enterprise" },
       }),
     ).toBe("Renamed Outbound to Enterprise.");
+    expect(
+      formatFastReply({
+        tool: "sync_call",
+        query: "Jane",
+        payload: { name: "Jane", status: "completed" },
+      }),
+    ).toBe("Synced Jane's last call (completed).");
+    expect(
+      formatFastReply({
+        tool: "log_call",
+        query: "Jane",
+        payload: { name: "Jane" },
+      }),
+    ).toBe("Logged a call with Jane.");
   });
 
   it("explains an empty CRM lookup", () => {
