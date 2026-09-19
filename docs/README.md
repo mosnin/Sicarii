@@ -32,6 +32,7 @@
 | `decisions/0008-social-channels.md` | Social channels: profiles on contacts, find_socials discovery (accuracy rule intact), ContactSocialMessage + unified Conversations, source attribution | Revisiting social / conversations |
 | `decisions/0009-teams-v1.md` | Teams v1: Clerk Orgs + synthetic workspace accounts, lead sharing (deep copy + dedup-merge), workspace agent keys with attribution, team plan $299/30d | Revisiting teams / workspaces |
 | `decisions/0010-budgeted-autopilot.md` | Budgeted Autopilot: propose a spend plan (draft), human-only approval, atomic per-category budget guard on top of the real credit meter, scheduled execution loop (discovery/enrichment/outreach) over the existing Inngest cron | Revisiting autopilot / scheduled agent budgets |
+| `decisions/0015-jev-system-one.md` | Jev as System One: typed decisions, Qwen generation, OpenAI voice, LangChain model-router + auto-mode harness | Revisiting routing / agent / scoring |
 
 ## Working knowledge (grows with the product)
 
@@ -46,6 +47,8 @@
 | Doc | What it covers |
 |---|---|
 | [`OAUTH.md`](OAUTH.md) | The OAuth 2.1 authorization server at `/oauth/*`: endpoints, scopes, PKCE + rotation + replay rules, storage, env vars, how to register a client |
+| [`JEV.md`](JEV.md) | Jev System One kernel: primitives, transports, where it replaces LLM classify/score, Qwen + OpenAI voice split |
+| [`COMPANY_OS.md`](COMPANY_OS.md) | Company OS overview + warden packs (opencompany / openwork) |
 
 ## Audits
 

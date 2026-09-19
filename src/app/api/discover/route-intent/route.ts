@@ -5,6 +5,7 @@ import { openai } from "@ai-sdk/openai";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { VALID_TOOL_IDS, heuristicRoute, filterParams, toolMenu } from "@/lib/intent-router";
+import { isJevConfigured, routeIntentWithJev } from "@/lib/jev";
 
 const MODEL = process.env.OPENAI_REFINER_MODEL ?? "gpt-5-mini";
 
@@ -34,7 +35,14 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "Say what you want to find." }, { status: 400 });
     const { intent } = parsed.data;
 
-    // No LLM key: heuristic route (still useful, never dead-ends).
+    // Jev first: typed Choice over the tool catalog. Heuristic fills params
+    // and is the fallback when Jev is missing or unconfident.
+    if (isJevConfigured()) {
+      const routed = await routeIntentWithJev(intent);
+      return NextResponse.json(routed);
+    }
+
+    // No Jev and no LLM key: heuristic route (still useful, never dead-ends).
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ ...heuristicRoute(intent), source: "heuristic" });
     }

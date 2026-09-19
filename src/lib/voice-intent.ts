@@ -157,13 +157,16 @@ const OP_FAILED_SPEECH = "I couldn't pull that up right now. Please try again in
 export async function voiceIntent(
   userId: string,
   rawText: string,
+  preclassified?: { intent: VoiceIntentId; query?: string },
 ): Promise<{ speech: string; intent: VoiceIntentId }> {
   const text = typeof rawText === "string" ? rawText.trim().slice(0, 2000) : "";
   if (!text) {
     return { speech: NO_INPUT_SPEECH, intent: "unknown" };
   }
 
-  const { intent, query } = classifyVoiceIntent(text);
+  const classified = preclassified ?? classifyVoiceIntent(text);
+  const intent = classified.intent;
+  const query = classified.query;
   try {
     switch (intent) {
       case "followups":

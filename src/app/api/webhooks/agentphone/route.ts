@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { voiceIntent } from "@/lib/voice-intent";
+import { classifyVoiceIntentWithJev } from "@/lib/jev";
 
 // POST /api/webhooks/agentphone - AgentPhone's inbound-call webhook.
 //
@@ -92,7 +93,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null);
     const text = extractTranscript(body);
 
-    const { speech, intent } = await voiceIntent(user.id, text ?? "");
+    const heard = text ?? "";
+    const classified = heard ? await classifyVoiceIntentWithJev(heard) : null;
+    const { speech, intent } =
+      classified?.source === "jev"
+        ? await voiceIntent(user.id, heard, { intent: classified.intent, query: classified.query })
+        : await voiceIntent(user.id, heard);
 
     // Auditable trail: every inbound voice interaction is logged as an
     // Activity so it shows up like any other agent action. Never blocks the

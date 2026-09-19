@@ -178,10 +178,28 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
       group: "Agent runtime",
       checks: [
         optionalKey(
-          "OpenAI (agent + embeddings)",
+          "OpenAI (voice + embeddings + fallback)",
           "OPENAI_API_KEY",
           env,
-          "Powers the Scalar agent, result refinement, and vector-memory embeddings."
+          "Whisper/TTS/Realtime voice, vector-memory embeddings, and fallback generation when Qwen is unset."
+        ),
+        optionalKey(
+          "TypeSafe Jev",
+          "TYPESAFE_API_KEY",
+          env,
+          "System One decisions: routing, scoring, guardrails, agent turn gates. Native POST /v1/systemone."
+        ),
+        optionalKey(
+          "Vercel AI Gateway (Jev)",
+          "AI_GATEWAY_API_KEY",
+          env,
+          "Fallback evaluate transport for typesafe-ai/jev when the native TypeSafe key is unset."
+        ),
+        optionalKey(
+          "OpenRouter (Qwen + optional Jev)",
+          "OPENROUTER_API_KEY",
+          env,
+          "Qwen generation after Jev grants prose. Optional typesafe/jev-1.13 eval fallback."
         ),
       ],
     },

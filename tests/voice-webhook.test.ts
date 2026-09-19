@@ -57,6 +57,17 @@ const voiceIntentMock = vi.fn(async (userId: string, text: string) => ({
 }));
 vi.mock("@/lib/voice-intent", () => ({
   voiceIntent: (...args: [string, string]) => voiceIntentMock(...args),
+  VOICE_INTENTS: [
+    { id: "followups", purpose: "follow-ups" },
+    { id: "pulse", purpose: "recent activity" },
+    { id: "pipeline_hot", purpose: "hot pipeline" },
+    { id: "search", purpose: "named lookup" },
+    { id: "unknown", purpose: "fallback" },
+  ],
+}));
+
+vi.mock("@/lib/jev", () => ({
+  classifyVoiceIntentWithJev: async () => ({ intent: "unknown" as const, source: "heuristic" as const }),
 }));
 
 import { POST } from "@/app/api/webhooks/agentphone/route";

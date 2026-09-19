@@ -27,11 +27,9 @@ routing and the four-gate synthesis order live in the imported engine above.
 **Scalar - the CRM your agents run.** A structured CRM with a real UI and built-in
 intelligence, operated by AI agents: they discover leads, enrich the database,
 track deals, and run email relationships - reading/writing every record over MCP.
-For anyone working with AI agents who wants lead intelligence + deal tracking that
-stays consistent. **Moat:** structure + UI + intelligence as one system - vs agent
-frameworks that dump everything into messy `.md` files. **Data:** a single source
-of truth you control (enrichment flows in; your data is owned, exportable, never
-resold). Full identity: `docs/foundation/product.md` + `valueprop.md`.
+**Decisions are Jev** (TypeSafe System One: noul/choice/score). **Prose is Qwen**
+via OpenRouter. **Voice is OpenAI.** Jev never generates text. Full identity:
+`docs/foundation/product.md` + `valueprop.md`. Kernel: `docs/JEV.md`.
 
 ## Foundation
 
@@ -73,6 +71,8 @@ Deep context and all decisions are indexed in `@docs/README.md`.
   Auth: **Clerk**. UI: Radix + shadcn-style kit in `src/components/ui`,
   `lucide-react`, `motion`, `next-themes`. Payments: **Stripe** (cards; migrated
   off Creem.io 2026-06-12) + x402 USDC for agents. Uploads: Uploadthing.
+  Decisions: **Jev** (`src/lib/jev`, TypeSafe / Gateway / OpenRouter Jev).
+  Generation: **Qwen** via OpenRouter. Voice: **OpenAI** Whisper/TTS/Realtime.
 - **ORM / DB:** target is **Prisma** ORM on **Supabase** Postgres.
   ⚠️ _The tree still ships the original **Drizzle + Neon** layer (`src/db/`,
   `drizzle.config.ts`). Migration to Prisma is an open cycle - see the Heading._
