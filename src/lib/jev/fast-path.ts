@@ -586,6 +586,8 @@ export function formatFastReply(input: {
       phone?: string | null;
       company?: string | null;
       linkedin?: string | null;
+      twitter?: string | null;
+      notes?: string | null;
     };
     const who = r.name ?? query;
     if (r.title && !r.status) return `Set ${who}'s title to ${r.title}.`;
@@ -593,7 +595,8 @@ export function formatFastReply(input: {
     if (r.phone && !r.status) return `Set ${who}'s phone to ${r.phone}.`;
     if (r.company && !r.status) return `Set ${who}'s company to ${r.company}.`;
     if (r.linkedin && !r.status) return `Set ${who}'s LinkedIn to ${r.linkedin}.`;
-    if (r.linkedin && !r.status) return `Set ${who}'s LinkedIn to ${r.linkedin}.`;
+    if (r.twitter && !r.status) return `Set ${who}'s X to ${r.twitter}.`;
+    if (r.notes && !r.status) return `Set ${who}'s notes.`;
     if (r.dealScore != null && !r.status) {
       return `Set ${who}'s deal score to ${r.dealScore}.`;
     }
@@ -608,8 +611,10 @@ export function formatFastReply(input: {
       location?: string | null;
       domain?: string | null;
       website?: string | null;
+      notes?: string | null;
     };
     const who = r.name ?? query;
+    if (r.notes && !r.industry && !r.location && !r.domain && !r.website) return `Set ${who}'s notes.`;
     if (r.location && !r.industry && !r.domain && !r.website) return `Set ${who}'s location to ${r.location}.`;
     if (r.domain && !r.industry && !r.location && !r.website) return `Set ${who}'s domain to ${r.domain}.`;
     if (r.website && !r.industry && !r.location && !r.domain) return `Set ${who}'s website to ${r.website}.`;
@@ -730,7 +735,7 @@ export type FastPathRunners = {
   enrichEntity: (id: string) => Promise<unknown>;
   updateEntity?: (
     id: string,
-    patch: { industry?: string; location?: string; domain?: string; website?: string },
+    patch: { industry?: string; location?: string; domain?: string; website?: string; notes?: string },
   ) => Promise<unknown>;
   listEntities?: (q?: string) => Promise<unknown>;
   listContacts?: (q?: string) => Promise<unknown>;
@@ -803,6 +808,8 @@ export type FastPathRunners = {
       phone?: string;
       company?: string;
       linkedin?: string;
+      twitter?: string;
+      notes?: string;
     },
   ) => Promise<unknown>;
   addToPipeline?: (pipelineId: string, contactIds: string[]) => Promise<unknown>;
@@ -999,7 +1006,8 @@ async function runTool(
       const location = instant?.location?.trim();
       const domain = instant?.domain?.trim();
       const website = instant?.website?.trim();
-      if (!industry && !location && !domain && !website) {
+      const notes = instant?.note?.trim();
+      if (!industry && !location && !domain && !website && !notes) {
         return { error: "Say the field, like set Acme industry to SaaS." };
       }
       const entityId = first.id;
@@ -1008,6 +1016,7 @@ async function runTool(
         ...(location ? { location } : {}),
         ...(domain ? { domain } : {}),
         ...(website ? { website } : {}),
+        ...(notes ? { notes } : {}),
       };
       return write("update_entity", { id: entityId, ...patch }, async () => {
         const result = runners.updateEntity
@@ -1168,7 +1177,9 @@ async function runTool(
       const phone = instant?.phone?.trim();
       const company = instant?.company?.trim();
       const linkedin = instant?.linkedin?.trim();
-      if (!status && dealScore == null && !title && !email && !phone && !company && !linkedin) {
+      const twitter = instant?.twitter?.trim();
+      const notes = instant?.note?.trim();
+      if (!status && dealScore == null && !title && !email && !phone && !company && !linkedin && !twitter && !notes) {
         return { error: "Say which status to set (contacted, qualified, won, lost)." };
       }
       const args: Record<string, string | number> = { id: contactId };
@@ -1179,6 +1190,8 @@ async function runTool(
       if (phone) args.phone = phone;
       if (company) args.company = company;
       if (linkedin) args.linkedin = linkedin;
+      if (twitter) args.twitter = twitter;
+      if (notes) args.notes = notes;
       const patch = {
         ...(status ? { status } : {}),
         ...(dealScore != null ? { dealScore } : {}),
@@ -1187,6 +1200,8 @@ async function runTool(
         ...(phone ? { phone } : {}),
         ...(company ? { company } : {}),
         ...(linkedin ? { linkedin } : {}),
+        ...(twitter ? { twitter } : {}),
+        ...(notes ? { notes } : {}),
       };
       return write("update_contact", args, async () => {
         const result = runners.updateContact

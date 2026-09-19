@@ -26,6 +26,7 @@ export type InstantRoute = {
   industry?: string;
   website?: string;
   linkedin?: string;
+  twitter?: string;
   dealScore?: number;
   direction?: "INBOUND" | "OUTBOUND";
   detail?: boolean;
@@ -248,6 +249,28 @@ function parseLogSocial(text: string): {
   return { query, channel, note, direction };
 }
 
+function parseEntityNotes(text: string): { query: string; note: string } | null {
+  const prefixed = text.match(
+    /^(please\s+)?(set|update|change)\s+(?:the\s+)?(?:company|entity)\s+(.+?)(?:'s)?\s+notes?\s+to\s+(.+)$/i,
+  );
+  const suffixed = text.match(
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(?:company|entity)\s+notes?\s+to\s+(.+)$/i,
+  );
+  const query = (prefixed?.[3] ?? suffixed?.[3] ?? "")
+    .replace(/\b(the|a|an|company|business|entity)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const note = (prefixed?.[4] ?? suffixed?.[4] ?? "").trim();
+  if (!query || !note || query.length > 80 || note.length > 2000) return null;
+  return { query, note };
+}
+
+function isTwitterHandleOrUrl(value: string): boolean {
+  if (value.length > 500) return false;
+  if (/^@?[A-Za-z0-9_]{1,15}$/.test(value)) return true;
+  return /^https?:\/\/(www\.)?(x\.com|twitter\.com)\//i.test(value);
+}
+
 function parseEntityPatch(text: string): {
   query: string;
   industry?: string;
@@ -283,15 +306,23 @@ function parseContactPatch(text: string): {
   phone?: string;
   company?: string;
   linkedin?: string;
+  twitter?: string;
+  note?: string;
 } | null {
   const m = text.match(
-    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(title|email|phone|company|linkedin)\s+to\s+(.+)$/i,
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(title|email|phone|company|linkedin|twitter|x|notes)\s+to\s+(.+)$/i,
   );
   if (!m?.[3] || !m[4] || !m[5]) return null;
   const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
-  const value = m[5].trim().replace(/[.!?]+$/, "");
-  if (!query || !value || query.length > 80) return null;
   const field = m[4].toLowerCase();
+  if (!query || query.length > 80) return null;
+  if (field === "notes") {
+    const note = m[5].trim();
+    if (!note || note.length > 2000) return null;
+    return { query, note };
+  }
+  const value = m[5].trim().replace(/[.!?]+$/, "");
+  if (!value) return null;
   if (field === "email") {
     if (!value.includes("@") || value.length > 320) return null;
     return { query, email: value };
@@ -303,6 +334,10 @@ function parseContactPatch(text: string): {
   if (field === "linkedin") {
     if (value.length > 500) return null;
     return { query, linkedin: value };
+  }
+  if (field === "twitter" || field === "x") {
+    if (!isTwitterHandleOrUrl(value)) return null;
+    return { query, twitter: value };
   }
   if (field === "title") {
     if (value.length > 80) return null;
@@ -777,6 +812,15 @@ export function classifyInstant(
       source: "instant",
     };
   }
+  const entityNotes = parseEntityNotes(text);
+  if (entityNotes && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_entity",
+      query: entityNotes.query,
+      note: entityNotes.note,
+      source: "instant",
+    };
+  }
   const entityPatch = parseEntityPatch(text);
   if (entityPatch && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
     return {
@@ -799,6 +843,8 @@ export function classifyInstant(
       phone: contactPatch.phone,
       company: contactPatch.company,
       linkedin: contactPatch.linkedin,
+      twitter: contactPatch.twitter,
+      note: contactPatch.note,
       source: "instant",
     };
   }

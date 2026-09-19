@@ -279,6 +279,20 @@ describe("formatFastReply", () => {
     ).toBe("Marked Jane as contacted.");
     expect(
       formatFastReply({
+        tool: "update_contact",
+        query: "Jane",
+        payload: { name: "Jane", twitter: "https://x.com/jane" },
+      }),
+    ).toBe("Set Jane's X to https://x.com/jane.");
+    expect(
+      formatFastReply({
+        tool: "update_entity",
+        query: "Acme",
+        payload: { name: "Acme", notes: "Series B fintech" },
+      }),
+    ).toBe("Set Acme's notes.");
+    expect(
+      formatFastReply({
         tool: "add_to_pipeline",
         query: "Jane",
         payload: { who: "Jane", name: "Outbound", added: 1 },

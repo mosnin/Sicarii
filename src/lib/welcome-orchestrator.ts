@@ -24,7 +24,7 @@ import { prisma } from "@/lib/prisma";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
-import { createEntity, dedupeAgainstCrm, listEntitiesByIds, updateEntity } from "@/lib/crm-operations";
+import { countEntities, createEntity, dedupeAgainstCrm, listEntitiesByIds, updateEntity } from "@/lib/crm-operations";
 import { maybeSeedIcpRadar } from "@/lib/radar-seed";
 
 // --------------------------------------------------------------------------
@@ -436,7 +436,7 @@ export async function hasCompletedFirstRun(userId: string): Promise<boolean> {
       where: { id: userId },
       select: { productContext: true },
     }),
-    prisma.entity.count({ where: { userId } }),
+    countEntities(userId),
   ]);
   return Boolean(user?.productContext) || entityCount > 0;
 }

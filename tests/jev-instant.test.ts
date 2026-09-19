@@ -105,10 +105,30 @@ describe("classifyInstant", () => {
       query: "Jane",
       linkedin: "https://linkedin.com/in/jane",
     });
+    expect(classifyInstant("set Jane twitter to https://x.com/jane")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      twitter: "https://x.com/jane",
+    });
+    expect(classifyInstant("set Jane x to @jane")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      twitter: "@jane",
+    });
+    expect(classifyInstant("set Jane notes to interested in Q4")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      note: "interested in Q4",
+    });
     expect(classifyInstant("set Acme website to https://acme.com")).toMatchObject({
       tool: "update_entity",
       query: "Acme",
       website: "https://acme.com",
+    });
+    expect(classifyInstant("set company Acme notes to Series B fintech")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      note: "Series B fintech",
     });
     expect(classifyInstant("triage this: thanks for the intro last week")).toMatchObject({
       tool: "jev_triage",

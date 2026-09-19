@@ -1199,6 +1199,8 @@ export async function POST(req: Request) {
             ...(patch.phone ? { phone: patch.phone } : {}),
             ...(patch.company ? { company: patch.company } : {}),
             ...(patch.linkedin ? { linkedin: patch.linkedin } : {}),
+            ...(patch.twitter ? { twitter: patch.twitter } : {}),
+            ...(patch.notes ? { notes: patch.notes } : {}),
           }),
         addToPipeline: (pipelineId, contactIds) => addToPipeline(userId, pipelineId, { contactIds }),
         addToSegment: (segmentId, contactIds) => addToSegment(userId, segmentId, contactIds),

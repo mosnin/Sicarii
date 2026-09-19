@@ -64,6 +64,8 @@ vi.mock("@/lib/crm-operations", () => {
       },
     ),
     updateEntity: vi.fn().mockResolvedValue({}),
+    countEntities: vi.fn().mockResolvedValue(0),
+    listEntitiesByIds: vi.fn().mockResolvedValue([]),
     OpError: class OpError extends Error {
       status: number;
       constructor(message: string, status = 400) {

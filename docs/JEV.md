@@ -647,6 +647,10 @@ Scalar now does that on `/api/agent`:
     `jev_grade_page`, and `jev_verify_citations` (MCP parity). Instant
     `triage this: ...`, `scan this artifact: ...`, and `grade this page: ...`
     skip TypeSafe and skip the generator.
+43. Instant `set Jane twitter to https://x.com/jane`, `set Jane notes to
+    interested`, and `set company Acme notes to Series B` skip TypeSafe.
+    Creation budget and welcome first-run counts go through `countEntities`
+    / `countContacts`.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

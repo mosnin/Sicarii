@@ -764,7 +764,7 @@ export function listContacts(
 
 export function countContacts(
   userId: string,
-  opts?: { status?: ContactStatus | ContactStatus[]; enriched?: boolean },
+  opts?: { status?: ContactStatus | ContactStatus[]; enriched?: boolean; createdAfter?: Date },
 ) {
   return prisma.contact.count({
     where: {
@@ -773,6 +773,7 @@ export function countContacts(
         ? { status: Array.isArray(opts.status) ? { in: opts.status } : opts.status }
         : {}),
       ...(opts?.enriched === true ? { enrichment: { not: Prisma.AnyNull } } : {}),
+      ...(opts?.createdAfter ? { createdAt: { gt: opts.createdAfter } } : {}),
     },
   });
 }
