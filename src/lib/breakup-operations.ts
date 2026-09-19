@@ -319,6 +319,10 @@ export interface PendingDraft {
 
 /** The review queue: pending drafts oldest first (the coldest deal has been
  *  waiting longest for a decision). */
+export function countPendingDrafts(userId: string) {
+  return prisma.breakupDraft.count({ where: { userId, status: "PENDING" } });
+}
+
 export function listPendingDrafts(
   userId: string,
   input: { limit?: number } = {},

@@ -104,6 +104,7 @@ import { verifyEntity } from "@/lib/enrich/verified-entity";
 import { detectEntityTech } from "@/lib/enrich/technographics";
 import {
   listSegments,
+  countSegments,
   getSegment,
   createSegment,
   updateSegment,
@@ -111,6 +112,7 @@ import {
   removeSegmentMember,
   buildSmartSegment,
   listPipelines,
+  countPipelines,
   getPipeline,
   createPipeline,
   updatePipeline,
@@ -126,7 +128,7 @@ import {
   getAutopilotStatus,
   pauseAutopilotPlan,
 } from "@/lib/autopilot-operations";
-import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
+import { draftBreakups, listPendingDrafts, countPendingDrafts } from "@/lib/breakup-operations";
 import { createVariant, selectVariant, listVariantStats } from "@/lib/variant-operations";
 
 type ToolResult = {
@@ -851,6 +853,14 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "count_segments",
+      "Count saved segments. Use this instead of listing when you only need the number.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(async () => ({ count: await countSegments(userIdFrom(extra)) })),
+    );
+
+    server.tool(
       "get_segment",
       "Get a segment and its member contacts.",
       { id: z.string() },
@@ -912,6 +922,14 @@ const handler = createMcpHandler(
       {},
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (_args, extra) => run(() => listPipelines(userIdFrom(extra))),
+    );
+
+    server.tool(
+      "count_pipelines",
+      "Count pipelines. Use this instead of listing when you only need the number.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(async () => ({ count: await countPipelines(userIdFrom(extra)) })),
     );
 
     server.tool(
@@ -1285,6 +1303,13 @@ const handler = createMcpHandler(
       { limit: z.number().int().min(1).max(200).optional() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async (a, extra) => run(() => listPendingDrafts(userIdFrom(extra), a)),
+    );
+    server.tool(
+      "count_pending_drafts",
+      "Count breakup drafts awaiting human review. Use this instead of listing when you only need the number.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(async () => ({ count: await countPendingDrafts(userIdFrom(extra)) })),
     );
 
     server.tool(

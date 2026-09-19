@@ -84,7 +84,9 @@ import {
 } from "@/lib/crm-operations";
 import {
   listSegments,
+  countSegments,
   listPipelines,
+  countPipelines,
   getSegment,
   getPipeline,
   createSegment,
@@ -110,7 +112,7 @@ import { detectEntityTech } from "@/lib/enrich/technographics";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
 import { proposeAutopilotPlan, getAutopilotStatus, pauseAutopilotPlan } from "@/lib/autopilot-operations";
-import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
+import { draftBreakups, listPendingDrafts, countPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats, createVariant } from "@/lib/variant-operations";
 import { CREDIT_COSTS, getBilling, getUsage } from "@/lib/credits";
 
@@ -507,6 +509,11 @@ export async function POST(req: Request) {
       inputSchema: z.object({ limit: z.number().int().min(1).max(200).optional() }),
       execute: ({ limit }) => exec(() => listPendingDrafts(userId, { limit })),
     }),
+    count_pending_drafts: tool({
+      description: "Count breakup drafts awaiting review. Use this instead of listing when the operator asks how many.",
+      inputSchema: z.object({}),
+      execute: async () => exec(async () => ({ count: await countPendingDrafts(userId) })),
+    }),
     select_variant: tool({
       description:
         "Pick the best subject-line or opener to use next: a multi-armed bandit (Thompson sampling over reply rate) that explores when a pool has little data and converges on the winner as sends accumulate - no A/B test to configure. Returns the chosen variant's id and text; use that text verbatim, then pass the id as variantId to log_social_message so a reply gets attributed back to it. Fails with a clear message if no variants exist yet for this kind/segment.",
@@ -576,10 +583,20 @@ export async function POST(req: Request) {
       inputSchema: z.object({}),
       execute: () => exec(() => listSegments(userId)),
     }),
+    count_segments: tool({
+      description: "Count saved segments. Use this instead of listing when the operator asks how many.",
+      inputSchema: z.object({}),
+      execute: async () => exec(async () => ({ count: await countSegments(userId) })),
+    }),
     list_pipelines: tool({
       description: "List pipelines with entry counts.",
       inputSchema: z.object({}),
       execute: () => exec(() => listPipelines(userId)),
+    }),
+    count_pipelines: tool({
+      description: "Count pipelines. Use this instead of listing when the operator asks how many.",
+      inputSchema: z.object({}),
+      execute: async () => exec(async () => ({ count: await countPipelines(userId) })),
     }),
     list_swarm_runs: tool({
       description: "List recent swarm discovery runs (newest first).",
@@ -997,10 +1014,13 @@ export async function POST(req: Request) {
     list_contacts: "List people.",
     count_contacts: "Count people.",
     list_segments: "List segments.",
+    count_segments: "Count segments.",
     list_pipelines: "List pipelines.",
+    count_pipelines: "Count pipelines.",
     list_swarm_runs: "List recent swarm runs.",
     list_recent_discoveries: "List the latest discovery adds.",
     list_pending_drafts: "List breakup drafts waiting for review.",
+    count_pending_drafts: "Count breakup drafts waiting for review.",
     get_autopilot_status: "Show autopilot budget and status.",
     list_emails: "List emails with a contact.",
     list_activities: "List activity for a contact or company.",
@@ -1189,6 +1209,9 @@ export async function POST(req: Request) {
         countEntities: (status) => countEntities(userId, { status }),
         countContacts: (status) => countContacts(userId, { status }),
         countDueFollowups: (staleDays) => countDueFollowups(userId, { staleDays }),
+        countSegments: () => countSegments(userId),
+        countPipelines: () => countPipelines(userId),
+        countPendingDrafts: () => countPendingDrafts(userId),
         listDueFollowups: () => listDueFollowups(userId, {}),
         getBilling: () => getBilling(userId),
         getUsage: () => getUsage(userId),

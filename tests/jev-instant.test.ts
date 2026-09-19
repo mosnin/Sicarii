@@ -49,6 +49,12 @@ describe("classifyInstant", () => {
       status: "CONTACTED",
     });
     expect(classifyInstant("how many companies and contacts")).toBeNull();
+    expect(classifyInstant("how many segments")).toMatchObject({ tool: "count_segments" });
+    expect(classifyInstant("how many pipelines")).toMatchObject({ tool: "count_pipelines" });
+    expect(classifyInstant("how many pending drafts")).toMatchObject({ tool: "count_pending_drafts" });
+    expect(classifyInstant("how many drafts")).toMatchObject({ tool: "count_pending_drafts" });
+    expect(classifyInstant("list pending drafts")).toMatchObject({ tool: "list_pending_drafts" });
+    expect(classifyInstant("how many segments and pipelines")).toBeNull();
     expect(classifyInstant("what do credits cost")).toMatchObject({ tool: "get_usage" });
     expect(classifyInstant("show the price list")).toMatchObject({ tool: "get_usage" });
     expect(classifyInstant("show variant stats")).toMatchObject({ tool: "list_variant_stats" });

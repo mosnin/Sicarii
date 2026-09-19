@@ -736,6 +736,13 @@ Scalar now does that on `/api/agent`:
     instant. `verify Acme` stays a company legal verify. Unstructured
     `verify citations: hello` is not instant. In-app and MCP already
     expose `jev_verify_citations`.
+62. Instant `how many segments`, `how many pipelines`, and
+    `how many pending drafts` skip TypeSafe and skip the generator.
+    Counts go through `countSegments` / `countPipelines` /
+    `countPendingDrafts` so the reply is the real total, not a 50-row
+    page. `list pending drafts` still lists. Company OS leftover
+    draft and autopilot counts go through the same ops. In-app and
+    MCP expose the count tools.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

@@ -134,6 +134,10 @@ export async function getAutopilotPlan(userId: string, id: string) {
   return plan;
 }
 
+export function countActiveAutopilot(userId: string) {
+  return prisma.autopilotPlan.count({ where: { userId, status: "active" } });
+}
+
 /** Status + budget summary for an agent to check before/instead of a full
  *  get. When id is omitted, returns the most recently updated plans. */
 export async function getAutopilotStatus(userId: string, id?: string) {

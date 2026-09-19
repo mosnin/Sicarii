@@ -140,8 +140,10 @@ const readOnlyTools = [
   "list_social_messages",
   "search_crm",
   "list_segments",
+  "count_segments",
   "get_segment",
   "list_pipelines",
+  "count_pipelines",
   "get_pipeline",
   "pipeline_metrics",
   "get_balance",
@@ -149,6 +151,8 @@ const readOnlyTools = [
   "list_contact_calls",
   "list_due_followups",
   "count_due_followups",
+  "list_pending_drafts",
+  "count_pending_drafts",
   "list_activities",
 ];
 

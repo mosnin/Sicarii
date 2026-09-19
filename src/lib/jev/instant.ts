@@ -717,6 +717,29 @@ function parseDomain(text: string): string | undefined {
   return hit;
 }
 
+function parseCountField(text: string): {
+  tool: "count_segments" | "count_pipelines" | "count_pending_drafts";
+} | null {
+  if (
+    !/^(please\s+)?(how many|count|what(?:'s| is) (the )?(?:total )?(?:number of )?)\b/i.test(text) &&
+    !/\bcount (the )?(segments?|pipelines?|(pending |breakup )?drafts?)\b/i.test(text)
+  ) {
+    return null;
+  }
+  if (/\b(credits?|usage|balance|compan(y|ies)|contacts?|people|follow-?ups?|entities|businesses)\b/i.test(text)) {
+    return null;
+  }
+  if (/\b(who|list|show|names?)\b/i.test(text)) return null;
+  const drafts = /\b((pending |breakup )?drafts?)\b/i.test(text);
+  const segments = /\bsegments?\b/i.test(text);
+  const pipelines = /\bpipelines?\b/i.test(text);
+  const hits = [drafts, segments, pipelines].filter(Boolean).length;
+  if (hits !== 1) return null;
+  if (drafts) return { tool: "count_pending_drafts" };
+  if (segments) return { tool: "count_segments" };
+  return { tool: "count_pipelines" };
+}
+
 function parseCountFollowups(text: string): { staleDays?: number } | null {
   if (!/\b(follow-?ups?|follow\s+ups?|stale contacts?)\b/i.test(text)) return null;
   const asks =
@@ -1151,6 +1174,10 @@ export function classifyInstant(
   }
 
   // COMPOSE matches "draft" / "breakup", so these reads must win first.
+  const countField = parseCountField(text);
+  if (countField && !COMPOUND.test(text) && !DESTRUCTIVE.test(text)) {
+    return { tool: countField.tool, query: text, source: "instant" };
+  }
   if (
     !COMPOUND.test(text) &&
     !DESTRUCTIVE.test(text) &&

@@ -24,6 +24,10 @@ export function listSegments(userId: string) {
   });
 }
 
+export function countSegments(userId: string) {
+  return prisma.segment.count({ where: { userId } });
+}
+
 export async function getSegment(userId: string, id: string) {
   const segment = await prisma.segment.findUnique({
     where: { id },
@@ -137,6 +141,10 @@ export function listPipelines(userId: string) {
     include: { _count: { select: { entries: true } } },
     take: 50,
   });
+}
+
+export function countPipelines(userId: string) {
+  return prisma.pipeline.count({ where: { userId } });
 }
 
 export async function getPipeline(userId: string, id: string) {

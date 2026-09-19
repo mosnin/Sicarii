@@ -1,13 +1,14 @@
 // Deterministic Company OS overview (opencompany shape): presentation reads
 // live CRM aggregates. No LLM. Jev wardens run on write paths, not here.
 
-import { prisma } from "@/lib/prisma";
 import {
   countContacts,
   countDueFollowups,
   countEntities,
   listRecentActivities,
 } from "@/lib/crm-operations";
+import { countPendingDrafts } from "@/lib/breakup-operations";
+import { countActiveAutopilot } from "@/lib/autopilot-operations";
 
 export type CompanyOsOverview = {
   workspaceId: string;
@@ -31,8 +32,8 @@ export async function loadCompanyOsOverview(userId: string): Promise<CompanyOsOv
     countEntities(userId),
     countContacts(userId),
     countDueFollowups(userId),
-    prisma.breakupDraft.count({ where: { userId, status: "PENDING" } }),
-    prisma.autopilotPlan.count({ where: { userId, status: "active" } }),
+    countPendingDrafts(userId),
+    countActiveAutopilot(userId),
     listRecentActivities(userId, 8),
   ]);
 

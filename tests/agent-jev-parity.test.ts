@@ -58,6 +58,9 @@ describe("agent Jev parity", () => {
 
   it("exposes Field, swarm, and history list tools", () => {
     expect(source).toContain("count_entities:");
+    expect(source).toContain("count_segments:");
+    expect(source).toContain("count_pipelines:");
+    expect(source).toContain("count_pending_drafts:");
     expect(source).toContain("count_contacts:");
     expect(source).toContain("count_due_followups:");
     expect(source).toContain("list_segments:");

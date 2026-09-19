@@ -83,6 +83,9 @@ export const FAST_PATH_TOOLS = new Set([
   "count_entities",
   "count_contacts",
   "count_due_followups",
+  "count_segments",
+  "count_pipelines",
+  "count_pending_drafts",
 ]);
 
 const READ_CORE = [
@@ -100,6 +103,9 @@ const READ_CORE = [
   "count_entities",
   "count_contacts",
   "count_due_followups",
+  "count_segments",
+  "count_pipelines",
+  "count_pending_drafts",
 ] as const;
 
 const DISCOVER_CORE = [
@@ -348,6 +354,23 @@ export function formatFastReply(input: {
     const who = people ? (n === 1 ? "contact" : "contacts") : n === 1 ? "company" : "companies";
     const filter = r.status ? ` marked ${r.status.toLowerCase()}` : "";
     return `You have ${n} ${who}${filter} in the CRM.`;
+  }
+
+  if (tool === "count_segments" || tool === "count_pipelines" || tool === "count_pending_drafts") {
+    const r = payload as { count?: number };
+    const n =
+      typeof payload === "number" && Number.isFinite(payload)
+        ? payload
+        : typeof r.count === "number" && Number.isFinite(r.count)
+          ? r.count
+          : 0;
+    const who =
+      tool === "count_segments"
+        ? n === 1 ? "segment" : "segments"
+        : tool === "count_pipelines"
+          ? n === 1 ? "pipeline" : "pipelines"
+          : n === 1 ? "pending draft" : "pending drafts";
+    return `You have ${n} ${who}.`;
   }
 
   if (tool === "count_due_followups") {
@@ -905,6 +928,9 @@ export type FastPathRunners = {
     status?: "NEW" | "ENRICHED" | "CONTACTED" | "REPLIED" | "QUALIFIED" | "WON" | "LOST" | "ARCHIVED",
   ) => Promise<unknown>;
   countDueFollowups?: (staleDays?: number) => Promise<unknown>;
+  countSegments?: () => Promise<unknown>;
+  countPipelines?: () => Promise<unknown>;
+  countPendingDrafts?: () => Promise<unknown>;
   listDueFollowups?: () => Promise<unknown>;
   getBilling?: () => Promise<unknown>;
   getUsage?: () => Promise<unknown>;
@@ -1422,6 +1448,21 @@ async function runTool(
       const count = await runners.countDueFollowups(staleDays);
       if (typeof count === "number") return { count, ...(staleDays != null ? { staleDays } : {}) };
       return count;
+    }
+    case "count_segments": {
+      if (!runners.countSegments) return { error: "Segment count is unavailable." };
+      const count = await runners.countSegments();
+      return typeof count === "number" ? { count } : count;
+    }
+    case "count_pipelines": {
+      if (!runners.countPipelines) return { error: "Pipeline count is unavailable." };
+      const count = await runners.countPipelines();
+      return typeof count === "number" ? { count } : count;
+    }
+    case "count_pending_drafts": {
+      if (!runners.countPendingDrafts) return { error: "Draft count is unavailable." };
+      const count = await runners.countPendingDrafts();
+      return typeof count === "number" ? { count } : count;
     }
     case "list_entities":
       return runners.listEntities ? runners.listEntities(query || undefined) : runners.searchCrm(query);

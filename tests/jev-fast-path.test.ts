@@ -61,6 +61,9 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "count_entities", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "count_contacts", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "count_due_followups", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "count_segments", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "count_pipelines", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "count_pending_drafts", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_contact", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_contact", confidence: 0.94 })).toBe(true);
@@ -812,6 +815,47 @@ describe("executeFastPath", () => {
     });
     expect(result?.tool).toBe("count_due_followups");
     expect(result?.text).toBe("You have 7 contacts due for a follow-up older than 14 days.");
+  });
+
+  it("counts segments, pipelines, and pending drafts without generation", async () => {
+    const stubs = {
+      searchCrm: async () => ({ entities: [], contacts: [] }),
+      findCompanies: async () => ({ added: 0 }),
+      mapsLeads: async () => ({ added: 0 }),
+      swarmDiscover: async () => ({ added: 0 }),
+      searchWeb: async () => [],
+      googleSearch: async () => ({ results: [] }),
+      recall: async () => [],
+      listPendingDrafts: async () => [],
+      getAutopilotStatus: async () => ({}),
+      createEntity: async () => ({ name: "x" }),
+      createContact: async () => ({ name: "y" }),
+      enrichEntity: async () => ({ name: "x" }),
+      countSegments: async () => 4,
+      countPipelines: async () => 2,
+      countPendingDrafts: async () => 1,
+    };
+    const segments = await executeFastPath({
+      message: "how many segments",
+      decision: { kind: "tool", tool: "count_segments", confidence: 0.94 },
+      instant: { tool: "count_segments", query: "how many segments", source: "instant" },
+      runners: stubs,
+    });
+    expect(segments?.text).toBe("You have 4 segments.");
+    const pipelines = await executeFastPath({
+      message: "how many pipelines",
+      decision: { kind: "tool", tool: "count_pipelines", confidence: 0.94 },
+      instant: { tool: "count_pipelines", query: "how many pipelines", source: "instant" },
+      runners: stubs,
+    });
+    expect(pipelines?.text).toBe("You have 2 pipelines.");
+    const drafts = await executeFastPath({
+      message: "how many pending drafts",
+      decision: { kind: "tool", tool: "count_pending_drafts", confidence: 0.94 },
+      instant: { tool: "count_pending_drafts", query: "how many pending drafts", source: "instant" },
+      runners: stubs,
+    });
+    expect(drafts?.text).toBe("You have 1 pending draft.");
   });
 
   it("lists entities through the list runner, not searchCrm", async () => {
