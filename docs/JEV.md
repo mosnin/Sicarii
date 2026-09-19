@@ -579,6 +579,11 @@ Scalar now does that on `/api/agent`:
     goes through `matchDiscover` and omits enrichment blobs. Instant
     `I emailed Jane` / `log that I called Jane` skip TypeSafe and run
     `log_outreach` under auto-mode.
+31. Discover recent and in-CRM domain checks go through
+    `listRecentDiscoveries` / `findEntityIdsByDomains`. Instant `show
+    recent discoveries` and `add a note on Jane: interested in Q4` skip
+    TypeSafe. Agent `list_recent_discoveries` matches the HTTP list.
+    Notes run `add_activity` under auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

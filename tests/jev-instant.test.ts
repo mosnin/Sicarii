@@ -95,6 +95,14 @@ describe("classifyInstant", () => {
     });
     expect(classifyInstant("show pending drafts")).toMatchObject({ tool: "list_pending_drafts" });
     expect(classifyInstant("list swarm runs")).toMatchObject({ tool: "list_swarm_runs" });
+    expect(classifyInstant("show recent discoveries")).toMatchObject({
+      tool: "list_recent_discoveries",
+    });
+    expect(classifyInstant("add a note on Jane: interested in Q4")).toMatchObject({
+      tool: "add_activity",
+      query: "Jane",
+      note: "interested in Q4",
+    });
     expect(classifyInstant("autopilot status")).toMatchObject({ tool: "get_autopilot_status" });
     expect(classifyInstant("show emails for Jane")).toMatchObject({
       tool: "list_emails",

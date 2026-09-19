@@ -60,6 +60,7 @@ import {
   saveSocialMessage,
   searchCrm,
   listDueFollowups,
+  listRecentDiscoveries,
   listSwarmRuns,
   getSwarmRun,
   listContactEmails,
@@ -504,6 +505,11 @@ export async function POST(req: Request) {
       inputSchema: z.object({ limit: z.number().int().min(1).max(200).optional() }),
       execute: ({ limit }) => exec(() => listSwarmRuns(userId, limit)),
     }),
+    list_recent_discoveries: tool({
+      description: "List the latest contacts and companies added via discovery.",
+      inputSchema: z.object({ limit: z.number().int().min(1).max(50).optional() }),
+      execute: ({ limit }) => exec(() => listRecentDiscoveries(userId, limit)),
+    }),
     list_emails: tool({
       description: "List saved emails with a contact, newest first.",
       inputSchema: z.object({
@@ -849,6 +855,7 @@ export async function POST(req: Request) {
     list_segments: "List segments.",
     list_pipelines: "List pipelines.",
     list_swarm_runs: "List recent swarm runs.",
+    list_recent_discoveries: "List the latest discovery adds.",
     list_pending_drafts: "List breakup drafts waiting for review.",
     get_autopilot_status: "Show autopilot budget and status.",
     list_emails: "List emails with a contact.",
@@ -913,6 +920,10 @@ export async function POST(req: Request) {
             ? listPipelines(userId).catch(() => null)
           : instant?.tool === "list_swarm_runs"
             ? listSwarmRuns(userId).catch(() => null)
+          : instant?.tool === "list_recent_discoveries"
+            ? listRecentDiscoveries(userId).catch(() => null)
+          : instant?.tool === "add_activity"
+            ? searchCrm(userId, instant.query).catch(() => null)
           : instant?.tool === "list_pending_drafts"
             ? listPendingDrafts(userId, {}).catch(() => null)
           : instant?.tool === "get_segment"
@@ -1021,6 +1032,8 @@ export async function POST(req: Request) {
         listSegments: () => listSegments(userId),
         listPipelines: () => listPipelines(userId),
         listSwarmRuns: () => listSwarmRuns(userId),
+        listRecentDiscoveries: () => listRecentDiscoveries(userId),
+        addActivity: (input) => addActivity(userId, { ...input, kind: "note" }),
         listEmails: (contactId) => listContactEmails(userId, contactId),
         listActivities: (input) => listActivities(userId, input),
         listContactCalls: (contactId) => listContactCalls(userId, contactId),

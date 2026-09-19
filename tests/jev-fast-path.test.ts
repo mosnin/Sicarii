@@ -58,6 +58,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "add_to_pipeline", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "add_to_segment", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "log_outreach", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "add_activity", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "list_recent_discoveries", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });
@@ -279,6 +281,20 @@ describe("formatFastReply", () => {
         payload: { name: "Jane", channel: "email" },
       }),
     ).toBe("Logged email outreach to Jane.");
+    expect(
+      formatFastReply({
+        tool: "add_activity",
+        query: "Jane",
+        payload: { name: "Jane", body: "interested in Q4" },
+      }),
+    ).toBe("Noted on Jane: interested in Q4");
+    expect(
+      formatFastReply({
+        tool: "list_recent_discoveries",
+        query: "",
+        payload: [{ name: "Acme", kind: "entity" }, { name: "Jane", kind: "contact" }],
+      }),
+    ).toBe("2 recent discoveries: Acme, Jane.");
   });
 
   it("explains an empty CRM lookup", () => {

@@ -33,6 +33,7 @@ import {
   MAX_LIST_LIMIT,
   sanitizeImportSources,
   DEFAULT_IMPORT_SOURCES,
+  crmDomainKey,
 } from "@/lib/crm-operations";
 
 beforeEach(() => {
@@ -156,5 +157,12 @@ describe("sanitizeImportSources", () => {
     expect(sanitizeImportSources(["ok", "ok", "x".repeat(101), "also"])).toEqual(["ok", "also"]);
     const many = Array.from({ length: 60 }, (_, i) => `src-${i}`);
     expect(sanitizeImportSources(many)).toHaveLength(50);
+  });
+});
+
+describe("crmDomainKey", () => {
+  it("lowercases and strips a leading www", () => {
+    expect(crmDomainKey("Www.Acme.com")).toBe("acme.com");
+    expect(crmDomainKey(" acme.com ")).toBe("acme.com");
   });
 });

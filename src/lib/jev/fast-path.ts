@@ -51,6 +51,8 @@ export const FAST_PATH_TOOLS = new Set([
   "add_to_pipeline",
   "add_to_segment",
   "log_outreach",
+  "add_activity",
+  "list_recent_discoveries",
   "pipeline_metrics",
   "remember",
   "get_provenance",
@@ -340,6 +342,24 @@ export function formatFastReply(input: {
     return `${rows.length} recent swarm run${rows.length === 1 ? "" : "s"} on file.`;
   }
 
+  if (tool === "list_recent_discoveries") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return "No recent discoveries yet.";
+    const bits = rows.slice(0, 6).map((row) => {
+      const r = row as { name?: string | null; kind?: string | null };
+      return r.name ?? r.kind ?? "record";
+    });
+    const more = rows.length > 6 ? `, and ${rows.length - 6} more` : "";
+    return `${rows.length} recent discover${rows.length === 1 ? "y" : "ies"}: ${bits.join(", ")}${more}.`;
+  }
+
+  if (tool === "add_activity") {
+    const r = payload as { name?: string | null; body?: string | null };
+    const who = r.name ?? query;
+    const snippet = (r.body ?? "").trim().slice(0, 80);
+    return `Noted on ${who}${snippet ? `: ${snippet}` : "."}`;
+  }
+
   if (tool === "list_emails") {
     const rows = Array.isArray(payload) ? payload : [];
     if (rows.length === 0) return `No emails on file for "${query}".`;
@@ -562,6 +582,8 @@ export type FastPathRunners = {
   listSegments?: () => Promise<unknown>;
   listPipelines?: () => Promise<unknown>;
   listSwarmRuns?: () => Promise<unknown>;
+  listRecentDiscoveries?: () => Promise<unknown>;
+  addActivity?: (input: { contactId?: string; entityId?: string; body: string }) => Promise<unknown>;
   listEmails?: (contactId: string) => Promise<unknown>;
   listActivities?: (input: { contactId?: string; entityId?: string }) => Promise<unknown>;
   listContactCalls?: (contactId: string) => Promise<unknown>;
@@ -770,6 +792,8 @@ async function runTool(
       return runners.listPipelines ? runners.listPipelines() : [];
     case "list_swarm_runs":
       return runners.listSwarmRuns ? runners.listSwarmRuns() : [];
+    case "list_recent_discoveries":
+      return runners.listRecentDiscoveries ? runners.listRecentDiscoveries() : [];
     case "list_emails":
     case "list_activities":
     case "list_contact_calls":
@@ -929,6 +953,38 @@ async function runTool(
         }
         return result;
       });
+    }
+    case "add_activity": {
+      const found =
+        prefetch && typeof prefetch === "object" && prefetch !== null && !("crm" in prefetch)
+          ? prefetch
+          : prefetch && typeof prefetch === "object" && prefetch !== null && "crm" in prefetch
+            ? (prefetch as { crm: unknown }).crm
+            : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      const entity = facts.find((f) => f.kind === "entity" && f.id);
+      const note = instant?.note?.trim();
+      if (!note) return { error: "Say the note after a colon, like add a note on Jane: interested." };
+      if (!contact?.id && !entity?.id) {
+        return { error: `I did not find "${query}" in the CRM.` };
+      }
+      const contactId = contact?.id;
+      const entityId = contactId ? undefined : entity?.id;
+      const who = contact?.name ?? entity?.name ?? query;
+      const run = async () => {
+        const result = runners.addActivity
+          ? await runners.addActivity({ contactId, entityId, body: note })
+          : { error: "Notes are unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), name: who, body: note };
+        }
+        return result;
+      };
+      if (contactId) {
+        return write("add_activity", { contactId, kind: "note", body: note }, run);
+      }
+      return write("add_activity", { entityId: entityId as string, kind: "note", body: note }, run);
     }
     case "get_segment":
     case "get_pipeline":

@@ -1455,3 +1455,63 @@ export async function matchDiscover(
   ]);
   return { contact, entity };
 }
+
+export const DISCOVERY_SOURCES = [
+  "discover",
+  "discover:enrichment",
+  "discover:find-entities",
+  "match-entity",
+  "intent-monitor",
+  "exa-webhook",
+  "research-schedule",
+  "exa:spawn-contacts",
+] as const;
+
+export function crmDomainKey(domain: string): string {
+  return domain.trim().toLowerCase().replace(/^www\./, "");
+}
+
+export async function findEntityIdsByDomains(userId: string, domains: string[]) {
+  const clean = [
+    ...new Set(
+      domains
+        .filter((d): d is string => typeof d === "string" && d.length > 0)
+        .map(crmDomainKey),
+    ),
+  ].slice(0, 200);
+  if (clean.length === 0) return new Map<string, string>();
+  const existing = await prisma.entity.findMany({
+    where: { userId, domain: { in: clean } },
+    select: { id: true, domain: true },
+    take: 200,
+  });
+  return new Map(
+    existing
+      .filter((e): e is { id: string; domain: string } => typeof e.domain === "string" && e.domain.length > 0)
+      .map((e) => [crmDomainKey(e.domain), e.id]),
+  );
+}
+
+export async function listRecentDiscoveries(userId: string, take = 20) {
+  const limit = clampListLimit(take, 50);
+  const [contacts, entities] = await Promise.all([
+    prisma.contact.findMany({
+      where: { userId, source: { in: [...DISCOVERY_SOURCES] } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: { id: true, name: true, email: true, company: true, title: true, source: true, createdAt: true },
+    }),
+    prisma.entity.findMany({
+      where: { userId, source: { in: [...DISCOVERY_SOURCES] } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: { id: true, name: true, domain: true, location: true, source: true, createdAt: true },
+    }),
+  ]);
+  return [
+    ...contacts.map((c) => ({ ...c, kind: "contact" as const })),
+    ...entities.map((e) => ({ ...e, kind: "entity" as const })),
+  ]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, limit);
+}

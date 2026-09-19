@@ -16,6 +16,7 @@ export type InstantRoute = {
   field?: "linkedin" | "email" | "phone";
   status?: "NEW" | "ENRICHED" | "CONTACTED" | "REPLIED" | "QUALIFIED" | "WON" | "LOST" | "ARCHIVED";
   channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other";
+  note?: string;
   detail?: boolean;
   source: "instant";
 };
@@ -42,6 +43,17 @@ const OUTREACH_CHANNEL: Record<string, NonNullable<InstantRoute["channel"]>> = {
   linkedin: "linkedin",
   linkedined: "linkedin",
 };
+
+function parseAddNote(text: string): { query: string; note: string } | null {
+  const m = text.match(
+    /^(please\s+)?(add a note|log a note|jot down|note) (on|for|about) (.+?)[:\-]\s*(.+)$/i,
+  );
+  if (!m?.[4] || !m[5]) return null;
+  const query = m[4].replace(/\b(the|a|an|contact|person|company)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const note = m[5].trim();
+  if (!query || !note || query.length > 80 || note.length > 2000) return null;
+  return { query, note };
+}
 
 function parseLogOutreach(text: string): {
   query: string;
@@ -407,6 +419,15 @@ export function classifyInstant(
       source: "instant",
     };
   }
+  const addNote = parseAddNote(text);
+  if (addNote && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text) && !COMPOSE.test(text)) {
+    return {
+      tool: "add_activity",
+      query: addNote.query,
+      note: addNote.note,
+      source: "instant",
+    };
+  }
   if (
     !COMPOUND.test(text) &&
     !DESTRUCTIVE.test(text) &&
@@ -480,8 +501,17 @@ export function classifyInstant(
   if (
     !COMPOUND.test(text) &&
     !DESTRUCTIVE.test(text) &&
-    (/\b(swarm runs?|recent (swarm|discover(?:y|ies)))\b/i.test(text) ||
-      /^(list|show) (the )?(swarm runs?|discover(?:y|ies))\b/i.test(text))
+    (/\b(recent (discover(?:y|ies)|finds?|results?))\b/i.test(text) ||
+      /^(list|show) (the )?(recent )?(discover(?:y|ies)|finds?)\b/i.test(text) ||
+      /^(what did we (just )?(find|discover)|show what we discovered)\b/i.test(text))
+  ) {
+    return { tool: "list_recent_discoveries", query: text, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    (/\b(swarm runs?|recent swarm)\b/i.test(text) ||
+      /^(list|show) (the )?(swarm runs?)\b/i.test(text))
   ) {
     return { tool: "list_swarm_runs", query: text, source: "instant" };
   }

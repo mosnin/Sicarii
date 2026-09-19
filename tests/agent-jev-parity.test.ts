@@ -59,6 +59,7 @@ describe("agent Jev parity", () => {
     expect(source).toContain("list_segments:");
     expect(source).toContain("list_pipelines:");
     expect(source).toContain("list_swarm_runs:");
+    expect(source).toContain("list_recent_discoveries:");
     expect(source).toContain("list_emails:");
     expect(source).toContain("list_activities:");
     expect(source).toContain("list_social_messages:");
