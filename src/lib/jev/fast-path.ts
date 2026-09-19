@@ -79,6 +79,8 @@ export const FAST_PATH_TOOLS = new Set([
   "jev_scan_malicious",
   "jev_grade_page",
   "score_fit",
+  "count_entities",
+  "count_contacts",
 ]);
 
 const READ_CORE = [
@@ -93,6 +95,8 @@ const READ_CORE = [
   "get_segment",
   "get_pipeline",
   "score_fit",
+  "count_entities",
+  "count_contacts",
 ] as const;
 
 const DISCOVER_CORE = [
@@ -327,6 +331,20 @@ export function formatFastReply(input: {
     });
     const more = rows.length > 8 ? `, and ${rows.length - 8} more` : "";
     return `${rows.length} contact${rows.length === 1 ? "" : "s"} due for a follow-up: ${bits.join(", ")}${more}.`;
+  }
+
+  if (tool === "count_entities" || tool === "count_contacts") {
+    const r = payload as { count?: number; kind?: string; status?: string };
+    const n =
+      typeof payload === "number" && Number.isFinite(payload)
+        ? payload
+        : typeof r.count === "number" && Number.isFinite(r.count)
+          ? r.count
+          : 0;
+    const people = tool === "count_contacts" || r.kind === "contact";
+    const who = people ? (n === 1 ? "contact" : "contacts") : n === 1 ? "company" : "companies";
+    const filter = r.status ? ` marked ${r.status.toLowerCase()}` : "";
+    return `You have ${n} ${who}${filter} in the CRM.`;
   }
 
   if (tool === "get_billing" || tool === "get_balance") {
@@ -851,6 +869,10 @@ export type FastPathRunners = {
   ) => Promise<unknown>;
   listEntities?: (q?: string) => Promise<unknown>;
   listContacts?: (q?: string) => Promise<unknown>;
+  countEntities?: (status?: "NEW" | "ENRICHED" | "ARCHIVED") => Promise<unknown>;
+  countContacts?: (
+    status?: "NEW" | "ENRICHED" | "CONTACTED" | "REPLIED" | "QUALIFIED" | "WON" | "LOST" | "ARCHIVED",
+  ) => Promise<unknown>;
   listDueFollowups?: () => Promise<unknown>;
   getBilling?: () => Promise<unknown>;
   getUsage?: () => Promise<unknown>;
@@ -1333,6 +1355,20 @@ async function runTool(
           return result;
         },
       );
+    }
+    case "count_entities": {
+      if (!runners.countEntities) return { error: "Company count is unavailable." };
+      const status = instant?.entityStatus;
+      const count = await runners.countEntities(status);
+      if (typeof count === "number") return { count, kind: "company", ...(status ? { status } : {}) };
+      return count;
+    }
+    case "count_contacts": {
+      if (!runners.countContacts) return { error: "Contact count is unavailable." };
+      const status = instant?.status;
+      const count = await runners.countContacts(status);
+      if (typeof count === "number") return { count, kind: "contact", ...(status ? { status } : {}) };
+      return count;
     }
     case "list_entities":
       return runners.listEntities ? runners.listEntities(query || undefined) : runners.searchCrm(query);

@@ -716,6 +716,29 @@ function parseDomain(text: string): string | undefined {
   return hit;
 }
 
+function parseCountCrm(text: string): {
+  tool: "count_entities" | "count_contacts";
+  entityStatus?: NonNullable<InstantRoute["entityStatus"]>;
+  status?: NonNullable<InstantRoute["status"]>;
+} | null {
+  if (/\b(credits?|usage|balance|follow-?ups?|drafts?|autopilot)\b/i.test(text)) return null;
+  const asks =
+    /^(please\s+)?(how many|count|what(?:'s| is) (the )?(?:total )?(?:number of )?)\b/i.test(text) ||
+    /\b(company|contact|people) counts?\b/i.test(text);
+  if (!asks) return null;
+  const companies = /\b(compan(?:y|ies)|business(?:es)?|entit(?:y|ies))\b/i.test(text);
+  const people = /\b(contacts?|people|persons?)\b/i.test(text);
+  if (companies === people) return null;
+  if (companies) {
+    const word = text.match(/\b(new|enriched|archived)\b/i)?.[1]?.toLowerCase();
+    const entityStatus = word ? ENTITY_STATUS_WORDS[word] : undefined;
+    return { tool: "count_entities", ...(entityStatus ? { entityStatus } : {}) };
+  }
+  const word = text.match(/\b(new|enriched|contacted|replied|qualified|won|lost|archived)\b/i)?.[1]?.toLowerCase();
+  const status = word ? CONTACT_STATUS_WORDS[word] : undefined;
+  return { tool: "count_contacts", ...(status ? { status } : {}) };
+}
+
 function parseCreateEntity(text: string): {
   name: string;
   domain?: string;
@@ -1613,6 +1636,17 @@ export function classifyInstant(
     /^(list|show) (the )?(due |stale )?(follow[-\s]?ups?)\b/i.test(text)
   ) {
     return { tool: "list_due_followups", query: text, source: "instant" };
+  }
+
+  const countCrm = parseCountCrm(text);
+  if (countCrm && !COMPOUND.test(text) && !DESTRUCTIVE.test(text)) {
+    return {
+      tool: countCrm.tool,
+      query: text,
+      entityStatus: countCrm.entityStatus,
+      status: countCrm.status,
+      source: "instant",
+    };
   }
 
   if (

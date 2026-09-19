@@ -67,6 +67,8 @@ import {
   addActivity,
   listActivities,
   listDueFollowups,
+  countEntities,
+  countContacts,
   placeContactCall,
   saveCall,
   listContactCalls,
@@ -392,6 +394,19 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "count_entities",
+      "Count companies in the CRM. Optional status NEW, ENRICHED, or ARCHIVED. Use this instead of listing when you only need the number.",
+      { status: z.enum(["NEW", "ENRICHED", "ARCHIVED"]).optional() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ status }, extra) =>
+        run(async () => ({
+          count: await countEntities(userIdFrom(extra), { status }),
+          kind: "company",
+          ...(status ? { status } : {}),
+        })),
+    );
+
+    server.tool(
       "get_entity",
       "Get one business by id, including its contacts.",
       { id: z.string() },
@@ -472,6 +487,30 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ query, search, status, limit }, extra) =>
         run(() => listContacts(userIdFrom(extra), { q: query ?? search, status, limit })),
+    );
+
+    server.tool(
+      "count_contacts",
+      "Count people in the CRM. Optional status filter. Use this instead of listing when you only need the number.",
+      {
+        status: z.enum([
+          "NEW",
+          "ENRICHED",
+          "CONTACTED",
+          "REPLIED",
+          "QUALIFIED",
+          "WON",
+          "LOST",
+          "ARCHIVED",
+        ]).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ status }, extra) =>
+        run(async () => ({
+          count: await countContacts(userIdFrom(extra), { status }),
+          kind: "contact",
+          ...(status ? { status } : {}),
+        })),
     );
 
     server.tool(

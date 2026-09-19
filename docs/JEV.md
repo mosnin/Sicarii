@@ -707,6 +707,12 @@ Scalar now does that on `/api/agent`:
     follow up Q4` keeps description and notes (MCP and in-app
     `create_entity` already accept both). `add a note on Jane` stays
     an activity write.
+56. Instant `how many companies`, `how many contacts`,
+    `count archived companies`, and `how many contacted people` skip
+    TypeSafe and skip the generator. Counts go through `countEntities`
+    / `countContacts` so the reply is the real total, not a list page
+    guessed as a number. In-app and MCP expose `count_entities` and
+    `count_contacts`. `how many credits` stays billing.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

@@ -32,6 +32,17 @@ describe("classifyInstant", () => {
     expect(classifyInstant("who needs a follow-up")).toMatchObject({ tool: "list_due_followups" });
     expect(classifyInstant("who should I follow up with")).toMatchObject({ tool: "list_due_followups" });
     expect(classifyInstant("how many credits do I have")).toMatchObject({ tool: "get_billing" });
+    expect(classifyInstant("how many companies")).toMatchObject({ tool: "count_entities" });
+    expect(classifyInstant("how many contacts do I have")).toMatchObject({ tool: "count_contacts" });
+    expect(classifyInstant("count archived companies")).toMatchObject({
+      tool: "count_entities",
+      entityStatus: "ARCHIVED",
+    });
+    expect(classifyInstant("how many contacted people")).toMatchObject({
+      tool: "count_contacts",
+      status: "CONTACTED",
+    });
+    expect(classifyInstant("how many companies and contacts")).toBeNull();
     expect(classifyInstant("what do credits cost")).toMatchObject({ tool: "get_usage" });
     expect(classifyInstant("show the price list")).toMatchObject({ tool: "get_usage" });
     expect(classifyInstant("show variant stats")).toMatchObject({ tool: "list_variant_stats" });

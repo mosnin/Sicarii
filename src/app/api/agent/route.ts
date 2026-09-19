@@ -65,6 +65,8 @@ import {
   saveSocialMessage,
   searchCrm,
   listDueFollowups,
+  countEntities,
+  countContacts,
   listRecentDiscoveries,
   listSwarmRuns,
   getSwarmRun,
@@ -115,7 +117,7 @@ export const maxDuration = 60;
 
 const MODEL = process.env.OPENAI_AGENT_MODEL ?? "gpt-4o";
 
-const GROUNDED_SYSTEM = `You are Scalar. Answer only from <crm-facts> and tool results in this turn. If a company, person, email, or domain is not there, say you do not have it and offer to discover. Never invent records. find_companies adds real homepages; maps_leads is for local places; swarm_discover is multi-angle; search_web is pages, not companies. Use list_due_followups and get_billing for those asks. Confirm before bulk writes. Plain conversational prose. No markdown. One short paragraph.`;
+const GROUNDED_SYSTEM = `You are Scalar. Answer only from <crm-facts> and tool results in this turn. If a company, person, email, or domain is not there, say you do not have it and offer to discover. Never invent records. find_companies adds real homepages; maps_leads is for local places; swarm_discover is multi-angle; search_web is pages, not companies. Use count_entities and count_contacts for how-many asks, list_due_followups and get_billing for those asks. Confirm before bulk writes. Plain conversational prose. No markdown. One short paragraph.`;
 
 function uiMessageText(m: UIMessage): string {
   return (m.parts ?? [])
@@ -286,6 +288,18 @@ export async function POST(req: Request) {
       inputSchema: z.object({ query: z.string().optional(), limit: z.number().int().min(1).max(200).optional() }),
       execute: ({ query, limit }) => exec(() => listEntities(userId, query, limit)),
     }),
+    count_entities: tool({
+      description: "Count companies in the CRM. Optional status NEW, ENRICHED, or ARCHIVED. Use this instead of listing when the operator asks how many.",
+      inputSchema: z.object({
+        status: z.enum(["NEW", "ENRICHED", "ARCHIVED"]).optional(),
+      }),
+      execute: async ({ status }) =>
+        exec(async () => ({
+          count: await countEntities(userId, { status }),
+          kind: "company" as const,
+          ...(status ? { status } : {}),
+        })),
+    }),
     get_entity: tool({
       description: "Get one business by id, including its contacts.",
       inputSchema: z.object({ id: z.string() }),
@@ -345,6 +359,27 @@ export async function POST(req: Request) {
       }),
       execute: ({ query, status, limit }) =>
         exec(() => listContacts(userId, { q: query, status, limit })),
+    }),
+    count_contacts: tool({
+      description: "Count people in the CRM. Optional status filter. Use this instead of listing when the operator asks how many.",
+      inputSchema: z.object({
+        status: z.enum([
+          "NEW",
+          "ENRICHED",
+          "CONTACTED",
+          "REPLIED",
+          "QUALIFIED",
+          "WON",
+          "LOST",
+          "ARCHIVED",
+        ]).optional(),
+      }),
+      execute: async ({ status }) =>
+        exec(async () => ({
+          count: await countContacts(userId, { status }),
+          kind: "contact" as const,
+          ...(status ? { status } : {}),
+        })),
     }),
     get_contact: tool({
       description: "Get one contact by id, with linked entity and saved emails.",
@@ -943,7 +978,9 @@ export async function POST(req: Request) {
     delete_contact: "Permanently delete a person.",
     search_web: "Research pages on the web.",
     list_entities: "List companies.",
+    count_entities: "Count companies.",
     list_contacts: "List people.",
+    count_contacts: "Count people.",
     list_segments: "List segments.",
     list_pipelines: "List pipelines.",
     list_swarm_runs: "List recent swarm runs.",
@@ -1134,6 +1171,8 @@ export async function POST(req: Request) {
         updateEntity: (id, patch) => updateEntity(userId, id, patch),
         listEntities: (q) => listEntities(userId, q),
         listContacts: (q) => listContacts(userId, { q }),
+        countEntities: (status) => countEntities(userId, { status }),
+        countContacts: (status) => countContacts(userId, { status }),
         listDueFollowups: () => listDueFollowups(userId, {}),
         getBilling: () => getBilling(userId),
         getUsage: () => getUsage(userId),

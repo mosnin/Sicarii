@@ -132,8 +132,10 @@ describe("MCP route: write tools are rate-limited", () => {
 // pins them so a future edit doesn't silently start throttling reads too.
 const readOnlyTools = [
   "list_entities",
+  "count_entities",
   "get_entity",
   "list_contacts",
+  "count_contacts",
   "get_contact",
   "list_social_messages",
   "search_crm",
