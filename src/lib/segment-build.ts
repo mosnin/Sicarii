@@ -6,6 +6,7 @@ import { embed, embedMany } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { prisma } from "@/lib/prisma";
 import { EMBEDDING_MODEL } from "@/lib/embeddings";
+import { rankWithJev } from "@/lib/jev";
 
 export interface SegmentMatch {
   contactId: string;
@@ -67,10 +68,25 @@ export async function buildSegmentMatches(
     values: candidates.map((c) => contactText(c) || c.name || c.id),
   });
 
+  const want = Math.max(1, Math.min(quantity, candidates.length));
   const ranked = candidates
-    .map((c, i) => ({ contactId: c.id, score: cosine(goalVec, embeddings[i]) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, Math.max(1, Math.min(quantity, candidates.length)));
+    .map((c, i) => ({ contactId: c.id, score: cosine(goalVec, embeddings[i] ?? []) }))
+    .sort((a, b) => b.score - a.score);
+  const pool = ranked.slice(0, Math.min(Math.max(want * 2, want), ranked.length));
+  const byId = new Map(candidates.map((c) => [c.id, c]));
+  const jevOrder = await rankWithJev(
+    pool.map((r) => {
+      const c = byId.get(r.contactId);
+      return { id: r.contactId, text: c ? contactText(c) : r.contactId };
+    }),
+    goal,
+  );
+  const matches = jevOrder
+    ? jevOrder
+        .map((id) => pool.find((r) => r.contactId === id))
+        .filter((r): r is SegmentMatch => Boolean(r))
+        .slice(0, want)
+    : pool.slice(0, want);
 
-  return { matches: ranked, eligibleCount: candidates.length };
+  return { matches, eligibleCount: candidates.length };
 }

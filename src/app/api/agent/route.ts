@@ -8,6 +8,7 @@ import {
 } from "ai";
 import { openai } from "@ai-sdk/openai";
 import {
+  classifyFailure,
   decideTurn,
   gateGeneratedOutput,
   generationUnavailableMessage,
@@ -122,6 +123,17 @@ async function exec(fn: () => Promise<unknown>) {
     return await fn();
   } catch (e) {
     if (e instanceof OpError) return { error: e.message };
+    const retry =
+      (await classifyFailure(e instanceof Error ? e.message : "unknown")) === "retry";
+    if (retry) {
+      try {
+        return await fn();
+      } catch (e2) {
+        if (e2 instanceof OpError) return { error: e2.message };
+        console.error("agent tool error after retry", e2);
+        return { error: "Internal error" };
+      }
+    }
     console.error("agent tool error", e);
     return { error: "Internal error" };
   }

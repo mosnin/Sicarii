@@ -1,6 +1,7 @@
 // Tavily web-search client. Used by the MCP `search_web` tool and the in-app
-import { fetchWithTimeout } from "@/lib/http";
 // agent to discover businesses ("nail salons in Miami"). Gated by TAVILY_API_KEY.
+import { fetchWithTimeout } from "@/lib/http";
+import { keepLikelyHops, rerankHits, resolveSearchWindow, windowToDays } from "@/lib/jev";
 
 export class TavilyNotConfiguredError extends Error {
   constructor() {
@@ -28,24 +29,32 @@ export interface TavilyResult {
 
 export async function tavilySearch(
   query: string,
-  opts: { maxResults?: number } = {}
+  opts: { maxResults?: number; timeRange?: "day" | "week" | "month" | "year" } = {}
 ): Promise<TavilyResult[]> {
+  const window = opts.timeRange ?? (await resolveSearchWindow(query));
+  const days = windowToDays(window);
+  const payload: Record<string, unknown> = {
+    api_key: apiKey(),
+    query,
+    max_results: Math.min(opts.maxResults ?? 8, 20),
+    search_depth: "basic",
+  };
+  if (window !== "any") {
+    payload.time_range = window;
+    if (days != null && (window === "day" || window === "week")) payload.topic = "news";
+  }
   const res = await fetchWithTimeout("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      api_key: apiKey(),
-      query,
-      max_results: Math.min(opts.maxResults ?? 8, 20),
-      search_depth: "basic",
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
     throw new Error(`Tavily search failed (${res.status})`);
   }
   const data = (await res.json()) as { results?: TavilyResult[] };
-  return data.results ?? [];
+  const results = data.results ?? [];
+  return rerankHits(query, results, (r) => `${r.title} ${r.url} ${r.content}`);
 }
 
 export interface TavilyExtractResult {
@@ -75,7 +84,7 @@ export interface TavilyCrawlResult {
 
 export async function tavilyCrawl(
   url: string,
-  opts: { maxDepth?: number; limit?: number } = {}
+  opts: { maxDepth?: number; limit?: number; target?: string } = {}
 ): Promise<TavilyCrawlResult> {
   const res = await fetchWithTimeout("https://api.tavily.com/crawl", {
     method: "POST",
@@ -91,8 +100,13 @@ export async function tavilyCrawl(
   });
   if (!res.ok) throw new Error(`Tavily crawl failed (${res.status})`);
   const data = (await res.json()) as { base_url?: string; results?: { url: string; raw_content?: string }[] };
+  const results = (data.results ?? []).map((r) => ({ url: r.url, rawContent: r.raw_content ?? "" }));
+  const hops = await keepLikelyHops(
+    opts.target ?? url,
+    results.map((r) => ({ url: r.url, snippet: r.rawContent.slice(0, 240) })),
+  );
   return {
     baseUrl: data.base_url ?? url,
-    results: (data.results ?? []).map((r) => ({ url: r.url, rawContent: r.raw_content ?? "" })),
+    results: hops ? results.filter((r) => hops.has(r.url)) : results,
   };
 }

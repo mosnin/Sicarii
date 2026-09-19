@@ -9,6 +9,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { embedText, toVectorLiteral } from "@/lib/embeddings";
 import { ensureCredits, spendCredits } from "@/lib/credits";
+import { scanMalicious } from "@/lib/jev";
 
 export type MemoryKind = "message" | "entity" | "contact" | "email";
 
@@ -34,6 +35,10 @@ export async function storeMemory(
 ): Promise<boolean> {
   // Gate BEFORE the paid OpenAI call when this write is billable.
   if (opts.chargeCredits) await ensureCredits(userId, "remember");
+  if (opts.chargeCredits) {
+    const scan = await scanMalicious(content, "memory");
+    if (!scan.allow) return false;
+  }
   const embedding = await embedText(content);
   if (!embedding) return false;
   const id = randomUUID();

@@ -8,9 +8,12 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import {
   AUTO_MODE_TOOLS,
   decideTurn,
+  evaluateLoop,
   gateMoney,
+  gradePage,
   isJevConfigured,
   runAutoModeThen,
+  scanMalicious,
   triageInbound,
   tryEvaluate,
   verifyCitations,
@@ -1299,6 +1302,32 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ claims }, extra) =>
         gated(extra, "jev_verify_citations", 40, async () => verifyCitations(claims)),
+    );
+
+    server.tool(
+      "jev_grade_page",
+      "Grade a page or draft with Jev section scores (clarity, usefulness, credibility, ...). Returns a 0-100 score and letter. Does not write CRM state.",
+      { page: z.string().max(20_000) },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ page }, extra) => gated(extra, "jev_grade_page", 40, async () => gradePage(page)),
+    );
+
+    server.tool(
+      "jev_scan_malicious",
+      "Scan an untrusted artifact (email, webhook, memory, snippet) for data-theft, hidden network, or concealment. Returns allow=false when Jev is sure it is hostile.",
+      { artifact: z.string().max(4000), kind: z.string().max(40).optional() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ artifact, kind }, extra) =>
+        gated(extra, "jev_scan_malicious", 40, async () => scanMalicious(artifact, kind ?? "artifact")),
+    );
+
+    server.tool(
+      "jev_loop",
+      "Ask Jev whether an agent loop should stop (goal done, stuck, or early stop). Code owns the branch.",
+      { goal: z.string().max(1000), history: z.string().max(4000) },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ goal, history }, extra) =>
+        gated(extra, "jev_loop", 40, async () => evaluateLoop({ goal, history })),
     );
   },
   {

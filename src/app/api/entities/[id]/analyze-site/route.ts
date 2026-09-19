@@ -8,6 +8,7 @@ import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
 import { OpError } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
+import { gradePage } from "@/lib/jev";
 
 function host(input?: string | null): string | undefined {
   if (!input) return undefined;
@@ -62,10 +63,15 @@ export async function POST(
         ? (entity.enrichment as Record<string, unknown>)
         : {};
     const { markdown: _markdown, ...analysisForStore } = analysis;
+    const pageScore = analysis.markdown ? await gradePage(analysis.markdown) : null;
     void _markdown;
     const data: Prisma.EntityUncheckedUpdateInput = {
       status: "ENRICHED",
-      enrichment: { ...existing, website_analysis: analysisForStore } as unknown as Prisma.InputJsonValue,
+      enrichment: {
+        ...existing,
+        website_analysis: analysisForStore,
+        ...(pageScore ? { website_grade: pageScore } : {}),
+      } as unknown as Prisma.InputJsonValue,
     };
     if (!entity.industry && analysis.industry) data.industry = analysis.industry;
     if (!entity.location && analysis.location) data.location = analysis.location;
@@ -122,7 +128,13 @@ export async function POST(
     // Debit only after the analysis succeeded and was stored - a miss is free.
     await spendCredits(user.id, "analyze_site", { ref: id });
 
-    return NextResponse.json({ ok: true, created, skipped, logo: Boolean(data.logoUrl) });
+    return NextResponse.json({
+      ok: true,
+      created,
+      skipped,
+      logo: Boolean(data.logoUrl),
+      grade: pageScore,
+    });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     if (e instanceof OpError) {

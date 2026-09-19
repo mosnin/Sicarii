@@ -25,7 +25,7 @@ import {
 
 export { OpError } from "@/lib/op-error";
 import { OpError } from "@/lib/op-error";
-import { runWardens, triageInbound } from "@/lib/jev";
+import { keepNamedCompanies, rerankHits, runWardens, scanMalicious, triageInbound } from "@/lib/jev";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -264,7 +264,7 @@ export async function findCompanies(
   // Gate before the paid Exa call; debit below only when it returns companies.
   await ensureCredits(userId, "find_companies");
   const count = Math.min(Math.max(input.count ?? 10, 1), 25);
-  const found = await exaFindCompanies(input.query, count);
+  const found = await keepNamedCompanies(await exaFindCompanies(input.query, count));
 
   // Debit only when the discovery actually returned companies - a dry query
   // costs nothing.
@@ -306,7 +306,9 @@ export async function discoverLocalLeads(
   // Gate before the paid Apify run; debit below only when it returns leads.
   await ensureCredits(userId, "maps_leads");
   const count = Math.min(Math.max(input.count ?? 12, 1), 20);
-  const found = await googleMapsLeads(input.query, { location: input.location, limit: count });
+  const found = await keepNamedCompanies(
+    await googleMapsLeads(input.query, { location: input.location, limit: count }),
+  );
 
   if (found.length > 0) {
     await spendCredits(userId, "maps_leads");
@@ -439,9 +441,21 @@ export async function swarmDiscover(userId: string, input: SwarmDiscoverInput) {
   // Merge across angles (cross-angle dedup + attribution), THEN dedupe the
   // merged set against the CRM (the same rule findCompanies uses).
   const { merged, totalFound } = mergeAngleResults(results);
+  const realCompanies = await keepNamedCompanies(merged.map((m) => m.company));
+  const realKeys = new Set(
+    realCompanies.map((c) => {
+      const d = normalizeDomain(c.domain);
+      return d ? `d:${d}` : `n:${c.companyName.trim().toLowerCase()}`;
+    }),
+  );
+  const mergedReal = merged.filter((m) => {
+    const d = normalizeDomain(m.company.domain);
+    const key = d ? `d:${d}` : `n:${m.company.companyName.trim().toLowerCase()}`;
+    return realKeys.has(key);
+  });
   const { fresh, skipped } = await dedupeAgainstCrm(
     userId,
-    merged.map((m) => m.company),
+    mergedReal.map((m) => m.company),
   );
 
   const keyOf = (c: { companyName: string; domain?: string | null }) => {
@@ -468,7 +482,7 @@ export async function swarmDiscover(userId: string, input: SwarmDiscoverInput) {
     : [];
   const rowByKey = new Map(rows.map((r) => [keyOf({ companyName: r.name, domain: r.domain }), r]));
 
-  const companies: SwarmCompanyAttribution[] = merged.map((m) => {
+  const companies: SwarmCompanyAttribution[] = mergedReal.map((m) => {
     const row = rowByKey.get(keyOf(m.company));
     return {
       companyName: m.company.companyName,
@@ -486,7 +500,7 @@ export async function swarmDiscover(userId: string, input: SwarmDiscoverInput) {
       angles,
       angleSource,
       found: totalFound,
-      merged: merged.length,
+      merged: mergedReal.length,
       added: rows.length,
       skipped,
       creditsSpent,
@@ -500,7 +514,7 @@ export async function swarmDiscover(userId: string, input: SwarmDiscoverInput) {
     angles,
     angleSource,
     found: totalFound,
-    merged: merged.length,
+    merged: mergedReal.length,
     added: rows.length,
     skipped,
     creditsSpent,
@@ -548,7 +562,12 @@ export async function searchGoogle(
   if (!isApifyConfigured())
     throw new OpError("Web search via Apify is not configured (APIFY_TOKEN missing)", 501);
   await ensureCredits(userId, "serp_search");
-  const results = await apifyGoogleSearch(input.query, input.limit ?? 15);
+  const raw = await apifyGoogleSearch(input.query, input.limit ?? 15);
+  const results = await rerankHits(
+    input.query,
+    raw,
+    (r) => `${r.title ?? ""} ${r.url} ${r.description ?? ""}`,
+  );
   if (results.length > 0) await spendCredits(userId, "serp_search");
   return { query: input.query, count: results.length, results };
 }
@@ -688,6 +707,29 @@ export async function saveEmail(userId: string, input: EmailInput) {
   });
   if (!contact || contact.userId !== userId)
     throw new OpError("Contact not found", 404);
+  const payload = [input.subject, input.body].filter(Boolean).join("\n");
+  if (payload) {
+    if (input.direction === "OUTBOUND") {
+      const warden = await runWardens({
+        payload,
+        goal: `email to ${contact.name ?? contact.id}`,
+        phase: "log",
+      });
+      if (!warden.allow) {
+        throw new OpError(`Jev blocked this outbound email (${warden.reasons.join(", ")}).`, 422);
+      }
+    }
+    const malicious = await scanMalicious(payload, "email");
+    if (!malicious.allow) {
+      throw new OpError(`Jev blocked this email as malicious (${malicious.reasons.join(", ")}).`, 422);
+    }
+    if (input.direction === "INBOUND") {
+      const triage = await triageInbound(payload);
+      if (triage.source === "jev" && triage.action === "close" && triage.confidence >= 0.7) {
+        throw new OpError("Jev classified this inbound email as spam or out of ICP.", 422);
+      }
+    }
+  }
   const { contactId, ...rest } = input;
   return prisma.contactEmail.create({ data: { contactId, ...rest } });
 }

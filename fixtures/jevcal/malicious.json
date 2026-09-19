@@ -1,0 +1,12 @@
+{
+  "id": "malicious.dataTheft",
+  "targetAcc": 0.9,
+  "rows": [
+    { "p": 0.95, "gold": true },
+    { "p": 0.91, "gold": true },
+    { "p": 0.11, "gold": false },
+    { "p": 0.07, "gold": false },
+    { "p": 0.22, "gold": false },
+    { "p": 0.04, "gold": false }
+  ]
+}

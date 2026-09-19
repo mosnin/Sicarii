@@ -10,7 +10,7 @@ import { analyzeSite, firecrawlSearch, isFirecrawlConfigured } from "@/lib/firec
 import { isMeaningful } from "@/lib/exa";
 import { OpError } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
-import { scoreFitWithJev } from "@/lib/jev";
+import { scoreFitWithJev, verifyCitations } from "@/lib/jev";
 
 export const maxDuration = 60;
 
@@ -133,8 +133,43 @@ ${signals.map((n) => `- ${n.title ?? ""} (${n.url}) ${n.description ?? ""}`).joi
 For keyDecisionMakers, include only real named people (executives/leaders) with their title; include email/linkedin only if shown in the sources.`,
     });
 
+    const citationClaims = [
+      ...report.recentNews.map((n) => ({
+        kind: "news" as const,
+        key: n.title,
+        claim: n.title,
+        quote: n.title,
+        url: n.url ?? undefined,
+      })),
+      ...report.intentSignals.map((s) => ({
+        kind: "intent" as const,
+        key: s.signal,
+        claim: s.signal,
+        quote: s.source ?? s.signal,
+        url: s.source && /^https?:\/\//.test(s.source) ? s.source : undefined,
+      })),
+    ];
+    const citationVerdicts = await verifyCitations(
+      citationClaims.map(({ claim, quote, url }) => ({ claim, quote, url })),
+    );
+    const droppedNews = new Set<string>();
+    const droppedIntent = new Set<string>();
+    if (citationVerdicts) {
+      for (const [i, verdict] of citationVerdicts.entries()) {
+        const meta = citationClaims[i];
+        if (!meta || verdict.keep) continue;
+        if (meta.kind === "news") droppedNews.add(meta.key);
+        else droppedIntent.add(meta.key);
+      }
+    }
+    const citedReport = {
+      ...report,
+      recentNews: report.recentNews.filter((n) => !droppedNews.has(n.title)),
+      intentSignals: report.intentSignals.filter((s) => !droppedIntent.has(s.signal)),
+    };
+
     // ── Persist the report + fill empty entity fields ──
-    const fitText = [entity.name, entity.industry, entity.description, report.summary, report.targetMarket]
+    const fitText = [entity.name, entity.industry, entity.description, citedReport.summary, citedReport.targetMarket]
       .filter(Boolean)
       .join(" ");
     const jevFit = user.productContext
@@ -152,7 +187,7 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
       ? (entity.enrichment as Record<string, unknown>) : {};
     const data: Prisma.EntityUncheckedUpdateInput = {
       status: "ENRICHED",
-      enrichment: { ...existing, deepReport: { ...report, icpFit, generatedAt: new Date().toISOString() } } as unknown as Prisma.InputJsonValue,
+      enrichment: { ...existing, deepReport: { ...citedReport, icpFit, generatedAt: new Date().toISOString() } } as unknown as Prisma.InputJsonValue,
     };
     if (!entity.description && report.summary) data.description = report.summary;
     if (!entity.industry && analysis?.industry) data.industry = analysis.industry;
@@ -197,7 +232,7 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
     // Debit only after the report was built and stored - a failed run is free.
     await spendCredits(user.id, "deep_report", { ref: id });
 
-    return NextResponse.json({ ok: true, created, report: { ...report, icpFit } });
+    return NextResponse.json({ ok: true, created, report: { ...citedReport, icpFit } });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     if (e instanceof OpError) {

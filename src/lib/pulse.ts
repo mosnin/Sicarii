@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { scoreFitWithJev } from "@/lib/jev";
 
 // "The Pulse" - what the agent did while you were away. Computed entirely from
 // rows that already exist (no new tracking tables): agent-created entities, the
@@ -42,7 +43,7 @@ const NOT_MANUAL = {
  * previous lastSeenAt). Returns null when the window is empty.
  */
 export async function computePulse(userId: string, since: Date): Promise<PulseData | null> {
-  const [companies, enrichedRefs, signals, best] = await Promise.all([
+  const [companies, enrichedRefs, signals, recent] = await Promise.all([
     prisma.entity.count({
       where: { userId, createdAt: { gt: since }, ...NOT_MANUAL },
     }),
@@ -60,10 +61,11 @@ export async function computePulse(userId: string, since: Date): Promise<PulseDa
       _sum: { found: true },
       where: { userId, createdAt: { gt: since } },
     }),
-    prisma.entity.findFirst({
+    prisma.entity.findMany({
       where: { userId, createdAt: { gt: since }, ...NOT_MANUAL },
       orderBy: { createdAt: "desc" },
-      select: { name: true, domain: true },
+      take: 20,
+      select: { name: true, domain: true, industry: true, description: true },
     }),
   ]);
 
@@ -71,6 +73,31 @@ export async function computePulse(userId: string, since: Date): Promise<PulseDa
   const inMarket = signals._sum.found ?? 0;
 
   if (companies === 0 && enriched === 0 && inMarket === 0) return null;
+
+  let best: PulseData["best"] = recent[0]
+    ? { name: recent[0].name, domain: recent[0].domain }
+    : null;
+  if (recent.length > 1) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { productContext: true },
+    });
+    if (user?.productContext) {
+      const scores = await scoreFitWithJev(
+        recent.map((e, i) => ({
+          id: String(i),
+          text: [e.name, e.industry, e.description].filter(Boolean).join(" "),
+        })),
+        user.productContext,
+      );
+      if (scores) {
+        const top = recent
+          .map((e, i) => ({ e, s: scores[String(i)] ?? 0 }))
+          .sort((a, b) => b.s - a.s)[0];
+        if (top && top.s > 0) best = { name: top.e.name, domain: top.e.domain };
+      }
+    }
+  }
 
   return { companies, enriched, inMarket, best };
 }

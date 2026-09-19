@@ -23,6 +23,18 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/jev", () => ({
   rankWithJev: async () => null,
+  keepNamedCompanies: async <T,>(found: T[]) => found,
+  rerankHits: async <T,>(_q: string, hits: T[]) => hits,
+  runWardens: async () => ({ allow: true, reasons: [], source: "fallback" }),
+  scanMalicious: async () => ({ allow: true, reasons: [], source: "fallback" }),
+  triageInbound: async () => ({
+    category: "other",
+    action: "wait",
+    severity: 1,
+    urgency: 0,
+    confidence: 0,
+    source: "fallback",
+  }),
 }));
 
 import { classifyVoiceIntent, voiceIntent } from "@/lib/voice-intent";

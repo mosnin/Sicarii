@@ -1,0 +1,13 @@
+{
+  "id": "identity.samePerson",
+  "targetAcc": 0.9,
+  "rows": [
+    { "p": 0.96, "gold": true },
+    { "p": 0.93, "gold": true },
+    { "p": 0.88, "gold": true },
+    { "p": 0.12, "gold": false },
+    { "p": 0.08, "gold": false },
+    { "p": 0.18, "gold": false },
+    { "p": 0.54, "gold": false }
+  ]
+}

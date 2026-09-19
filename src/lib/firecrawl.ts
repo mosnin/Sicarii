@@ -1,7 +1,8 @@
 // Firecrawl client for deep website analysis: pull company context and find
-import { fetchWithTimeout } from "@/lib/http";
 // people/contacts from a company's own site.
 // Base: https://api.firecrawl.dev/v2  Auth: Authorization: Bearer fc-KEY
+import { fetchWithTimeout } from "@/lib/http";
+import { rerankHits } from "@/lib/jev";
 
 const BASE = "https://api.firecrawl.dev/v2";
 
@@ -152,7 +153,8 @@ export async function firecrawlSearch(query: string, limit = 5): Promise<Firecra
     : []) as Record<string, unknown>[];
 
   const s = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
-  return raw
+  const rows = raw
     .map((r) => ({ url: s(r.url) ?? "", title: s(r.title), description: s(r.description) ?? s(r.snippet) }))
     .filter((r) => r.url);
+  return rerankHits(query, rows, (r) => `${r.title ?? ""} ${r.url} ${r.description ?? ""}`);
 }

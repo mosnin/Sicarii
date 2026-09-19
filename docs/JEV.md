@@ -43,7 +43,13 @@ used for evaluate.
 | Contact enrich | Same-person identity gate before save | none |
 | Discover refine / radar / swarm | Real-company noul; angle dimensions | LLM extract fallback |
 | Autopilot tick | Spend brake (continue / downgrade / stop) | none |
-| Deep report ICP | `scoreFitWithJev` overlays the LLM score | Qwen/OpenAI prose |
+| Deep report ICP | `scoreFitWithJev` overlays the LLM score; citations drop unsupported news/intent | Qwen/OpenAI prose |
+| Search / crawl | Time window + off-topic rerank + BFS hop keep | none |
+| Analyze site | Page grade stored on the entity | none |
+| find_companies / maps / swarm / bulk | Real-company noul before insert | none |
+| save_email / remember | Warden + malicious scan | none |
+| Segment / pulse | Jev rank overlay on cosine / latest | embeddings |
+| Agent tool errors | `failureClass` retries transients once | none |
 
 ## Env
 
@@ -61,9 +67,9 @@ errors.
 
 ## Policy
 
-Thresholds live in `src/lib/jev/policy.ts`. Pin `jev-1.13.0` once they are
-swept on labeled Scalar data (`src/lib/jev/eval/validate.ts`). Treat every
-user field as data, never as instructions.
+Thresholds live in `src/lib/jev/policy.ts`. Sweep labeled noul fixtures with
+`pnpm jevcal`, then pin `jev-1.13.0`. Treat every user field as data, never
+as instructions.
 
 ## Lineage
 
