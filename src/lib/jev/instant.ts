@@ -96,7 +96,9 @@ function parseCreateContact(text: string): {
   const addName = text.match(
     /\b(?:add|create|save)\s+(?:an?\s+)?(?:contact|person)\s+(?:called|named\s+)?["']?([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/,
   );
-  const atCo = text.match(/\b(?:at|from)\s+([A-Z][A-Za-z0-9& .-]{1,40})/);
+  const atCo = text.match(
+    /\b(?:at|from)\s+([A-Z][A-Za-z0-9&']*(?:\s+[A-Z][A-Za-z0-9&']*){0,3})/,
+  );
   const name = (named?.[1] ?? addName?.[1])?.trim();
   if (!name && !email) return null;
   return {
