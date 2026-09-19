@@ -5,16 +5,24 @@ import {
   gateOutboundDraft,
   triageInbound,
   gateMoney,
+  evaluateAutopilotTick,
   scanMalicious,
   filterRealCompanies,
   deriveAnglesWithJev,
+  resolveSearchWindow,
+  gradePage,
+  rerankHits,
+  keepLikelyHops,
+  classifyFailure,
+  evaluateLoop,
+  keepNamedCompanies,
   type JevClient,
 } from "@/lib/jev";
 import type { JevResult, QuestionMap } from "@/lib/jev/contract";
 
 function mockClient(answers: JevResult["answers"]): JevClient {
   return {
-    async evaluate<Q extends QuestionMap>(req: { questions: Q }): Promise<JevResult<Q>> {
+    async evaluate<Q extends QuestionMap>(_req: { questions: Q }): Promise<JevResult<Q>> {
       return {
         model: "mock",
         answers: answers as JevResult<Q>["answers"],
@@ -134,6 +142,21 @@ describe("triageInbound", () => {
   });
 });
 
+describe("evaluateAutopilotTick", () => {
+  it("stops the tick when a live evaluate fails", async () => {
+    const brake = await evaluateAutopilotTick({
+      remainingCredits: 80,
+      nextCost: 15,
+      client: {
+        async evaluate() {
+          throw new Error("typesafe down");
+        },
+      },
+    });
+    expect(brake).toEqual({ action: "stop", source: "fallback", reasons: ["jev_unavailable"] });
+  });
+});
+
 describe("gateMoney", () => {
   it("blocks a spend Jev does not treat as authorized", async () => {
     const gate = await gateMoney({
@@ -208,5 +231,132 @@ describe("filterRealCompanies / deriveAnglesWithJev", () => {
     }));
     expect(angles).toHaveLength(3);
     expect(angles?.[0]).toContain("sub-vertical");
+  });
+});
+
+describe("resolveSearchWindow / gradePage / rerank / hops", () => {
+  it("reads a week window when Jev is confident", async () => {
+    const window = await resolveSearchWindow(
+      "news this week about Acme",
+      mockClient({
+        window: {
+          type: "choice",
+          choice: "week",
+          confidence: 0.88,
+          probabilities: { any: 0.04, day: 0.04, week: 0.88, month: 0.02, year: 0.02 },
+        },
+      }),
+    );
+    expect(window).toBe("week");
+  });
+
+  it("grades a page from section scores", async () => {
+    const answers: Record<string, { type: "score"; score: number; confidence: number; legend: Record<string, string>; probabilities: Record<string, number> }> = {};
+    for (const k of [
+      "clarity",
+      "concision",
+      "specificity",
+      "explanation",
+      "usefulness",
+      "readability",
+      "coherence",
+      "credibility",
+      "mechanics",
+      "intent",
+    ]) {
+      answers[k] = { type: "score", score: 3, confidence: 0.8, legend: {}, probabilities: {} };
+    }
+    const graded = await gradePage("A specific product page with pricing.", mockClient(answers));
+    expect(graded?.grade).toBe("B");
+    expect(graded?.source).toBe("jev");
+  });
+
+  it("drops off-topic hits and keeps the on-topic one first", async () => {
+    const ranked = await rerankHits(
+      "Acme robotics",
+      [
+        { url: "https://yelp.com", title: "Best dentists" },
+        { url: "https://acme.com", title: "Acme robotics" },
+      ],
+      (h) => `${h.title} ${h.url}`,
+      mockClient({
+        hit_0: { type: "noul", noul: 0.1 },
+        hit_1: { type: "noul", noul: 0.92 },
+      }),
+    );
+    expect(ranked.map((h) => h.url)).toEqual(["https://acme.com"]);
+  });
+
+  it("keeps only hops Jev thinks reach the target", async () => {
+    const keep = await keepLikelyHops(
+      "https://acme.com",
+      [
+        { url: "https://acme.com/team", snippet: "leadership" },
+        { url: "https://ads.example/click", snippet: "buy now" },
+      ],
+      mockClient({
+        hop_0: { type: "noul", noul: 0.8 },
+        hop_1: { type: "noul", noul: 0.1 },
+      }),
+    );
+    expect(keep).toEqual(new Set(["https://acme.com/team"]));
+  });
+});
+
+describe("classifyFailure / evaluateLoop / keepNamedCompanies", () => {
+  it("retries only transient failures", async () => {
+    const retry = await classifyFailure(
+      "socket hang up",
+      mockClient({
+        failureClass: {
+          type: "choice",
+          choice: "transient",
+          confidence: 0.9,
+          probabilities: {
+            no_failure: 0.02,
+            transient: 0.9,
+            environment: 0.02,
+            code_bug: 0.02,
+            permission: 0.02,
+            user_error: 0.02,
+          },
+        },
+      }),
+    );
+    expect(retry).toBe("retry");
+  });
+
+  it("stops a loop when the goal is done", async () => {
+    const loop = await evaluateLoop({
+      goal: "Add 3 companies",
+      history: "added Acme, Widget, Foo",
+      client: mockClient({
+        action: {
+          type: "choice",
+          choice: "finish",
+          confidence: 0.9,
+          probabilities: { continue: 0.05, finish: 0.9, stop: 0.04, none: 0.01 },
+        },
+        goalDone: { type: "noul", noul: 0.92 },
+        stuck: { type: "noul", noul: 0.1 },
+        earlyStop: { type: "noul", noul: 0.1 },
+      }),
+    });
+    expect(loop.stop).toBe(true);
+    expect(loop.reasons).toContain("goal_done");
+  });
+
+  it("drops aggregator-shaped companies", async () => {
+    const kept = await keepNamedCompanies(
+      [
+        { companyName: "Acme", domain: "acme.com", description: "robots" },
+        { companyName: "Yelp", domain: "yelp.com", description: "directory" },
+      ],
+      mockClient({
+        real_0: { type: "noul", noul: 0.9 },
+        real_1: { type: "noul", noul: 0.1 },
+      }),
+    );
+    expect(kept.map((c) => c.domain)).toEqual(["acme.com"]);
   });
 });

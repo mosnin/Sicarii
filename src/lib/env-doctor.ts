@@ -201,6 +201,40 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
           env,
           "Qwen generation after Jev grants prose. Optional typesafe/jev-1.13 eval fallback."
         ),
+        (() => {
+          const requiredOn = isSet(env, "JEV_REQUIRED");
+          const hasJev = anySet(env, [
+            "TYPESAFE_API_KEY",
+            "TYPESAFE_AI_API_KEY",
+            "AI_GATEWAY_API_KEY",
+            "VERCEL_AI_GATEWAY_API_KEY",
+            "OPENROUTER_API_KEY",
+          ]);
+          if (requiredOn && !hasJev) {
+            return {
+              name: "Jev required (fail-closed)",
+              status: "missing" as CheckStatus,
+              vars: ["JEV_REQUIRED", "TYPESAFE_API_KEY"],
+              detail:
+                "JEV_REQUIRED is set but no Jev evaluate key is present. Writes, money, and inbound scans will refuse.",
+            };
+          }
+          if (requiredOn && hasJev) {
+            return {
+              name: "Jev required (fail-closed)",
+              status: "pass" as CheckStatus,
+              vars: ["JEV_REQUIRED"],
+              detail: "Fail-closed is on and at least one Jev evaluate key is set.",
+            };
+          }
+          return {
+            name: "Jev required (fail-closed)",
+            status: "missing" as CheckStatus,
+            vars: ["JEV_REQUIRED"],
+            detail:
+              "Not set (optional). Unconfigured Jev fails open on routing and most writes. Set JEV_REQUIRED=1 in production.",
+          };
+        })(),
       ],
     },
     {

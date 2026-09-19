@@ -16,7 +16,9 @@
     "smoke:mcp": "node scripts/mcp-smoke.mjs",
     "smoke:agentphone": "node scripts/agentphone-smoke.mjs",
     "smoke:voice": "node scripts/voice-smoke.mjs",
-    "doctor": "node --no-warnings scripts/doctor.mjs"
+    "doctor": "node --no-warnings --experimental-strip-types scripts/doctor.mjs",
+    "env-doctor": "node --no-warnings --experimental-strip-types scripts/doctor.mjs",
+    "jevcal": "node --no-warnings --experimental-strip-types scripts/jevcal.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",

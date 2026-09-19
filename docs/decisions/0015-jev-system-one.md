@@ -37,6 +37,7 @@ Date: 2026-09-19 · Verdict: **SHIP** (build-verified) · Led by: engineer → v
 ## Debts owed to reality
 
 - Live `TYPESAFE_API_KEY` + one observed 70-500ms route-intent.
-- Sweep `src/lib/jev/policy.ts` on labeled CRM turns; pin `jev-1.13.0`.
+- Sweep `src/lib/jev/policy.ts` on labeled CRM turns (`pnpm jevcal`); pin `jev-1.13.0`.
 - Confirm OpenRouter Qwen model ids against the current catalog.
 - Confirm OpenAI Realtime session shape against a live key.
+- Set `JEV_REQUIRED=1` on production once a Jev key is present.

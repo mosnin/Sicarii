@@ -73,6 +73,13 @@ export function isJevConfigured(cfg: JevClientConfig = envConfig()): boolean {
   return Boolean(cfg.typesafeKey || cfg.gatewayKey || cfg.openrouterKey);
 }
 
+/** Production opt-in: when set, missing Jev keys fail closed on writes,
+ *  money, memory, and inbound scans instead of silently allowing. */
+export function isJevRequired(): boolean {
+  const v = process.env.JEV_REQUIRED?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
 function normalizeAnswer(raw: RawAnswer): Answer {
   const looksNoul =
     raw.type === "noul" ||
@@ -126,7 +133,7 @@ async function postJson(
     });
     const json = await res.json().catch(() => null);
     return { status: res.status, json };
-  } catch (e) {
+  } catch {
     const aborted = ctrl.signal.aborted;
     throw new JevError(aborted ? "Jev request timed out." : "Jev request failed.", {
       retryable: aborted,

@@ -9,6 +9,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { embedText, toVectorLiteral } from "@/lib/embeddings";
 import { ensureCredits, spendCredits } from "@/lib/credits";
+import { scanMalicious } from "@/lib/jev";
 
 export type MemoryKind = "message" | "entity" | "contact" | "email";
 
@@ -32,6 +33,10 @@ export async function storeMemory(
   refId?: string,
   opts: { chargeCredits?: boolean } = {},
 ): Promise<boolean> {
+  // Scan every persist, including free in-app agent turns. Unconfigured
+  // Jev fails open unless JEV_REQUIRED is set.
+  const scan = await scanMalicious(content, "memory");
+  if (!scan.allow) return false;
   // Gate BEFORE the paid OpenAI call when this write is billable.
   if (opts.chargeCredits) await ensureCredits(userId, "remember");
   const embedding = await embedText(content);

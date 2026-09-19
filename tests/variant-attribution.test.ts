@@ -60,7 +60,10 @@ vi.mock("@/lib/variant-operations", () => ({
   attributeReply: (...args: unknown[]) => attributeReply(...args),
 }));
 vi.mock("@/lib/jev", () => ({
+  keepNamedCompanies: async <T,>(found: T[]) => found,
+  rerankHits: async <T,>(_q: string, hits: T[]) => hits,
   runWardens: async () => ({ allow: true, reasons: [], source: "fallback" }),
+  scanMalicious: async () => ({ allow: true, reasons: [], source: "fallback" }),
   triageInbound: async () => ({
     category: "other",
     action: "wait",

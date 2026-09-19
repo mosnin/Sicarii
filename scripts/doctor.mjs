@@ -5,8 +5,12 @@
 // missing by reading scattered code and logs.
 //
 // Usage:
-//   node scripts/doctor.mjs            # reads .env.local (if present) + process.env
-//   pnpm doctor
+//   node --no-warnings --experimental-strip-types scripts/doctor.mjs
+//   pnpm run doctor
+//   pnpm env-doctor
+//
+// `pnpm doctor` (no `run`) is pnpm's own CLI, not this script. Always use
+// `pnpm run doctor` or `pnpm env-doctor` to inspect Scalar env keys.
 //
 // This runs standalone via plain `node`, not through Next.js, so it does its
 // own tiny .env.local parsing below (Next.js normally does this for you).

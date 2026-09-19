@@ -8,9 +8,12 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import {
   AUTO_MODE_TOOLS,
   decideTurn,
+  evaluateLoop,
   gateMoney,
+  gradePage,
   isJevConfigured,
   runAutoModeThen,
+  scanMalicious,
   triageInbound,
   tryEvaluate,
   verifyCitations,
@@ -216,6 +219,8 @@ const MCP_AUTO_MODE_BUCKETS = new Set([
   "add_activity",
   "breakup_draft",
   "create_variant",
+  "search_web",
+  "serp_search",
   ...AUTO_MODE_TOOLS,
 ]);
 
@@ -224,13 +229,14 @@ async function gated(
   bucket: string,
   limit: number,
   fn: (userId: string) => Promise<unknown>,
+  pending: Json = {},
 ): Promise<ToolResult> {
   try {
     const userId = userIdFrom(extra);
     const rate = await checkRateLimit(`mcp:${bucket}:${userId}`, limit, 60_000);
     if (!rate.success) return fail("Rate limit reached for this tool. Please wait a moment and try again.");
     if (MCP_AUTO_MODE_BUCKETS.has(bucket)) {
-      const result = await runAutoModeThen(bucket, {} as Json, `MCP ${bucket}`, () => fn(userId));
+      const result = await runAutoModeThen(bucket, pending, `MCP ${bucket}`, () => fn(userId));
       if (result && typeof result === "object" && "error" in result) {
         const err = (result as { error?: unknown }).error;
         if (
@@ -396,8 +402,7 @@ const handler = createMcpHandler(
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (args, extra) =>
         gated(extra, "create", 120, (userId) =>
-          createEntity(userId, { ...args, source: "agent" }),
-        ),
+          createEntity(userId, { ...args, source: "agent" }), args as Json),
     );
 
     server.tool(
@@ -419,7 +424,7 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id, ...rest }, extra) =>
-        gated(extra, "update_entity", 120, (userId) => updateEntity(userId, id, rest)),
+        gated(extra, "update_entity", 120, (userId) => updateEntity(userId, id, rest), { id, ...rest } as Json),
     );
 
     server.tool(
@@ -427,7 +432,7 @@ const handler = createMcpHandler(
       "Enrich a business via Explorium using its domain (pulls company data + firmographics). Stores the result on the entity.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-      async ({ id }, extra) => gated(extra, "enrich", 20, (userId) => enrichEntity(userId, id)),
+      async ({ id }, extra) => gated(extra, "enrich", 20, (userId) => enrichEntity(userId, id), { id }),
     );
 
     server.tool(
@@ -435,7 +440,7 @@ const handler = createMcpHandler(
       "Permanently delete a business (entity) from the CRM by id. Its contacts are kept (unlinked from the company). Use to clean up junk or duplicate records.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => gated(extra, "delete_entity", 60, (userId) => deleteEntity(userId, id)),
+      async ({ id }, extra) => gated(extra, "delete_entity", 60, (userId) => deleteEntity(userId, id), { id }),
     );
 
     /* -------------------------- Contacts -------------------------- */
@@ -485,7 +490,7 @@ const handler = createMcpHandler(
       async (args, extra) =>
         gated(extra, "create", 120, (userId) =>
           createContact(userId, { ...args, source: args.source || "agent" }),
-        ),
+        args as Json),
     );
 
     server.tool(
@@ -523,7 +528,7 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id, ...rest }, extra) =>
-        gated(extra, "update_contact", 120, (userId) => updateContact(userId, id, rest)),
+        gated(extra, "update_contact", 120, (userId) => updateContact(userId, id, rest), { id, ...rest } as Json),
     );
 
     server.tool(
@@ -531,7 +536,7 @@ const handler = createMcpHandler(
       "Permanently delete a person (contact) from the CRM by id. Use to clean up junk or duplicate records.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => gated(extra, "delete_contact", 60, (userId) => deleteContact(userId, id)),
+      async ({ id }, extra) => gated(extra, "delete_contact", 60, (userId) => deleteContact(userId, id), { id }),
     );
 
     server.tool(
@@ -540,7 +545,7 @@ const handler = createMcpHandler(
       { id: z.string(), field: z.enum(["linkedin", "email", "phone"]) },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ id, field }, extra) =>
-        gated(extra, "enrich", 20, (userId) => enrichContactField(userId, id, field)),
+        gated(extra, "enrich", 20, (userId) => enrichContactField(userId, id, field), { id, field }),
     );
 
     /* ------------------------ Email context ----------------------- */
@@ -563,7 +568,7 @@ const handler = createMcpHandler(
             ...args,
             savedAsContext: args.savedAsContext ?? true,
           }),
-        ),
+        args as Json),
     );
 
     server.tool(
@@ -585,7 +590,7 @@ const handler = createMcpHandler(
       { contactId: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ contactId }, extra) =>
-        gated(extra, "enrich", 20, (userId) => findContactSocials(userId, contactId)),
+        gated(extra, "enrich", 20, (userId) => findContactSocials(userId, contactId), { contactId }),
     );
 
     server.tool(
@@ -625,7 +630,7 @@ const handler = createMcpHandler(
             savedAsContext: savedAsContext ?? true,
             variantId: variantId ?? null,
           }),
-        ),
+        { contactId, channel, direction, body, threadRef: threadRef ?? null, variantId: variantId ?? null }),
     );
 
     server.tool(
@@ -688,7 +693,7 @@ const handler = createMcpHandler(
           // double-charge here.)
           if (results.length > 0) await spendCredits(userId, "web_search");
           return results;
-        }),
+        }, { query, maxResults: maxResults ?? null }),
     );
 
     server.tool(
@@ -697,7 +702,7 @@ const handler = createMcpHandler(
       { query: z.string(), count: z.number().int().min(1).max(25).optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ query, count }, extra) =>
-        gated(extra, "find_companies", 10, (userId) => findCompanies(userId, { query, count })),
+        gated(extra, "find_companies", 10, (userId) => findCompanies(userId, { query, count }), { query, count: count ?? null }),
     );
 
     server.tool(
@@ -710,7 +715,7 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ query, location, count }, extra) =>
-        gated(extra, "maps_leads", 10, (userId) => discoverLocalLeads(userId, { query, location, count })),
+        gated(extra, "maps_leads", 10, (userId) => discoverLocalLeads(userId, { query, location, count }), { query, location: location ?? null, count: count ?? null }),
     );
 
     server.tool(
@@ -734,7 +739,7 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ goal, angles, anglesN, count }, extra) =>
-        gated(extra, "swarm_discover", 5, (userId) => swarmDiscover(userId, { goal, angles, anglesN, count })),
+        gated(extra, "swarm_discover", 5, (userId) => swarmDiscover(userId, { goal, angles, anglesN, count }), { goal, angles: angles ?? null, anglesN: anglesN ?? null, count: count ?? null }),
     );
 
     server.tool(
@@ -760,7 +765,7 @@ const handler = createMcpHandler(
       // Not readOnly: it debits the credit meter on a hit.
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ url }, extra) =>
-        gated(extra, "contact_extract", 20, (userId) => extractSiteContacts(userId, url)),
+        gated(extra, "contact_extract", 20, (userId) => extractSiteContacts(userId, url), { url }),
     );
 
     server.tool(
@@ -773,7 +778,7 @@ const handler = createMcpHandler(
       // Not readOnly: it debits the credit meter on a hit.
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async ({ query, limit }, extra) =>
-        gated(extra, "serp_search", 30, (userId) => searchGoogle(userId, { query, limit })),
+        gated(extra, "serp_search", 30, (userId) => searchGoogle(userId, { query, limit }), { query, limit: limit ?? null }),
     );
 
     /* -------------------------- Segments -------------------------- */
@@ -798,7 +803,7 @@ const handler = createMcpHandler(
       "Create a customer segment manually, optionally with member contact ids.",
       { name: z.string().max(200), goal: z.string().max(2000).optional(), contactIds: z.array(z.string()).max(1000).optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async (args, extra) => gated(extra, "create_segment", 60, (userId) => createSegment(userId, args)),
+      async (args, extra) => gated(extra, "create_segment", 60, (userId) => createSegment(userId, args), args as Json),
     );
 
     server.tool(
@@ -830,7 +835,7 @@ const handler = createMcpHandler(
       { goal: z.string(), quantity: z.number().int().min(1).max(100).optional(), name: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       async (args, extra) =>
-        gated(extra, "build_segment", 10, (userId) => buildSmartSegment(userId, args)),
+        gated(extra, "build_segment", 10, (userId) => buildSmartSegment(userId, args), args as Json),
     );
 
     /* -------------------------- Pipelines ------------------------- */
@@ -855,7 +860,7 @@ const handler = createMcpHandler(
       "Create a pipeline with an objective, optionally seeded from a segment (recommended).",
       { name: z.string(), goal: z.string().optional(), segmentId: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async (args, extra) => gated(extra, "create_pipeline", 60, (userId) => createPipeline(userId, args)),
+      async (args, extra) => gated(extra, "create_pipeline", 60, (userId) => createPipeline(userId, args), args as Json),
     );
 
     server.tool(
@@ -864,7 +869,7 @@ const handler = createMcpHandler(
       { pipelineId: z.string(), contactIds: z.array(z.string()).max(1000).optional(), segmentId: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ pipelineId, ...rest }, extra) =>
-        gated(extra, "add_to_pipeline", 60, (userId) => addToPipeline(userId, pipelineId, rest)),
+        gated(extra, "add_to_pipeline", 60, (userId) => addToPipeline(userId, pipelineId, rest), { pipelineId, ...rest } as Json),
     );
 
     server.tool(
@@ -895,7 +900,7 @@ const handler = createMcpHandler(
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ pipelineId, entryId, ...patch }, extra) =>
-        gated(extra, "update_pipeline_entry", 120, (userId) => updatePipelineEntry(userId, pipelineId, entryId, patch)),
+        gated(extra, "update_pipeline_entry", 120, (userId) => updatePipelineEntry(userId, pipelineId, entryId, patch), { pipelineId, entryId, ...patch } as Json),
     );
 
     server.tool(
@@ -928,7 +933,7 @@ const handler = createMcpHandler(
         // bucket (limit 120) with a much stricter limit here would let unrelated
         // entity/contact creation traffic exhaust this tool's counter early (and
         // vice versa) since checkRateLimit keys purely on the bucket string.
-        gated(extra, "autopilot_propose", 20, (userId) => proposeAutopilotPlan(userId, args)),
+        gated(extra, "autopilot_propose", 20, (userId) => proposeAutopilotPlan(userId, args), args as Json),
     );
 
     server.tool(
@@ -970,7 +975,7 @@ const handler = createMcpHandler(
           return remembered
             ? { remembered: true }
             : { remembered: false, reason: "Memory is unavailable right now (embeddings not configured or storage failed). Keep critical context in the CRM record instead." };
-        }),
+        }, { content, refId: refId ?? null }),
     );
 
     /* --------------------------- Billing -------------------------- */
@@ -1015,7 +1020,7 @@ const handler = createMcpHandler(
       { credits: z.number().int().min(100).max(100000).default(1000), xPayment: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ credits, xPayment }, extra) =>
-        gated(extra, "x402_buy", 30, (userId) => buyCreditsViaMcp(userId, credits, xPayment)),
+        gated(extra, "x402_buy", 30, (userId) => buyCreditsViaMcp(userId, credits, xPayment), { credits, hasPayment: Boolean(xPayment) }),
     );
     server.tool(
       "buy_plan",
@@ -1023,7 +1028,7 @@ const handler = createMcpHandler(
       { plan: z.enum(["starter", "pro", "business", "team"]), xPayment: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ plan, xPayment }, extra) =>
-        gated(extra, "x402_buy", 20, (userId) => buyPlanViaMcp(userId, plan, xPayment)),
+        gated(extra, "x402_buy", 20, (userId) => buyPlanViaMcp(userId, plan, xPayment), { plan, hasPayment: Boolean(xPayment) }),
     );
 
     server.tool(
@@ -1031,14 +1036,14 @@ const handler = createMcpHandler(
       "Verify and enrich a company against authoritative public registries: GLEIF (global LEI), UK Companies House, and SEC EDGAR (US public companies). Adds legal name, LEI, jurisdiction, registration status, officers, and firmographics, with provenance. Free (open/public data, no credits). Matches strictly by legal name, never a same-name stranger; returns 'no record found' rather than guessing.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      async ({ id }, extra) => gated(extra, "verify_entity", 20, (userId) => verifyEntity(userId, id)),
+      async ({ id }, extra) => gated(extra, "verify_entity", 20, (userId) => verifyEntity(userId, id), { id }),
     );
     server.tool(
       "detect_tech",
       "Detect the technologies a company's website uses (ecommerce platform, CMS, analytics, marketing/CRM/support tools, payments, frameworks, hosting) by fingerprinting its homepage. Free (derived from the public page, no third-party data). Great for technographic targeting. The entity needs a website or domain.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      async ({ id }, extra) => gated(extra, "detect_tech", 20, (userId) => detectEntityTech(userId, id)),
+      async ({ id }, extra) => gated(extra, "detect_tech", 20, (userId) => detectEntityTech(userId, id), { id }),
     );
 
     /* ------------------------- Phone calls ------------------------ */
@@ -1054,7 +1059,7 @@ const handler = createMcpHandler(
         initialGreeting: z.string().max(2000).optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-      async (a, extra) => gated(extra, "place_call", 20, (userId) => placeContactCall(userId, a)),
+      async (a, extra) => gated(extra, "place_call", 20, (userId) => placeContactCall(userId, a), a as Json),
     );
     server.tool(
       "list_contact_calls",
@@ -1068,7 +1073,7 @@ const handler = createMcpHandler(
       "Refresh a logged call from AgentPhone: pull the latest status, duration, transcript, and recording onto the call record. Use after a call ends.",
       { logId: z.string() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      async ({ logId }, extra) => gated(extra, "sync_call", 30, (userId) => syncContactCall(userId, logId)),
+      async ({ logId }, extra) => gated(extra, "sync_call", 30, (userId) => syncContactCall(userId, logId), { logId }),
     );
     server.tool(
       "log_call",
@@ -1087,7 +1092,7 @@ const handler = createMcpHandler(
         recordingUrl: z.string().url().max(1000).startsWith("https://").optional(),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-      async (a, extra) => gated(extra, "log_call", 120, (userId) => saveCall(userId, a)),
+      async (a, extra) => gated(extra, "log_call", 120, (userId) => saveCall(userId, a), a as Json),
     );
 
     /* ----------------------- Outreach tracking -------------------- */
@@ -1107,7 +1112,7 @@ const handler = createMcpHandler(
       async (a, extra) =>
         gated(extra, "log_outreach", 120, (userId) =>
           logOutreach(userId, { ...a, actor: actorFrom(extra) }),
-        ),
+        a as Json),
     );
     server.tool(
       "list_due_followups",
@@ -1148,7 +1153,7 @@ const handler = createMcpHandler(
             ),
             actor: actorFrom(extra),
           }),
-        ),
+        { contactId: a.contactId ?? null, entityId: a.entityId ?? null, kind: a.kind, body: a.body, channel: a.channel ?? null }),
     );
     server.tool(
       "list_activities",
@@ -1176,7 +1181,7 @@ const handler = createMcpHandler(
         limit: z.number().int().min(1).max(25).optional().describe("Max cold deals to scan/draft in this call (default 10)"),
       },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      async (a, extra) => gated(extra, "breakup_draft", 10, (userId) => draftBreakups(userId, a)),
+      async (a, extra) => gated(extra, "breakup_draft", 10, (userId) => draftBreakups(userId, a), a as Json),
     );
     server.tool(
       "list_pending_drafts",
@@ -1215,7 +1220,7 @@ const handler = createMcpHandler(
             text,
             segmentId: segmentId ?? null,
           }),
-        ),
+        { kind, text, segmentId: segmentId ?? null }),
     );
     server.tool(
       "select_variant",
@@ -1299,6 +1304,32 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ claims }, extra) =>
         gated(extra, "jev_verify_citations", 40, async () => verifyCitations(claims)),
+    );
+
+    server.tool(
+      "jev_grade_page",
+      "Grade a page or draft with Jev section scores (clarity, usefulness, credibility, ...). Returns a 0-100 score and letter. Does not write CRM state.",
+      { page: z.string().max(20_000) },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ page }, extra) => gated(extra, "jev_grade_page", 40, async () => gradePage(page)),
+    );
+
+    server.tool(
+      "jev_scan_malicious",
+      "Scan an untrusted artifact (email, webhook, memory, snippet) for data-theft, hidden network, or concealment. Returns allow=false when Jev is sure it is hostile.",
+      { artifact: z.string().max(4000), kind: z.string().max(40).optional() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ artifact, kind }, extra) =>
+        gated(extra, "jev_scan_malicious", 40, async () => scanMalicious(artifact, kind ?? "artifact")),
+    );
+
+    server.tool(
+      "jev_loop",
+      "Ask Jev whether an agent loop should stop (goal done, stuck, or early stop). Code owns the branch.",
+      { goal: z.string().max(1000), history: z.string().max(4000) },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ goal, history }, extra) =>
+        gated(extra, "jev_loop", 40, async () => evaluateLoop({ goal, history })),
     );
   },
   {

@@ -83,6 +83,18 @@ vi.mock("@ai-sdk/openai", () => ({
 
 vi.mock("@/lib/jev", () => ({
   gateOutboundDraft: async () => ({ allow: true, reasons: [], source: "fallback" }),
+  keepNamedCompanies: async <T,>(found: T[]) => found,
+  rerankHits: async <T,>(_q: string, hits: T[]) => hits,
+  runWardens: async () => ({ allow: true, reasons: [], source: "fallback" }),
+  scanMalicious: async () => ({ allow: true, reasons: [], source: "fallback" }),
+  triageInbound: async () => ({
+    category: "other",
+    action: "wait",
+    severity: 1,
+    urgency: 0,
+    confidence: 0,
+    source: "fallback",
+  }),
 }));
 
 import { prisma } from "@/lib/prisma";

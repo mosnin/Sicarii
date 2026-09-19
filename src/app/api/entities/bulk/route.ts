@@ -6,6 +6,7 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { geocodeCached } from "@/lib/geocode";
 import { checkCreationBudget } from "@/lib/creation-guard";
+import { filterRealCompanies } from "@/lib/jev";
 
 export const maxDuration = 60;
 
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
     const existingDomains = new Set(existing.map((e) => normDomain(e.domain ?? undefined)));
 
     const seenInBatch = new Set<string>();
-    const toCreate = parsed.data.entities.filter((e) => {
+    const unique = parsed.data.entities.filter((e) => {
       const d = normDomain(e.domain);
       if (d) {
         if (existingDomains.has(d) || seenInBatch.has(d)) return false;
@@ -84,6 +85,12 @@ export async function POST(req: NextRequest) {
       }
       return true;
     });
+    const realRows = unique.map((e, i) => ({
+      id: normDomain(e.domain) ?? `${i}:${e.name.trim().toLowerCase()}`,
+      text: [e.name, e.domain, e.website, e.industry, e.description].filter(Boolean).join(" "),
+    }));
+    const realKeep = await filterRealCompanies(realRows);
+    const toCreate = unique.filter((e, i) => !realKeep || realKeep.has(realRows[i]!.id));
 
     let created = 0;
     const toGeocode: { id: string; location: string }[] = [];

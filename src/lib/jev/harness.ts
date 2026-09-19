@@ -7,7 +7,7 @@
 // the router says generation is needed.
 
 import { asChoice, asNoul, asScore, choice, type Json } from "./contract";
-import { isJevConfigured, tryEvaluate, type JevClient } from "./client";
+import { isJevConfigured, isJevRequired, tryEvaluate, type JevClient } from "./client";
 import { GATES, TOOL_GATE } from "./policy";
 import { gateChoice } from "./contract";
 import { TOOL_GUARD_QUESTIONS } from "./packs/guard";
@@ -82,15 +82,52 @@ export type AutoModeVerdict =
 const WRITE_HINT =
   /\b(create_|update_|delete_|draft_|propose_|log_|enrich_|find_companies|maps_leads|swarm_|place_call|buy_)/;
 
+/** MCP rate-limit buckets that are writes even when the name has no prefix
+ *  (create, enrich, remember). A live Jev failure on these asks for confirm. */
+export const WRITE_BUCKETS = new Set([
+  "create",
+  "enrich",
+  "remember",
+  "save_email_context",
+  "contact_extract",
+  "create_segment",
+  "build_segment",
+  "create_pipeline",
+  "add_to_pipeline",
+  "update_pipeline_entry",
+  "autopilot_propose",
+  "x402_buy",
+  "verify_entity",
+  "detect_tech",
+  "sync_call",
+  "log_call",
+  "add_activity",
+  "breakup_draft",
+  "create_variant",
+  "search_web",
+  "serp_search",
+  "google_search",
+]);
+
+export function isWriteTool(tool: string): boolean {
+  return WRITE_BUCKETS.has(tool) || WRITE_HINT.test(tool);
+}
+
 export async function autoMode(input: {
   tool: string;
   args: Json;
   message: string;
   client?: JevClient;
 }): Promise<AutoModeVerdict> {
-  // No key: do not brick writes. A failed live call on a write tool asks
-  // for confirmation instead of inventing an allow.
-  if (!input.client && !isJevConfigured()) return { action: "allow" };
+  // No key: do not brick local/dev writes unless JEV_REQUIRED is set.
+  // A failed live call on a write tool asks for confirmation instead of
+  // inventing an allow.
+  if (!input.client && !isJevConfigured()) {
+    if (isJevRequired() && isWriteTool(input.tool)) {
+      return { action: "confirm", reasons: ["jev_required"] };
+    }
+    return { action: "allow" };
+  }
 
   const result = await tryEvaluate(
     {
@@ -107,7 +144,7 @@ export async function autoMode(input: {
   );
 
   if (!result) {
-    return WRITE_HINT.test(input.tool)
+    return isWriteTool(input.tool)
       ? { action: "confirm", reasons: ["jev_unavailable"] }
       : { action: "allow" };
   }
