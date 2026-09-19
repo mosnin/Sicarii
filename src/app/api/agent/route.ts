@@ -66,11 +66,14 @@ import {
   addActivity,
   saveEmail,
   listSocialMessages,
+  placeContactCall,
 } from "@/lib/crm-operations";
-import { listSegments, listPipelines } from "@/lib/field-operations";
+import { listSegments, listPipelines, getSegment, getPipeline, createSegment, createPipeline } from "@/lib/field-operations";
+import { enrichContactField } from "@/lib/contact-enrich";
+import { findContactSocials } from "@/lib/social-find";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
-import { proposeAutopilotPlan, getAutopilotStatus } from "@/lib/autopilot-operations";
+import { proposeAutopilotPlan, getAutopilotStatus, pauseAutopilotPlan } from "@/lib/autopilot-operations";
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats, createVariant } from "@/lib/variant-operations";
 import { CREDIT_COSTS, getBilling } from "@/lib/credits";
@@ -568,6 +571,71 @@ export async function POST(req: Request) {
           }),
         ),
     }),
+    get_segment: tool({
+      description: "Get a segment and its member contacts.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: ({ id }) => exec(() => getSegment(userId, id)),
+    }),
+    get_pipeline: tool({
+      description: "Get a pipeline and its entries.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: ({ id }) => exec(() => getPipeline(userId, id)),
+    }),
+    create_segment: tool({
+      description: "Create a segment, optionally with member contact ids.",
+      inputSchema: z.object({
+        name: z.string().min(1).max(200),
+        goal: z.string().max(2000).optional(),
+        contactIds: z.array(z.string()).max(1000).optional(),
+      }),
+      execute: (args) => exec(() => createSegment(userId, args)),
+    }),
+    create_pipeline: tool({
+      description: "Create a pipeline, optionally seeded from a segment.",
+      inputSchema: z.object({
+        name: z.string().min(1).max(200),
+        goal: z.string().max(2000).optional(),
+        segmentId: z.string().optional(),
+      }),
+      execute: (args) => exec(() => createPipeline(userId, args)),
+    }),
+    enrich_contact: tool({
+      description:
+        "Find and save a contact's missing LinkedIn, work email, or phone. Verified against name and company.",
+      inputSchema: z.object({
+        id: z.string(),
+        field: z.enum(["linkedin", "email", "phone"]),
+      }),
+      execute: ({ id, field }) => exec(() => enrichContactField(userId, id, field)),
+    }),
+    find_socials: tool({
+      description:
+        "Find a contact's social profiles. Auto-saves name+company-verified hits; the rest come back as candidates.",
+      inputSchema: z.object({ contactId: z.string() }),
+      execute: ({ contactId }) => exec(() => findContactSocials(userId, contactId)),
+    }),
+    pause_autopilot: tool({
+      description: "Pause an active autopilot plan so it stops spending.",
+      inputSchema: z.object({
+        planId: z.string(),
+        reason: z.string().max(500).optional(),
+      }),
+      execute: ({ planId, reason }) =>
+        exec(() => pauseAutopilotPlan(userId, planId, { reason })),
+    }),
+    place_call: tool({
+      description:
+        "Call a contact via AgentPhone. Logs the call and marks them CONTACTED. Requires AgentPhone in Settings.",
+      inputSchema: z.object({
+        contactId: z.string(),
+        systemPrompt: z.string().min(1).max(8000),
+        toNumber: z.string().max(40).optional(),
+        agentId: z.string().max(200).optional(),
+        fromNumberId: z.string().max(200).optional(),
+        initialGreeting: z.string().max(2000).optional(),
+      }),
+      execute: (args) => exec(() => placeContactCall(userId, args)),
+    }),
   };
 
   // Auto mode (LangChain AutoModeMiddleware): Jev inspects pending tool
@@ -609,6 +677,14 @@ export async function POST(req: Request) {
     list_social_messages: "List social DMs with a contact.",
     save_email_context: "Save an email onto a contact.",
     create_variant: "Create a subject or opener variant.",
+    get_segment: "Get a segment and its members.",
+    get_pipeline: "Get a pipeline and its entries.",
+    create_segment: "Create a segment.",
+    create_pipeline: "Create a pipeline.",
+    enrich_contact: "Fill a contact's missing LinkedIn, email, or phone.",
+    find_socials: "Find a contact's social profiles.",
+    pause_autopilot: "Pause a running autopilot plan.",
+    place_call: "Call a contact via AgentPhone.",
   };
   const skillCatalog = Object.fromEntries(SKILLS.map((s) => [s.slug, s.description]));
 
@@ -638,10 +714,14 @@ export async function POST(req: Request) {
             ? listSwarmRuns(userId).catch(() => null)
           : instant?.tool === "list_pending_drafts"
             ? listPendingDrafts(userId, {}).catch(() => null)
+          : instant?.tool === "pause_autopilot"
+            ? getAutopilotStatus(userId).catch(() => null)
           : instant?.tool === "list_emails" ||
               instant?.tool === "list_activities" ||
               instant?.tool === "list_contact_calls" ||
-              instant?.tool === "list_social_messages"
+              instant?.tool === "list_social_messages" ||
+              instant?.tool === "enrich_contact" ||
+              instant?.tool === "find_socials"
             ? searchCrm(userId, instant.query).catch(() => null)
         : prefetchQuery !== null
           ? instant?.tool === "list_entities"
@@ -720,6 +800,27 @@ export async function POST(req: Request) {
         listActivities: (input) => listActivities(userId, input),
         listContactCalls: (contactId) => listContactCalls(userId, contactId),
         listSocialMessages: (contactId) => listSocialMessages(userId, contactId),
+        createSegment: (name) => createSegment(userId, { name }),
+        createPipeline: (name) => createPipeline(userId, { name }),
+        pauseAutopilot: async (prefetch) => {
+          const rows = Array.isArray(prefetch)
+            ? prefetch
+            : prefetch
+              ? [prefetch]
+              : await getAutopilotStatus(userId);
+          const list = Array.isArray(rows) ? rows : [];
+          const active = list.find(
+            (p) =>
+              typeof p === "object" &&
+              p !== null &&
+              "status" in p &&
+              (p.status === "active" || p.status === "approved"),
+          ) as { id?: string; name?: string } | undefined;
+          if (!active?.id) return { error: "No running autopilot plan to pause." };
+          return pauseAutopilotPlan(userId, active.id, { reason: "Paused from chat." });
+        },
+        enrichContact: (contactId, field) => enrichContactField(userId, contactId, field),
+        findSocials: (contactId) => findContactSocials(userId, contactId),
         scoreFit: productContext
           ? async (rows) => {
               const scores = await scoreFitWithJev(rows, productContext);

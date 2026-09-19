@@ -59,6 +59,24 @@ describe("classifyInstant", () => {
       query: "Jane",
     });
     expect(classifyInstant("show emails for Jane")).toMatchObject({ tool: "list_emails" });
+    expect(classifyInstant("create a segment called Enterprise")).toMatchObject({
+      tool: "create_segment",
+      name: "Enterprise",
+    });
+    expect(classifyInstant("add Outbound as a pipeline")).toMatchObject({
+      tool: "create_pipeline",
+      name: "Outbound",
+    });
+    expect(classifyInstant("pause autopilot")).toMatchObject({ tool: "pause_autopilot" });
+    expect(classifyInstant("enrich Jane's linkedin")).toMatchObject({
+      tool: "enrich_contact",
+      query: "Jane",
+      field: "linkedin",
+    });
+    expect(classifyInstant("find socials for Jane")).toMatchObject({
+      tool: "find_socials",
+      query: "Jane",
+    });
   });
 
   it("routes discovery and local maps", () => {

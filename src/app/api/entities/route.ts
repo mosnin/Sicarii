@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { geocodeCached } from "@/lib/geocode";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, listEntities } from "@/lib/crm-operations";
 import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 const ENTITY_STATUSES = ["NEW", "ENRICHED", "ARCHIVED"] as const;
@@ -35,26 +35,13 @@ export async function GET(req: NextRequest) {
     const user = await getAuthenticatedUser();
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
-
-    const entities = await prisma.entity.findMany({
-      where: {
-        userId: user.id,
-        ...(q
-          ? {
-              OR: [
-                { name: { contains: q, mode: "insensitive" } },
-                { domain: { contains: q, mode: "insensitive" } },
-                { industry: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: { updatedAt: "desc" },
-      include: { _count: { select: { contacts: true } } },
-      // Same as contacts: the blob belongs to GET /api/entities/[id].
-      omit: { enrichment: true },
-      take: 500,
-    });
+    const rawLimit = Number(searchParams.get("limit"));
+    const entities = await listEntities(
+      user.id,
+      q || undefined,
+      Number.isFinite(rawLimit) ? rawLimit : 500,
+      500,
+    );
 
     return NextResponse.json({ entities });
   } catch (e) {

@@ -55,6 +55,8 @@ describe("clampListLimit", () => {
     expect(clampListLimit(2.9)).toBe(2);
     expect(clampListLimit(MAX_LIST_LIMIT)).toBe(MAX_LIST_LIMIT);
     expect(clampListLimit(9999)).toBe(MAX_LIST_LIMIT);
+    expect(clampListLimit(500, 500)).toBe(500);
+    expect(clampListLimit(9999, 500)).toBe(500);
   });
 });
 
@@ -78,6 +80,10 @@ describe("listEntities", () => {
   it("caps take at the ceiling", async () => {
     await listEntities("u1", undefined, 100000);
     expect(entityFindMany.mock.calls[0][0].take).toBe(MAX_LIST_LIMIT);
+  });
+  it("lets HTTP raise the ceiling without changing agent defaults", async () => {
+    await listEntities("u1", undefined, 500, 500);
+    expect(entityFindMany.mock.calls[0][0].take).toBe(500);
   });
   it("applies the query as a filter and always scopes by userId", async () => {
     await listEntities("u1", "acme", 5);

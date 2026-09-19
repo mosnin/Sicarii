@@ -37,6 +37,11 @@ export const FAST_PATH_TOOLS = new Set([
   "list_activities",
   "list_contact_calls",
   "list_social_messages",
+  "create_segment",
+  "create_pipeline",
+  "pause_autopilot",
+  "enrich_contact",
+  "find_socials",
 ]);
 
 const READ_CORE = [
@@ -334,6 +339,46 @@ export function formatFastReply(input: {
     return `${rows.length} social message${rows.length === 1 ? "" : "s"} with ${query}${ch}${snippet ? `: ${snippet}` : "."}`;
   }
 
+  if (tool === "create_segment") {
+    const r = payload as { name?: string };
+    return `Created segment ${r.name ?? query}.`;
+  }
+
+  if (tool === "create_pipeline") {
+    const r = payload as { name?: string };
+    return `Created pipeline ${r.name ?? query}.`;
+  }
+
+  if (tool === "pause_autopilot") {
+    const r = payload as { name?: string; status?: string };
+    return `Paused ${r.name ?? "the autopilot plan"}${r.status ? ` (${r.status})` : ""}.`;
+  }
+
+  if (tool === "enrich_contact") {
+    const r = payload as { message?: string; value?: string; contact?: { name?: string | null } };
+    if (r.message) return r.message;
+    const who = r.contact?.name ?? query;
+    return `Enriched ${who}${r.value ? ` (${r.value})` : ""}.`;
+  }
+
+  if (tool === "find_socials") {
+    const r = payload as {
+      saved?: Record<string, unknown> | number;
+      candidates?: unknown[];
+      message?: string;
+    };
+    if (r.message && (!r.saved || (typeof r.saved === "object" && Object.keys(r.saved).length === 0))) {
+      return r.message;
+    }
+    const saved =
+      typeof r.saved === "number" ? r.saved : r.saved ? Object.keys(r.saved).length : 0;
+    const extra =
+      Array.isArray(r.candidates) && r.candidates.length > 0
+        ? ` ${r.candidates.length} candidate${r.candidates.length === 1 ? "" : "s"} need review.`
+        : "";
+    return `Found socials for ${query}${saved ? ` and saved ${saved}` : ""}.${extra}`;
+  }
+
   return "Done.";
 }
 
@@ -363,6 +408,11 @@ export type FastPathRunners = {
   listActivities?: (input: { contactId?: string; entityId?: string }) => Promise<unknown>;
   listContactCalls?: (contactId: string) => Promise<unknown>;
   listSocialMessages?: (contactId: string) => Promise<unknown>;
+  createSegment?: (name: string) => Promise<unknown>;
+  createPipeline?: (name: string) => Promise<unknown>;
+  pauseAutopilot?: (prefetch?: unknown) => Promise<unknown>;
+  enrichContact?: (contactId: string, field: "linkedin" | "email" | "phone") => Promise<unknown>;
+  findSocials?: (contactId: string) => Promise<unknown>;
   scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
 
@@ -548,6 +598,48 @@ async function runTool(
         return runners.listSocialMessages ? runners.listSocialMessages(contact.id) : [];
       }
       return runners.listContactCalls ? runners.listContactCalls(contact.id) : [];
+    }
+    case "create_segment":
+      return write("create_segment", { name: instant?.name ?? query }, async () =>
+        runners.createSegment
+          ? runners.createSegment(instant?.name ?? query)
+          : { error: "Segment create is unavailable." },
+      );
+    case "create_pipeline":
+      return write("create_pipeline", { name: instant?.name ?? query }, async () =>
+        runners.createPipeline
+          ? runners.createPipeline(instant?.name ?? query)
+          : { error: "Pipeline create is unavailable." },
+      );
+    case "pause_autopilot":
+      return write("pause_autopilot", { query }, async () =>
+        runners.pauseAutopilot
+          ? runners.pauseAutopilot(prefetch)
+          : { error: "No running autopilot plan to pause." },
+      );
+    case "enrich_contact":
+    case "find_socials": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const contactId = contact.id;
+      if (tool === "find_socials") {
+        return write("find_socials", { contactId }, async () =>
+          runners.findSocials
+            ? runners.findSocials(contactId)
+            : { error: "Social find is unavailable." },
+        );
+      }
+      const field = instant?.field ?? "linkedin";
+      return write("enrich_contact", { id: contactId, field }, async () =>
+        runners.enrichContact
+          ? runners.enrichContact(contactId, field)
+          : { error: "Contact enrich is unavailable." },
+      );
     }
     case "search_crm":
     default:

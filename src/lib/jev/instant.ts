@@ -13,6 +13,7 @@ export type InstantRoute = {
   domain?: string;
   email?: string;
   company?: string;
+  field?: "linkedin" | "email" | "phone";
   detail?: boolean;
   source: "instant";
 };
@@ -121,6 +122,37 @@ function parseCreateContact(text: string): {
   };
 }
 
+function parseNamedCreate(text: string, noun: "segment" | "pipeline"): string | null {
+  if (!/\b(add|create|save|new)\b/i.test(text)) return null;
+  if (!new RegExp(`\\b${noun}s?\\b`, "i").test(text)) return null;
+  const called = text.match(/\b(?:called|named)\s+["']?([^"',.]{1,80})/i);
+  if (called?.[1]?.trim()) return called[1].trim().slice(0, 120);
+  const asNoun = text.match(
+    new RegExp(
+      `\\b(?:add|create|save)\\s+["']?([^"',]{1,80}?)["']?\\s+as\\s+an?\\s+${noun}\\b`,
+      "i",
+    ),
+  );
+  if (asNoun?.[1]?.trim()) return asNoun[1].trim().slice(0, 120);
+  return null;
+}
+
+function parseEnrichContact(text: string): { query: string; field: "linkedin" | "email" | "phone" } | null {
+  if (!/\benrich\b/i.test(text)) return null;
+  const hit = text.match(/\b(linkedin|e-?mail|phone)\b/i);
+  if (!hit?.[1]) return null;
+  const raw = hit[1].toLowerCase().replace("e-mail", "email");
+  const field = raw === "email" || raw === "phone" || raw === "linkedin" ? raw : null;
+  if (!field) return null;
+  const query = lookupQuery(text)
+    .replace(/\b(linkedin|e-?mail|phone|profile|number)\b/gi, " ")
+    .replace(/\b(for|of|'s)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!query) return null;
+  return { query, field };
+}
+
 function parseMaps(text: string): { query: string; location: string } | null {
   if (!/\b(dentist|dentists|restaurant|restaurants|salon|salons|lawyer|lawyers|plumber|plumbers|clinic|gym|coffee|barbershop|local)\b/i.test(
     text,
@@ -173,6 +205,14 @@ export function classifyInstant(
   if (
     !COMPOUND.test(text) &&
     !DESTRUCTIVE.test(text) &&
+    (/\b(pause|stop|halt)\b.+\bautopilot\b/i.test(text) ||
+      /^(please\s+)?(pause|stop|halt) (the )?autopilot\b/i.test(text))
+  ) {
+    return { tool: "pause_autopilot", query: text, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
     /\bautopilot\b/i.test(text) &&
     /\b(status|doing|budget|running|plan)\b/i.test(text)
   ) {
@@ -203,7 +243,38 @@ export function classifyInstant(
     return { tool: "list_swarm_runs", query: text, source: "instant" };
   }
 
+  const segmentName = parseNamedCreate(text, "segment");
+  if (segmentName && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return { tool: "create_segment", query: segmentName, name: segmentName, source: "instant" };
+  }
+  const pipelineName = parseNamedCreate(text, "pipeline");
+  if (pipelineName && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return { tool: "create_pipeline", query: pipelineName, name: pipelineName, source: "instant" };
+  }
+
   if (tooHardForInstant(text)) return null;
+
+  const enrichContact = parseEnrichContact(text);
+  if (enrichContact) {
+    return {
+      tool: "enrich_contact",
+      query: enrichContact.query,
+      field: enrichContact.field,
+      source: "instant",
+    };
+  }
+
+  if (
+    (/\b(find|search|look up)\b[\s\S]+\b(socials?|social profiles?)\b/i.test(text) ||
+      /\b(socials?|social profiles?)\s+for\b/i.test(text))
+  ) {
+    const who = lookupQuery(text)
+      .replace(/\b(socials?|social profiles?|linkedin)\b/gi, " ")
+      .replace(/\b(for|of|'s)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (who) return { tool: "find_socials", query: who, source: "instant" };
+  }
 
   if (/^(yes|yep|yeah|do it|go ahead|please do|discover (them|those|it)|find them|add them)$/i.test(text)) {
     const missed = extractMissedQuery(priorAssistant);

@@ -43,6 +43,8 @@ describe("canSkipGeneration", () => {
 
   it("skips the chat model on an instant create", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "create_entity", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "create_segment", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "pause_autopilot", confidence: 0.94 })).toBe(true);
   });
 });
 
@@ -158,6 +160,20 @@ describe("formatFastReply", () => {
         payload: [{ channel: "LINKEDIN", body: "Great to connect" }],
       }),
     ).toContain("1 social message with Jane");
+    expect(
+      formatFastReply({
+        tool: "create_segment",
+        query: "Enterprise",
+        payload: { name: "Enterprise" },
+      }),
+    ).toBe("Created segment Enterprise.");
+    expect(
+      formatFastReply({
+        tool: "pause_autopilot",
+        query: "pause",
+        payload: { name: "Miami dentists", status: "paused" },
+      }),
+    ).toContain("Paused Miami dentists");
   });
 
   it("explains an empty CRM lookup", () => {

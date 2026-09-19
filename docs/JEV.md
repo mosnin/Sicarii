@@ -366,7 +366,13 @@ Two stacked branches off Scalar `main`:
    scanned. Instant email/activity/call/social history skips TypeSafe.
    The in-app agent can save emails and create variants under auto-mode.
    Live Jev misses on identity, generated output, and log-phase wardens
-   deny. Unconfigured still fails open.
+   deny. Unconfigured still fails open. Welcome discovery reuses the
+   targeted CRM dedupe instead of loading every entity. HTTP company and
+   contact lists go through the ops layer (500-row HTTP ceiling). The
+   in-app agent now has get/create segment and pipeline, enrich_contact,
+   find_socials, pause_autopilot, and place_call, matching MCP.
+   Instant create-segment / create-pipeline / pause-autopilot /
+   enrich-contact / find-socials skip TypeSafe.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -510,6 +516,15 @@ Scalar now does that on `/api/agent`:
     `keepNamedCompanies`) drops the batch instead of inserting unverified
     companies. Generated output and log-phase wardens deny on a live miss.
     Unconfigured still fails open.
+22. Welcome first-run discovery calls `dedupeAgainstCrm` (incoming names
+    and domains only). HTTP `GET /api/entities` and `GET /api/contacts`
+    use `listEntities` / `listContacts` so the picker stays bounded and
+    omits enrichment. Agent Field writes and paid contact enrich now
+    exist in-app: `create_segment`, `create_pipeline`, `enrich_contact`,
+    `find_socials`, `pause_autopilot`, `place_call`, plus the matching
+    getters. Instant `create a segment called X`, `add Outbound as a
+    pipeline`, `pause autopilot`, `enrich Jane's linkedin`, and `find
+    socials for Jane` skip TypeSafe and skip `streamText`.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

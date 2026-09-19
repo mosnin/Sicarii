@@ -31,6 +31,12 @@ describe("agent Jev parity", () => {
     expect(AUTO_MODE_TOOLS.has("add_activity")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("save_email_context")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("create_variant")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("create_segment")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("create_pipeline")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("enrich_contact")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("find_socials")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("pause_autopilot")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("place_call")).toBe(true);
     expect(source).toContain("for (const name of AUTO_MODE_TOOLS)");
   });
 
@@ -44,5 +50,13 @@ describe("agent Jev parity", () => {
     expect(source).toContain("log_outreach:");
     expect(source).toContain("save_email_context:");
     expect(source).toContain("create_variant:");
+    expect(source).toContain("get_segment:");
+    expect(source).toContain("get_pipeline:");
+    expect(source).toContain("create_segment:");
+    expect(source).toContain("create_pipeline:");
+    expect(source).toContain("enrich_contact:");
+    expect(source).toContain("find_socials:");
+    expect(source).toContain("pause_autopilot:");
+    expect(source).toContain("place_call:");
   });
 });

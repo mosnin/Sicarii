@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, listContacts } from "@/lib/crm-operations";
 import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 const CONTACT_STATUSES = [
@@ -49,29 +49,13 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q")?.trim();
     const status = searchParams.get("status")?.trim();
+    const rawLimit = Number(searchParams.get("limit"));
 
-    const contacts = await prisma.contact.findMany({
-      where: {
-        userId: user.id,
-        ...(status &&
-        (CONTACT_STATUSES as readonly string[]).includes(status)
-          ? { status: status as (typeof CONTACT_STATUSES)[number] }
-          : {}),
-        ...(q
-          ? {
-              OR: [
-                { name: { contains: q, mode: "insensitive" } },
-                { email: { contains: q, mode: "insensitive" } },
-                { company: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: { updatedAt: "desc" },
-      // The enrichment blob (often KBs per row) belongs to GET /api/contacts/[id];
-      // shipping it 500x per list call bloats payloads for no consumer.
-      omit: { enrichment: true },
-      take: 500,
+    const contacts = await listContacts(user.id, {
+      q: q || undefined,
+      status: status || undefined,
+      limit: Number.isFinite(rawLimit) ? rawLimit : 500,
+      ceiling: 500,
     });
 
     return NextResponse.json({ contacts });

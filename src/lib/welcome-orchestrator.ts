@@ -24,7 +24,7 @@ import { prisma } from "@/lib/prisma";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
 import { getCompanyNews, isPipe0Configured } from "@/lib/pipe0";
-import { createEntity } from "@/lib/crm-operations";
+import { createEntity, dedupeAgainstCrm } from "@/lib/crm-operations";
 import { maybeSeedIcpRadar } from "@/lib/radar-seed";
 import { Prisma } from "@prisma/client";
 
@@ -192,29 +192,10 @@ export async function runWelcomeOrchestration(
     } else {
       emit({ type: "status", message: `Found ${found.length} compan${found.length === 1 ? "y" : "ies"}. Building your CRM...` });
 
-      // Deduplicate by domain/name against existing CRM rows + within this batch.
-      const existing = await prisma.entity.findMany({
-        where: { userId },
-        select: { domain: true, name: true },
-      });
-      const norm = (d?: string | null) =>
-        d?.toLowerCase().replace(/^www\./, "").trim() || undefined;
-      const seenDomains = new Set(
-        existing.map((e) => norm(e.domain)).filter(Boolean) as string[],
-      );
-      const seenNames = new Set(
-        existing.map((e) => e.name.trim().toLowerCase()),
-      );
+      // Targeted domain/name lookup, not a full-table load.
+      const { fresh } = await dedupeAgainstCrm(userId, found);
 
-      for (const c of found) {
-        const domain = norm(c.domain);
-        const nameKey = c.companyName.trim().toLowerCase();
-        if ((domain && seenDomains.has(domain)) || seenNames.has(nameKey)) {
-          continue;
-        }
-        if (domain) seenDomains.add(domain);
-        seenNames.add(nameKey);
-
+      for (const c of fresh) {
         // Persist via crm-operations so the row is in the dashboard immediately.
         let entity: { id: string; name: string; domain: string | null; industry: string | null; location: string | null; description: string | null };
         try {

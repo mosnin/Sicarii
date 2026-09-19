@@ -60,9 +60,11 @@ function asJson(v: unknown): Prisma.InputJsonValue | undefined {
 // smaller than the ceiling: ask for more when you mean it.
 export const DEFAULT_LIST_LIMIT = 50;
 export const MAX_LIST_LIMIT = 200;
-export function clampListLimit(limit?: number): number {
-  if (limit == null || !Number.isFinite(limit)) return DEFAULT_LIST_LIMIT;
-  return Math.min(Math.max(Math.trunc(limit), 1), MAX_LIST_LIMIT);
+export function clampListLimit(limit?: number, ceiling: number = MAX_LIST_LIMIT): number {
+  const cap =
+    Number.isFinite(ceiling) && ceiling > 0 ? Math.trunc(ceiling) : MAX_LIST_LIMIT;
+  if (limit == null || !Number.isFinite(limit)) return Math.min(DEFAULT_LIST_LIMIT, cap);
+  return Math.min(Math.max(Math.trunc(limit), 1), cap);
 }
 
 /* ----------------------------- Entities ----------------------------- */
@@ -83,7 +85,12 @@ export interface EntityInput {
   enrichment?: unknown;
 }
 
-export function listEntities(userId: string, q?: string, limit?: number) {
+export function listEntities(
+  userId: string,
+  q?: string,
+  limit?: number,
+  ceiling: number = MAX_LIST_LIMIT,
+) {
   return prisma.entity.findMany({
     where: {
       userId,
@@ -102,7 +109,7 @@ export function listEntities(userId: string, q?: string, limit?: number) {
     // Lists are for scanning; the enrichment blob (often KBs per row) belongs
     // to get_entity. Omitting it keeps agent token usage and payloads sane.
     omit: { enrichment: true },
-    take: clampListLimit(limit),
+    take: clampListLimit(limit, ceiling),
   });
 }
 
@@ -255,7 +262,7 @@ function domainLookupKeys(domain?: string | null): string[] {
   return [...keys];
 }
 
-async function dedupeAgainstCrm<T extends { companyName: string; domain?: string | null }>(
+export async function dedupeAgainstCrm<T extends { companyName: string; domain?: string | null }>(
   userId: string,
   found: T[],
 ): Promise<{ fresh: T[]; skipped: number }> {
@@ -652,9 +659,9 @@ export interface ContactInput {
 
 export function listContacts(
   userId: string,
-  opts: { q?: string; status?: string; limit?: number } = {}
+  opts: { q?: string; status?: string; limit?: number; ceiling?: number } = {}
 ) {
-  const { q, status, limit } = opts;
+  const { q, status, limit, ceiling } = opts;
   return prisma.contact.findMany({
     where: {
       userId,
@@ -675,7 +682,7 @@ export function listContacts(
     include: { entity: { select: { id: true, name: true } } },
     // Same as listEntities: the enrichment blob belongs to get_contact.
     omit: { enrichment: true },
-    take: clampListLimit(limit),
+    take: clampListLimit(limit, ceiling ?? MAX_LIST_LIMIT),
   });
 }
 
