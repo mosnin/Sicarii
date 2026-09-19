@@ -165,6 +165,7 @@ export async function shareContactToWorkspace(opts: {
          "facebook", "instagram", "twitter", "location", "imageUrl"],
       ) as Prisma.ContactUncheckedUpdateInput;
       patch.tags = Array.from(new Set([...existing.tags, ...contact.tags]));
+      if (!existing.list && contact.list) patch.list = contact.list;
       if (!existing.entityId && teamEntityId) patch.entityId = teamEntityId;
       await tx.contact.update({ where: { id: existing.id }, data: patch });
       teamContactId = existing.id;
@@ -189,6 +190,7 @@ export async function shareContactToWorkspace(opts: {
           source: "shared",
           sharedFromId: contact.id,
           tags: contact.tags,
+          list: contact.list,
           notes: contact.notes,
           lastContactedAt: contact.lastContactedAt,
           ...(contact.enrichment !== null

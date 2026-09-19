@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 import { resolveWorkspace } from "@/lib/workspace";
+import { isOwnerAdmin, roleForEmail } from "@/lib/admin";
 
 /**
  * Resolve the Prisma account for the current Clerk session in a server
@@ -17,7 +18,7 @@ export async function getDbUser(): Promise<User | null> {
   const email = clerk.emailAddresses?.[0]?.emailAddress ?? "";
   const personal = await prisma.user.upsert({
     where: { clerkId: clerk.id },
-    update: {},
+    update: isOwnerAdmin({ email }) ? { role: "admin", email } : {},
     create: {
       clerkId: clerk.id,
       email,
@@ -29,6 +30,7 @@ export async function getDbUser(): Promise<User | null> {
       // schema defaults (beta/10000) and keep them permanently.
       plan: "free",
       creditsRemaining: 200,
+      role: roleForEmail(email),
     },
   });
 

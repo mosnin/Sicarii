@@ -62,6 +62,14 @@ export default function NewContactPage() {
       return;
     }
     payload.source = "manual";
+    const tagsRaw = String(form.get("tags") ?? "");
+    const tags = tagsRaw
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, 50);
+    if (tags.length) payload.tags = tags;
+    else delete payload.tags;
 
     try {
       const res = await fetch("/api/contacts", {
@@ -114,6 +122,26 @@ export default function NewContactPage() {
                     <Input id={f.name} name={f.name} type={f.type} />
                   </div>
                 ))}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="list"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
+                    List
+                  </label>
+                  <Input id="list" name="list" placeholder="e.g. inbound Q3" maxLength={80} />
+                </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="tags"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
+                    Tags
+                  </label>
+                  <Input id="tags" name="tags" placeholder="comma-separated" />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <label

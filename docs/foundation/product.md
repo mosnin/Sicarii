@@ -67,7 +67,7 @@ proof the product is working. (Quality-gated: deduped, named, real.)
 | Object | What it is | Status |
 |---|---|---|
 | **Entity** | A company. Enriched (firmographics, tech stack, funding, traffic, news, overview), deduped by domain. | Built |
-| **Contact** | A person, ideally linked to an Entity. Enrich LinkedIn/email/phone per-field. | Built |
+| **Contact** | A person, ideally linked to an Entity. Enrich LinkedIn/email/phone per-field. First-class lead org on the same row: status, source, tags, list, owner, plus segment and pipeline-stage filters (not a second CRM). | Built |
 | **Deal** | An opportunity with stage + value, **advanced automatically by the agent** from activity. | Planned (today: status fields on records) |
 | **Email** | Threads via **AgentMail**, surfaced on the contact; agent can save messages as durable context. | Built (basic) |
 | **Memory** | Token-efficient vector recall over messages + CRM data so the agent stays consistent. | Built |

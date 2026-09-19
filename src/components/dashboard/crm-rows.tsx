@@ -23,6 +23,9 @@ export type CrmContact = {
   email: string | null;
   title: string | null;
   status: string;
+  source: string | null;
+  list: string | null;
+  tags: string[];
   imageUrl: string | null;
   updatedAt: string;
   entity: { id: string; name: string } | null;
@@ -497,7 +500,11 @@ export function ContactRows({ contacts }: { contacts: CrmContact[] }) {
       deleteEndpoint="/api/contacts"
       enrichEndpoint="/api/contacts/bulk-enrich"
       searchPlaceholder="Smart search, describe who you want, then Enter…"
-      searchText={(c) => [c.name, c.email, c.title, c.entity?.name, statusLabel(c.status)].filter(Boolean).join(" ")}
+      searchText={(c) =>
+        [c.name, c.email, c.title, c.entity?.name, statusLabel(c.status), c.source, c.list, ...(c.tags ?? [])]
+          .filter(Boolean)
+          .join(" ")
+      }
       sortOptions={sortOptions}
       hrefFor={(c) => `/crm/${c.id}`}
       renderRow={(c, score) => (
@@ -513,6 +520,8 @@ export function ContactRows({ contacts }: { contacts: CrmContact[] }) {
               {c.entity?.name && <span className="truncate">{c.entity.name}</span>}
               {c.email && <span className="truncate max-w-[200px]">{c.email}</span>}
               {c.title && <span className="truncate">{c.title}</span>}
+              {c.list && <span className="truncate">List: {c.list}</span>}
+              {c.source && <span className="truncate">Source: {c.source}</span>}
             </div>
           </div>
           <span className="shrink-0 text-xs text-muted-foreground">{new Date(c.updatedAt).toLocaleDateString()}</span>

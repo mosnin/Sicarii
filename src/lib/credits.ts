@@ -8,6 +8,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
+import { isOwnerAdmin } from "@/lib/admin";
 
 export const PLANS = {
   free: { credits: 200, monitors: 0, seats: 1 },
@@ -104,13 +105,19 @@ const RESET_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
  * only see a 402 after the fact). The real debit still happens via spendCredits
  * only on success, so a genuine miss is never charged.
  */
+async function loadMeterUser(userId: string) {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    select: { creditsRemaining: true, role: true, email: true },
+  });
+}
+
 export async function hasCredits(userId: string, action: CreditAction): Promise<boolean> {
   await maybeReset(userId);
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { creditsRemaining: true },
-  });
-  return Boolean(user) && user!.creditsRemaining >= CREDIT_COSTS[action];
+  const user = await loadMeterUser(userId);
+  if (!user) return false;
+  if (isOwnerAdmin(user)) return true;
+  return user.creditsRemaining >= CREDIT_COSTS[action];
 }
 
 export async function ensureCredits(userId: string, action: CreditAction): Promise<void> {
@@ -137,10 +144,8 @@ export async function ensureCreditsForCount(
   count: number,
 ): Promise<void> {
   await maybeReset(userId);
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { creditsRemaining: true },
-  });
+  const user = await loadMeterUser(userId);
+  if (user && isOwnerAdmin(user)) return;
   const need = CREDIT_COSTS[action] * Math.max(count, 0);
   if (!user || user.creditsRemaining < need) {
     throw new OpError(
@@ -239,6 +244,9 @@ export async function spendCredits(
   opts: { ref?: string } = {},
 ): Promise<void> {
   const cost = CREDIT_COSTS[action];
+
+  const user = await loadMeterUser(userId);
+  if (user && isOwnerAdmin(user)) return;
 
   await maybeReset(userId);
 

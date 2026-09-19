@@ -25,18 +25,17 @@ import {
 
 export { OpError } from "@/lib/op-error";
 import { OpError } from "@/lib/op-error";
+import {
+  CONTACT_STATUSES,
+  type ContactStatus,
+  contactListWhere,
+  assertAssignableOwner,
+  normalizeList,
+  type ContactListFilters,
+} from "@/lib/lead-org";
 
-const CONTACT_STATUSES = [
-  "NEW",
-  "ENRICHED",
-  "CONTACTED",
-  "REPLIED",
-  "QUALIFIED",
-  "WON",
-  "LOST",
-  "ARCHIVED",
-] as const;
-type ContactStatus = (typeof CONTACT_STATUSES)[number];
+export { CONTACT_STATUSES, contactListWhere };
+export type { ContactListFilters };
 
 type EntityStatus = "NEW" | "ENRICHED" | "ARCHIVED";
 
@@ -572,29 +571,17 @@ export interface ContactInput {
   notes?: string | null;
   enrichment?: unknown;
   entityId?: string | null;
+  list?: string | null;
+  ownerId?: string | null;
 }
 
 export function listContacts(
   userId: string,
-  opts: { q?: string; status?: string; limit?: number } = {}
+  opts: ContactListFilters & { limit?: number } = {}
 ) {
-  const { q, status, limit } = opts;
+  const { limit, ...filters } = opts;
   return prisma.contact.findMany({
-    where: {
-      userId,
-      ...(status && (CONTACT_STATUSES as readonly string[]).includes(status)
-        ? { status: status as ContactStatus }
-        : {}),
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: q, mode: "insensitive" } },
-              { email: { contains: q, mode: "insensitive" } },
-              { company: { contains: q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
+    where: contactListWhere(userId, filters),
     orderBy: { updatedAt: "desc" },
     include: { entity: { select: { id: true, name: true } } },
     // Same as listEntities: the enrichment blob belongs to get_contact.
@@ -612,6 +599,18 @@ export async function getContact(userId: string, id: string) {
       // agent's context) with every message ever saved.
       emails: { orderBy: { sentAt: "desc" }, take: 50 },
       socialMessages: { orderBy: { createdAt: "desc" }, take: 50 },
+      segments: {
+        select: { segmentId: true, segment: { select: { id: true, name: true } } },
+        take: 50,
+      },
+      pipelineEntries: {
+        select: {
+          pipelineId: true,
+          stage: true,
+          pipeline: { select: { id: true, name: true } },
+        },
+        take: 20,
+      },
     },
   });
   if (!contact || contact.userId !== userId)
@@ -625,12 +624,15 @@ async function assertEntityOwned(userId: string, entityId: string) {
 }
 
 export async function createContact(userId: string, input: ContactInput) {
-  const { enrichment, tags, entityId, ...rest } = input;
+  const { enrichment, tags, entityId, list, ownerId, ...rest } = input;
   if (entityId) await assertEntityOwned(userId, entityId);
+  await assertAssignableOwner(userId, ownerId);
   return prisma.contact.create({
     data: {
       ...rest,
       tags: tags ?? [],
+      list: normalizeList(list) ?? undefined,
+      ownerId: ownerId || undefined,
       ...(asJson(enrichment) ? { enrichment: asJson(enrichment) } : {}),
       entityId: entityId ?? undefined,
       userId,
@@ -646,10 +648,13 @@ export async function updateContact(
   const existing = await prisma.contact.findUnique({ where: { id } });
   if (!existing || existing.userId !== userId)
     throw new OpError("Contact not found", 404);
-  const { enrichment, entityId, ...rest } = input;
+  const { enrichment, entityId, list, ownerId, ...rest } = input;
   if (entityId) await assertEntityOwned(userId, entityId);
+  if (ownerId !== undefined) await assertAssignableOwner(userId, ownerId);
   const data: Prisma.ContactUncheckedUpdateInput = { ...rest };
   if (entityId !== undefined) data.entityId = entityId;
+  if (list !== undefined) data.list = normalizeList(list);
+  if (ownerId !== undefined) data.ownerId = ownerId || null;
   if (enrichment !== undefined) {
     data.enrichment =
       enrichment === null ? Prisma.DbNull : (enrichment as Prisma.InputJsonValue);
