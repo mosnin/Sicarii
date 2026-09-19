@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { autoMode, routeModel, type JevClient } from "@/lib/jev";
+import { autoMode, isWriteTool, routeModel, type JevClient } from "@/lib/jev";
 import type { JevResult, QuestionMap } from "@/lib/jev/contract";
 
 function mockClient(answers: JevResult["answers"]): JevClient {
@@ -175,5 +175,14 @@ describe("autoMode", () => {
       }),
     });
     expect(verdict).toEqual({ action: "allow" });
+  });
+});
+
+describe("isWriteTool", () => {
+  it("treats segment and pipeline deletes as writes", () => {
+    expect(isWriteTool("delete_segment")).toBe(true);
+    expect(isWriteTool("remove_segment_member")).toBe(true);
+    expect(isWriteTool("remove_pipeline_entry")).toBe(true);
+    expect(isWriteTool("search_crm")).toBe(false);
   });
 });

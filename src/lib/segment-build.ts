@@ -42,17 +42,12 @@ export async function buildSegmentMatches(
   candidateCap = 200,
 ): Promise<{ matches: SegmentMatch[]; eligibleCount: number }> {
   // Contacts already in any pipeline are excluded (already being worked).
-  const inPipeline = await prisma.pipelineEntry.findMany({
-    where: { userId },
-    select: { contactId: true },
-  });
-  const excludeIds = new Set(inPipeline.map((e) => e.contactId));
-
+  // Relation filter avoids loading every pipelineEntry id into memory.
   const candidates = await prisma.contact.findMany({
     where: {
       userId,
       status: { in: [...ELIGIBLE_STATUSES] },
-      ...(excludeIds.size ? { id: { notIn: [...excludeIds] } } : {}),
+      pipelineEntries: { none: {} },
     },
     orderBy: { updatedAt: "desc" },
     take: candidateCap,

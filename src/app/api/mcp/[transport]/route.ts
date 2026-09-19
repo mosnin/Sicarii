@@ -14,6 +14,7 @@ import {
   isJevConfigured,
   redactEvaluateState,
   runAutoModeThen,
+  stripHeavyFields,
   scanMalicious,
   triageInbound,
   tryEvaluate,
@@ -126,7 +127,7 @@ type ToolResult = {
 };
 
 const ok = (data: unknown): ToolResult => ({
-  content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+  content: [{ type: "text", text: JSON.stringify(stripHeavyFields(data)) }],
 });
 const fail = (message: string): ToolResult => ({
   content: [{ type: "text", text: message }],
@@ -222,6 +223,11 @@ const MCP_AUTO_MODE_BUCKETS = new Set([
   "create_variant",
   "search_web",
   "serp_search",
+  "update_segment",
+  "delete_segment",
+  "remove_segment_member",
+  "delete_pipeline",
+  "remove_pipeline_entry",
   ...AUTO_MODE_TOOLS,
 ]);
 
@@ -382,7 +388,8 @@ const handler = createMcpHandler(
       "Get one business by id, including its contacts.",
       { id: z.string() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => getEntity(userIdFrom(extra), id)),
+      async ({ id }, extra) =>
+        run(() => getEntity(userIdFrom(extra), id, { includeEnrichment: false })),
     );
 
     server.tool(
@@ -811,7 +818,9 @@ const handler = createMcpHandler(
       "update_segment",
       "Update a segment's name and/or goal.",
       { id: z.string(), name: z.string().max(200).optional(), goal: z.string().max(2000).optional() },
-      async ({ id, ...patch }, extra) => run(() => updateSegment(userIdFrom(extra), id, patch)),
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ id, ...patch }, extra) =>
+        gated(extra, "update_segment", 60, (userId) => updateSegment(userId, id, patch), { id, ...patch } as Json),
     );
 
     server.tool(
@@ -819,7 +828,8 @@ const handler = createMcpHandler(
       "Permanently delete a segment by id, including its membership. The member contacts themselves are kept. Use to clean up junk or stale segments.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => deleteSegment(userIdFrom(extra), id)),
+      async ({ id }, extra) =>
+        gated(extra, "delete_segment", 30, (userId) => deleteSegment(userId, id), { id }),
     );
 
     server.tool(
@@ -827,7 +837,11 @@ const handler = createMcpHandler(
       "Remove one contact from a segment without deleting the segment or the contact.",
       { segmentId: z.string(), contactId: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ segmentId, contactId }, extra) => run(() => removeSegmentMember(userIdFrom(extra), segmentId, contactId)),
+      async ({ segmentId, contactId }, extra) =>
+        gated(extra, "remove_segment_member", 60, (userId) => removeSegmentMember(userId, segmentId, contactId), {
+          segmentId,
+          contactId,
+        }),
     );
 
     server.tool(
@@ -878,7 +892,8 @@ const handler = createMcpHandler(
       "Permanently delete a pipeline by id, including its entries. The member contacts themselves are kept. Use to clean up junk or stale pipelines.",
       { id: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => deletePipeline(userIdFrom(extra), id)),
+      async ({ id }, extra) =>
+        gated(extra, "delete_pipeline", 30, (userId) => deletePipeline(userId, id), { id }),
     );
 
     server.tool(
@@ -886,7 +901,11 @@ const handler = createMcpHandler(
       "Remove one entry from a pipeline (drop that contact out of the deal flow) without deleting the pipeline or the contact.",
       { pipelineId: z.string(), entryId: z.string() },
       { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      async ({ pipelineId, entryId }, extra) => run(() => removePipelineEntry(userIdFrom(extra), pipelineId, entryId)),
+      async ({ pipelineId, entryId }, extra) =>
+        gated(extra, "remove_pipeline_entry", 60, (userId) => removePipelineEntry(userId, pipelineId, entryId), {
+          pipelineId,
+          entryId,
+        }),
     );
 
     server.tool(
@@ -1274,10 +1293,10 @@ const handler = createMcpHandler(
     server.tool(
       "jev_decide",
       "Run Scalar's Jev turn orchestrator: intent, risk, tool, generation gate. Returns refuse / escalate / deterministic / tool / generate. Qwen is used for prose only after this says generate.",
-      { message: z.string().max(4000) },
+      { message: z.string().max(4000), priorAssistant: z.string().max(4000).optional() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      async ({ message }, extra) =>
-        gated(extra, "jev_decide", 40, async () => decideTurn({ message })),
+      async ({ message, priorAssistant }, extra) =>
+        gated(extra, "jev_decide", 40, async () => decideTurn({ message, priorAssistant })),
     );
 
     server.tool(

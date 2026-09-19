@@ -97,10 +97,22 @@ export function listEntities(userId: string, q?: string, limit?: number) {
   });
 }
 
-export async function getEntity(userId: string, id: string) {
+export async function getEntity(
+  userId: string,
+  id: string,
+  opts?: { includeEnrichment?: boolean },
+) {
+  const includeEnrichment = opts?.includeEnrichment ?? true;
   const entity = await prisma.entity.findUnique({
     where: { id },
-    include: { contacts: { orderBy: { updatedAt: "desc" }, take: 100 } },
+    include: {
+      contacts: {
+        orderBy: { updatedAt: "desc" },
+        take: 100,
+        ...(includeEnrichment ? {} : { omit: { enrichment: true } }),
+      },
+    },
+    ...(includeEnrichment ? {} : { omit: { enrichment: true } }),
   });
   if (!entity || entity.userId !== userId) throw new OpError("Entity not found", 404);
   return entity;
@@ -219,14 +231,41 @@ export async function enrichEntity(userId: string, id: string) {
 // Shared by every "discover and add" path - findCompanies, discoverLocalLeads,
 // swarmDiscover - so the dedup rule can never drift between them; before this
 // each caller reimplemented the same norm()+Set logic separately.
+function domainLookupKeys(domain?: string | null): string[] {
+  const raw = domain?.trim();
+  const normalized = normalizeDomain(domain);
+  const keys = new Set<string>();
+  if (raw) keys.add(raw);
+  if (normalized) {
+    keys.add(normalized);
+    keys.add(`www.${normalized}`);
+  }
+  return [...keys];
+}
+
 async function dedupeAgainstCrm<T extends { companyName: string; domain?: string | null }>(
   userId: string,
   found: T[],
 ): Promise<{ fresh: T[]; skipped: number }> {
-  const existing = await prisma.entity.findMany({
-    where: { userId },
-    select: { domain: true, name: true },
-  });
+  if (found.length === 0) return { fresh: [], skipped: 0 };
+
+  const domains = [...new Set(found.flatMap((c) => domainLookupKeys(c.domain)))];
+  const names = [...new Set(found.map((c) => c.companyName.trim()).filter(Boolean))];
+  const existing =
+    domains.length === 0 && names.length === 0
+      ? []
+      : await prisma.entity.findMany({
+          where: {
+            userId,
+            OR: [
+              ...(domains.length ? [{ domain: { in: domains, mode: "insensitive" as const } }] : []),
+              ...names.map((name) => ({
+                name: { equals: name, mode: "insensitive" as const },
+              })),
+            ],
+          },
+          select: { domain: true, name: true },
+        });
   const seenDomains = new Set(
     existing.map((e) => normalizeDomain(e.domain)).filter(Boolean) as string[],
   );

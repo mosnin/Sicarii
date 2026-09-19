@@ -27,8 +27,10 @@ describe("classifyInstant", () => {
       source: "instant",
     });
     expect(classifyInstant("who is Jane Doe")).toMatchObject({ tool: "search_crm" });
-    expect(classifyInstant("list contacts")).toMatchObject({ tool: "list_contacts" });
-    expect(classifyInstant("list companies")).toMatchObject({ tool: "list_entities" });
+    expect(classifyInstant("list contacts")).toMatchObject({ tool: "list_contacts", query: "" });
+    expect(classifyInstant("list companies")).toMatchObject({ tool: "list_entities", query: "" });
+    expect(classifyInstant("who needs a follow-up")).toMatchObject({ tool: "list_due_followups" });
+    expect(classifyInstant("how many credits do I have")).toMatchObject({ tool: "get_billing" });
   });
 
   it("routes discovery and local maps", () => {

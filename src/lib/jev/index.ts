@@ -65,6 +65,7 @@ export {
   inventedClaims,
   formatDetailCard,
   compactCrmPayload,
+  stripHeavyFields,
   groundedRefusal,
   type CrmFact,
 } from "./facts";

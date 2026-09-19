@@ -96,6 +96,11 @@ const mustBeGated = [
   "jev_grade_page",
   "jev_scan_malicious",
   "jev_loop",
+  "update_segment",
+  "delete_segment",
+  "remove_segment_member",
+  "delete_pipeline",
+  "remove_pipeline_entry",
 ];
 
 describe("MCP route: write tools are rate-limited", () => {

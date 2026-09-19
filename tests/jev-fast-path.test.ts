@@ -90,6 +90,23 @@ describe("formatFastReply", () => {
     expect(text).not.toContain("**");
   });
 
+  it("lists due follow-ups and remaining credits", () => {
+    expect(
+      formatFastReply({
+        tool: "list_due_followups",
+        query: "follow-ups",
+        payload: [{ name: "Jane", company: "Acme" }],
+      }),
+    ).toContain("Jane at Acme");
+    expect(
+      formatFastReply({
+        tool: "get_billing",
+        query: "credits",
+        payload: { creditsRemaining: 42, plan: "pro" },
+      }),
+    ).toBe("You have 42 credits remaining on the pro plan.");
+  });
+
   it("explains an empty CRM lookup", () => {
     expect(
       formatFastReply({ tool: "search_crm", query: "xyz", payload: { entities: [], contacts: [] } }),
@@ -196,5 +213,40 @@ describe("executeFastPath", () => {
     });
     expect(searches).toBe(0);
     expect(result?.text).toContain("Acme (acme.com)");
+  });
+
+  it("lists entities through the list runner, not searchCrm", async () => {
+    let searched = 0;
+    let listed = 0;
+    const result = await executeFastPath({
+      message: "list companies",
+      decision: { kind: "tool", tool: "list_entities", confidence: 0.94 },
+      instant: { tool: "list_entities", query: "", source: "instant" },
+      runners: {
+        searchCrm: async () => {
+          searched += 1;
+          return { entities: [], contacts: [] };
+        },
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
+        listEntities: async () => {
+          listed += 1;
+          return [{ name: "Acme", domain: "acme.com" }];
+        },
+      },
+    });
+    expect(searched).toBe(0);
+    expect(listed).toBe(1);
+    expect(result?.tool).toBe("list_entities");
+    expect(result?.text).toContain("Acme");
   });
 });

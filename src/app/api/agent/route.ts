@@ -57,13 +57,14 @@ import {
   updateContact,
   saveSocialMessage,
   searchCrm,
+  listDueFollowups,
 } from "@/lib/crm-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
 import { proposeAutopilotPlan, getAutopilotStatus } from "@/lib/autopilot-operations";
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats } from "@/lib/variant-operations";
-import { CREDIT_COSTS } from "@/lib/credits";
+import { CREDIT_COSTS, getBilling } from "@/lib/credits";
 
 export const maxDuration = 60;
 
@@ -504,7 +505,21 @@ export async function POST(req: Request) {
       : lastUserText && !instant && looksLikeLookup(lastUserText)
         ? lookupQuery(lastUserText)
         : null;
-  const prefetch = prefetchQuery ? searchCrm(userId, prefetchQuery).catch(() => null) : null;
+  const prefetch =
+    instant?.tool === "list_due_followups"
+      ? listDueFollowups(userId, {}).catch(() => null)
+      : instant?.tool === "get_billing"
+        ? getBilling(userId).catch(() => null)
+        : prefetchQuery !== null
+          ? instant?.tool === "list_entities"
+            ? listEntities(userId, prefetchQuery || undefined).catch(() => null)
+            : instant?.tool === "list_contacts"
+              ? listContacts(userId, { q: prefetchQuery || undefined }).catch(() => null)
+              : searchCrm(userId, prefetchQuery).catch(() => null)
+          : null;
+  const recallP = lastUserText
+    ? recallMemory(userId, lookupQuery(lastUserText)).catch(() => [])
+    : Promise.resolve([]);
 
   const decided = lastUserText
     ? instant
@@ -559,6 +574,10 @@ export async function POST(req: Request) {
         createEntity: (name, domain) => createEntity(userId, { name, domain, source: "agent" }),
         createContact: (input) => createContact(userId, { ...input, source: "agent" }),
         enrichEntity: (id) => enrichEntity(userId, id),
+        listEntities: (q) => listEntities(userId, q),
+        listContacts: (q) => listContacts(userId, { q }),
+        listDueFollowups: () => listDueFollowups(userId, {}),
+        getBilling: () => getBilling(userId),
         scoreFit: productContext
           ? async (rows) => {
               const scores = await scoreFitWithJev(rows, productContext);
@@ -587,9 +606,7 @@ export async function POST(req: Request) {
 
   const crmFacts = [
     ...factsFromSearch(pref),
-    ...factsFromMemory(
-      lastUserText ? await recallMemory(userId, lookupQuery(lastUserText)).catch(() => []) : [],
-    ),
+    ...factsFromMemory(await recallP),
   ];
   const modelMessages = await convertToModelMessages(compactUiMessages(incoming));
   const active = pickActiveTools(tools, decision);

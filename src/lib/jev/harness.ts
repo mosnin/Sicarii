@@ -107,6 +107,11 @@ export const WRITE_BUCKETS = new Set([
   "search_web",
   "serp_search",
   "google_search",
+  "update_segment",
+  "delete_segment",
+  "remove_segment_member",
+  "delete_pipeline",
+  "remove_pipeline_entry",
 ]);
 
 export function isWriteTool(tool: string): boolean {

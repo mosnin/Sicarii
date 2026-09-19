@@ -6,6 +6,7 @@ import {
   factsFromSearch,
   formatDetailCard,
   inventedClaims,
+  stripHeavyFields,
 } from "@/lib/jev";
 
 describe("factsFromSearch / formatDetailCard", () => {
@@ -61,6 +62,31 @@ describe("compactCrmPayload", () => {
     }) as { entities: Array<{ name?: string; enrichment?: unknown }> };
     expect(slim.entities[0]?.name).toBe("Acme");
     expect(slim.entities[0]?.enrichment).toBeUndefined();
+  });
+});
+
+describe("stripHeavyFields", () => {
+  it("drops enrichment and transcripts without flattening answers", () => {
+    const slim = stripHeavyFields({
+      id: "e1",
+      name: "Acme",
+      enrichment: { blob: "x".repeat(400) },
+      transcript: "secret call",
+      answers: { intent: { type: "noul", noul: 0.9 } },
+      contacts: [{ name: "Jane", enrichment: { skip: true } }],
+    }) as {
+      name?: string;
+      enrichment?: unknown;
+      transcript?: unknown;
+      answers?: { intent?: { noul?: number } };
+      contacts?: Array<{ name?: string; enrichment?: unknown }>;
+    };
+    expect(slim.name).toBe("Acme");
+    expect(slim.enrichment).toBeUndefined();
+    expect(slim.transcript).toBeUndefined();
+    expect(slim.answers?.intent?.noul).toBe(0.9);
+    expect(slim.contacts?.[0]?.name).toBe("Jane");
+    expect(slim.contacts?.[0]?.enrichment).toBeUndefined();
   });
 });
 

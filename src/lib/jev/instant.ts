@@ -210,6 +210,20 @@ export function classifyInstant(
   }
 
   if (
+    /\b(follow-?ups?|stale contacts?|who (should|do i|to) (chase|follow))\b/i.test(text) ||
+    /^(list|show) (the )?(due |stale )?(follow-?ups?)\b/i.test(text)
+  ) {
+    return { tool: "list_due_followups", query: text, source: "instant" };
+  }
+
+  if (
+    /\b(credits? remaining|credit balance|my credits|our credits|usage|billing)\b/i.test(text) ||
+    /^(how many|what(?:'s| is)|show|check|get)\b.+\b(credits?|usage|balance)\b/i.test(text)
+  ) {
+    return { tool: "get_billing", query: text, source: "instant" };
+  }
+
+  if (
     /^(please\s+)?(show|find|search|list|look up|lookup|who is|what is|get|open|tell me about|summarize)\b/i.test(
       text,
     ) ||
@@ -224,7 +238,10 @@ export function classifyInstant(
         : listOnly && companies && !people
           ? "list_entities"
           : "search_crm";
-    return { tool, query: lookupQuery(text), source: "instant" };
+    const query = lookupQuery(text)
+      .replace(/^(the\s+|my\s+|our\s+)?(companies|entities|businesses|contacts?|people)\s*$/i, "")
+      .trim();
+    return { tool, query, source: "instant" };
   }
 
   return null;

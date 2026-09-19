@@ -26,6 +26,8 @@ export const FAST_PATH_TOOLS = new Set([
   "create_entity",
   "create_contact",
   "enrich_entity",
+  "list_due_followups",
+  "get_billing",
 ]);
 
 const READ_CORE = [
@@ -214,6 +216,22 @@ export function formatFastReply(input: {
     return `Enriched ${r.name ?? query}${r.domain ? ` (${r.domain})` : ""}. Open the company on the dashboard for the new firmographics.`;
   }
 
+  if (tool === "list_due_followups") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return "No contacts are due for a follow-up.";
+    const bits = rows.slice(0, 8).map((row) => {
+      const r = row as { name?: string | null; company?: string | null };
+      return r.company ? `${r.name ?? "someone"} at ${r.company}` : (r.name ?? "someone");
+    });
+    const more = rows.length > 8 ? `, and ${rows.length - 8} more` : "";
+    return `${rows.length} contact${rows.length === 1 ? "" : "s"} due for a follow-up: ${bits.join(", ")}${more}.`;
+  }
+
+  if (tool === "get_billing") {
+    const b = payload as { creditsRemaining?: number; plan?: string };
+    return `You have ${b.creditsRemaining ?? 0} credits remaining on the ${b.plan ?? "current"} plan.`;
+  }
+
   return "Done.";
 }
 
@@ -230,6 +248,10 @@ export type FastPathRunners = {
   createEntity: (name: string, domain?: string) => Promise<unknown>;
   createContact: (input: { name?: string; email?: string; company?: string }) => Promise<unknown>;
   enrichEntity: (id: string) => Promise<unknown>;
+  listEntities?: (q?: string) => Promise<unknown>;
+  listContacts?: (q?: string) => Promise<unknown>;
+  listDueFollowups?: () => Promise<unknown>;
+  getBilling?: () => Promise<unknown>;
   scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
 
@@ -253,7 +275,11 @@ export async function executeFastPath(input: {
   let payload: unknown;
   try {
     const lookupHit =
-      (tool === "search_crm" || tool === "list_entities" || tool === "list_contacts") &&
+      (tool === "search_crm" ||
+        tool === "list_entities" ||
+        tool === "list_contacts" ||
+        tool === "list_due_followups" ||
+        tool === "get_billing") &&
       input.prefetch != null;
     payload = lookupHit
       ? input.prefetch
@@ -357,8 +383,14 @@ async function runTool(
       return runners.listPendingDrafts();
     case "get_autopilot_status":
       return runners.getAutopilotStatus();
+    case "list_due_followups":
+      return runners.listDueFollowups ? runners.listDueFollowups() : [];
+    case "get_billing":
+      return runners.getBilling ? runners.getBilling() : { creditsRemaining: 0, plan: "unknown" };
     case "list_entities":
+      return runners.listEntities ? runners.listEntities(query || undefined) : runners.searchCrm(query);
     case "list_contacts":
+      return runners.listContacts ? runners.listContacts(query || undefined) : runners.searchCrm(query);
     case "search_crm":
     default:
       return runners.searchCrm(query);

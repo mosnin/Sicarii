@@ -236,7 +236,7 @@ picks dimensions and tools. Code fills templates.
 
 | Surface | Jev job | Generator |
 |---------|---------|-----------|
-| `/api/agent` | Instant path (lookups, discover, create, enrich, tell-me-about, yes-after-miss). Unique CRM hits become a fact card, not a chat turn. Generate path uses a short grounded system prompt, compacted transcript (hermes-jev-compact), slim tool results, and a local invented-name gate. | Qwen or OpenAI, and only if needed |
+| `/api/agent` | Instant path (lookups, lists, discover, create, enrich, tell-me-about, follow-ups, credits, yes-after-miss). Unique CRM hits become a fact card, not a chat turn. Generate path uses a short grounded system prompt, compacted transcript (hermes-jev-compact), slim tool results, and a local invented-name gate. | Qwen or OpenAI, and only if needed |
 | `/api/discover/route-intent` | Choice over the discovery catalog | heuristic params |
 | `/api/crm/fit-score` | Score per record vs product context | none |
 | `/api/crm/semantic-sort` | Noul per record vs intent | none |
@@ -277,6 +277,9 @@ MCP tools (all `gated`): `jev_evaluate`, `jev_decide`, `jev_triage`,
 `jev_verify_citations`, `jev_grade_page`, `jev_scan_malicious`, `jev_loop`.
 
 Write MCP tools run `runAutoModeThen(bucket, pendingArgs, "MCP <bucket>", ...)`.
+That includes `update_segment`, `delete_segment`, `remove_segment_member`,
+`delete_pipeline`, and `remove_pipeline_entry`. MCP replies are compact JSON
+(`stripHeavyFields`); they do not pretty-print enrichment blobs.
 Read tools stay on `run()`.
 
 ---
@@ -338,6 +341,14 @@ Two stacked branches off Scalar `main`:
 5. **`cursor/jev-grounded-core-bb09`.** Fact cards, invented-name gate,
    hermes transcript prune, slim tool results, unique-record cards, instant
    enrich / tell-me-about, ICP score overlay on analyze.
+
+6. **`cursor/jev-loop-core-bb09`.** MCP payloads drop enrichment/transcript
+   blobs and pretty-print. Segment/pipeline deletes go through auto-mode.
+   Discover dedupe queries only the incoming names/domains. Segment build
+   excludes pipelined contacts in SQL. Instant follow-ups and credits skip
+   TypeSafe. List runners no longer bounce through `searchCrm`. Recall
+   overlaps decide. `jev_decide` takes `priorAssistant`. Routing skips
+   tool-guard questions on non-write utterances.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -432,6 +443,17 @@ Scalar now does that on `/api/agent`:
    `inventedCrm` is backup when keys are present.
 10. Instant `enrich Acme` resolves the record and runs enrich under auto-mode.
     Analyze turns overlay ICP fit when product context exists.
+11. `list companies` / `list contacts` hit the list tables (no enrichment
+    blob, no contact join on companies). `who needs a follow-up` and
+    `how many credits do I have` are instant too.
+12. Recall starts next to decide/prefetch and is only awaited on the
+    generate path. Routing skips `TOOL_GUARD_QUESTIONS` unless the utterance
+    looks like a write. Auto-mode still gates every write tool.
+13. MCP `ok()` is compact JSON without pretty-print. Heavy fields
+    (`enrichment`, `transcript`, embeddings) are stripped. `get_entity`
+    omits enrichment at the database. Segment and pipeline deletes use
+    `gated` + auto-mode, including `remove_*` buckets that have no
+    `update_`/`delete_` prefix.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

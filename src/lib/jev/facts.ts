@@ -225,6 +225,31 @@ export function compactCrmPayload(payload: unknown, limit = 8): unknown {
   return Object.keys(next).length > 0 ? next : slimRow(box);
 }
 
+const HEAVY_KEYS = new Set([
+  "enrichment",
+  "transcript",
+  "embedding",
+  "embeddings",
+  "raw",
+  "html",
+  "rawHtml",
+]);
+
+/** Drop blob fields and cap nested arrays so MCP/tool dumps stay small. */
+export function stripHeavyFields(payload: unknown, depth = 0): unknown {
+  if (payload == null || depth > 6) return payload;
+  if (Array.isArray(payload)) {
+    return payload.slice(0, 50).map((row) => stripHeavyFields(row, depth + 1));
+  }
+  if (typeof payload !== "object") return payload;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+    if (HEAVY_KEYS.has(key)) continue;
+    out[key] = stripHeavyFields(value, depth + 1);
+  }
+  return out;
+}
+
 export function groundedRefusal(facts: CrmFact[]): string {
   if (facts.length === 0) {
     return "I do not have that in the CRM. Say the word if you want me to discover it. I will not invent companies or emails.";
