@@ -712,7 +712,11 @@ Scalar now does that on `/api/agent`:
     TypeSafe and skip the generator. Counts go through `countEntities`
     / `countContacts` so the reply is the real total, not a list page
     guessed as a number. In-app and MCP expose `count_entities` and
-    `count_contacts`. `how many credits` stays billing.
+    `count_contacts`.     `how many credits` stays billing.
+57. Sharing a personal contact into a team workspace scans the notes,
+    descriptions, activities, and (when included) email/call/social
+    bodies once before the copy. A live TypeSafe miss denies the share
+    when configured. Unconfigured local stays fail-open.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

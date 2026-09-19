@@ -10,6 +10,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { OpError } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 const normDomain = (d?: string | null) =>
   d?.toLowerCase().replace(/^www\./, "").trim() || undefined;
@@ -28,6 +29,33 @@ function fillEmpty<T extends Record<string, unknown>>(
     }
   }
   return patch;
+}
+
+/** Free text that would land in the team workspace. One scan covers the copy. */
+export function shareScanText(input: {
+  notes?: string | null;
+  entityNotes?: string | null;
+  entityDescription?: string | null;
+  activities?: Array<{ body?: string | null }>;
+  emails?: Array<{ subject?: string | null; body?: string | null }>;
+  calls?: Array<{ summary?: string | null; transcript?: string | null }>;
+  socials?: Array<{ body?: string | null }>;
+  includeMessages?: boolean;
+}): string {
+  const parts: Array<string | null | undefined> = [
+    input.notes,
+    input.entityNotes,
+    input.entityDescription,
+    ...(input.activities ?? []).map((a) => a.body),
+  ];
+  if (input.includeMessages !== false) {
+    parts.push(
+      ...(input.emails ?? []).flatMap((m) => [m.subject, m.body]),
+      ...(input.calls ?? []).flatMap((c) => [c.summary, c.transcript]),
+      ...(input.socials ?? []).map((m) => m.body),
+    );
+  }
+  return parts.filter((s): s is string => typeof s === "string" && s.trim().length > 0).join("\n\n");
 }
 
 export interface ShareResult {
@@ -81,6 +109,20 @@ export async function shareContactToWorkspace(opts: {
   });
 
   const sharedBy = opts.actorName ? `shared by ${opts.actorName}` : "shared from a personal CRM";
+
+  await assertCleanArtifact(
+    shareScanText({
+      notes: contact.notes,
+      entityNotes: contact.entity?.notes,
+      entityDescription: contact.entity?.description,
+      activities,
+      emails: contact.emails,
+      calls: contact.calls,
+      socials: contact.socialMessages,
+      includeMessages,
+    }),
+    "share",
+  );
 
   return prisma.$transaction(async (tx) => {
     /* ── Entity: dedup by domain then name, else copy ─────────────────── */
