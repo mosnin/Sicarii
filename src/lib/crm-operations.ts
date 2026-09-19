@@ -1515,3 +1515,47 @@ export async function listRecentDiscoveries(userId: string, take = 20) {
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, limit);
 }
+
+export async function listContactDedupKeys(
+  userId: string,
+  input: { entityId?: string; emails?: string[] },
+) {
+  const emails = [
+    ...new Set(
+      (input.emails ?? [])
+        .filter((e): e is string => typeof e === "string")
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => e.length > 0 && e.length <= 320),
+    ),
+  ].slice(0, 200);
+  if (!input.entityId && emails.length === 0) return [];
+  return prisma.contact.findMany({
+    where: {
+      userId,
+      OR: [
+        ...(input.entityId ? [{ entityId: input.entityId }] : []),
+        ...(emails.length > 0 ? [{ email: { in: emails } }] : []),
+      ],
+    },
+    select: { email: true, name: true, entityId: true },
+    take: 500,
+  });
+}
+
+export async function findEntityByDomainOrName(
+  userId: string,
+  input: { domain?: string | null; name?: string | null },
+) {
+  const domain = input.domain ? crmDomainKey(input.domain) : "";
+  if (domain) {
+    const byDomain = await prisma.entity.findFirst({
+      where: { userId, domain },
+    });
+    if (byDomain) return byDomain;
+  }
+  const name = input.name?.trim();
+  if (!name) return null;
+  return prisma.entity.findFirst({
+    where: { userId, name: { equals: name, mode: "insensitive" } },
+  });
+}

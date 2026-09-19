@@ -60,6 +60,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "log_outreach", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "add_activity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "list_recent_discoveries", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "update_segment", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "update_pipeline", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });
@@ -295,6 +297,13 @@ describe("formatFastReply", () => {
         payload: [{ name: "Acme", kind: "entity" }, { name: "Jane", kind: "contact" }],
       }),
     ).toBe("2 recent discoveries: Acme, Jane.");
+    expect(
+      formatFastReply({
+        tool: "update_pipeline",
+        query: "Outbound",
+        payload: { name: "Enterprise" },
+      }),
+    ).toBe("Renamed Outbound to Enterprise.");
   });
 
   it("explains an empty CRM lookup", () => {

@@ -584,6 +584,11 @@ Scalar now does that on `/api/agent`:
     recent discoveries` and `add a note on Jane: interested in Q4` skip
     TypeSafe. Agent `list_recent_discoveries` matches the HTTP list.
     Notes run `add_activity` under auto-mode.
+32. Spawn-contacts, analyze-site, upsert-enrichment, and match-entity
+    leftover lookups go through `listContactDedupKeys` /
+    `findEntityByDomainOrName`. Instant `rename the Outbound pipeline to
+    Enterprise` / `rename segment ICP to Dentists` skip TypeSafe.
+    Agent and MCP gain `update_pipeline`.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

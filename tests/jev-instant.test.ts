@@ -103,6 +103,16 @@ describe("classifyInstant", () => {
       query: "Jane",
       note: "interested in Q4",
     });
+    expect(classifyInstant("rename the Outbound pipeline to Enterprise")).toMatchObject({
+      tool: "update_pipeline",
+      query: "Outbound",
+      name: "Enterprise",
+    });
+    expect(classifyInstant("rename segment ICP to Dentists")).toMatchObject({
+      tool: "update_segment",
+      query: "ICP",
+      name: "Dentists",
+    });
     expect(classifyInstant("autopilot status")).toMatchObject({ tool: "get_autopilot_status" });
     expect(classifyInstant("show emails for Jane")).toMatchObject({
       tool: "list_emails",

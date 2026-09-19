@@ -82,6 +82,7 @@ import {
   createSegment,
   createPipeline,
   updateSegment,
+  updatePipeline,
   deleteSegment,
   addToPipeline,
   addToSegment,
@@ -691,6 +692,15 @@ export async function POST(req: Request) {
       }),
       execute: ({ id, ...patch }) => exec(() => updateSegment(userId, id, patch)),
     }),
+    update_pipeline: tool({
+      description: "Rename a pipeline or change its goal.",
+      inputSchema: z.object({
+        id: z.string(),
+        name: z.string().min(1).max(200).optional(),
+        goal: z.string().max(2000).optional(),
+      }),
+      execute: ({ id, ...patch }) => exec(() => updatePipeline(userId, id, patch)),
+    }),
     delete_segment: tool({
       description: "Delete a segment. Membership rows go with it.",
       inputSchema: z.object({ id: z.string() }),
@@ -875,6 +885,7 @@ export async function POST(req: Request) {
     pause_autopilot: "Pause a running autopilot plan.",
     place_call: "Call a contact via AgentPhone.",
     update_segment: "Rename a segment or change its goal.",
+    update_pipeline: "Rename a pipeline or change its goal.",
     delete_segment: "Delete a segment.",
     add_to_pipeline: "Add contacts or a segment to a pipeline.",
     add_to_segment: "Add contacts to a segment.",
@@ -926,7 +937,7 @@ export async function POST(req: Request) {
             ? searchCrm(userId, instant.query).catch(() => null)
           : instant?.tool === "list_pending_drafts"
             ? listPendingDrafts(userId, {}).catch(() => null)
-          : instant?.tool === "get_segment"
+          : instant?.tool === "get_segment" || instant?.tool === "update_segment"
             ? listSegments(userId).catch(() => null)
           : instant?.tool === "get_entity"
             ? listEntities(userId, instant.query || undefined).catch(() => null)
@@ -944,7 +955,9 @@ export async function POST(req: Request) {
                 searchCrm(userId, instant.query),
                 listSegments(userId),
               ]).then(([crm, fields]) => ({ crm, fields })).catch(() => null)
-          : instant?.tool === "get_pipeline" || instant?.tool === "pipeline_metrics"
+          : instant?.tool === "get_pipeline" ||
+              instant?.tool === "pipeline_metrics" ||
+              instant?.tool === "update_pipeline"
             ? listPipelines(userId).catch(() => null)
           : instant?.tool === "pause_autopilot"
             ? getAutopilotStatus(userId).catch(() => null)
@@ -1034,6 +1047,8 @@ export async function POST(req: Request) {
         listSwarmRuns: () => listSwarmRuns(userId),
         listRecentDiscoveries: () => listRecentDiscoveries(userId),
         addActivity: (input) => addActivity(userId, { ...input, kind: "note" }),
+        updateSegment: (id, patch) => updateSegment(userId, id, patch),
+        updatePipeline: (id, patch) => updatePipeline(userId, id, patch),
         listEmails: (contactId) => listContactEmails(userId, contactId),
         listActivities: (input) => listActivities(userId, input),
         listContactCalls: (contactId) => listContactCalls(userId, contactId),

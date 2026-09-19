@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
-import { createEntity, OpError, updateEntity } from "@/lib/crm-operations";
+import { createEntity, findEntityByDomainOrName, OpError, updateEntity } from "@/lib/crm-operations";
 
 const schema = z.object({
   domain: z.string().trim().min(1).max(255),
@@ -38,9 +37,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No data to attach for this domain." }, { status: 404 });
     }
 
-    const existing = await prisma.entity.findFirst({
-      where: { userId: user.id, domain },
-    });
+    const existing = await findEntityByDomainOrName(user.id, { domain });
 
     const mergedEnrichment = {
       ...(existing && existing.enrichment && typeof existing.enrichment === "object" && !Array.isArray(existing.enrichment)

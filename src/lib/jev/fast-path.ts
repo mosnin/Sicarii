@@ -53,6 +53,8 @@ export const FAST_PATH_TOOLS = new Set([
   "log_outreach",
   "add_activity",
   "list_recent_discoveries",
+  "update_segment",
+  "update_pipeline",
   "pipeline_metrics",
   "remember",
   "get_provenance",
@@ -360,6 +362,11 @@ export function formatFastReply(input: {
     return `Noted on ${who}${snippet ? `: ${snippet}` : "."}`;
   }
 
+  if (tool === "update_segment" || tool === "update_pipeline") {
+    const r = payload as { name?: string | null };
+    return `Renamed ${query} to ${r.name ?? "the new name"}.`;
+  }
+
   if (tool === "list_emails") {
     const rows = Array.isArray(payload) ? payload : [];
     if (rows.length === 0) return `No emails on file for "${query}".`;
@@ -584,6 +591,8 @@ export type FastPathRunners = {
   listSwarmRuns?: () => Promise<unknown>;
   listRecentDiscoveries?: () => Promise<unknown>;
   addActivity?: (input: { contactId?: string; entityId?: string; body: string }) => Promise<unknown>;
+  updateSegment?: (id: string, patch: { name?: string }) => Promise<unknown>;
+  updatePipeline?: (id: string, patch: { name?: string }) => Promise<unknown>;
   listEmails?: (contactId: string) => Promise<unknown>;
   listActivities?: (input: { contactId?: string; entityId?: string }) => Promise<unknown>;
   listContactCalls?: (contactId: string) => Promise<unknown>;
@@ -985,6 +994,39 @@ async function runTool(
         return write("add_activity", { contactId, kind: "note", body: note }, run);
       }
       return write("add_activity", { entityId: entityId as string, kind: "note", body: note }, run);
+    }
+    case "update_segment":
+    case "update_pipeline": {
+      const listed =
+        prefetch && typeof prefetch === "object"
+          ? prefetch
+          : tool === "update_segment"
+            ? await (runners.listSegments ? runners.listSegments() : [])
+            : await (runners.listPipelines ? runners.listPipelines() : []);
+      const hit = matchNamed(listed, instant?.query ?? query);
+      if (!hit?.id) {
+        return {
+          error:
+            tool === "update_segment"
+              ? `I did not find a segment named "${query}".`
+              : `I did not find a pipeline named "${query}".`,
+        };
+      }
+      const nextName = instant?.name?.trim();
+      if (!nextName) return { error: "Say the new name, like rename the Outbound pipeline to Enterprise." };
+      const fieldId = hit.id;
+      if (tool === "update_segment") {
+        return write("update_segment", { id: fieldId, name: nextName }, async () =>
+          runners.updateSegment
+            ? runners.updateSegment(fieldId, { name: nextName })
+            : { error: "Segment rename is unavailable." },
+        );
+      }
+      return write("update_pipeline", { id: fieldId, name: nextName }, async () =>
+        runners.updatePipeline
+          ? runners.updatePipeline(fieldId, { name: nextName })
+          : { error: "Pipeline rename is unavailable." },
+      );
     }
     case "get_segment":
     case "get_pipeline":

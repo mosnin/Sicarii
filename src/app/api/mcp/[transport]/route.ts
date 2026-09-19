@@ -108,6 +108,7 @@ import {
   listPipelines,
   getPipeline,
   createPipeline,
+  updatePipeline,
   addToPipeline,
   addToSegment,
   deletePipeline,
@@ -211,6 +212,7 @@ const MCP_AUTO_MODE_BUCKETS = new Set([
   "create_pipeline",
   "add_to_pipeline",
   "add_to_segment",
+  "update_pipeline",
   "update_pipeline_entry",
   "autopilot_propose",
   "remember",
@@ -883,6 +885,15 @@ const handler = createMcpHandler(
       { name: z.string(), goal: z.string().optional(), segmentId: z.string().optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       async (args, extra) => gated(extra, "create_pipeline", 60, (userId) => createPipeline(userId, args), args as Json),
+    );
+
+    server.tool(
+      "update_pipeline",
+      "Update a pipeline's name and/or goal.",
+      { id: z.string(), name: z.string().max(200).optional(), goal: z.string().max(2000).optional() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ id, ...patch }, extra) =>
+        gated(extra, "update_pipeline", 60, (userId) => updatePipeline(userId, id, patch), { id, ...patch } as Json),
     );
 
     server.tool(

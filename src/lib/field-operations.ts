@@ -169,6 +169,17 @@ export async function createPipeline(userId: string, input: { name: string; goal
   return pipeline;
 }
 
+export async function updatePipeline(userId: string, id: string, patch: { name?: string; goal?: string }) {
+  const existing = await prisma.pipeline.findUnique({ where: { id } });
+  if (!existing || existing.userId !== userId) throw new OpError("Pipeline not found", 404);
+  if (patch.name !== undefined && !patch.name.trim()) throw new OpError("Pipeline name cannot be empty", 400);
+  await assertCleanArtifact([patch.name, patch.goal].filter(Boolean).join("\n"), "pipeline");
+  return prisma.pipeline.update({
+    where: { id },
+    data: { ...(patch.name !== undefined ? { name: patch.name.trim() } : {}), ...(patch.goal !== undefined ? { goal: patch.goal } : {}) },
+  });
+}
+
 export async function addToPipeline(userId: string, pipelineId: string, input: { contactIds?: string[]; segmentId?: string }) {
   const pipeline = await prisma.pipeline.findUnique({ where: { id: pipelineId } });
   if (!pipeline || pipeline.userId !== userId) throw new OpError("Pipeline not found", 404);

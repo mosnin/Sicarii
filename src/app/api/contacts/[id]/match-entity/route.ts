@@ -1,10 +1,9 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaFindCompanies, isExaConfigured, isMeaningful } from "@/lib/exa";
-import { createEntity, getContact, getEntity, OpError, updateContact } from "@/lib/crm-operations";
+import { createEntity, findEntityByDomainOrName, getContact, getEntity, OpError, updateContact } from "@/lib/crm-operations";
 
 const FREEMAIL = new Set([
   "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com",
@@ -116,11 +115,7 @@ export async function POST(
     }
 
     // Find an existing entity (no duplicates): by domain, else by name.
-    const existing = domain
-      ? await prisma.entity.findFirst({ where: { userId: user.id, domain } })
-      : await prisma.entity.findFirst({
-          where: { userId: user.id, name: { equals: name!, mode: "insensitive" } },
-        });
+    const existing = await findEntityByDomainOrName(user.id, { domain, name });
 
     let entity = existing;
     let created = false;

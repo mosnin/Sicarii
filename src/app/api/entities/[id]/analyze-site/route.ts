@@ -1,11 +1,10 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
-import { createContact, getEntity, OpError, updateEntity } from "@/lib/crm-operations";
+import { createContact, getEntity, listContactDedupKeys, OpError, updateEntity } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { gradePage } from "@/lib/jev";
 
@@ -82,15 +81,9 @@ export async function POST(
     const incomingEmails = analysis.contacts
       .map((p) => (isMeaningful(p.email) ? p.email.trim().toLowerCase() : null))
       .filter((email): email is string => Boolean(email));
-    const existingContacts = await prisma.contact.findMany({
-      where: {
-        userId: user.id,
-        OR: [
-          { entityId: id },
-          ...(incomingEmails.length > 0 ? [{ email: { in: incomingEmails } }] : []),
-        ],
-      },
-      select: { email: true, name: true, entityId: true },
+    const existingContacts = await listContactDedupKeys(user.id, {
+      entityId: id,
+      emails: incomingEmails,
     });
     const existingEmails = new Set(existingContacts.map((c) => c.email?.toLowerCase()).filter(Boolean));
     const namesOnEntity = new Set(

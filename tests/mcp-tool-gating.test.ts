@@ -64,6 +64,7 @@ const mustBeGated = [
   "create_pipeline",
   "add_to_pipeline",
   "add_to_segment",
+  "update_pipeline",
   "update_pipeline_entry",
   "remember",
   // recall reads only the user's own memory (0 credits) but still embeds the

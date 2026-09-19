@@ -1,10 +1,9 @@
 export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaResearchContacts, isExaConfigured, isMeaningful } from "@/lib/exa";
-import { createContact, getEntity, OpError } from "@/lib/crm-operations";
+import { createContact, getEntity, listContactDedupKeys, OpError } from "@/lib/crm-operations";
 
 // POST /api/entities/[id]/spawn-contacts - deep-research the decision makers at
 // this company via Exa, then create contacts for any the CRM doesn't already
@@ -43,15 +42,9 @@ export async function POST(
       .filter((email): email is string => Boolean(email));
 
     // Existing contacts: this entity, plus any row that already owns an incoming email.
-    const existingContacts = await prisma.contact.findMany({
-      where: {
-        userId: user.id,
-        OR: [
-          { entityId: id },
-          ...(incomingEmails.length > 0 ? [{ email: { in: incomingEmails } }] : []),
-        ],
-      },
-      select: { email: true, name: true, entityId: true },
+    const existingContacts = await listContactDedupKeys(user.id, {
+      entityId: id,
+      emails: incomingEmails,
     });
     const existingEmails = new Set(
       existingContacts.map((c) => c.email?.trim().toLowerCase()).filter(Boolean)

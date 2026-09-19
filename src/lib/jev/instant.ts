@@ -44,6 +44,22 @@ const OUTREACH_CHANNEL: Record<string, NonNullable<InstantRoute["channel"]>> = {
   linkedined: "linkedin",
 };
 
+function parseRenameField(text: string): {
+  query: string;
+  name: string;
+  tool: "update_segment" | "update_pipeline";
+} | null {
+  const typed = text.match(/^(please\s+)?rename (?:the )?(.+?) (segment|pipeline) to (.+)$/i);
+  const prefixed = text.match(/^(please\s+)?rename (segment|pipeline) (.+?) to (.+)$/i);
+  const kind = (typed?.[3] ?? prefixed?.[2] ?? "").toLowerCase();
+  const query = (typed?.[2] ?? prefixed?.[3] ?? "").replace(/\b(the|a|an)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const name = (typed?.[4] ?? prefixed?.[4] ?? "").trim().replace(/[.!?]+$/, "");
+  if ((kind !== "segment" && kind !== "pipeline") || !query || !name || query.length > 80 || name.length > 80) {
+    return null;
+  }
+  return { query, name, tool: kind === "segment" ? "update_segment" : "update_pipeline" };
+}
+
 function parseAddNote(text: string): { query: string; note: string } | null {
   const m = text.match(
     /^(please\s+)?(add a note|log a note|jot down|note) (on|for|about) (.+?)[:\-]\s*(.+)$/i,
@@ -407,6 +423,15 @@ export function classifyInstant(
       tool: addToField.tool,
       query: addToField.query,
       name: addToField.name,
+      source: "instant",
+    };
+  }
+  const rename = parseRenameField(text);
+  if (rename && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: rename.tool,
+      query: rename.query,
+      name: rename.name,
       source: "instant",
     };
   }
