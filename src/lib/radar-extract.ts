@@ -7,9 +7,15 @@
 import { z } from "zod";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { prisma } from "@/lib/prisma";
 import { checkCreationBudget } from "@/lib/creation-guard";
 import { filterRealCompanies } from "@/lib/jev";
+import {
+  createContact,
+  createEntity,
+  findContactDupe,
+  findEntityByDomainOrName,
+  OpError,
+} from "@/lib/crm-operations";
 
 const MODEL = process.env.OPENAI_REFINER_MODEL ?? "gpt-5-mini";
 
@@ -126,41 +132,39 @@ ${items.map((i) => `- ${i.title ?? ""} (${i.url ?? ""}) ${i.summary ?? ""}`).joi
     if (domain && seenDomains.has(domain)) continue;
     if (nameToEntityId.has(nameKey)) continue;
 
-    // Dedup vs what's already in the CRM: by domain when we have one, else by name.
-    const existing = await prisma.entity.findFirst({
-      where: domain
-        ? { userId, domain }
-        : { userId, name: { equals: e.name.trim(), mode: "insensitive" } },
-      select: { id: true },
-    });
+    const existing = domain
+      ? await findEntityByDomainOrName(userId, { domain })
+      : await findEntityByDomainOrName(userId, { name: e.name.trim() });
     if (existing) {
       nameToEntityId.set(nameKey, existing.id);
       if (domain) seenDomains.add(domain);
       continue;
     }
 
-    const createdEntity = await prisma.entity.create({
-      data: {
-        userId,
+    try {
+      const createdEntity = await createEntity(userId, {
         name: e.name.trim(),
-        domain,
+        domain: domain ?? null,
         website: real(e.website) ? e.website : domain ? `https://${domain}` : null,
         industry: real(e.industry) ? e.industry : null,
         description: real(e.description) ? e.description : null,
         source: "radar",
         tags: ["intent"],
-      },
-    });
-    nameToEntityId.set(nameKey, createdEntity.id);
-    if (domain) seenDomains.add(domain);
-    created.push({
-      id: createdEntity.id,
-      kind: "entity",
-      name: createdEntity.name,
-      domain: createdEntity.domain,
-      url: createdEntity.website,
-    });
-    entitiesAdded++;
+      });
+      nameToEntityId.set(nameKey, createdEntity.id);
+      if (domain) seenDomains.add(domain);
+      created.push({
+        id: createdEntity.id,
+        kind: "entity",
+        name: createdEntity.name,
+        domain: createdEntity.domain,
+        url: createdEntity.website,
+      });
+      entitiesAdded++;
+    } catch (err) {
+      if (err instanceof OpError) continue;
+      throw err;
+    }
   }
 
   // ── Create contacts (linked to a matching entity by company name, deduped) ──
@@ -174,27 +178,15 @@ ${items.map((i) => `- ${i.title ?? ""} (${i.url ?? ""}) ${i.summary ?? ""}`).joi
 
     const entityId = c.company ? nameToEntityId.get(normName(c.company)) : undefined;
 
-    // Skip people already in the CRM (same name + company, or same email).
-    const dupe = await prisma.contact.findFirst({
-      where: {
-        userId,
-        OR: [
-          ...(real(c.email) ? [{ email: { equals: c.email!.trim(), mode: "insensitive" as const } }] : []),
-          {
-            name: { equals: c.name.trim(), mode: "insensitive" as const },
-            ...(real(c.company)
-              ? { company: { equals: c.company!.trim(), mode: "insensitive" as const } }
-              : {}),
-          },
-        ],
-      },
-      select: { id: true },
+    const dupe = await findContactDupe(userId, {
+      email: real(c.email) ? c.email : null,
+      name: c.name.trim(),
+      company: real(c.company) ? c.company : null,
     });
     if (dupe) continue;
 
-    await prisma.contact.create({
-      data: {
-        userId,
+    try {
+      await createContact(userId, {
         name: c.name.trim(),
         title: real(c.title) ? c.title : null,
         email: real(c.email) ? c.email : null,
@@ -203,9 +195,12 @@ ${items.map((i) => `- ${i.title ?? ""} (${i.url ?? ""}) ${i.summary ?? ""}`).joi
         entityId: entityId ?? null,
         source: "radar",
         tags: ["intent"],
-      },
-    });
-    contactsAdded++;
+      });
+      contactsAdded++;
+    } catch (err) {
+      if (err instanceof OpError) continue;
+      throw err;
+    }
   }
 
   return { entitiesAdded, contactsAdded, created };

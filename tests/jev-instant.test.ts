@@ -75,6 +75,16 @@ describe("classifyInstant", () => {
       query: "Jane",
       name: "ICP",
     });
+    expect(classifyInstant("remove Jane from the Outbound pipeline")).toMatchObject({
+      tool: "remove_pipeline_entry",
+      query: "Jane",
+      name: "Outbound",
+    });
+    expect(classifyInstant("remove Jane from the ICP segment")).toMatchObject({
+      tool: "remove_segment_member",
+      query: "Jane",
+      name: "ICP",
+    });
     expect(classifyInstant("I emailed Jane")).toMatchObject({
       tool: "log_outreach",
       query: "Jane",

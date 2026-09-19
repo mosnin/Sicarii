@@ -597,10 +597,18 @@ Scalar now does that on `/api/agent`:
 34. Provenance re-verify field clear/restore goes through
     `getContactFieldSnapshot` / `updateContact`. Bulk existing-domain
     checks use `findEntityIdsByDomains`. Research-schedule targets go
-    through `getContact` / `getEntity`. Instant `move Jane to Engaging
+    through `getContact` / `getEntity`.     Instant `move Jane to Engaging
     in Outbound`, `save this email on Jane: following up`, and `show
     swarm run dentists` skip TypeSafe and run `update_pipeline_entry` /
     `save_email_context` / `get_swarm_run` under auto-mode.
+35. Radar add-to-CRM goes through `findEntityByDomainOrName` /
+    `createEntity` / `findContactDupe` / `createContact` (descriptions
+    scanned). Welcome enrich/news persist through `updateEntity`.
+    Inbound voice logs through `logAccountActivity` so the transcript
+    is scanned. Instant `remove Jane from the Outbound pipeline` /
+    `remove Jane from the ICP segment` skip TypeSafe and run
+    `remove_pipeline_entry` / `remove_segment_member` under auto-mode.
+    Contact and company deletes stay off the instant path.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

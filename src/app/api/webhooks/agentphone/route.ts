@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { voiceIntent } from "@/lib/voice-intent";
 import { classifyVoiceIntentWithJev } from "@/lib/jev";
+import { logAccountActivity } from "@/lib/crm-operations";
 
 // POST /api/webhooks/agentphone - AgentPhone's inbound-call webhook.
 //
@@ -105,13 +106,10 @@ export async function POST(req: NextRequest) {
     // spoken response back to the caller if logging itself fails.
     try {
       const heard = (text ?? "(no transcript recognized in the payload)").slice(0, 500);
-      await prisma.activity.create({
-        data: {
-          userId: user.id,
-          kind: "call",
-          channel: "phone",
-          body: `Inbound voice call (${intent}). Heard: "${heard}". Answered: "${speech.slice(0, 500)}"`,
-        },
+      await logAccountActivity(user.id, {
+        kind: "call",
+        channel: "phone",
+        body: `Inbound voice call (${intent}). Heard: "${heard}". Answered: "${speech.slice(0, 500)}"`,
       });
     } catch (e) {
       console.warn("[agentphone-webhook] failed to log inbound voice activity", e);

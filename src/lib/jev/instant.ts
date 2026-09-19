@@ -135,6 +135,25 @@ function parseLogOutreach(text: string): {
   return { query, channel };
 }
 
+function parseRemoveFromField(text: string): {
+  query: string;
+  name: string;
+  tool: "remove_pipeline_entry" | "remove_segment_member";
+} | null {
+  const m = text.match(
+    /^(please\s+)?(remove|drop|take)\s+(.+?)\s+(?:from|out of|off)\s+(?:the\s+)?(.+?)\s+(pipeline|segment)\b/i,
+  );
+  if (!m?.[3] || !m[4] || !m[5]) return null;
+  const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const name = m[4].replace(/\b(the|a|an)\b/gi, " ").replace(/\s+/g, " ").trim();
+  if (!query || !name || query.length > 80 || name.length > 80) return null;
+  return {
+    query,
+    name,
+    tool: m[5].toLowerCase() === "segment" ? "remove_segment_member" : "remove_pipeline_entry",
+  };
+}
+
 function parseAddToField(text: string): {
   query: string;
   name: string;
@@ -529,6 +548,15 @@ export function classifyInstant(
       tool: "update_contact",
       query: statusUpdate.query,
       status: statusUpdate.status,
+      source: "instant",
+    };
+  }
+  const removeFromField = parseRemoveFromField(text);
+  if (removeFromField && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: removeFromField.tool,
+      query: removeFromField.query,
+      name: removeFromField.name,
       source: "instant",
     };
   }

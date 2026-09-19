@@ -1550,6 +1550,54 @@ export async function listContactDedupKeys(
   });
 }
 
+export async function findContactDupe(
+  userId: string,
+  input: { email?: string | null; name?: string | null; company?: string | null },
+) {
+  const email = input.email?.trim();
+  const name = input.name?.trim();
+  if (!email && !name) return null;
+  const company = input.company?.trim();
+  return prisma.contact.findFirst({
+    where: {
+      userId,
+      OR: [
+        ...(email ? [{ email: { equals: email, mode: "insensitive" as const } }] : []),
+        ...(name
+          ? [
+              {
+                name: { equals: name, mode: "insensitive" as const },
+                ...(company
+                  ? { company: { equals: company, mode: "insensitive" as const } }
+                  : {}),
+              },
+            ]
+          : []),
+      ],
+    },
+    select: { id: true },
+  });
+}
+
+export async function logAccountActivity(
+  userId: string,
+  input: {
+    kind: "note" | "call" | "outreach" | "reply" | "status_change";
+    body: string;
+    channel?: string | null;
+  },
+) {
+  await assertCleanArtifact(input.body, "activity");
+  return prisma.activity.create({
+    data: {
+      userId,
+      kind: input.kind,
+      body: input.body,
+      channel: input.channel ?? null,
+    },
+  });
+}
+
 export async function findEntityByDomainOrName(
   userId: string,
   input: { domain?: string | null; name?: string | null },

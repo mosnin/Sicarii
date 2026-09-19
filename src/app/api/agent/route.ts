@@ -949,12 +949,14 @@ export async function POST(req: Request) {
               instant?.tool === "log_call" ||
               instant?.tool === "save_email_context"
             ? searchCrm(userId, instant.query).catch(() => null)
-          : instant?.tool === "add_to_pipeline" || instant?.tool === "update_pipeline_entry"
+          : instant?.tool === "add_to_pipeline" ||
+              instant?.tool === "update_pipeline_entry" ||
+              instant?.tool === "remove_pipeline_entry"
             ? Promise.all([
                 searchCrm(userId, instant.query),
                 listPipelines(userId),
               ]).then(([crm, fields]) => ({ crm, fields })).catch(() => null)
-          : instant?.tool === "add_to_segment"
+          : instant?.tool === "add_to_segment" || instant?.tool === "remove_segment_member"
             ? Promise.all([
                 searchCrm(userId, instant.query),
                 listSegments(userId),
@@ -1113,6 +1115,8 @@ export async function POST(req: Request) {
           }),
         addToPipeline: (pipelineId, contactIds) => addToPipeline(userId, pipelineId, { contactIds }),
         addToSegment: (segmentId, contactIds) => addToSegment(userId, segmentId, contactIds),
+        removePipelineEntry: (pipelineId, entryId) => removePipelineEntry(userId, pipelineId, entryId),
+        removeSegmentMember: (segmentId, contactId) => removeSegmentMember(userId, segmentId, contactId),
         logOutreach: (contactId, summary, channel) => logOutreach(userId, { contactId, summary, channel }),
         pipelineMetrics: (id) => pipelineMetrics(userId, id),
         remember: async (content) => {

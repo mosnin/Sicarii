@@ -67,6 +67,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "update_pipeline_entry", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "save_email_context", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_swarm_run", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "remove_pipeline_entry", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "remove_segment_member", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });

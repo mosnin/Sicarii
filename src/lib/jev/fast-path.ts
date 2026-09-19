@@ -50,6 +50,8 @@ export const FAST_PATH_TOOLS = new Set([
   "update_contact",
   "add_to_pipeline",
   "add_to_segment",
+  "remove_pipeline_entry",
+  "remove_segment_member",
   "log_outreach",
   "add_activity",
   "list_recent_discoveries",
@@ -524,6 +526,13 @@ export function formatFastReply(input: {
     return `Added ${who} to ${dest}.`;
   }
 
+  if (tool === "remove_pipeline_entry" || tool === "remove_segment_member") {
+    const r = payload as { name?: string | null; who?: string | null };
+    const who = r.who ?? query;
+    const dest = r.name ?? (tool === "remove_segment_member" ? "the segment" : "the pipeline");
+    return `Removed ${who} from ${dest}.`;
+  }
+
   if (tool === "log_outreach") {
     const r = payload as { name?: string | null; channel?: string | null; status?: string | null };
     const who = r.name ?? query;
@@ -667,6 +676,8 @@ export type FastPathRunners = {
   updateContact?: (id: string, patch: { status?: string }) => Promise<unknown>;
   addToPipeline?: (pipelineId: string, contactIds: string[]) => Promise<unknown>;
   addToSegment?: (segmentId: string, contactIds: string[]) => Promise<unknown>;
+  removePipelineEntry?: (pipelineId: string, entryId: string) => Promise<unknown>;
+  removeSegmentMember?: (segmentId: string, contactId: string) => Promise<unknown>;
   logOutreach?: (
     contactId: string,
     summary: string,
@@ -1007,6 +1018,64 @@ async function runTool(
         const result = runners.addToPipeline
           ? await runners.addToPipeline(fieldId, [contactId])
           : { error: "Pipeline add is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), who, name: dest };
+        }
+        return result;
+      });
+    }
+    case "remove_pipeline_entry":
+    case "remove_segment_member": {
+      const packed =
+        prefetch && typeof prefetch === "object" && prefetch !== null && "crm" in prefetch
+          ? (prefetch as { crm: unknown; fields?: unknown })
+          : null;
+      const found = packed?.crm ?? (prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query));
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const listed =
+        packed?.fields ??
+        (tool === "remove_segment_member"
+          ? await (runners.listSegments ? runners.listSegments() : [])
+          : await (runners.listPipelines ? runners.listPipelines() : []));
+      const hit = matchNamed(listed, instant?.name ?? query);
+      if (!hit?.id) {
+        return {
+          error:
+            tool === "remove_segment_member"
+              ? `I did not find a segment named "${instant?.name ?? query}".`
+              : `I did not find a pipeline named "${instant?.name ?? query}".`,
+        };
+      }
+      const contactId = contact.id;
+      const fieldId = hit.id;
+      const who = contact.name ?? query;
+      const dest = hit.name ?? instant?.name ?? query;
+      if (tool === "remove_segment_member") {
+        return write("remove_segment_member", { segmentId: fieldId, contactId }, async () => {
+          const result = runners.removeSegmentMember
+            ? await runners.removeSegmentMember(fieldId, contactId)
+            : { error: "Segment remove is unavailable." };
+          if (result && typeof result === "object" && !("error" in result)) {
+            return { ...(result as object), who, name: dest };
+          }
+          return result;
+        });
+      }
+      const entry = runners.findPipelineEntry
+        ? await runners.findPipelineEntry(fieldId, contactId)
+        : null;
+      if (!entry?.id) {
+        return { error: `${who} is not in ${dest}.` };
+      }
+      const entryId = entry.id;
+      return write("remove_pipeline_entry", { pipelineId: fieldId, entryId }, async () => {
+        const result = runners.removePipelineEntry
+          ? await runners.removePipelineEntry(fieldId, entryId)
+          : { error: "Pipeline remove is unavailable." };
         if (result && typeof result === "object" && !("error" in result)) {
           return { ...(result as object), who, name: dest };
         }
