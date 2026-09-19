@@ -47,7 +47,7 @@
 | Doc | What it covers |
 |---|---|
 | [`OAUTH.md`](OAUTH.md) | The OAuth 2.1 authorization server at `/oauth/*`: endpoints, scopes, PKCE + rotation + replay rules, storage, env vars, how to register a client |
-| [`JEV.md`](JEV.md) | Jev System One kernel: primitives, transports, where it replaces LLM classify/score, Qwen + OpenAI voice split |
+| [`JEV.md`](JEV.md) | Jev System One: theory, install, contract, wired surfaces, security posture |
 | [`COMPANY_OS.md`](COMPANY_OS.md) | Company OS overview + warden packs (opencompany / openwork) |
 
 ## Audits
@@ -62,6 +62,7 @@
 | [`engineering/world-class-plan-2026-07-02.md`](engineering/world-class-plan-2026-07-02.md) | Synthesis of 4 parallel audits (OWASP, structure, perf, Playwright): waves 1+2 shipped, founder actions, next cycles |
 | [`engineering/mcp-audit-2026-07-11.md`](engineering/mcp-audit-2026-07-11.md) | Deep MCP re-audit (45 tools): isolation + metering clean; 3 P1s found and fixed same-cycle; open items + agent coverage gaps |
 | [`engineering/teams-plan-2026-07-11.md`](engineering/teams-plan-2026-07-11.md) | Teams/workspaces architecture plan: Clerk Orgs + synthetic workspace account, lead sharing semantics, v1 cut (designed, not built) |
+| [`engineering/jev-sweep-2026-09-19.md`](engineering/jev-sweep-2026-09-19.md) | Jev debug + security sweep: install proof, inventory, findings fixed, debts |
 
 ---
 

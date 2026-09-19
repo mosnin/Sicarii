@@ -33,12 +33,12 @@ export async function storeMemory(
   refId?: string,
   opts: { chargeCredits?: boolean } = {},
 ): Promise<boolean> {
+  // Scan every persist, including free in-app agent turns. Unconfigured
+  // Jev fails open unless JEV_REQUIRED is set.
+  const scan = await scanMalicious(content, "memory");
+  if (!scan.allow) return false;
   // Gate BEFORE the paid OpenAI call when this write is billable.
   if (opts.chargeCredits) await ensureCredits(userId, "remember");
-  if (opts.chargeCredits) {
-    const scan = await scanMalicious(content, "memory");
-    if (!scan.allow) return false;
-  }
   const embedding = await embedText(content);
   if (!embedding) return false;
   const id = randomUUID();

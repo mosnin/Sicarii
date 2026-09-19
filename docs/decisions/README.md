@@ -51,6 +51,9 @@ exponential growth into a plateau.
 - **Jev decides, code routes, Qwen writes.** Classification, routing, scoring,
   and tool gates are System One questions. Chat models do not pick tools or
   invent confidence. _(Card 0015)_
+- **Unconfigured Jev fails open; a live write-eval miss asks for confirm.**
+  Local/dev must boot without secrets. Production sets `JEV_REQUIRED=1`.
+  Auto-mode always receives real tool args, never `{}`. _(Card 0015)_
 - **Token-efficient memory = fresh context + recall.** Don't replay history; mint a
   fresh conversation per load and pull top-k vector matches on demand. _(Card 0005)_
 - **One relationship, one thread.** Conversation history is channel-labeled and
@@ -83,6 +86,7 @@ exponential growth into a plateau.
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
 | Live Jev + Qwen turn | 0015 · Feasible | `TYPESAFE_API_KEY` + `OPENROUTER_API_KEY` + one observed agent/route-intent | founder + eng |
 | Jev threshold sweep | 0015 · Feasible | labeled CRM turns through `src/lib/jev/eval/validate.ts`; pin `jev-1.13.0` | eng |
+| Production Jev fail-closed | 0015 · Deliverable | set `JEV_REQUIRED=1` on prod once a Jev key is present | founder + eng |
 
 ## Kills & falsifieds (do not re-open)
 

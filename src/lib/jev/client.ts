@@ -73,6 +73,13 @@ export function isJevConfigured(cfg: JevClientConfig = envConfig()): boolean {
   return Boolean(cfg.typesafeKey || cfg.gatewayKey || cfg.openrouterKey);
 }
 
+/** Production opt-in: when set, missing Jev keys fail closed on writes,
+ *  money, memory, and inbound scans instead of silently allowing. */
+export function isJevRequired(): boolean {
+  const v = process.env.JEV_REQUIRED?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
 function normalizeAnswer(raw: RawAnswer): Answer {
   const looksNoul =
     raw.type === "noul" ||

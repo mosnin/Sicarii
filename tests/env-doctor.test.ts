@@ -61,6 +61,12 @@ describe("runEnvDoctor", () => {
     expect(JSON.stringify(report)).not.toContain(secret);
   });
 
+  it("flags JEV_REQUIRED without a Jev evaluate key as missing", () => {
+    const report = runEnvDoctor({ JEV_REQUIRED: "1" });
+    expect(findCheck(report, "Jev required (fail-closed)").status).toBe("missing");
+    expect(findCheck(report, "Jev required (fail-closed)").detail).toContain("no Jev evaluate key");
+  });
+
   it("formats a human-readable report without throwing", () => {
     const text = formatDoctorReport(runEnvDoctor({}));
     expect(text).toContain("Scalar environment doctor");

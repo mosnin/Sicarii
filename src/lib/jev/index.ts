@@ -35,7 +35,9 @@ export {
   resetJevClient,
   tryEvaluate,
   isJevConfigured,
+  isJevRequired,
   type JevClient,
+  type JevEvaluateRequest,
   type JevEvaluateRequest,
 } from "./client";
 
@@ -62,6 +64,8 @@ export {
   autoMode,
   runAutoModeThen,
   AUTO_MODE_TOOLS,
+  WRITE_BUCKETS,
+  isWriteTool,
   DEFAULT_MODEL_CHOICES,
   type ModelChoice,
   type RoutedModel,

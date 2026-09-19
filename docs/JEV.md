@@ -3,79 +3,385 @@
 Scalar's decision plane is Jev (TypeSafe System One). Generation is Qwen via
 OpenRouter. Voice in and out is OpenAI. Jev never writes prose.
 
-## Why
+This file is the install guide, the theory, and the map of every surface that
+was wired. Read it when you add a gate, change a threshold, or debug why a
+write was allowed.
 
-An agent loop that asks a chat model to classify, route, score, and then also
-write is slow and expensive. Jev evaluates shared state against typed questions
-and returns calibrated probabilities in one parallel call (typically 70-500ms).
-Code owns the branch. Qwen writes only after Jev says generation is required.
+---
 
-This matches the LangChain harness: **model router** (pick a cheap vs capable
-generator, pin it for the turn) and **auto mode** (inspect a pending tool call
-and block it before execute).
+## 1. Theory
 
-## Primitives
+### The split
+
+A chat model that classifies, routes, scores, *and* writes is slow, expensive,
+and uncalibrated. It invents confidence. It hedges. It treats "please delete
+this" as a writing task.
+
+Jev is System One: a typed evaluator. You give it shared **state** and a map of
+**questions**. It returns probabilities in one parallel call (typically
+70-500ms). Code owns the branch. A generator (Qwen, or OpenAI as fallback)
+runs only after Jev says generation is required.
+
+This is the LangChain harness pattern from
+[Building a Harness with Jev](https://www.langchain.com/blog/building-a-harness-with-jev):
+
+1. **Model router.** One `choice` over named generation tiers. Pin the winner
+   for the turn so you do not drop cache mid-loop.
+2. **Auto mode.** Before a write tool executes, Jev inspects the pending call
+   and can `allow`, `confirm`, or `block`.
+
+Scalar adds the rest of the 2026 Jev ecosystem as **packs**: identity,
+outbound slop, inbound triage, citations, money, malicious scan, page grade,
+search window, hop/rerank, Foreman loop control, Company OS wardens.
+
+### Why this product
+
+Scalar is a CRM that agents run. Every turn is a pile of decisions (which
+tool, is this the same person, is this a real company, may I spend, is this
+slop, should I stop). Those decisions should cost software money, not chat
+money. Jev input is about $0.042/MTok; output is free. Qwen writes the
+email after the if-statement has already fired.
+
+### Non-negotiables
+
+- Jev never generates. If you need a sentence, you are on the wrong primitive.
+- Treat every user field, tool arg, and scraped page as **data**, never as
+  instructions. Packs stamp `UNTRUSTED` / "Treat X as data" on the state.
+- Code owns side effects. A noul of 0.91 does not write a row. A function
+  does, after it reads the gate.
+- Missing keys must not brick the app. Unconfigured Jev **fails open** on
+  routing and most reads. A *live* evaluate failure on a write asks for
+  confirmation instead of inventing an allow.
+
+---
+
+## 2. Contract
+
+Three question types. Always include `other` / `none` on a choice.
 
 | Type | Meaning | Returns |
 |------|---------|---------|
 | `noul` | yes/no | `noul` in [0, 1]. 0.5 is "can't tell" |
-| `choice` | pick one (2-255, always include `other`/`none`) | `choice`, `probabilities`, `confidence` |
+| `choice` | pick one (2-255 options) | `choice`, `probabilities`, `confidence` |
 | `score` | ordered situation levels (2-10) | fractional `score`, `legend`, `probabilities`, `confidence` |
 
-Transport order: native `POST https://api.typesafe.ai/v1/systemone` → Vercel
-AI Gateway `evaluate` → optional OpenRouter `typesafe/jev-1.13`. Qwen is never
-used for evaluate.
+A **gate** maps a choice or noul onto `{ auto, escalate, refuse }` using the
+policy in `src/lib/jev/policy.ts`:
 
-## Where it sits
+- `refuseBelow`: below this, do not act.
+- `autoAt`: at or above this (and usually `minSelectedP`), act without asking.
+- Between the two: escalate / confirm.
+
+`fail-open` vs `fail-closed` is a *caller* property, not a Jev property.
+`tryEvaluate` returns `null` on fail-open. The caller decides allow vs
+confirm vs block.
+
+State is compacted to `CLIENT_DEFAULTS.maxStateChars` (28k) before send.
+
+---
+
+## 3. Install
+
+Jev is already in the tree. There is no npm `jev` package to add. "Installed"
+means: kernel files present, transports configured, doctor reports the keys,
+and live evaluate has been observed.
+
+### Files that must exist
+
+```
+src/lib/jev/
+  contract.ts      primitives, validators, gates
+  policy.ts        every threshold in one file
+  client.ts        TypeSafe -> Gateway -> OpenRouter
+  decide.ts        turn orchestrator
+  harness.ts       model router + auto-mode
+  gates.ts         identity, slop, warden, triage, citations, money, ...
+  generate.ts      Qwen / OpenAI generation picker (not evaluate)
+  score.ts         fit + rank batches
+  route-intent.ts  discovery catalog choice
+  voice.ts         spoken-intent choice + Whisper/TTS/Realtime
+  telemetry.ts     [jev-decision] logs (no answer bodies)
+  index.ts         public exports
+  packs/           intent, guard, loop, scoring, identity, money, angles
+  eval/validate.ts jevcal helpers
+src/lib/symbolic/  Foreman, jev-code, jev-git, jev-review
+src/lib/company-os/ overview + warden packs
+scripts/jevcal.mjs
+fixtures/jevcal/*.json
+```
+
+### Env (names only)
+
+```
+TYPESAFE_API_KEY=...          # preferred native evaluate
+TYPESAFE_AI_API_KEY=...       # alias accepted by the client
+AI_GATEWAY_API_KEY=...        # fallback evaluate (typesafe-ai/jev)
+VERCEL_AI_GATEWAY_API_KEY=... # alias
+OPENROUTER_API_KEY=...        # Qwen generation + optional Jev eval
+OPENROUTER_JEV_MODEL=...      # default typesafe/jev-1.13
+TYPESAFE_JEV_MODEL=...        # default jev-latest; pin jev-1.13.0 after sweep
+OPENAI_API_KEY=...            # voice, embeddings, generation fallback
+SCALAR_POLICIES=...           # optional pipe-separated policy quotes
+```
+
+Transport order for `evaluate`:
+
+1. Native `POST https://api.typesafe.ai/v1/systemone`
+2. Vercel AI Gateway `evaluate` (`typesafe-ai/jev`)
+3. Optional OpenRouter `typesafe/jev-1.13`
+
+Qwen is **never** used for evaluate.
+
+### Prove the install
+
+```
+pnpm doctor          # TypeSafe Jev / Gateway / OpenRouter rows
+pnpm jevcal          # threshold sweep on fixtures/jevcal
+pnpm exec tsc --noEmit
+pnpm test            # includes tests/jev-*.test.ts
+```
+
+`pnpm doctor` in this cloud checkout reports TypeSafe / Gateway / OpenRouter
+as **missing**. That is expected: the app boots, every gate fails open, and
+no live 70-500ms call has been observed. Production needs at least
+`TYPESAFE_API_KEY` (or the Gateway / OpenRouter fallback) before the safety
+story in this file is real.
+
+The app still boots with none of these keys.
+
+---
+
+## 4. Failure modes (read this before you ship)
+
+| Situation | Routing / classify | Write tool (auto-mode) | Money / send / memory |
+|-----------|--------------------|------------------------|-----------------------|
+| No Jev key | fail-open (heuristic / allow) | allow unless `JEV_REQUIRED=1` (then confirm) | allow unless `JEV_REQUIRED=1` (then block / stop) |
+| Live evaluate error | fail-open (`null`) | **confirm** if `isWriteTool(name)` | money: block; autopilot: stop; send: block |
+| Jev answers | code applies policy.ts | block destructive/exfil; confirm the rest | `GATES.money.autoAt` |
+
+`isWriteTool` covers prefixed names (`create_contact`, `buy_credits`) **and**
+MCP rate-limit buckets that have no prefix (`create`, `enrich`, `remember`).
+A live TypeSafe outage on those buckets must ask for confirmation, not allow.
+
+MCP auto-mode receives the **zod-parsed args** (never an empty `{}`). Payment
+blobs (`xPayment`) are not sent to Jev; only `{ credits, hasPayment }` /
+`{ plan, hasPayment }`.
+
+Unconfigured Jev still silently disables identity, malicious scan, and spend
+authorization **unless** `JEV_REQUIRED=1` (or `true` / `yes`) is set. Production
+should set that flag once a TypeSafe, Gateway, or OpenRouter Jev key is in
+the environment. Local/dev stays fail-open so a missing key does not brick
+the app.
+
+---
+
+## 5. Policy and calibration
+
+All thresholds live in `src/lib/jev/policy.ts`. They are **reasoned starting
+points**, not observed calibration.
+
+Sweep labeled noul fixtures:
+
+```
+pnpm jevcal
+pnpm jevcal fixtures/jevcal/identity.json
+```
+
+When a live sweep on Scalar CRM turns holds target accuracy, set
+`TYPESAFE_JEV_MODEL=jev-1.13.0` (`JEV_PINNED_MODEL` in policy.ts).
+
+Telemetry: `logJevDecision` writes `[jev-decision]` with surface, action,
+source, reasons, latency, and answer *keys*. It does not dump answer bodies
+or raw state.
+
+---
+
+## 6. Kernel map
+
+| Module | Job |
+|--------|-----|
+| `contract` | `noul` / `choice` / `score`, validate, `gateChoice`, `gateNoul` |
+| `client` | transports, retry 429/529, `tryEvaluate` |
+| `policy` | `GATES`, `TOOL_GATE`, slop / malicious / citation floors |
+| `decide` | intent + risk + tool + skill + generation tier -> Handler |
+| `harness` | `routeModel`, `autoMode`, `runAutoModeThen` |
+| `gates` | every high-leverage if-statement (see packs below) |
+| `generate` | pick Qwen-fast / Qwen-strong / OpenAI after Jev grants prose |
+| `score` | batched fit (score) and rank (noul) |
+| `route-intent` | discovery catalog |
+| `voice` | spoken CRM intent + OpenAI media |
+| `packs/intent` | turn intent / risk / needsGeneration |
+| `packs/guard` | tool guard, output secrets, failureClass, malicious, policy |
+| `packs/loop` | action / goalDone / stuck / earlyStop, compact, quiet-ask |
+| `packs/scoring` | fit, rank, slop, page grade, citations, triage, search window, hops |
+| `packs/identity` | same-person + real-company |
+| `packs/money` | spend + autopilot tick |
+| `packs/angles` | swarm dimension nouls; code fills query templates |
+
+Jev cannot extract free-text parameters or invent swarm angle strings. It
+picks dimensions and tools. Code fills templates.
+
+---
+
+## 7. Wired surfaces
 
 | Surface | Jev job | Generator |
 |---------|---------|-----------|
-| `/api/agent` | Turn decide + model router + auto-mode + quiet-ask + Foreman + output guard | Qwen (OpenRouter) or OpenAI fallback |
+| `/api/agent` | `decideTurn` + `routeModel` + `runAutoModeThen` + quiet-ask + Foreman (incl. loop nouls) + output guard + `failureClass` retry | Qwen or OpenAI |
 | `/api/discover/route-intent` | Choice over the discovery catalog | heuristic params |
 | `/api/crm/fit-score` | Score per record vs product context | none |
 | `/api/crm/semantic-sort` | Noul per record vs intent | none |
 | `/api/crm/triage-inbound` | Inbound category / action / severity / urgency | none |
-| Voice webhook + `/api/voice/*` | Choice over spoken CRM intents; follow-up rank | OpenAI Whisper/TTS/Realtime |
+| Voice webhook + `/api/voice/*` | Spoken CRM intent; follow-up rank | OpenAI Whisper/TTS/Realtime |
 | `/api/symbolic/review` | Foreman / jev-code / jev-git / jev-review | none |
-| Company OS `/api/company-os/overview` | Deterministic reads; Jev wardens on writes | none |
-| MCP writes + `jev_*` | Auto-mode, money gate, triage, citations | none |
+| `/api/company-os/overview` | Deterministic reads; wardens on writes | none |
+| MCP writes + `jev_*` | Auto-mode **with args**, money gate, triage, citations, grade, scan, loop | none |
 | Breakup draft / approve | Slop + warden before persist / send | gpt-5-mini draft only |
 | Contact enrich | Same-person identity gate before save | none |
 | Discover refine / radar / swarm | Real-company noul; angle dimensions | LLM extract fallback |
 | Autopilot tick | Spend brake (continue / downgrade / stop) | none |
-| Deep report ICP | `scoreFitWithJev` overlays the LLM score; citations drop unsupported news/intent | Qwen/OpenAI prose |
-| Search / crawl | Time window + off-topic rerank + BFS hop keep | none |
+| Deep report | ICP overlay + citation drop on news/intent | Qwen/OpenAI prose |
+| Tavily / Firecrawl / Google SERP | Time window + off-topic rerank + BFS hop keep | none |
 | Analyze site | Page grade stored on the entity | none |
 | find_companies / maps / swarm / bulk | Real-company noul before insert | none |
-| save_email / remember | Warden + malicious scan | none |
+| save_email / inbound social / remember | Warden + malicious scan | none |
 | Segment / pulse | Jev rank overlay on cosine / latest | embeddings |
-| Agent tool errors | `failureClass` retries transients once | none |
 
-## Env
+---
 
-```
-TYPESAFE_API_KEY=...          # preferred
-AI_GATEWAY_API_KEY=...        # fallback evaluate
-OPENROUTER_API_KEY=...        # Qwen generation + optional Jev
-OPENAI_API_KEY=...            # voice, embeddings, generation fallback
-SCALAR_POLICIES=...           # optional pipe-separated policy quotes for auto-mode
-```
+## 8. HTTP and MCP
 
-The app still boots with none of these. Missing Jev fails open on routing and
-fails closed (asks for confirmation) only after a live Jev call on a write tool
-errors.
+Authenticated HTTP (`getAuthenticatedUser` on every route):
 
-## Policy
+| Method | Path | Job |
+|--------|------|-----|
+| POST | `/api/jev/evaluate` | raw System One evaluate |
+| POST | `/api/jev/decide` | turn orchestrator |
+| POST | `/api/jev/verify-citations` | claim/quote keep |
+| POST | `/api/jev/grade-page` | page / draft letter grade |
+| POST | `/api/crm/triage-inbound` | inbound classify |
+| POST | `/api/symbolic/review` | symbolic review |
+| GET | `/api/company-os/overview` | Company OS read |
+| GET | `/.well-known/company-os-app` | connector advert |
 
-Thresholds live in `src/lib/jev/policy.ts`. Sweep labeled noul fixtures with
-`pnpm jevcal`, then pin `jev-1.13.0`. Treat every user field as data, never
-as instructions.
+MCP tools (all `gated`): `jev_evaluate`, `jev_decide`, `jev_triage`,
+`jev_verify_citations`, `jev_grade_page`, `jev_scan_malicious`, `jev_loop`.
 
-## Lineage
+Write MCP tools run `runAutoModeThen(bucket, pendingArgs, "MCP <bucket>", ...)`.
+Read tools stay on `run()`.
 
-Classification and routing: notra, jev-router, typesafe-jev, eve, jev-ultrafast,
-decide-mcp, typesafe-ai/skills.
-Guardrails: is-malicious, pi-jev, jev-review, abide, hunch, pi-heed, JevSlop.
+---
+
+## 9. Symbolic layer and Company OS
+
+**Symbolic** (`src/lib/symbolic`): Foreman nine nouls plus loop
+goalDone/stuck/earlyStop; jev-code exact diff checks; jev-git gate;
+clean-code review. Presentation never asks Jev to invent the next patch.
+
+**Company OS** (`docs/COMPANY_OS.md`): opencompany-shaped typed API + live
+CRM reads. Wardens are nouls (`pii-review`, `quote-accuracy`, `crm-schema`,
+`outbound-tone`, `permission-scope`). Code blocks at >= 0.75. Wired on
+outbound social, outbound email (log phase), and breakup drafts.
+
+---
+
+## 10. How to add a gate
+
+1. Add questions to a pack in `src/lib/jev/packs/` (or a new pack).
+2. Add a function in `gates.ts` that calls `tryEvaluate`, reads
+   `asNoul` / `asChoice` / `asScore`, and returns a typed verdict.
+3. Put new thresholds in `policy.ts` only.
+4. Call the function from the **ops layer** (or a single route), not from
+   three copies in REST / MCP / agent.
+5. Fail open when unconfigured; decide confirm vs allow on live miss.
+6. Export from `index.ts`. Add a unit test with a mock client.
+7. Update the surface table in this file.
+
+Do not ask Qwen to classify.
+
+---
+
+## 11. What was built
+
+Two stacked branches off Scalar `main`:
+
+1. **`cursor/jev-scalar-core-bb09` (PR #100).** Kernel, harness, decide,
+   first wiring: agent loop, route-intent, fit-score, semantic-sort, voice,
+   symbolic, Company OS, MCP auto-mode + `jev_*`, breakup slop/warden,
+   enrich identity, discover/radar/swarm real-company + angles, autopilot
+   brake, deep-report ICP overlay.
+
+2. **`cursor/jev-remaining-gates-bb09` (PR #101).** Packs that were exported
+   but unused: search window, page grade, hop/rerank, `scanMalicious` on
+   email/remember/inbound social, jevcal CLI, citations on deep-report,
+   find/maps/swarm/bulk real-company filter, segment/pulse rank overlay,
+   Foreman loop nouls, `failureClass` retry, MCP auto-mode **args**, write
+   buckets without a prefix.
+
+Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
+belong in `node_modules`. The kernel is the house style.
+
+---
+
+## 12. Security posture (sweep 2026-09-19)
+
+Reviewed. No unauthenticated Jev HTTP control plane. Telemetry does not log
+answer bodies. User text is labeled untrusted in evaluate state. Payment
+blobs (`xPayment`) never enter Jev state.
+
+Fixed in the same sweep:
+
+- MCP auto-mode was evaluating `{ pending_args: {} }`. It now receives the
+  tool's parsed args.
+- MCP buckets `create` / `enrich` / `remember` did not match `WRITE_HINT`,
+  so a live Jev failure **allowed** the write. `isWriteTool` now includes
+  those buckets plus `search_web` / `serp_search`.
+- Inbound social had triage but no malicious scan. Email and social now
+  both scan inbound and outbound.
+- In-app `storeMemory` (free per-turn) now scans the same way billed MCP
+  `remember` does.
+- Autopilot tick **stops** when a live evaluate fails (unconfigured still
+  continues, unless `JEV_REQUIRED` is set).
+- `JEV_REQUIRED=1` is the production fail-closed flag. Doctor reports it.
+
+Still owed (documented):
+
+- Live TypeSafe observation (no key in this checkout).
+- Labeled CRM-turn jevcal, then pin `jev-1.13.0`.
+- Identity still fail-opens on a live miss unless `JEV_REQUIRED` is set.
+
+See `docs/engineering/jev-sweep-2026-09-19.md`.
+
+---
+
+## 13. Lineage
+
+Classification / routing: notra, jev-router, typesafe-jev, eve, jev-ultrafast,
+decide-mcp, typesafe-ai/skills, tumf/jev-cli.
+
+Guardrails: is-malicious, pi-jev, jev-review, abide, hunch, pi-heed, JevSlop,
+citation-verifier, spendbrake.
+
+Loop: hermes-jev-compact, pi-quiet-ask, Foreman.
+
+Scoring: unclutter, jevcal, page-grade / search-intent / bfs-hop packs.
+
+Identity / money / angles: same-person noul, spendbrake, swarm dimension
+choice (code fills queries).
+
 Symbolic: foreman, jev-code, jev-git, clean-code-review.
+
 Company OS: opencompany + openwork warden packs.
-Harness: [Building a Harness with Jev](https://www.langchain.com/blog/building-a-harness-with-jev).
+
+Harness: LangChain "Building a Harness with Jev".
+
+---
+
+## 14. Debts owed to reality
+
+- Live `TYPESAFE_API_KEY` and one observed 70-500ms route-intent.
+- `pnpm jevcal` on **labeled CRM turns** (not only fixtures); then pin
+  `jev-1.13.0`.
+- Confirm OpenRouter Qwen model ids against the current catalog.
+- Confirm OpenAI Realtime session shape against a live key.
+- Set `JEV_REQUIRED=1` on production once a Jev key is present.

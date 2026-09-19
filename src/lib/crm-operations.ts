@@ -778,6 +778,10 @@ export async function saveSocialMessage(userId: string, input: SocialMessageInpu
       throw new OpError(`Jev blocked this outbound social message (${warden.reasons.join(", ")}).`, 422);
     }
   }
+  const malicious = await scanMalicious(input.body, "social");
+  if (!malicious.allow) {
+    throw new OpError(`Jev blocked this social message as malicious (${malicious.reasons.join(", ")}).`, 422);
+  }
 
   const inboundTriage =
     input.direction === "INBOUND" ? await triageInbound(input.body) : null;

@@ -5,6 +5,7 @@ import {
   gateOutboundDraft,
   triageInbound,
   gateMoney,
+  evaluateAutopilotTick,
   scanMalicious,
   filterRealCompanies,
   deriveAnglesWithJev,
@@ -138,6 +139,21 @@ describe("triageInbound", () => {
       urgency: { type: "score", score: 2, confidence: 0.8, legend: {}, probabilities: {} },
     }));
     expect(t).toMatchObject({ category: "bug", action: "investigate", source: "jev" });
+  });
+});
+
+describe("evaluateAutopilotTick", () => {
+  it("stops the tick when a live evaluate fails", async () => {
+    const brake = await evaluateAutopilotTick({
+      remainingCredits: 80,
+      nextCost: 15,
+      client: {
+        async evaluate() {
+          throw new Error("typesafe down");
+        },
+      },
+    });
+    expect(brake).toEqual({ action: "stop", source: "fallback", reasons: ["jev_unavailable"] });
   });
 });
 
