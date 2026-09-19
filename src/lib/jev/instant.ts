@@ -148,22 +148,55 @@ export function classifyInstant(
     };
   }
 
+  // COMPOSE matches "draft" / "breakup", so these reads must win first.
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    !SEND.test(text) &&
+    (/\b(pending drafts?|breakup drafts?|draft queue)\b/i.test(text) ||
+      /^(list|show) (the )?(pending |breakup )?drafts\b/i.test(text))
+  ) {
+    return { tool: "list_pending_drafts", query: text, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    /\bautopilot\b/i.test(text) &&
+    /\b(status|doing|budget|running|plan)\b/i.test(text)
+  ) {
+    return { tool: "get_autopilot_status", query: text, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    /^(please\s+)?(list|show|get|open)\b/i.test(text) &&
+    /\bsegments?\b/i.test(text)
+  ) {
+    return { tool: "list_segments", query: text, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    /^(please\s+)?(list|show|get|open)\b/i.test(text) &&
+    /\bpipelines?\b/i.test(text)
+  ) {
+    return { tool: "list_pipelines", query: text, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    (/\b(swarm runs?|recent (swarm|discover(?:y|ies)))\b/i.test(text) ||
+      /^(list|show) (the )?(swarm runs?|discover(?:y|ies))\b/i.test(text))
+  ) {
+    return { tool: "list_swarm_runs", query: text, source: "instant" };
+  }
+
   if (tooHardForInstant(text)) return null;
 
   if (/^(yes|yep|yeah|do it|go ahead|please do|discover (them|those|it)|find them|add them)$/i.test(text)) {
     const missed = extractMissedQuery(priorAssistant);
     if (missed) return { tool: "find_companies", query: missed, source: "instant" };
     return null;
-  }
-
-  if (
-    /\b(pending drafts?|breakup drafts?|draft queue)\b/i.test(text) ||
-    /^(list|show) (the )?drafts\b/i.test(text)
-  ) {
-    return { tool: "list_pending_drafts", query: text, source: "instant" };
-  }
-  if (/\bautopilot\b/i.test(text) && /\b(status|doing|budget|running|plan)\b/i.test(text)) {
-    return { tool: "get_autopilot_status", query: text, source: "instant" };
   }
 
   if (/\benrich\b/i.test(text)) {

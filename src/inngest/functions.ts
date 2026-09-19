@@ -39,6 +39,8 @@ export const runIntentMonitors = inngest.createFunction(
     const now = new Date();
     const monitors = await prisma.intentMonitor.findMany({
       where: { active: true, nextRunAt: { lte: now } },
+      orderBy: { nextRunAt: "asc" },
+      take: 50,
     });
 
     let saved = 0;
@@ -104,6 +106,8 @@ export const runResearchSchedules = inngest.createFunction(
     const now = new Date();
     const schedules = await prisma.researchSchedule.findMany({
       where: { active: true, nextRunAt: { lte: now } },
+      orderBy: { nextRunAt: "asc" },
+      take: 50,
     });
 
     let updated = 0;

@@ -30,6 +30,9 @@ export const FAST_PATH_TOOLS = new Set([
   "get_billing",
   "list_variant_stats",
   "select_variant",
+  "list_segments",
+  "list_pipelines",
+  "list_swarm_runs",
 ]);
 
 const READ_CORE = [
@@ -270,6 +273,32 @@ export function formatFastReply(input: {
     return `Use this ${String(v.kind ?? "variant").toLowerCase()}: ${v.text.slice(0, 280)}`;
   }
 
+  if (tool === "list_segments") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return "There are no segments yet.";
+    const bits = rows.slice(0, 8).map((row) => (row as { name?: string }).name ?? "untitled");
+    const more = rows.length > 8 ? `, and ${rows.length - 8} more` : "";
+    return `${rows.length} segment${rows.length === 1 ? "" : "s"}: ${bits.join(", ")}${more}.`;
+  }
+
+  if (tool === "list_pipelines") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return "There are no pipelines yet.";
+    const bits = rows.slice(0, 8).map((row) => {
+      const p = row as { name?: string; _count?: { entries?: number } };
+      const n = p._count?.entries;
+      return n != null ? `${p.name ?? "untitled"} (${n})` : (p.name ?? "untitled");
+    });
+    const more = rows.length > 8 ? `, and ${rows.length - 8} more` : "";
+    return `${rows.length} pipeline${rows.length === 1 ? "" : "s"}: ${bits.join(", ")}${more}.`;
+  }
+
+  if (tool === "list_swarm_runs") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return "There are no swarm runs yet.";
+    return `${rows.length} recent swarm run${rows.length === 1 ? "" : "s"} on file.`;
+  }
+
   return "Done.";
 }
 
@@ -292,6 +321,9 @@ export type FastPathRunners = {
   getBilling?: () => Promise<unknown>;
   listVariantStats?: () => Promise<unknown>;
   selectVariant?: (kind: "SUBJECT" | "OPENER") => Promise<unknown>;
+  listSegments?: () => Promise<unknown>;
+  listPipelines?: () => Promise<unknown>;
+  listSwarmRuns?: () => Promise<unknown>;
   scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
 
@@ -321,7 +353,11 @@ export async function executeFastPath(input: {
         tool === "list_due_followups" ||
         tool === "get_billing" ||
         tool === "get_autopilot_status" ||
-        tool === "list_variant_stats") &&
+        tool === "list_variant_stats" ||
+        tool === "list_segments" ||
+        tool === "list_pipelines" ||
+        tool === "list_swarm_runs" ||
+        tool === "list_pending_drafts") &&
       input.prefetch != null;
     payload = lookupHit
       ? input.prefetch
@@ -443,6 +479,12 @@ async function runTool(
       return runners.listEntities ? runners.listEntities(query || undefined) : runners.searchCrm(query);
     case "list_contacts":
       return runners.listContacts ? runners.listContacts(query || undefined) : runners.searchCrm(query);
+    case "list_segments":
+      return runners.listSegments ? runners.listSegments() : [];
+    case "list_pipelines":
+      return runners.listPipelines ? runners.listPipelines() : [];
+    case "list_swarm_runs":
+      return runners.listSwarmRuns ? runners.listSwarmRuns() : [];
     case "search_crm":
     default:
       return runners.searchCrm(query);

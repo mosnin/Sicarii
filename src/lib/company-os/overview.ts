@@ -2,7 +2,7 @@
 // live CRM aggregates. No LLM. Jev wardens run on write paths, not here.
 
 import { prisma } from "@/lib/prisma";
-import { listDueFollowups } from "@/lib/crm-operations";
+import { countDueFollowups } from "@/lib/crm-operations";
 
 export type CompanyOsOverview = {
   workspaceId: string;
@@ -25,7 +25,7 @@ export async function loadCompanyOsOverview(userId: string): Promise<CompanyOsOv
   const [entities, contacts, followups, pendingDrafts, autopilotActive, recent] = await Promise.all([
     prisma.entity.count({ where: { userId } }),
     prisma.contact.count({ where: { userId } }),
-    listDueFollowups(userId, { limit: 200 }),
+    countDueFollowups(userId),
     prisma.breakupDraft.count({ where: { userId, status: "PENDING" } }),
     prisma.autopilotPlan.count({ where: { userId, status: "active" } }),
     prisma.activity.findMany({
@@ -41,7 +41,7 @@ export async function loadCompanyOsOverview(userId: string): Promise<CompanyOsOv
     counts: {
       entities,
       contacts,
-      followupsDue: followups.length,
+      followupsDue: followups,
       pendingDrafts,
       autopilotActive,
     },

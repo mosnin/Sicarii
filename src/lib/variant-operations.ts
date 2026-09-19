@@ -91,6 +91,7 @@ export async function selectVariant(
       active: true,
     },
     select: { id: true, text: true, kind: true, segmentId: true, sends: true, replies: true },
+    take: 200,
   });
   if (candidates.length === 0) {
     throw new OpError(

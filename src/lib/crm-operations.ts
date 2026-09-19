@@ -28,6 +28,13 @@ import { OpError } from "@/lib/op-error";
 import { keepNamedCompanies, rerankHits, runWardens, scanMalicious, triageInbound } from "@/lib/jev";
 export { assertCleanArtifact } from "@/lib/clean-artifact";
 import { assertCleanArtifact } from "@/lib/clean-artifact";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+async function assertPaidOpRate(userId: string, op: string, limit: number) {
+  if (process.env.VITEST) return;
+  const rate = await checkRateLimit(`crm:${op}:${userId}`, limit, 60_000);
+  if (!rate.success) throw new OpError(`${op} rate limit reached. Try again in a moment.`, 429);
+}
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -168,6 +175,7 @@ export async function enrichEntity(userId: string, id: string) {
   if (!entity.domain) throw new OpError("Entity has no domain to enrich from", 400);
   if (!isExploriumConfigured())
     throw new OpError("Enrichment is not configured (EXPLORIUM_API_KEY missing)", 501);
+  await assertPaidOpRate(userId, "enrich_entity", 20);
 
   // Idempotency: don't re-charge Explorium if firmographics are already present
   // (an agent re-calling enrich_entity on the same id otherwise pays every time).
@@ -304,6 +312,7 @@ export async function findCompanies(
 ) {
   if (!isExaConfigured())
     throw new OpError("Discovery is not configured (EXA_API_KEY missing)", 501);
+  await assertPaidOpRate(userId, "find_companies", 10);
   // Gate before the paid Exa call; debit below only when it returns companies.
   await ensureCredits(userId, "find_companies");
   const count = Math.min(Math.max(input.count ?? 10, 1), 25);
@@ -346,6 +355,7 @@ export async function discoverLocalLeads(
 ) {
   if (!isApifyConfigured())
     throw new OpError("Local lead discovery is not configured (APIFY_TOKEN missing)", 501);
+  await assertPaidOpRate(userId, "maps_leads", 10);
   // Gate before the paid Apify run; debit below only when it returns leads.
   await ensureCredits(userId, "maps_leads");
   const count = Math.min(Math.max(input.count ?? 12, 1), 20);
@@ -447,6 +457,7 @@ export async function swarmDiscover(userId: string, input: SwarmDiscoverInput) {
     if (angles.length === 0) throw new OpError("Could not derive any search angles from that goal.", 502);
     angleSource = "derived";
   }
+  await assertPaidOpRate(userId, "swarm_discover", 5);
 
   // Gate up front for the worst case (see credit-model note above). Nothing
   // paid has happened yet - this only bounds the ceiling.
@@ -590,6 +601,7 @@ export async function getSwarmRun(userId: string, id: string) {
 export async function extractSiteContacts(userId: string, url: string) {
   if (!isApifyConfigured())
     throw new OpError("Contact extraction is not configured (APIFY_TOKEN missing)", 501);
+  await assertPaidOpRate(userId, "contact_extract", 15);
   await ensureCredits(userId, "contact_extract");
   const contacts = await scrapeSiteContacts(url);
   if (contacts.length > 0) await spendCredits(userId, "contact_extract");
@@ -604,6 +616,7 @@ export async function searchGoogle(
 ) {
   if (!isApifyConfigured())
     throw new OpError("Web search via Apify is not configured (APIFY_TOKEN missing)", 501);
+  await assertPaidOpRate(userId, "serp_search", 20);
   await ensureCredits(userId, "serp_search");
   const raw = await apifyGoogleSearch(input.query, input.limit ?? 15);
   const results = await rerankHits(
@@ -1056,19 +1069,26 @@ export async function listActivities(
 /** Who needs a follow-up: contacts in a status (default CONTACTED) not touched
  *  in the last N days (default 7), oldest first. A null lastContactedAt counts
  *  as due. This is how an autonomous agent finds who to chase next. */
-export async function listDueFollowups(
+function dueFollowupWhere(
   userId: string,
-  input: { status?: string; staleDays?: number; limit?: number }
+  input: { status?: string; staleDays?: number },
 ) {
   const status = (input.status ?? "CONTACTED") as ContactStatus;
   const staleDays = input.staleDays ?? 7;
   const cutoff = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000);
+  return {
+    userId,
+    status,
+    OR: [{ lastContactedAt: null }, { lastContactedAt: { lt: cutoff } }],
+  };
+}
+
+export async function listDueFollowups(
+  userId: string,
+  input: { status?: string; staleDays?: number; limit?: number }
+) {
   return prisma.contact.findMany({
-    where: {
-      userId,
-      status,
-      OR: [{ lastContactedAt: null }, { lastContactedAt: { lt: cutoff } }],
-    },
+    where: dueFollowupWhere(userId, input),
     orderBy: { lastContactedAt: { sort: "asc", nulls: "first" } },
     take: Math.min(Math.max(input.limit ?? 50, 1), 200),
     select: {
@@ -1080,6 +1100,14 @@ export async function listDueFollowups(
       lastContactedAt: true,
     },
   });
+}
+
+/** Count due follow-ups without loading rows. Used by Company OS. */
+export function countDueFollowups(
+  userId: string,
+  input: { status?: string; staleDays?: number } = {},
+) {
+  return prisma.contact.count({ where: dueFollowupWhere(userId, input) });
 }
 
 // ─── Phone calls (AgentPhone) ────────────────────────────────────────────────

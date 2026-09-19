@@ -37,6 +37,11 @@ describe("classifyInstant", () => {
       tool: "select_variant",
       query: "SUBJECT",
     });
+    expect(classifyInstant("list segments")).toMatchObject({ tool: "list_segments" });
+    expect(classifyInstant("show my pipelines")).toMatchObject({ tool: "list_pipelines" });
+    expect(classifyInstant("show pending drafts")).toMatchObject({ tool: "list_pending_drafts" });
+    expect(classifyInstant("list swarm runs")).toMatchObject({ tool: "list_swarm_runs" });
+    expect(classifyInstant("autopilot status")).toMatchObject({ tool: "get_autopilot_status" });
   });
 
   it("routes discovery and local maps", () => {

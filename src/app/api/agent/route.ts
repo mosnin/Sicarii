@@ -58,7 +58,9 @@ import {
   saveSocialMessage,
   searchCrm,
   listDueFollowups,
+  listSwarmRuns,
 } from "@/lib/crm-operations";
+import { listSegments, listPipelines } from "@/lib/field-operations";
 import { tavilySearch, isTavilyConfigured } from "@/lib/tavily";
 import { storeMemory, recallMemory } from "@/lib/memory";
 import { proposeAutopilotPlan, getAutopilotStatus } from "@/lib/autopilot-operations";
@@ -437,6 +439,21 @@ export async function POST(req: Request) {
       inputSchema: z.object({}),
       execute: () => exec(() => getBilling(userId)),
     }),
+    list_segments: tool({
+      description: "List saved segments (named contact groups) with member counts.",
+      inputSchema: z.object({}),
+      execute: () => exec(() => listSegments(userId)),
+    }),
+    list_pipelines: tool({
+      description: "List pipelines with entry counts.",
+      inputSchema: z.object({}),
+      execute: () => exec(() => listPipelines(userId)),
+    }),
+    list_swarm_runs: tool({
+      description: "List recent swarm discovery runs (newest first).",
+      inputSchema: z.object({ limit: z.number().int().min(1).max(200).optional() }),
+      execute: ({ limit }) => exec(() => listSwarmRuns(userId, limit)),
+    }),
   };
 
   // Auto mode (LangChain AutoModeMiddleware): Jev inspects pending tool
@@ -465,6 +482,11 @@ export async function POST(req: Request) {
     search_web: "Research pages on the web.",
     list_entities: "List companies.",
     list_contacts: "List people.",
+    list_segments: "List segments.",
+    list_pipelines: "List pipelines.",
+    list_swarm_runs: "List recent swarm runs.",
+    list_pending_drafts: "List breakup drafts waiting for review.",
+    get_autopilot_status: "Show autopilot budget and status.",
   };
   const skillCatalog = Object.fromEntries(SKILLS.map((s) => [s.slug, s.description]));
 
@@ -486,6 +508,14 @@ export async function POST(req: Request) {
             ? searchCrm(userId, instant.query).catch(() => null)
           : instant?.tool === "list_variant_stats"
             ? listVariantStats(userId, {}).catch(() => null)
+          : instant?.tool === "list_segments"
+            ? listSegments(userId).catch(() => null)
+          : instant?.tool === "list_pipelines"
+            ? listPipelines(userId).catch(() => null)
+          : instant?.tool === "list_swarm_runs"
+            ? listSwarmRuns(userId).catch(() => null)
+          : instant?.tool === "list_pending_drafts"
+            ? listPendingDrafts(userId, {}).catch(() => null)
         : prefetchQuery !== null
           ? instant?.tool === "list_entities"
             ? listEntities(userId, prefetchQuery || undefined).catch(() => null)
@@ -556,6 +586,9 @@ export async function POST(req: Request) {
         getBilling: () => getBilling(userId),
         listVariantStats: () => listVariantStats(userId, {}),
         selectVariant: (kind) => selectVariant(userId, { kind }),
+        listSegments: () => listSegments(userId),
+        listPipelines: () => listPipelines(userId),
+        listSwarmRuns: () => listSwarmRuns(userId),
         scoreFit: productContext
           ? async (rows) => {
               const scores = await scoreFitWithJev(rows, productContext);

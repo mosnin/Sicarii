@@ -129,6 +129,20 @@ describe("formatFastReply", () => {
         ],
       }),
     ).toContain("Miami dentists is active");
+    expect(
+      formatFastReply({
+        tool: "list_segments",
+        query: "segments",
+        payload: [{ name: "Miami dentists" }],
+      }),
+    ).toBe("1 segment: Miami dentists.");
+    expect(
+      formatFastReply({
+        tool: "list_pipelines",
+        query: "pipelines",
+        payload: [{ name: "Outbound", _count: { entries: 12 } }],
+      }),
+    ).toBe("1 pipeline: Outbound (12).");
   });
 
   it("explains an empty CRM lookup", () => {

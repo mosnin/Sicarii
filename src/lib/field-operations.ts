@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 import { buildSegmentMatches } from "@/lib/segment-build";
 import { ensureCredits, spendCredits } from "@/lib/credits";
 
@@ -40,6 +41,7 @@ export async function getSegment(userId: string, id: string) {
 
 export async function createSegment(userId: string, input: { name: string; goal?: string; contactIds?: string[] }) {
   if (!input.name?.trim()) throw new OpError("Segment name is required", 400);
+  await assertCleanArtifact([input.name, input.goal].filter(Boolean).join("\n"), "segment");
   const segment = await prisma.segment.create({ data: { userId, name: input.name.trim(), goal: input.goal, source: "manual" } });
   if (input.contactIds?.length) {
     const owned = await prisma.contact.findMany({ where: { userId, id: { in: input.contactIds } }, select: { id: true } });
@@ -55,6 +57,7 @@ export async function updateSegment(userId: string, id: string, patch: { name?: 
   const existing = await prisma.segment.findUnique({ where: { id } });
   if (!existing || existing.userId !== userId) throw new OpError("Segment not found", 404);
   if (patch.name !== undefined && !patch.name.trim()) throw new OpError("Segment name cannot be empty", 400);
+  await assertCleanArtifact([patch.name, patch.goal].filter(Boolean).join("\n"), "segment");
   return prisma.segment.update({
     where: { id },
     data: { ...(patch.name !== undefined ? { name: patch.name.trim() } : {}), ...(patch.goal !== undefined ? { goal: patch.goal } : {}) },
@@ -88,6 +91,7 @@ export async function removeSegmentMember(userId: string, segmentId: string, con
 export async function buildSmartSegment(userId: string, input: { goal: string; quantity?: number; name?: string }) {
   if (!input.goal?.trim()) throw new OpError("Describe the segment goal", 400);
   if (!process.env.OPENAI_API_KEY) throw new OpError("Segment building needs OPENAI_API_KEY", 501);
+  await assertCleanArtifact(input.goal, "segment");
   const quantity = Math.min(Math.max(input.quantity ?? 20, 1), 100);
 
   await ensureCredits(userId, "build_segment");
@@ -139,6 +143,7 @@ export async function getPipeline(userId: string, id: string) {
 
 export async function createPipeline(userId: string, input: { name: string; goal?: string; segmentId?: string }) {
   if (!input.name?.trim()) throw new OpError("Pipeline name is required", 400);
+  await assertCleanArtifact([input.name, input.goal].filter(Boolean).join("\n"), "pipeline");
   const pipeline = await prisma.pipeline.create({ data: { userId, name: input.name.trim(), goal: input.goal } });
   if (input.segmentId) await addToPipeline(userId, pipeline.id, { segmentId: input.segmentId });
   return pipeline;

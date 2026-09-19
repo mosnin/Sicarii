@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/crm-operations";
 import type { ActivityActor } from "@/lib/crm-operations";
 import { gateMoney } from "@/lib/jev";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 export const AUTOPILOT_CATEGORIES = ["discovery", "enrichment", "outreach", "other"] as const;
 export type Category = (typeof AUTOPILOT_CATEGORIES)[number];
@@ -79,6 +80,7 @@ export async function proposeAutopilotPlan(userId: string, input: ProposeInput) 
     );
   }
   if (sum === 0) throw new OpError("at least one category must have a nonzero allocation", 400);
+  await assertCleanArtifact([input.name, input.discoveryQuery].filter(Boolean).join("\n"), "autopilot");
 
   const spend = await gateMoney({
     action: "autopilot_propose",
