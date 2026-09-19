@@ -100,6 +100,16 @@ describe("classifyInstant", () => {
       query: "Jane",
       email: "jane@acme.com",
     });
+    expect(classifyInstant("set Jane linkedin to https://linkedin.com/in/jane")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      linkedin: "https://linkedin.com/in/jane",
+    });
+    expect(classifyInstant("set Acme website to https://acme.com")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      website: "https://acme.com",
+    });
     expect(classifyInstant("mark Jane as awaiting reply in Outbound")).toMatchObject({
       tool: "update_pipeline_entry",
       query: "Jane",

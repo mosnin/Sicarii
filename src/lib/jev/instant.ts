@@ -24,6 +24,8 @@ export type InstantRoute = {
   conversationStatus?: "OPEN" | "AWAITING_REPLY" | "STALLED" | "CLOSED";
   subject?: string;
   industry?: string;
+  website?: string;
+  linkedin?: string;
   dealScore?: number;
   direction?: "INBOUND" | "OUTBOUND";
   detail?: boolean;
@@ -251,9 +253,10 @@ function parseEntityPatch(text: string): {
   industry?: string;
   location?: string;
   domain?: string;
+  website?: string;
 } | null {
   const m = text.match(
-    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(industry|location|domain)\s+to\s+(.+)$/i,
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(industry|location|domain|website)\s+to\s+(.+)$/i,
   );
   if (!m?.[3] || !m[4] || !m[5]) return null;
   const query = m[3]
@@ -261,8 +264,13 @@ function parseEntityPatch(text: string): {
     .replace(/\s+/g, " ")
     .trim();
   const value = m[5].trim().replace(/[.!?]+$/, "");
-  if (!query || !value || query.length > 80 || value.length > 80) return null;
+  if (!query || !value || query.length > 80) return null;
   const field = m[4].toLowerCase();
+  if (field === "website") {
+    if (value.length > 500) return null;
+    return { query, website: value };
+  }
+  if (value.length > 80) return null;
   if (field === "industry") return { query, industry: value };
   if (field === "location") return { query, location: value };
   return { query, domain: value.toLowerCase() };
@@ -274,14 +282,15 @@ function parseContactPatch(text: string): {
   email?: string;
   phone?: string;
   company?: string;
+  linkedin?: string;
 } | null {
   const m = text.match(
-    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(title|email|phone|company)\s+to\s+(.+)$/i,
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(title|email|phone|company|linkedin)\s+to\s+(.+)$/i,
   );
   if (!m?.[3] || !m[4] || !m[5]) return null;
   const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
   const value = m[5].trim().replace(/[.!?]+$/, "");
-  if (!query || !value || query.length > 80 || value.length > 200) return null;
+  if (!query || !value || query.length > 80) return null;
   const field = m[4].toLowerCase();
   if (field === "email") {
     if (!value.includes("@") || value.length > 320) return null;
@@ -290,6 +299,10 @@ function parseContactPatch(text: string): {
   if (field === "phone") {
     if (value.length < 5 || value.length > 50) return null;
     return { query, phone: value };
+  }
+  if (field === "linkedin") {
+    if (value.length > 500) return null;
+    return { query, linkedin: value };
   }
   if (field === "title") {
     if (value.length > 80) return null;
@@ -737,6 +750,7 @@ export function classifyInstant(
       industry: entityPatch.industry,
       location: entityPatch.location,
       domain: entityPatch.domain,
+      website: entityPatch.website,
       source: "instant",
     };
   }
@@ -749,6 +763,7 @@ export function classifyInstant(
       email: contactPatch.email,
       phone: contactPatch.phone,
       company: contactPatch.company,
+      linkedin: contactPatch.linkedin,
       source: "instant",
     };
   }

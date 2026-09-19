@@ -118,9 +118,46 @@ export function listEntities(
   });
 }
 
-export function countEntities(userId: string, opts?: { status?: EntityStatus }) {
+export function countEntities(
+  userId: string,
+  opts?: { status?: EntityStatus; createdAfter?: Date; notManual?: boolean },
+) {
   return prisma.entity.count({
-    where: { userId, ...(opts?.status ? { status: opts.status } : {}) },
+    where: {
+      userId,
+      ...(opts?.status ? { status: opts.status } : {}),
+      ...(opts?.createdAfter ? { createdAt: { gt: opts.createdAfter } } : {}),
+      ...(opts?.notManual
+        ? { OR: [{ source: null }, { source: { notIn: ["manual", "import"] } }] }
+        : {}),
+    },
+  });
+}
+
+export function listRecentEntities(
+  userId: string,
+  opts: { createdAfter?: Date; notManual?: boolean; take?: number } = {},
+) {
+  return prisma.entity.findMany({
+    where: {
+      userId,
+      ...(opts.createdAfter ? { createdAt: { gt: opts.createdAfter } } : {}),
+      ...(opts.notManual
+        ? { OR: [{ source: null }, { source: { notIn: ["manual", "import"] } }] }
+        : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: clampListLimit(opts.take, 50),
+    select: { name: true, domain: true, industry: true, description: true },
+  });
+}
+
+export function listRecentActivities(userId: string, limit?: number) {
+  return prisma.activity.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: clampListLimit(limit, 50),
+    select: { id: true, kind: true, body: true, createdAt: true },
   });
 }
 

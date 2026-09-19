@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { countEntities, listRecentEntities } from "@/lib/crm-operations";
 import { scoreFitWithJev } from "@/lib/jev";
 
 // "The Pulse" - what the agent did while you were away. Computed entirely from
@@ -31,22 +32,13 @@ const ENRICH_ACTIONS = [
   "deep_research",
 ];
 
-// Entities/contacts the user added by hand are not the agent's doing. Anything
-// else (agent:*, discover:*, or an unlabeled automated row) counts as "while
-// you were away".
-const NOT_MANUAL = {
-  OR: [{ source: null }, { source: { notIn: ["manual", "import"] } }],
-};
-
 /**
  * Build the pulse for `userId` covering everything since `since` (the user's
  * previous lastSeenAt). Returns null when the window is empty.
  */
 export async function computePulse(userId: string, since: Date): Promise<PulseData | null> {
   const [companies, enrichedRefs, signals, recent] = await Promise.all([
-    prisma.entity.count({
-      where: { userId, createdAt: { gt: since }, ...NOT_MANUAL },
-    }),
+    countEntities(userId, { createdAfter: since, notManual: true }),
     prisma.creditLedger.findMany({
       where: {
         userId,
@@ -61,12 +53,7 @@ export async function computePulse(userId: string, since: Date): Promise<PulseDa
       _sum: { found: true },
       where: { userId, createdAt: { gt: since } },
     }),
-    prisma.entity.findMany({
-      where: { userId, createdAt: { gt: since }, ...NOT_MANUAL },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: { name: true, domain: true, industry: true, description: true },
-    }),
+    listRecentEntities(userId, { createdAfter: since, notManual: true, take: 20 }),
   ]);
 
   const enriched = enrichedRefs.length;

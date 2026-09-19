@@ -28,6 +28,7 @@ export const FAST_PATH_TOOLS = new Set([
   "enrich_entity",
   "list_due_followups",
   "get_billing",
+  "get_balance",
   "get_usage",
   "list_variant_stats",
   "select_variant",
@@ -292,7 +293,7 @@ export function formatFastReply(input: {
     return `${rows.length} contact${rows.length === 1 ? "" : "s"} due for a follow-up: ${bits.join(", ")}${more}.`;
   }
 
-  if (tool === "get_billing") {
+  if (tool === "get_billing" || tool === "get_balance") {
     const b = payload as { creditsRemaining?: number; plan?: string };
     return `You have ${b.creditsRemaining ?? 0} credits remaining on the ${b.plan ?? "current"} plan.`;
   }
@@ -561,12 +562,15 @@ export function formatFastReply(input: {
       email?: string | null;
       phone?: string | null;
       company?: string | null;
+      linkedin?: string | null;
     };
     const who = r.name ?? query;
     if (r.title && !r.status) return `Set ${who}'s title to ${r.title}.`;
     if (r.email && !r.status) return `Set ${who}'s email to ${r.email}.`;
     if (r.phone && !r.status) return `Set ${who}'s phone to ${r.phone}.`;
     if (r.company && !r.status) return `Set ${who}'s company to ${r.company}.`;
+    if (r.linkedin && !r.status) return `Set ${who}'s LinkedIn to ${r.linkedin}.`;
+    if (r.linkedin && !r.status) return `Set ${who}'s LinkedIn to ${r.linkedin}.`;
     if (r.dealScore != null && !r.status) {
       return `Set ${who}'s deal score to ${r.dealScore}.`;
     }
@@ -580,10 +584,12 @@ export function formatFastReply(input: {
       industry?: string | null;
       location?: string | null;
       domain?: string | null;
+      website?: string | null;
     };
     const who = r.name ?? query;
-    if (r.location && !r.industry && !r.domain) return `Set ${who}'s location to ${r.location}.`;
-    if (r.domain && !r.industry && !r.location) return `Set ${who}'s domain to ${r.domain}.`;
+    if (r.location && !r.industry && !r.domain && !r.website) return `Set ${who}'s location to ${r.location}.`;
+    if (r.domain && !r.industry && !r.location && !r.website) return `Set ${who}'s domain to ${r.domain}.`;
+    if (r.website && !r.industry && !r.location && !r.domain) return `Set ${who}'s website to ${r.website}.`;
     const industry = r.industry ?? "the new industry";
     return `Set ${who}'s industry to ${industry}.`;
   }
@@ -701,7 +707,7 @@ export type FastPathRunners = {
   enrichEntity: (id: string) => Promise<unknown>;
   updateEntity?: (
     id: string,
-    patch: { industry?: string; location?: string; domain?: string },
+    patch: { industry?: string; location?: string; domain?: string; website?: string },
   ) => Promise<unknown>;
   listEntities?: (q?: string) => Promise<unknown>;
   listContacts?: (q?: string) => Promise<unknown>;
@@ -767,6 +773,7 @@ export type FastPathRunners = {
       email?: string;
       phone?: string;
       company?: string;
+      linkedin?: string;
     },
   ) => Promise<unknown>;
   addToPipeline?: (pipelineId: string, contactIds: string[]) => Promise<unknown>;
@@ -844,6 +851,7 @@ export async function executeFastPath(input: {
         tool === "list_contacts" ||
         tool === "list_due_followups" ||
         tool === "get_billing" ||
+        tool === "get_balance" ||
         tool === "get_usage" ||
         tool === "get_autopilot_status" ||
         tool === "list_variant_stats" ||
@@ -961,7 +969,8 @@ async function runTool(
       const industry = instant?.industry?.trim();
       const location = instant?.location?.trim();
       const domain = instant?.domain?.trim();
-      if (!industry && !location && !domain) {
+      const website = instant?.website?.trim();
+      if (!industry && !location && !domain && !website) {
         return { error: "Say the field, like set Acme industry to SaaS." };
       }
       const entityId = first.id;
@@ -969,6 +978,7 @@ async function runTool(
         ...(industry ? { industry } : {}),
         ...(location ? { location } : {}),
         ...(domain ? { domain } : {}),
+        ...(website ? { website } : {}),
       };
       return write("update_entity", { id: entityId, ...patch }, async () => {
         const result = runners.updateEntity
@@ -989,6 +999,7 @@ async function runTool(
     case "list_due_followups":
       return runners.listDueFollowups ? runners.listDueFollowups() : [];
     case "get_billing":
+    case "get_balance":
       return runners.getBilling ? runners.getBilling() : { creditsRemaining: 0, plan: "unknown" };
     case "get_usage":
       return runners.getUsage
@@ -1108,7 +1119,8 @@ async function runTool(
       const email = instant?.email?.trim();
       const phone = instant?.phone?.trim();
       const company = instant?.company?.trim();
-      if (!status && dealScore == null && !title && !email && !phone && !company) {
+      const linkedin = instant?.linkedin?.trim();
+      if (!status && dealScore == null && !title && !email && !phone && !company && !linkedin) {
         return { error: "Say which status to set (contacted, qualified, won, lost)." };
       }
       const args: Record<string, string | number> = { id: contactId };
@@ -1118,6 +1130,7 @@ async function runTool(
       if (email) args.email = email;
       if (phone) args.phone = phone;
       if (company) args.company = company;
+      if (linkedin) args.linkedin = linkedin;
       const patch = {
         ...(status ? { status } : {}),
         ...(dealScore != null ? { dealScore } : {}),
@@ -1125,6 +1138,7 @@ async function runTool(
         ...(email ? { email } : {}),
         ...(phone ? { phone } : {}),
         ...(company ? { company } : {}),
+        ...(linkedin ? { linkedin } : {}),
       };
       return write("update_contact", args, async () => {
         const result = runners.updateContact

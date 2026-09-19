@@ -491,6 +491,11 @@ export async function POST(req: Request) {
       inputSchema: z.object({}),
       execute: () => exec(() => getBilling(userId)),
     }),
+    get_balance: tool({
+      description: "Alias of get_billing: credits remaining, plan, and meter reset. Free and read-only.",
+      inputSchema: z.object({}),
+      execute: () => exec(() => getBilling(userId)),
+    }),
     get_usage: tool({
       description: "Price list: credit costs per action, plans, and current balance.",
       inputSchema: z.object({}),
@@ -861,6 +866,7 @@ export async function POST(req: Request) {
     propose_autopilot_plan: "Propose a budgeted autopilot plan.",
     list_due_followups: "List contacts due for a follow-up.",
     get_billing: "Show remaining credits and plan.",
+    get_balance: "Show remaining credits and plan.",
     get_usage: "Show the credit price list and current balance.",
     delete_entity: "Permanently delete a company.",
     delete_contact: "Permanently delete a person.",
@@ -920,7 +926,7 @@ export async function POST(req: Request) {
   const prefetch =
     instant?.tool === "list_due_followups"
       ? listDueFollowups(userId, {}).catch(() => null)
-          : instant?.tool === "get_billing"
+          : instant?.tool === "get_billing" || instant?.tool === "get_balance"
         ? getBilling(userId).catch(() => null)
           : instant?.tool === "get_usage"
             ? getUsage(userId).catch(() => null)
@@ -1143,6 +1149,7 @@ export async function POST(req: Request) {
             ...(patch.email ? { email: patch.email } : {}),
             ...(patch.phone ? { phone: patch.phone } : {}),
             ...(patch.company ? { company: patch.company } : {}),
+            ...(patch.linkedin ? { linkedin: patch.linkedin } : {}),
           }),
         addToPipeline: (pipelineId, contactIds) => addToPipeline(userId, pipelineId, { contactIds }),
         addToSegment: (segmentId, contactIds) => addToSegment(userId, segmentId, contactIds),

@@ -637,6 +637,12 @@ Scalar now does that on `/api/agent`:
     `countDueFollowups` (enrichment omitted, page size capped at 500).
     Breakup ownership goes through `getContact`. Instant `set Jane
     title to CFO` / `set Jane email to jane@acme.com` skip TypeSafe.
+41. Company OS and Pulse load CRM counts and recent rows through
+    `countEntities` / `countContacts` / `listRecentEntities` /
+    `listRecentActivities`. The in-app agent exposes `get_balance` as
+    a `get_billing` alias (MCP parity) on the fast path. Instant `set
+    Jane linkedin to https://linkedin.com/in/jane` and `set Acme
+    website to https://acme.com` skip TypeSafe.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

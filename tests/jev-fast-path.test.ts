@@ -52,6 +52,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "verify_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "detect_tech", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_usage", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "get_balance", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_contact", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_contact", confidence: 0.94 })).toBe(true);

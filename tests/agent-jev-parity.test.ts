@@ -94,5 +94,6 @@ describe("agent Jev parity", () => {
     expect(source).toContain("delete_entity:");
     expect(source).toContain("delete_contact:");
     expect(source).toContain("get_usage:");
+    expect(source).toContain("get_balance:");
   });
 });
