@@ -34,6 +34,7 @@ export const FAST_PATH_TOOLS = new Set([
   "select_variant",
   "create_variant",
   "draft_breakups",
+  "propose_autopilot_plan",
   "update_entity",
   "log_social_message",
   "extract_contact_details",
@@ -285,6 +286,18 @@ export function formatFastReply(input: {
       return `${p.name ?? "plan"} is ${p.status ?? "unknown"}${extra ? ` (${extra})` : ""}`;
     });
     return `${bits.join(". ")}.`;
+  }
+
+  if (tool === "propose_autopilot_plan") {
+    const r = payload as {
+      name?: string | null;
+      totalCredits?: number;
+      cadence?: string | null;
+    };
+    const name = r.name ?? query;
+    const credits = r.totalCredits != null ? `${r.totalCredits} credits` : "a credit cap";
+    const cadence = r.cadence ? `, ${r.cadence}` : "";
+    return `Proposed draft plan ${name} (${credits}${cadence}). Approve it on the dashboard.`;
   }
 
   if (tool === "create_entity") {
@@ -836,6 +849,12 @@ export type FastPathRunners = {
   selectVariant?: (kind: "SUBJECT" | "OPENER") => Promise<unknown>;
   createVariant?: (kind: "SUBJECT" | "OPENER", text: string) => Promise<unknown>;
   draftBreakups?: (input?: { staleDays?: number }) => Promise<unknown>;
+  proposeAutopilot?: (input: {
+    name: string;
+    totalCredits: number;
+    cadence?: "hourly" | "daily" | "weekly";
+    discoveryQuery?: string;
+  }) => Promise<unknown>;
   listSegments?: () => Promise<unknown>;
   listPipelines?: () => Promise<unknown>;
   listSwarmRuns?: () => Promise<unknown>;
@@ -1249,6 +1268,31 @@ async function runTool(
           ? runners.draftBreakups(staleDays != null ? { staleDays } : undefined)
           : { error: "Breakup drafts are unavailable." };
       });
+    }
+    case "propose_autopilot_plan": {
+      const totalCredits = instant?.totalCredits;
+      if (totalCredits == null) {
+        return { error: "Say how many credits, like propose a 50 credit daily autopilot." };
+      }
+      const name = instant?.name?.trim() || `Weekly ${totalCredits} credit autopilot`;
+      const cadence = instant?.cadence;
+      const discoveryQuery = instant?.note?.trim() || undefined;
+      const allocations: Record<string, number> = discoveryQuery
+        ? { discovery: totalCredits }
+        : { other: totalCredits };
+      return write(
+        "propose_autopilot_plan",
+        { name, totalCredits, ...(cadence ? { cadence } : {}), allocations, ...(discoveryQuery ? { discoveryQuery } : {}) },
+        async () => {
+          const result = runners.proposeAutopilot
+            ? await runners.proposeAutopilot({ name, totalCredits, cadence, discoveryQuery })
+            : { error: "Autopilot propose is unavailable." };
+          if (result && typeof result === "object" && !("error" in result)) {
+            return { ...(result as object), name, totalCredits, cadence };
+          }
+          return result;
+        },
+      );
     }
     case "list_entities":
       return runners.listEntities ? runners.listEntities(query || undefined) : runners.searchCrm(query);

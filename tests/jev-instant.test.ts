@@ -56,6 +56,19 @@ describe("classifyInstant", () => {
       staleDays: 21,
     });
     expect(classifyInstant("draft a careful note")).toBeNull();
+    expect(classifyInstant("propose a 50 credit daily autopilot")).toMatchObject({
+      tool: "propose_autopilot_plan",
+      name: "Daily 50 credit autopilot",
+      totalCredits: 50,
+      cadence: "daily",
+    });
+    expect(classifyInstant("propose a 200 credit weekly autopilot for B2B fintech")).toMatchObject({
+      tool: "propose_autopilot_plan",
+      totalCredits: 200,
+      cadence: "weekly",
+      note: "B2B fintech",
+    });
+    expect(classifyInstant("propose an autopilot")).toBeNull();
     expect(classifyInstant("log a linkedin message to Jane: thanks for the intro")).toMatchObject({
       tool: "log_social_message",
       query: "Jane",

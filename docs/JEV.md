@@ -688,6 +688,12 @@ Scalar now does that on `/api/agent`:
     generator. Drafts still go through scanned ops and auto-mode.
     `list pending drafts` stays a read. `draft a careful note` is not
     instant.
+52. Instant `propose a 50 credit daily autopilot` and `propose a 200
+    credit weekly autopilot for B2B fintech` skip TypeSafe and skip
+    the generator. The plan is always a draft. Credits go to
+    discovery when a query is present, otherwise `other`. No credit
+    cap means the utterance is not instant. Pause and status still
+    win on those words.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

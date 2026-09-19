@@ -37,6 +37,8 @@ export type InstantRoute = {
   crmSource?: string;
   tags?: string[];
   staleDays?: number;
+  cadence?: "hourly" | "daily" | "weekly";
+  totalCredits?: number;
   detail?: boolean;
   source: "instant";
 };
@@ -534,6 +536,43 @@ function parseDealScore(text: string): { query: string; dealScore: number } | nu
   return { query, dealScore };
 }
 
+function parseProposeAutopilot(text: string): {
+  name: string;
+  totalCredits: number;
+  cadence?: "hourly" | "daily" | "weekly";
+  discoveryQuery?: string;
+} | null {
+  if (!/\bautopilot\b/i.test(text)) return null;
+  if (!/\b(propose|create|set up|setup)\b/i.test(text)) return null;
+  if (/\b(pause|stop|halt)\b/i.test(text)) return null;
+  if (SEND.test(text) || COMPOUND.test(text) || DESTRUCTIVE.test(text)) return null;
+  const credits = Number(text.match(/\b(\d{1,6})\s+credits?\b/i)?.[1]);
+  if (!Number.isInteger(credits) || credits < 1 || credits > 1_000_000) return null;
+  const cadence: "hourly" | "daily" | "weekly" | undefined = /\bhourly\b/i.test(text)
+    ? "hourly"
+    : /\bdaily\b/i.test(text)
+      ? "daily"
+      : /\bweekly\b/i.test(text)
+        ? "weekly"
+        : undefined;
+  const discoveryQuery = text
+    .replace(/^(please\s+)?(propose|create|set up|setup)\s+(an?\s+)?/i, "")
+    .replace(/\b(hourly|daily|weekly)\b/gi, " ")
+    .replace(/\b\d{1,6}\s+credits?\b/gi, " ")
+    .replace(/\b(autopilot|plan|budget|credit cap)\b/gi, " ")
+    .replace(/\b(for|called|named|with|a|an|the)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+  const label = cadence ? cadence[0]!.toUpperCase() + cadence.slice(1) : "Weekly";
+  return {
+    name: `${label} ${credits} credit autopilot`,
+    totalCredits: credits,
+    cadence,
+    ...(discoveryQuery ? { discoveryQuery } : {}),
+  };
+}
+
 function parseDraftBreakups(text: string): { staleDays?: number } | null {
   if (/\b(pending drafts?|draft queue)\b/i.test(text)) return null;
   if (/^(please\s+)?(list|show)\b/i.test(text)) return null;
@@ -953,6 +992,18 @@ export function classifyInstant(
       tool: "draft_breakups",
       query: text,
       staleDays: draftBreakups.staleDays,
+      source: "instant",
+    };
+  }
+  const proposeAutopilot = parseProposeAutopilot(text);
+  if (proposeAutopilot) {
+    return {
+      tool: "propose_autopilot_plan",
+      query: proposeAutopilot.discoveryQuery ?? proposeAutopilot.name,
+      name: proposeAutopilot.name,
+      totalCredits: proposeAutopilot.totalCredits,
+      cadence: proposeAutopilot.cadence,
+      note: proposeAutopilot.discoveryQuery,
       source: "instant",
     };
   }

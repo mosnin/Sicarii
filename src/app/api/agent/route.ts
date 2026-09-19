@@ -1141,6 +1141,16 @@ export async function POST(req: Request) {
         selectVariant: (kind) => selectVariant(userId, { kind }),
         createVariant: (kind, text) => createVariant(userId, { kind, text }),
         draftBreakups: (input) => draftBreakups(userId, input ?? {}),
+        proposeAutopilot: (input) =>
+          proposeAutopilotPlan(userId, {
+            name: input.name,
+            totalCredits: input.totalCredits,
+            cadence: input.cadence,
+            discoveryQuery: input.discoveryQuery,
+            allocations: input.discoveryQuery
+              ? { discovery: input.totalCredits }
+              : { other: input.totalCredits },
+          }),
         listSegments: () => listSegments(userId),
         listPipelines: () => listPipelines(userId),
         listSwarmRuns: () => listSwarmRuns(userId),

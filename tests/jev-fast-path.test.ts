@@ -76,6 +76,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "remove_segment_member", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "create_variant", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "draft_breakups", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "propose_autopilot_plan", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "log_social_message", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "extract_contact_details", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_entity", confidence: 0.94 })).toBe(true);
@@ -440,6 +441,13 @@ describe("formatFastReply", () => {
         payload: { drafted: 0, skipped: 0, scanned: 0 },
       }),
     ).toBe("No stalled deals needed a breakup draft.");
+    expect(
+      formatFastReply({
+        tool: "propose_autopilot_plan",
+        query: "",
+        payload: { name: "Daily 50 credit autopilot", totalCredits: 50, cadence: "daily" },
+      }),
+    ).toBe("Proposed draft plan Daily 50 credit autopilot (50 credits, daily). Approve it on the dashboard.");
   });
 
   it("explains an empty CRM lookup", () => {
