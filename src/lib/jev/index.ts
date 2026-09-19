@@ -38,7 +38,6 @@ export {
   isJevRequired,
   type JevClient,
   type JevEvaluateRequest,
-  type JevEvaluateRequest,
 } from "./client";
 
 export { decideTurn, decideFromAnswers, type Handler, type DecideInput } from "./decide";
