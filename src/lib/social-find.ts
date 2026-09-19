@@ -8,7 +8,7 @@
 // an empty field over a wrong one.
 
 import { prisma } from "@/lib/prisma";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, updateContact } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { tavilySearch, isTavilyConfigured, type TavilyResult } from "@/lib/tavily";
 import { recordProvenanceBulk, type ProvenanceInput } from "@/lib/provenance";
@@ -208,7 +208,7 @@ export async function findContactSocials(
     });
   }
   if (Object.keys(saved).length > 0) {
-    await prisma.contact.update({ where: { id: contactId }, data: saved });
+    await updateContact(userId, contactId, saved);
     await recordProvenanceBulk(provenanceRows);
   }
 

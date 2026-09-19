@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FloatIn } from "@/components/ui/float-in";
 import { getDbUser } from "@/lib/server-user";
-import { prisma } from "@/lib/prisma";
+import { getEntity, OpError } from "@/lib/crm-operations";
 import { entityStatusBadgeVariant, entityStatusLabel } from "@/lib/entity-status";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { AspectView, humanizeKey } from "@/components/dashboard/aspect-view";
@@ -32,13 +32,15 @@ export default async function EntityDetailPage({
   const user = await getDbUser();
   if (!user) notFound();
 
-  const entity = await prisma.entity.findUnique({ where: { id } });
-  if (!entity || entity.userId !== user.id) notFound();
-
-  const contacts = await prisma.contact.findMany({
-    where: { entityId: id },
-    orderBy: { updatedAt: "desc" },
-  });
+  let loaded;
+  try {
+    loaded = await getEntity(user.id, id);
+  } catch (e) {
+    if (e instanceof OpError && e.status === 404) notFound();
+    throw e;
+  }
+  const entity = loaded as typeof loaded & { enrichment?: unknown };
+  const contacts = entity.contacts;
 
   const provenance = await getProvenanceMap("entity", id, user.id);
 

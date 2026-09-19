@@ -609,6 +609,14 @@ Scalar now does that on `/api/agent`:
     `remove Jane from the ICP segment` skip TypeSafe and run
     `remove_pipeline_entry` / `remove_segment_member` under auto-mode.
     Contact and company deletes stay off the instant path.
+36. Research-schedule persist goes through `updateEntity` / `updateContact`
+    / `createEntity` (notes and descriptions scanned). Verify, tech
+    detect, and social-save persist through `updateEntity` /
+    `updateContact`. CRM company and contact detail pages load through
+    `getEntity` / `getContact` (contacts capped at 100, channel history
+    at 50). Instant `add a subject variant: following up` /
+    `create an opener variant: hey` skip TypeSafe and run
+    `create_variant` under auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

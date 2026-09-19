@@ -3,11 +3,10 @@
 // cost and NO third-party data licence (it's our own derived data, so fully
 // resale-safe). We write our own fingerprints for the technologies that matter
 // rather than bundle the community ruleset (which is GPL-3.0 / copyleft).
-import { Prisma } from "@prisma/client";
 import { fetchWithTimeout } from "@/lib/http";
 import { safeHttpUrl, resolvesToPublicIp } from "@/lib/ssrf";
 import { prisma } from "@/lib/prisma";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, updateEntity } from "@/lib/crm-operations";
 import { recordProvenance, CONFIDENCE } from "@/lib/provenance";
 
 type Fingerprint = {
@@ -127,9 +126,8 @@ export async function detectEntityTech(userId: string, entityId: string) {
     entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
       ? (entity.enrichment as Record<string, unknown>)
       : {};
-  const updated = await prisma.entity.update({
-    where: { id: entityId },
-    data: { enrichment: { ...existing, tech } as unknown as Prisma.InputJsonValue },
+  const updated = await updateEntity(userId, entityId, {
+    enrichment: { ...existing, tech },
   });
   await recordProvenance({
     recordType: "entity",

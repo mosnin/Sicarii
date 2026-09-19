@@ -39,6 +39,16 @@ describe("classifyInstant", () => {
       tool: "select_variant",
       query: "SUBJECT",
     });
+    expect(classifyInstant("add a subject variant: following up next week")).toMatchObject({
+      tool: "create_variant",
+      query: "SUBJECT",
+      note: "following up next week",
+    });
+    expect(classifyInstant("create an opener variant: hey, saw your launch")).toMatchObject({
+      tool: "create_variant",
+      query: "OPENER",
+      note: "hey, saw your launch",
+    });
     expect(classifyInstant("list segments")).toMatchObject({ tool: "list_segments" });
     expect(classifyInstant("show the Enterprise segment")).toMatchObject({
       tool: "get_segment",

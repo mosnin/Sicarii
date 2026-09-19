@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FloatIn } from "@/components/ui/float-in";
 import { getDbUser } from "@/lib/server-user";
-import { prisma } from "@/lib/prisma";
+import { getContact, listActivities, OpError } from "@/lib/crm-operations";
 import { statusBadgeVariant, statusLabel } from "@/lib/contact-status";
 import { ContactActions } from "./actions";
 import { ContactEnrich, ContactEnrichAll } from "./enrich";
@@ -36,34 +36,24 @@ export default async function ContactDetailPage({
   const user = await getDbUser();
   if (!user) notFound();
 
-  const contact = await prisma.contact.findUnique({
-    where: { id },
-    include: { entity: { select: { id: true, name: true } } },
-  });
-  if (!contact || contact.userId !== user.id) notFound();
+  let loaded;
+  try {
+    loaded = await getContact(user.id, id);
+  } catch (e) {
+    if (e instanceof OpError && e.status === 404) notFound();
+    throw e;
+  }
+  const contact = loaded as typeof loaded & { enrichment: unknown };
 
-  const emails = await prisma.contactEmail.findMany({
-    where: { contactId: id },
-    orderBy: { sentAt: "desc" },
-    take: 50,
-  });
-
+  const emails = contact.emails;
   // Social conversations (LinkedIn / X / Instagram / Facebook), rendered in the
   // same Conversations card as email so the whole relationship reads as one
   // thread regardless of channel.
-  const socialMessages = await prisma.contactSocialMessage.findMany({
-    where: { contactId: id },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const socialMessages = contact.socialMessages;
 
   // Recent activity trail (notes, outreach, calls) - fed by the QuickNote
   // morph surface and the agent's log_outreach/add_activity tools.
-  const activities = await prisma.activity.findMany({
-    where: { contactId: id },
-    orderBy: { createdAt: "desc" },
-    take: 8,
-  });
+  const activities = await listActivities(user.id, { contactId: id, limit: 8 });
 
   const provenance = await getProvenanceMap("contact", id, user.id);
 

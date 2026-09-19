@@ -417,6 +417,17 @@ function parseEnrichContact(text: string): { query: string; field: "linkedin" | 
   return { query, field };
 }
 
+function parseCreateVariant(text: string): { kind: "SUBJECT" | "OPENER"; note: string } | null {
+  const m = text.match(
+    /^(please\s+)?(add|create|save|new)\s+(?:a |an )?(subject(?: line)?|opener)\s+variant[:\-]\s*(.+)$/i,
+  );
+  if (!m?.[3] || !m[4]) return null;
+  const kind = m[3].toLowerCase().startsWith("opener") ? "OPENER" : "SUBJECT";
+  const note = m[4].trim();
+  if (!note || note.length > 2000) return null;
+  return { kind, note };
+}
+
 function parseMaps(text: string): { query: string; location: string } | null {
   if (!/\b(dentist|dentists|restaurant|restaurants|salon|salons|lawyer|lawyers|plumber|plumbers|clinic|gym|coffee|barbershop|local)\b/i.test(
     text,
@@ -452,6 +463,15 @@ export function classifyInstant(
     return {
       tool: "select_variant",
       query: /\bopener\b/i.test(text) ? "OPENER" : "SUBJECT",
+      source: "instant",
+    };
+  }
+  const createVariant = parseCreateVariant(text);
+  if (createVariant && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "create_variant",
+      query: createVariant.kind,
+      note: createVariant.note,
       source: "instant",
     };
   }

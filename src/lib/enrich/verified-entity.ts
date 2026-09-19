@@ -8,9 +8,8 @@
 // only returns a result on a strong legal-name match, so a same-name stranger is
 // never attached. Results land under entity.enrichment.legal with field-level
 // provenance and the attribution strings the licences require.
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, updateEntity } from "@/lib/crm-operations";
 import { recordProvenanceBulk, CONFIDENCE, type ProvenanceInput } from "@/lib/provenance";
 import { gleifLookup } from "@/lib/providers/gleif";
 import { companiesHouseLookup, isCompaniesHouseConfigured, CH_ATTRIBUTION } from "@/lib/providers/companies-house";
@@ -53,19 +52,17 @@ export async function verifyEntity(userId: string, entityId: string) {
     verifiedAt: new Date().toISOString(),
   };
 
-  const data: Prisma.EntityUncheckedUpdateInput = {
-    status: "ENRICHED",
-    enrichment: { ...existing, legal } as Prisma.InputJsonValue,
-  };
-
   // Fill empty columns from the most authoritative source that has the value.
   const regAddress = ch?.address ?? gleif?.address ?? edgar?.address;
   const filledLocation = !entity.location && regAddress ? regAddress : undefined;
-  if (filledLocation) data.location = filledLocation;
   const filledIndustry = !entity.industry && edgar?.sicDescription ? edgar.sicDescription : undefined;
-  if (filledIndustry) data.industry = filledIndustry;
 
-  const updated = await prisma.entity.update({ where: { id: entityId }, data });
+  const updated = await updateEntity(userId, entityId, {
+    status: "ENRICHED",
+    enrichment: { ...existing, legal },
+    ...(filledLocation ? { location: filledLocation } : {}),
+    ...(filledIndustry ? { industry: filledIndustry } : {}),
+  });
 
   const rows: ProvenanceInput[] = [];
   if (gleif)

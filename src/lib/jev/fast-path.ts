@@ -31,6 +31,7 @@ export const FAST_PATH_TOOLS = new Set([
   "get_usage",
   "list_variant_stats",
   "select_variant",
+  "create_variant",
   "list_segments",
   "list_pipelines",
   "list_swarm_runs",
@@ -323,6 +324,13 @@ export function formatFastReply(input: {
     if (v.error) return v.error;
     if (!v.text) return "No active variants in that pool. Create one first.";
     return `Use this ${String(v.kind ?? "variant").toLowerCase()}: ${v.text.slice(0, 280)}`;
+  }
+
+  if (tool === "create_variant") {
+    const v = payload as { kind?: string; text?: string };
+    const kind = String(v.kind ?? query ?? "variant").toLowerCase();
+    const snippet = (v.text ?? "").trim().slice(0, 80);
+    return `Added ${kind} variant${snippet ? `: ${snippet}` : "."}`;
   }
 
   if (tool === "list_segments") {
@@ -636,6 +644,7 @@ export type FastPathRunners = {
   getUsage?: () => Promise<unknown>;
   listVariantStats?: () => Promise<unknown>;
   selectVariant?: (kind: "SUBJECT" | "OPENER") => Promise<unknown>;
+  createVariant?: (kind: "SUBJECT" | "OPENER", text: string) => Promise<unknown>;
   listSegments?: () => Promise<unknown>;
   listPipelines?: () => Promise<unknown>;
   listSwarmRuns?: () => Promise<unknown>;
@@ -876,6 +885,20 @@ async function runTool(
       return runners.selectVariant
         ? runners.selectVariant(kind)
         : { error: "No active variants in that pool. Create one first." };
+    }
+    case "create_variant": {
+      const kind = query === "OPENER" ? "OPENER" : "SUBJECT";
+      const text = instant?.note?.trim();
+      if (!text) return { error: "Say the variant after a colon, like add a subject variant: following up." };
+      return write("create_variant", { kind, text }, async () => {
+        const result = runners.createVariant
+          ? await runners.createVariant(kind, text)
+          : { error: "Variant create is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), kind, text };
+        }
+        return result;
+      });
     }
     case "list_entities":
       return runners.listEntities ? runners.listEntities(query || undefined) : runners.searchCrm(query);
