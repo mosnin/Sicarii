@@ -67,3 +67,26 @@ export {
   type RoutedModel,
   type AutoModeVerdict,
 } from "./harness";
+export {
+  verifyIdentity,
+  gateOutboundDraft,
+  runWardens,
+  triageInbound,
+  verifyCitations,
+  gateMoney,
+  evaluateAutopilotTick,
+  scanMalicious,
+  quietAskDetermined,
+  shouldKeepMemory,
+  gateGeneratedOutput,
+  superviseForeman,
+  flattenSearchItems,
+  filterRealCompanies,
+  deriveAnglesWithJev,
+  checkWorkspacePolicies,
+  type GateResult,
+  type TriageResult,
+  type CitationVerdict,
+  type AutopilotBrake,
+} from "./gates";
+export { logJevDecision } from "./telemetry";

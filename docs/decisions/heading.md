@@ -10,8 +10,9 @@ moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
 
 **Parallel cycle shipped: 0015 - Jev System One** (`0015-jev-system-one.md`).
 Scalar decisions are Jev. Generation is Qwen via OpenRouter. Voice is OpenAI.
-Harness: model router + auto-mode tool gate (LangChain pattern). Owed: live
-TypeSafe key + threshold sweep.
+Harness: model router + auto-mode, plus identity, outbound slop/warden,
+inbound triage, citations, money, autopilot brake, discover rerank, Foreman,
+quiet-ask, and output guard. Owed: live TypeSafe key + threshold sweep.
 
 **The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
 

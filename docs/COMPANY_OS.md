@@ -24,3 +24,6 @@ Packs in `src/lib/company-os/warden.ts`:
 
 A pack is a noul. Code blocks when probability >= 0.75. Presentation never
 asks Jev to invent the next sentence.
+
+Wired on outbound social messages (`saveSocialMessage`) and breakup
+draft/approve (`gateOutboundDraft`).

@@ -11,6 +11,7 @@ import { isJevConfigured, tryEvaluate, type JevClient } from "./client";
 import { GATES, TOOL_GATE } from "./policy";
 import { gateChoice } from "./contract";
 import { TOOL_GUARD_QUESTIONS } from "./packs/guard";
+import { checkWorkspacePolicies } from "./gates";
 
 export type ModelChoice = {
   id: string;
@@ -79,7 +80,7 @@ export type AutoModeVerdict =
   | { action: "confirm"; reasons: string[] };
 
 const WRITE_HINT =
-  /\b(create_|update_|delete_|draft_|propose_|log_|enrich_|find_companies|maps_leads|swarm_|place_call)/;
+  /\b(create_|update_|delete_|draft_|propose_|log_|enrich_|find_companies|maps_leads|swarm_|place_call|buy_)/;
 
 export async function autoMode(input: {
   tool: string;
@@ -118,7 +119,22 @@ export async function autoMode(input: {
   const impact = asScore(result.answers.impact);
   if (impact && impact.score >= TOOL_GATE.impact && impact.confidence >= 0.5) reasons.push("high_impact");
 
-  if (reasons.includes("destructive") || reasons.includes("exfiltration")) {
+  const policies = (process.env.SCALAR_POLICIES ?? "")
+    .split("|")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (policies.length > 0) {
+    const policy = await checkWorkspacePolicies({
+      policies,
+      tool: input.tool,
+      args: input.args,
+      message: input.message,
+      client: input.client,
+    });
+    if (!policy.allow) reasons.push(...policy.reasons.map((r) => `policy:${r}`));
+  }
+
+  if (reasons.includes("destructive") || reasons.includes("exfiltration") || reasons.some((r) => r.startsWith("policy:"))) {
     return { action: "block", reasons };
   }
   if (reasons.length > 0) return { action: "confirm", reasons };
@@ -128,8 +144,10 @@ export async function autoMode(input: {
 export const AUTO_MODE_TOOLS = new Set([
   "create_entity",
   "update_entity",
+  "delete_entity",
   "create_contact",
   "update_contact",
+  "delete_contact",
   "enrich_entity",
   "find_companies",
   "maps_leads",
@@ -138,6 +156,10 @@ export const AUTO_MODE_TOOLS = new Set([
   "draft_breakups",
   "propose_autopilot_plan",
   "log_social_message",
+  "log_outreach",
+  "place_call",
+  "buy_credits",
+  "buy_plan",
 ]);
 
 export async function runAutoModeThen<T>(

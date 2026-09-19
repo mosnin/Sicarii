@@ -15,7 +15,8 @@ import type { AutopilotPlan, AutopilotAllocation } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { findCompanies, enrichEntity, listDueFollowups } from "@/lib/crm-operations";
 import { CREDIT_COSTS } from "@/lib/credits";
-import { runAutopilotStep, type Category } from "@/lib/autopilot-operations";
+import { pauseAutopilotPlan, runAutopilotStep, type Category } from "@/lib/autopilot-operations";
+import { evaluateAutopilotTick } from "@/lib/jev";
 
 const MAX_DISCOVERY_CALLS = 3;
 const MAX_ENRICH_CALLS = 5;
@@ -48,9 +49,24 @@ export async function runAutopilotPlanOnce(
   const ranSteps: string[] = [];
   const touched: TouchedItem[] = [];
 
+  const remaining = plan.allocations.reduce((s, a) => s + Math.max(0, a.allocated - a.spent), 0);
+  const brake = await evaluateAutopilotTick({
+    remainingCredits: remaining,
+    nextCost: CREDIT_COSTS.find_companies,
+    recentYield: plan.pausedReason ?? undefined,
+  });
+  if (brake.action === "stop") {
+    await pauseAutopilotPlan(plan.userId, plan.id, {
+      reason: `Jev spend brake: ${brake.reasons.join(", ") || "stop"}.`,
+    });
+    return { ranSteps, touched, status: "paused" };
+  }
+  const discoveryCap = brake.action === "downgrade" ? 1 : MAX_DISCOVERY_CALLS;
+  const enrichCap = brake.action === "downgrade" ? 2 : MAX_ENRICH_CALLS;
+
   // ── Discovery ────────────────────────────────────────────────────────────
   if (plan.discoveryQuery) {
-    for (let i = 0; i < MAX_DISCOVERY_CALLS; i++) {
+    for (let i = 0; i < discoveryCap; i++) {
       if ((await currentStatus(plan.id)) !== "active") break;
       const step = await runAutopilotStep({
         userId: plan.userId,
@@ -78,7 +94,7 @@ export async function runAutopilotPlanOnce(
     });
     let calls = 0;
     for (const entity of candidates) {
-      if (calls >= MAX_ENRICH_CALLS) break;
+      if (calls >= enrichCap) break;
       const already =
         entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
           ? (entity.enrichment as Record<string, unknown>)

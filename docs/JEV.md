@@ -30,14 +30,20 @@ used for evaluate.
 
 | Surface | Jev job | Generator |
 |---------|---------|-----------|
-| `/api/agent` | Turn decide + model router + auto-mode tool gate | Qwen (OpenRouter) or OpenAI fallback |
+| `/api/agent` | Turn decide + model router + auto-mode + quiet-ask + Foreman + output guard | Qwen (OpenRouter) or OpenAI fallback |
 | `/api/discover/route-intent` | Choice over the discovery catalog | heuristic params |
 | `/api/crm/fit-score` | Score per record vs product context | none |
 | `/api/crm/semantic-sort` | Noul per record vs intent | none |
-| Voice webhook + `/api/voice/*` | Choice over spoken CRM intents | OpenAI Whisper/TTS/Realtime |
+| `/api/crm/triage-inbound` | Inbound category / action / severity / urgency | none |
+| Voice webhook + `/api/voice/*` | Choice over spoken CRM intents; follow-up rank | OpenAI Whisper/TTS/Realtime |
 | `/api/symbolic/review` | Foreman / jev-code / jev-git / jev-review | none |
 | Company OS `/api/company-os/overview` | Deterministic reads; Jev wardens on writes | none |
-| MCP `jev_evaluate`, `jev_decide` | Same kernel, agent-callable | none |
+| MCP writes + `jev_*` | Auto-mode, money gate, triage, citations | none |
+| Breakup draft / approve | Slop + warden before persist / send | gpt-5-mini draft only |
+| Contact enrich | Same-person identity gate before save | none |
+| Discover refine / radar / swarm | Real-company noul; angle dimensions | LLM extract fallback |
+| Autopilot tick | Spend brake (continue / downgrade / stop) | none |
+| Deep report ICP | `scoreFitWithJev` overlays the LLM score | Qwen/OpenAI prose |
 
 ## Env
 
@@ -46,6 +52,7 @@ TYPESAFE_API_KEY=...          # preferred
 AI_GATEWAY_API_KEY=...        # fallback evaluate
 OPENROUTER_API_KEY=...        # Qwen generation + optional Jev
 OPENAI_API_KEY=...            # voice, embeddings, generation fallback
+SCALAR_POLICIES=...           # optional pipe-separated policy quotes for auto-mode
 ```
 
 The app still boots with none of these. Missing Jev fails open on routing and

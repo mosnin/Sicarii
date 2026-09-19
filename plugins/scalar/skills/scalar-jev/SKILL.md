@@ -15,6 +15,11 @@ with probabilities. It cannot write email, summaries, or tool arguments as prose
 - Gate a write tool (auto mode) before execute
 - Pick a generation tier (qwen_fast vs qwen_strong vs none)
 - Review a diff (symbolic) or a warden pack (company OS)
+- Identity-check an enrichment candidate before save
+- Slop/warden-check an outbound draft before persist or send
+- Triage inbound (`jev_triage` / `/api/crm/triage-inbound`)
+- Verify citations (`jev_verify_citations`)
+- Spend brake on autopilot ticks and x402 buys
 
 ## When to call Qwen (OpenRouter)
 

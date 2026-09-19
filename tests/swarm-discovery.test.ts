@@ -26,6 +26,19 @@ vi.mock("@/lib/exa", () => ({
   isExaConfigured: vi.fn(() => true),
 }));
 
+vi.mock("@/lib/jev", () => ({
+  deriveAnglesWithJev: async () => null,
+  runWardens: async () => ({ allow: true, reasons: [], source: "fallback" }),
+  triageInbound: async () => ({
+    category: "other",
+    action: "wait",
+    severity: 1,
+    urgency: 0,
+    confidence: 0,
+    source: "fallback",
+  }),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { exaFindCompanies, isExaConfigured } from "@/lib/exa";
 import { swarmDiscover, getSwarmRun, OpError } from "@/lib/crm-operations";

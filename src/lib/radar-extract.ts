@@ -9,6 +9,7 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { prisma } from "@/lib/prisma";
 import { checkCreationBudget } from "@/lib/creation-guard";
+import { filterRealCompanies } from "@/lib/jev";
 
 const MODEL = process.env.OPENAI_REFINER_MODEL ?? "gpt-5-mini";
 
@@ -102,8 +103,17 @@ ${items.map((i) => `- ${i.title ?? ""} (${i.url ?? ""}) ${i.summary ?? ""}`).joi
   const created: CreatedItem[] = [];
   let entitiesAdded = 0;
 
+  const extractedRows = object.entities
+    .filter((e) => real(e.name))
+    .map((e) => ({
+      id: normName(e.name),
+      text: [e.name, e.domain, e.website, e.industry, e.description].filter(Boolean).join(" "),
+    }));
+  const realKeep = await filterRealCompanies(extractedRows);
+
   for (const e of object.entities) {
     if (!real(e.name)) continue;
+    if (realKeep && !realKeep.has(normName(e.name))) continue;
     const domain =
       host(e.website) ?? (real(e.domain) ? e.domain!.toLowerCase().replace(/^www\./, "") : undefined);
 

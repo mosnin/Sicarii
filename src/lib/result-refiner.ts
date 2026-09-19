@@ -5,6 +5,7 @@
 
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { filterRealCompanies, flattenSearchItems } from "@/lib/jev";
 import { z } from "zod";
 
 const REFINER_MODEL = process.env.OPENAI_REFINER_MODEL ?? "gpt-5-mini";
@@ -35,6 +36,14 @@ export async function refineToCompanies(
   raw: unknown,
   limit = 25
 ): Promise<RefinedCompany[]> {
+  const rows = flattenSearchItems(raw);
+  const keep = await filterRealCompanies(rows);
+  const filteredRaw =
+    keep == null
+      ? raw
+      : rows.filter((r) => keep.has(r.id)).map((r) => ({ id: r.id, text: r.text }));
+  if (keep && keep.size === 0) return [];
+
   const { object } = await generateObject({
     model: openai(REFINER_MODEL),
     schema: refinedSchema,
@@ -51,7 +60,7 @@ Rules:
 - Return at most ${limit} companies. If nothing qualifies, return an empty list.
 
 Raw results JSON:
-${JSON.stringify(raw).slice(0, 14000)}`,
+${JSON.stringify(filteredRaw).slice(0, 14000)}`,
   });
 
   return object.companies.slice(0, limit);

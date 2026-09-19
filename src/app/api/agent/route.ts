@@ -9,11 +9,16 @@ import {
 import { openai } from "@ai-sdk/openai";
 import {
   decideTurn,
+  gateGeneratedOutput,
   generationUnavailableMessage,
   isGenerationConfigured,
+  quietAskDetermined,
   resolveGenerationModel,
+  shouldKeepMemory,
+  superviseForeman,
 } from "@/lib/jev";
 import { AUTO_MODE_TOOLS, routeModel, runAutoModeThen } from "@/lib/jev/harness";
+import { SKILLS } from "@/lib/skills";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
@@ -455,12 +460,35 @@ export async function POST(req: Request) {
     ? await routeModel({ message: lastUserText })
     : { choice: "qwen_fast", confidence: 0, source: "fallback" as const };
 
-  const decision = lastUserText
+  const toolCatalog: Record<string, string> = {
+    find_companies: "Discover companies and add new ones to the CRM.",
+    maps_leads: "Discover local businesses from Maps.",
+    swarm_discover: "Fan a broad goal into parallel search angles.",
+    search_crm: "Search entities and contacts.",
+    create_entity: "Create a business.",
+    update_entity: "Update a business.",
+    create_contact: "Create a person.",
+    update_contact: "Update a person.",
+    draft_breakups: "Draft breakup emails for stalled deals.",
+    propose_autopilot_plan: "Propose a budgeted autopilot plan.",
+  };
+  const skillCatalog = Object.fromEntries(SKILLS.map((s) => [s.slug, s.description]));
+
+  let decision = lastUserText
     ? await decideTurn({
         message: lastUserText,
         currentTier: routed.choice === "qwen_strong" ? "qwen_strong" : routed.choice === "none" ? "none" : "qwen_fast",
+        tools: toolCatalog,
+        skills: skillCatalog,
       })
     : { kind: "escalate" as const, reason: "empty" };
+
+  if (decision.kind === "escalate" && lastUserText) {
+    const quiet = await quietAskDetermined({ message: lastUserText });
+    if (quiet.determined) {
+      decision = { kind: "deterministic", action: "lookup", confidence: 0.9 };
+    }
+  }
 
   if (decision.kind === "refuse") {
     return NextResponse.json({ error: "That request is out of scope for Scalar." }, { status: 400 });
@@ -496,13 +524,38 @@ export async function POST(req: Request) {
     system,
     messages: modelMessages,
     tools,
-    stopWhen: stepCountIs(12),
+    stopWhen: [
+      stepCountIs(12),
+      async ({ steps }) => {
+        if (steps.length < 3 || !lastUserText) return false;
+        const history = steps
+          .map((s) => {
+            const texts = (s.content ?? [])
+              .filter((p): p is { type: "text"; text: string } => p.type === "text")
+              .map((p) => p.text)
+              .join(" ");
+            return texts.slice(0, 240);
+          })
+          .join("\n");
+        const intervention = await superviseForeman({
+          goal: lastUserText,
+          history,
+          iteration: steps.length,
+          maxIterations: 12,
+        });
+        return intervention === "STOP_WORKER" || intervention === "FINISH" || intervention === "ESCALATE";
+      },
+    ],
     onFinish: async ({ text }) => {
       if (!text?.trim()) return;
+      const output = await gateGeneratedOutput(text);
+      const safe = output.allow ? text : "I almost leaked a secret in that reply. I stopped instead of sending it.";
       await prisma.message.create({
-        data: { conversationId: conversationId!, role: "assistant", content: text },
+        data: { conversationId: conversationId!, role: "assistant", content: safe },
       });
-      await storeMemory(userId, "message", `Scalar: ${text}`, conversationId);
+      if (await shouldKeepMemory(`Scalar: ${safe}`)) {
+        await storeMemory(userId, "message", `Scalar: ${safe}`, conversationId);
+      }
     },
   });
 

@@ -21,6 +21,9 @@ vi.mock("@/lib/pulse", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: { user: { findUnique: (...args: unknown[]) => userFindUnique(...args) } },
 }));
+vi.mock("@/lib/jev", () => ({
+  rankWithJev: async () => null,
+}));
 
 import { classifyVoiceIntent, voiceIntent } from "@/lib/voice-intent";
 

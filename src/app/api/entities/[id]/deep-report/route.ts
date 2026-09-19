@@ -10,6 +10,7 @@ import { analyzeSite, firecrawlSearch, isFirecrawlConfigured } from "@/lib/firec
 import { isMeaningful } from "@/lib/exa";
 import { OpError } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
+import { scoreFitWithJev } from "@/lib/jev";
 
 export const maxDuration = 60;
 
@@ -133,11 +134,25 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
     });
 
     // ── Persist the report + fill empty entity fields ──
+    const fitText = [entity.name, entity.industry, entity.description, report.summary, report.targetMarket]
+      .filter(Boolean)
+      .join(" ");
+    const jevFit = user.productContext
+      ? await scoreFitWithJev([{ id: entity.id, text: fitText }], user.productContext)
+      : null;
+    const icpFit = jevFit?.[entity.id] != null
+      ? {
+          ...report.icpFit,
+          score: jevFit[entity.id],
+          source: "jev" as const,
+        }
+      : { ...report.icpFit, source: "llm" as const };
+
     const existing = entity.enrichment && typeof entity.enrichment === "object" && !Array.isArray(entity.enrichment)
       ? (entity.enrichment as Record<string, unknown>) : {};
     const data: Prisma.EntityUncheckedUpdateInput = {
       status: "ENRICHED",
-      enrichment: { ...existing, deepReport: { ...report, generatedAt: new Date().toISOString() } } as unknown as Prisma.InputJsonValue,
+      enrichment: { ...existing, deepReport: { ...report, icpFit, generatedAt: new Date().toISOString() } } as unknown as Prisma.InputJsonValue,
     };
     if (!entity.description && report.summary) data.description = report.summary;
     if (!entity.industry && analysis?.industry) data.industry = analysis.industry;
@@ -182,7 +197,7 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
     // Debit only after the report was built and stored - a failed run is free.
     await spendCredits(user.id, "deep_report", { ref: id });
 
-    return NextResponse.json({ ok: true, created, report });
+    return NextResponse.json({ ok: true, created, report: { ...report, icpFit } });
   } catch (e) {
     if (e instanceof NextResponse) return e;
     if (e instanceof OpError) {

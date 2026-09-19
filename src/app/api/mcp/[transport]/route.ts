@@ -6,6 +6,18 @@ import { userIdFromAccessToken } from "@/lib/oauth";
 import { authenticateOauthAccessToken } from "@/lib/oauth-server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
+  AUTO_MODE_TOOLS,
+  decideTurn,
+  gateMoney,
+  isJevConfigured,
+  runAutoModeThen,
+  triageInbound,
+  tryEvaluate,
+  verifyCitations,
+  type Json,
+  type QuestionMap,
+} from "@/lib/jev";
+import {
   topUpHint,
   isX402Configured,
   buildRequirements,
@@ -76,7 +88,6 @@ import {
   type PaidPlanName,
 } from "@/lib/credits";
 import { storeMemory, recallMemory } from "@/lib/memory";
-import { decideTurn, isJevConfigured, tryEvaluate, type QuestionMap } from "@/lib/jev";
 import { getProvenanceMap } from "@/lib/provenance";
 import { verifyEntity } from "@/lib/enrich/verified-entity";
 import { detectEntityTech } from "@/lib/enrich/technographics";
@@ -175,6 +186,39 @@ async function run(fn: () => Promise<unknown>): Promise<ToolResult> {
 // or fan out writes - external agents hold long-lived keys, so an uncapped paid
 // tool is unbounded spend. Durable when Upstash is configured. Passes the
 // authenticated userId into the body.
+const MCP_AUTO_MODE_BUCKETS = new Set([
+  "create",
+  "update_entity",
+  "update_contact",
+  "delete_entity",
+  "delete_contact",
+  "enrich",
+  "save_email_context",
+  "log_social_message",
+  "find_companies",
+  "maps_leads",
+  "swarm_discover",
+  "contact_extract",
+  "create_segment",
+  "build_segment",
+  "create_pipeline",
+  "add_to_pipeline",
+  "update_pipeline_entry",
+  "autopilot_propose",
+  "remember",
+  "x402_buy",
+  "verify_entity",
+  "detect_tech",
+  "place_call",
+  "sync_call",
+  "log_call",
+  "log_outreach",
+  "add_activity",
+  "breakup_draft",
+  "create_variant",
+  ...AUTO_MODE_TOOLS,
+]);
+
 async function gated(
   extra: { authInfo?: AuthInfo },
   bucket: string,
@@ -185,6 +229,19 @@ async function gated(
     const userId = userIdFrom(extra);
     const rate = await checkRateLimit(`mcp:${bucket}:${userId}`, limit, 60_000);
     if (!rate.success) return fail("Rate limit reached for this tool. Please wait a moment and try again.");
+    if (MCP_AUTO_MODE_BUCKETS.has(bucket)) {
+      const result = await runAutoModeThen(bucket, {} as Json, `MCP ${bucket}`, () => fn(userId));
+      if (result && typeof result === "object" && "error" in result) {
+        const err = (result as { error?: unknown }).error;
+        if (
+          typeof err === "string" &&
+          (err.startsWith("Blocked") || err.includes("Jev wants confirmation"))
+        ) {
+          return fail(err);
+        }
+      }
+      return ok(result);
+    }
     return ok(await fn(userId));
   } catch (e) {
     if (e instanceof OpError) return fail(opErrorMessage(e));
@@ -221,6 +278,15 @@ async function buyCreditsViaMcp(
         "Sign this with your x402 client and call buy_credits again with xPayment set.",
       ),
     };
+  }
+  const spend = await gateMoney({
+    action: "buy_credits",
+    amount: credits,
+    unit: "credits",
+    message: `MCP buy_credits ${credits}`,
+  });
+  if (!spend.allow) {
+    throw new OpError(`Jev blocked this credit purchase (${spend.reasons.join(", ")}).`, 403);
   }
   const payload = decodePaymentHeader(xPayment);
   if (!payload) throw new OpError("xPayment is not a valid base64 X-PAYMENT payload.", 400);
@@ -261,6 +327,15 @@ async function buyPlanViaMcp(
         "Sign this with your x402 client and call buy_plan again with xPayment set.",
       ),
     };
+  }
+  const spend = await gateMoney({
+    action: `buy_plan:${plan}`,
+    amount: PLAN_USD[plan],
+    unit: "usd",
+    message: `MCP buy_plan ${plan}`,
+  });
+  if (!spend.allow) {
+    throw new OpError(`Jev blocked this plan purchase (${spend.reasons.join(", ")}).`, 403);
   }
   const payload = decodePaymentHeader(xPayment);
   if (!payload) throw new OpError("xPayment is not a valid base64 X-PAYMENT payload.", 400);
@@ -1197,6 +1272,33 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ message }, extra) =>
         gated(extra, "jev_decide", 40, async () => decideTurn({ message })),
+    );
+
+    server.tool(
+      "jev_triage",
+      "Classify an inbound email, social message, or note with Jev (category, action, severity, urgency). Does not write CRM state.",
+      { text: z.string().max(4000) },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ text }, extra) => gated(extra, "jev_triage", 40, async () => triageInbound(text)),
+    );
+
+    server.tool(
+      "jev_verify_citations",
+      "Verify claim/quote pairs with Jev. Returns keep=false when the quote does not support the claim.",
+      {
+        claims: z
+          .array(
+            z.object({
+              claim: z.string().max(400),
+              quote: z.string().max(600),
+              url: z.string().max(500).optional(),
+            }),
+          )
+          .max(20),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ claims }, extra) =>
+        gated(extra, "jev_verify_citations", 40, async () => verifyCitations(claims)),
     );
   },
   {
