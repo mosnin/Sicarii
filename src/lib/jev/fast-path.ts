@@ -1092,9 +1092,7 @@ async function runTool(
         prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
       const facts = factsFromSearch(found);
       const first = facts.find((f) => f.kind === "entity" && f.id);
-      if (!first?.id) {
-        return { error: `I did not find a company named "${query}" in the CRM.` };
-      }
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
       const industry = instant?.industry?.trim();
       const location = instant?.location?.trim();
       const domain = instant?.domain?.trim();
@@ -1107,6 +1105,38 @@ async function runTool(
       const tags = instant?.tags;
       if (!industry && !location && !domain && !website && !notes && !description && !phone && !size && !status && !(tags && tags.length > 0)) {
         return { error: "Say the field, like set Acme industry to SaaS." };
+      }
+      const collisionOnly = Boolean(
+        (website || location) &&
+          !industry &&
+          !domain &&
+          !notes &&
+          !description &&
+          !phone &&
+          !size &&
+          !status &&
+          !(tags && tags.length > 0),
+      );
+      if (collisionOnly && first?.id && contact?.id) {
+        return { error: `Say contact ${query} or company ${query} so I don't guess.` };
+      }
+      if (collisionOnly && !first?.id && contact?.id) {
+        const patch = {
+          ...(website ? { website } : {}),
+          ...(location ? { location } : {}),
+        };
+        return write("update_contact", { id: contact.id, ...patch }, async () => {
+          const result = runners.updateContact
+            ? await runners.updateContact(contact.id!, patch)
+            : { error: "Contact update is unavailable." };
+          if (result && typeof result === "object" && !("error" in result)) {
+            return { ...(result as object), name: contact.name ?? query, ...patch };
+          }
+          return result;
+        });
+      }
+      if (!first?.id) {
+        return { error: `I did not find a company named "${query}" in the CRM.` };
       }
       const entityId = first.id;
       const patch = {

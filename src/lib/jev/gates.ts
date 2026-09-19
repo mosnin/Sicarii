@@ -676,7 +676,7 @@ export async function checkWorkspacePolicies(input: {
     },
     input.client,
   );
-  if (!result) return { allow: true, reasons: ["jev_unavailable"], source: "fallback" };
+  if (!result) return { allow: false, reasons: ["jev_unavailable"], source: "fallback" };
   const reasons: string[] = [];
   for (let i = 0; i < quotes.length; i++) {
     if (asNoul(result.answers[`policy_${i}`]) >= POLICY_VIOLATION) {

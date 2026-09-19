@@ -601,4 +601,72 @@ describe("executeFastPath", () => {
     expect(result?.tool).toBe("score_fit");
     expect(result?.text).toBe("Acme scores 82/100 as a fit.");
   });
+
+  it("writes website onto a contact when only the person matches", async () => {
+    const result = await executeFastPath({
+      message: "set Jane website to https://jane.dev",
+      decision: { kind: "tool", tool: "update_entity", confidence: 0.94 },
+      instant: {
+        tool: "update_entity",
+        query: "Jane",
+        website: "https://jane.dev",
+        source: "instant",
+      },
+      prefetch: { entities: [], contacts: [{ id: "c1", name: "Jane", title: "CFO" }] },
+      runners: {
+        searchCrm: async () => {
+          throw new Error("prefetch should skip searchCrm");
+        },
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
+        updateContact: async (id, patch) => {
+          expect(id).toBe("c1");
+          expect(patch).toEqual({ website: "https://jane.dev" });
+          return { id, name: "Jane", website: patch.website };
+        },
+      },
+    });
+    expect(result?.text).toBe("Set Jane's website to https://jane.dev.");
+  });
+
+  it("asks to qualify website when both a company and a contact match", async () => {
+    const result = await executeFastPath({
+      message: "set Jane website to https://jane.dev",
+      decision: { kind: "tool", tool: "update_entity", confidence: 0.94 },
+      instant: {
+        tool: "update_entity",
+        query: "Jane",
+        website: "https://jane.dev",
+        source: "instant",
+      },
+      prefetch: {
+        entities: [{ id: "e1", name: "Jane" }],
+        contacts: [{ id: "c1", name: "Jane" }],
+      },
+      runners: {
+        searchCrm: async () => ({ entities: [], contacts: [] }),
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
+      },
+    });
+    expect(result?.text).toContain("so I don't guess");
+  });
 });

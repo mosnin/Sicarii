@@ -677,6 +677,12 @@ Scalar now does that on `/api/agent`:
     `update_contact` accepts source and tags, `create_contact` accepts
     tags, and `update_entity` accepts tags (MCP parity). Provenance
     `source of` stays a read.
+50. Instant `set Jane website to https://jane.dev` and `set Jane
+    location to Austin` retarget to the contact when only a person
+    matches. A company-and-contact collision asks to qualify instead
+    of guessing. Workspace policy checks deny the write when TypeSafe
+    is configured but the live call misses. Unconfigured local stays
+    fail-open.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

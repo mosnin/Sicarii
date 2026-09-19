@@ -18,6 +18,7 @@ import {
   keepNamedCompanies,
   gateGeneratedOutput,
   runWardens,
+  checkWorkspacePolicies,
   type JevClient,
 } from "@/lib/jev";
 import type { JevResult, QuestionMap } from "@/lib/jev/contract";
@@ -243,6 +244,24 @@ describe("gateGeneratedOutput / runWardens live miss", () => {
     const gate = await runWardens({
       payload: "email body",
       phase: "log",
+      client: {
+        async evaluate() {
+          throw new Error("typesafe down");
+        },
+      },
+    });
+    expect(gate.allow).toBe(false);
+    expect(gate.reasons).toContain("jev_unavailable");
+  });
+});
+
+describe("checkWorkspacePolicies", () => {
+  it("denies a write when TypeSafe is up but the live call misses", async () => {
+    const gate = await checkWorkspacePolicies({
+      policies: ["Do not email competitors"],
+      tool: "update_contact",
+      args: { id: "c1" },
+      message: "email Jane",
       client: {
         async evaluate() {
           throw new Error("typesafe down");

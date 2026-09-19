@@ -135,6 +135,16 @@ describe("classifyInstant", () => {
       query: "Acme",
       website: "https://acme.com",
     });
+    expect(classifyInstant("set Jane website to https://jane.dev")).toMatchObject({
+      tool: "update_entity",
+      query: "Jane",
+      website: "https://jane.dev",
+    });
+    expect(classifyInstant("set Jane location to Austin")).toMatchObject({
+      tool: "update_entity",
+      query: "Jane",
+      location: "Austin",
+    });
     expect(classifyInstant("set company Acme notes to Series B fintech")).toMatchObject({
       tool: "update_entity",
       query: "Acme",
