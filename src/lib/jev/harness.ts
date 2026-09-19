@@ -112,6 +112,7 @@ export const WRITE_BUCKETS = new Set([
   "remove_segment_member",
   "delete_pipeline",
   "remove_pipeline_entry",
+  "pause_autopilot",
 ]);
 
 export function isWriteTool(tool: string): boolean {
@@ -202,6 +203,8 @@ export const AUTO_MODE_TOOLS = new Set([
   "place_call",
   "buy_credits",
   "buy_plan",
+  "search_web",
+  "google_search",
 ]);
 
 export async function runAutoModeThen<T>(

@@ -101,6 +101,7 @@ const mustBeGated = [
   "remove_segment_member",
   "delete_pipeline",
   "remove_pipeline_entry",
+  "pause_autopilot",
 ];
 
 describe("MCP route: write tools are rate-limited", () => {

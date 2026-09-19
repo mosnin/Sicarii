@@ -662,7 +662,12 @@ export function listContacts(
   });
 }
 
-export async function getContact(userId: string, id: string) {
+export async function getContact(
+  userId: string,
+  id: string,
+  opts?: { includeEnrichment?: boolean },
+) {
+  const includeEnrichment = opts?.includeEnrichment ?? true;
   const contact = await prisma.contact.findUnique({
     where: { id },
     include: {
@@ -672,6 +677,7 @@ export async function getContact(userId: string, id: string) {
       emails: { orderBy: { sentAt: "desc" }, take: 50 },
       socialMessages: { orderBy: { createdAt: "desc" }, take: 50 },
     },
+    ...(includeEnrichment ? {} : { omit: { enrichment: true } }),
   });
   if (!contact || contact.userId !== userId)
     throw new OpError("Contact not found", 404);
@@ -1041,7 +1047,7 @@ export async function listActivities(
  *  as due. This is how an autonomous agent finds who to chase next. */
 export async function listDueFollowups(
   userId: string,
-  input: { status?: ContactStatus; staleDays?: number; limit?: number }
+  input: { status?: string; staleDays?: number; limit?: number }
 ) {
   const status = (input.status ?? "CONTACTED") as ContactStatus;
   const staleDays = input.staleDays ?? 7;

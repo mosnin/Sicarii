@@ -210,8 +210,8 @@ export function classifyInstant(
   }
 
   if (
-    /\b(follow-?ups?|stale contacts?|who (should|do i|to) (chase|follow))\b/i.test(text) ||
-    /^(list|show) (the )?(due |stale )?(follow-?ups?)\b/i.test(text)
+    /\b(follow-?ups?|follow\s+ups?|stale contacts?|who (should|do i|to) (chase|follow))\b/i.test(text) ||
+    /^(list|show) (the )?(due |stale )?(follow[-\s]?ups?)\b/i.test(text)
   ) {
     return { tool: "list_due_followups", query: text, source: "instant" };
   }

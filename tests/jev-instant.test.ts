@@ -30,6 +30,7 @@ describe("classifyInstant", () => {
     expect(classifyInstant("list contacts")).toMatchObject({ tool: "list_contacts", query: "" });
     expect(classifyInstant("list companies")).toMatchObject({ tool: "list_entities", query: "" });
     expect(classifyInstant("who needs a follow-up")).toMatchObject({ tool: "list_due_followups" });
+    expect(classifyInstant("who should I follow up with")).toMatchObject({ tool: "list_due_followups" });
     expect(classifyInstant("how many credits do I have")).toMatchObject({ tool: "get_billing" });
   });
 

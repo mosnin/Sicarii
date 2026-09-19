@@ -195,7 +195,25 @@ export function formatFastReply(input: {
   }
 
   if (tool === "get_autopilot_status") {
-    return "I pulled the current autopilot status. Open Autopilot on the dashboard for the budget and run ledger.";
+    const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
+    if (rows.length === 0) {
+      return "There is no autopilot plan yet. Propose one if you want unsupervised work.";
+    }
+    const bits = rows.slice(0, 5).map((row) => {
+      const p = row as {
+        name?: string;
+        status?: string;
+        totalCredits?: number;
+        allocations?: Array<{ category?: string; allocated?: number; spent?: number }>;
+      };
+      const spend = (p.allocations ?? [])
+        .map((a) => `${a.category ?? "category"} ${a.spent ?? 0}/${a.allocated ?? 0}`)
+        .join(", ");
+      const cap = p.totalCredits != null ? `${p.totalCredits} credit cap` : "";
+      const extra = [spend, cap].filter(Boolean).join("; ");
+      return `${p.name ?? "plan"} is ${p.status ?? "unknown"}${extra ? ` (${extra})` : ""}`;
+    });
+    return `${bits.join(". ")}.`;
   }
 
   if (tool === "create_entity") {
@@ -279,11 +297,12 @@ export async function executeFastPath(input: {
         tool === "list_entities" ||
         tool === "list_contacts" ||
         tool === "list_due_followups" ||
-        tool === "get_billing") &&
+        tool === "get_billing" ||
+        tool === "get_autopilot_status") &&
       input.prefetch != null;
     payload = lookupHit
       ? input.prefetch
-      : await runTool(tool, query, local, input.runners, input.message, input.instant);
+      : await runTool(tool, query, local, input.runners, input.message, input.instant, input.prefetch);
   } catch (e) {
     payload = { error: e instanceof Error ? e.message : "Internal error" };
   }
@@ -334,6 +353,7 @@ async function runTool(
   runners: FastPathRunners,
   message: string,
   instant?: InstantRoute | null,
+  prefetch?: unknown,
 ): Promise<unknown> {
   const write = (name: string, args: Json, fn: () => Promise<unknown>) =>
     runAutoModeThen(name, args, message, fn);
@@ -369,7 +389,8 @@ async function runTool(
           }),
       );
     case "enrich_entity": {
-      const found = await runners.searchCrm(query);
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
       const facts = factsFromSearch(found);
       const first = facts.find((f) => f.kind === "entity" && f.id);
       if (!first?.id) {

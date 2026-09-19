@@ -63,6 +63,18 @@ describe("compactCrmPayload", () => {
     expect(slim.entities[0]?.name).toBe("Acme");
     expect(slim.entities[0]?.enrichment).toBeUndefined();
   });
+
+  it("strips nested transcripts on a lone record", () => {
+    const slim = compactCrmPayload({
+      id: "c1",
+      name: "Jane",
+      transcript: "secret call",
+      enrichment: { blob: true },
+    }) as { name?: string; transcript?: unknown; enrichment?: unknown };
+    expect(slim.name).toBe("Jane");
+    expect(slim.transcript).toBeUndefined();
+    expect(slim.enrichment).toBeUndefined();
+  });
 });
 
 describe("stripHeavyFields", () => {

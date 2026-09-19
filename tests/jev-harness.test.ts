@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { autoMode, isWriteTool, routeModel, type JevClient } from "@/lib/jev";
+import { AUTO_MODE_TOOLS, autoMode, isWriteTool, routeModel, type JevClient } from "@/lib/jev";
 import type { JevResult, QuestionMap } from "@/lib/jev/contract";
 
 function mockClient(answers: JevResult["answers"]): JevClient {
@@ -183,6 +183,10 @@ describe("isWriteTool", () => {
     expect(isWriteTool("delete_segment")).toBe(true);
     expect(isWriteTool("remove_segment_member")).toBe(true);
     expect(isWriteTool("remove_pipeline_entry")).toBe(true);
+    expect(isWriteTool("pause_autopilot")).toBe(true);
+    expect(isWriteTool("search_web")).toBe(true);
     expect(isWriteTool("search_crm")).toBe(false);
+    expect(AUTO_MODE_TOOLS.has("search_web")).toBe(true);
+    expect(AUTO_MODE_TOOLS.has("google_search")).toBe(true);
   });
 });

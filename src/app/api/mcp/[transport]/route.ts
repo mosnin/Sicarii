@@ -228,6 +228,7 @@ const MCP_AUTO_MODE_BUCKETS = new Set([
   "remove_segment_member",
   "delete_pipeline",
   "remove_pipeline_entry",
+  "pause_autopilot",
   ...AUTO_MODE_TOOLS,
 ]);
 
@@ -471,7 +472,8 @@ const handler = createMcpHandler(
       "Get one contact by id, including linked entity and saved email context.",
       { id: z.string() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      async ({ id }, extra) => run(() => getContact(userIdFrom(extra), id)),
+      async ({ id }, extra) =>
+        run(() => getContact(userIdFrom(extra), id, { includeEnrichment: false })),
     );
 
     server.tool(
@@ -970,7 +972,10 @@ const handler = createMcpHandler(
       { planId: z.string(), reason: z.string().max(500).optional() },
       { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ planId, reason }, extra) =>
-        run(() => pauseAutopilotPlan(userIdFrom(extra), planId, { reason, actor: actorFrom(extra) })),
+        gated(extra, "pause_autopilot", 20, (userId) => pauseAutopilotPlan(userId, planId, { reason, actor: actorFrom(extra) }), {
+          planId,
+          reason: reason ?? null,
+        }),
     );
 
     /* --------------------------- Memory --------------------------- */

@@ -6,6 +6,7 @@ import { decideTurn } from "@/lib/jev";
 
 const schema = z.object({
   message: z.string().trim().min(1).max(4000),
+  priorAssistant: z.string().trim().max(4000).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -17,7 +18,10 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Say what you want to do." }, { status: 400 });
 
-    const decision = await decideTurn({ message: parsed.data.message });
+    const decision = await decideTurn({
+      message: parsed.data.message,
+      priorAssistant: parsed.data.priorAssistant,
+    });
     return NextResponse.json(decision);
   } catch (e) {
     if (e instanceof NextResponse) return e;

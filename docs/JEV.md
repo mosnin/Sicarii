@@ -236,7 +236,7 @@ picks dimensions and tools. Code fills templates.
 
 | Surface | Jev job | Generator |
 |---------|---------|-----------|
-| `/api/agent` | Instant path (lookups, lists, discover, create, enrich, tell-me-about, follow-ups, credits, yes-after-miss). Unique CRM hits become a fact card, not a chat turn. Generate path uses a short grounded system prompt, compacted transcript (hermes-jev-compact), slim tool results, and a local invented-name gate. | Qwen or OpenAI, and only if needed |
+| `/api/agent` | Instant path (lookups, lists, discover, create, enrich, tell-me-about, follow-ups, credits, autopilot, yes-after-miss). Unique CRM hits become a fact card, not a chat turn. Generate and escalate use a short grounded system prompt, compacted transcript (hermes-jev-compact), slim tool results, and a local invented-name gate. | Qwen or OpenAI, and only if needed |
 | `/api/discover/route-intent` | Choice over the discovery catalog | heuristic params |
 | `/api/crm/fit-score` | Score per record vs product context | none |
 | `/api/crm/semantic-sort` | Noul per record vs intent | none |
@@ -348,7 +348,11 @@ Two stacked branches off Scalar `main`:
    excludes pipelined contacts in SQL. Instant follow-ups and credits skip
    TypeSafe. List runners no longer bounce through `searchCrm`. Recall
    overlaps decide. `jev_decide` takes `priorAssistant`. Routing skips
-   tool-guard questions on non-write utterances.
+   tool-guard questions on non-write utterances. Agent `search_web` /
+   `google_search` join auto-mode. Getters omit enrichment. Escalate uses
+   the grounded system prompt. Autopilot pause is gated. Segment/pipeline
+   reads are capped. Instant understands "follow up". HTTP decide takes
+   `priorAssistant`. Fast-path prints autopilot budget from the payload.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -451,9 +455,13 @@ Scalar now does that on `/api/agent`:
     looks like a write. Auto-mode still gates every write tool.
 13. MCP `ok()` is compact JSON without pretty-print. Heavy fields
     (`enrichment`, `transcript`, embeddings) are stripped. `get_entity`
-    omits enrichment at the database. Segment and pipeline deletes use
-    `gated` + auto-mode, including `remove_*` buckets that have no
-    `update_`/`delete_` prefix.
+    and `get_contact` omit enrichment at the database on agent and MCP.
+    Segment and pipeline deletes use `gated` + auto-mode, including
+    `remove_*` and `pause_autopilot`.
+14. Agent `search_web` / `google_search` run auto-mode like MCP. Recall is
+    rate-limited. Escalate turns use `GROUNDED_SYSTEM`. Fast-path prints
+    autopilot spend from the real payload. HTTP `/api/jev/decide` accepts
+    `priorAssistant`. Segment and pipeline lists/gets are capped.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

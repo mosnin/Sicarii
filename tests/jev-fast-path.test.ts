@@ -105,6 +105,20 @@ describe("formatFastReply", () => {
         payload: { creditsRemaining: 42, plan: "pro" },
       }),
     ).toBe("You have 42 credits remaining on the pro plan.");
+    expect(
+      formatFastReply({
+        tool: "get_autopilot_status",
+        query: "autopilot",
+        payload: [
+          {
+            name: "Miami dentists",
+            status: "active",
+            totalCredits: 200,
+            allocations: [{ category: "discovery", allocated: 120, spent: 40 }],
+          },
+        ],
+      }),
+    ).toContain("Miami dentists is active");
   });
 
   it("explains an empty CRM lookup", () => {

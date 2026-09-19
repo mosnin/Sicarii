@@ -19,13 +19,20 @@ export function listSegments(userId: string) {
     where: { userId },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { members: true } } },
+    take: 50,
   });
 }
 
 export async function getSegment(userId: string, id: string) {
   const segment = await prisma.segment.findUnique({
     where: { id },
-    include: { members: { include: { contact: { select: { id: true, name: true, email: true, company: true, title: true } } } } },
+    include: {
+      _count: { select: { members: true } },
+      members: {
+        take: 100,
+        include: { contact: { select: { id: true, name: true, email: true, company: true, title: true } } },
+      },
+    },
   });
   if (!segment || segment.userId !== userId) throw new OpError("Segment not found", 404);
   return segment;
@@ -110,6 +117,7 @@ export function listPipelines(userId: string) {
     where: { userId },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { entries: true } } },
+    take: 50,
   });
 }
 
@@ -117,7 +125,9 @@ export async function getPipeline(userId: string, id: string) {
   const pipeline = await prisma.pipeline.findUnique({
     where: { id },
     include: {
+      _count: { select: { entries: true } },
       entries: {
+        take: 100,
         orderBy: [{ stage: "asc" }, { updatedAt: "desc" }],
         include: { contact: { select: { id: true, name: true, email: true, title: true, company: true } } },
       },
