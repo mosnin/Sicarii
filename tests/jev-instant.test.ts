@@ -49,6 +49,28 @@ describe("classifyInstant", () => {
       query: "OPENER",
       note: "hey, saw your launch",
     });
+    expect(classifyInstant("log a linkedin message to Jane: thanks for the intro")).toMatchObject({
+      tool: "log_social_message",
+      query: "Jane",
+      channel: "linkedin",
+      note: "thanks for the intro",
+    });
+    expect(classifyInstant("save this twitter dm to Jane Doe: circling back")).toMatchObject({
+      tool: "log_social_message",
+      query: "Jane Doe",
+      channel: "x",
+      note: "circling back",
+    });
+    expect(classifyInstant("mark Jane as awaiting reply in Outbound")).toMatchObject({
+      tool: "update_pipeline_entry",
+      query: "Jane",
+      name: "Outbound",
+      conversationStatus: "AWAITING_REPLY",
+    });
+    expect(classifyInstant("extract contacts from acme.com")).toMatchObject({
+      tool: "extract_contact_details",
+      query: "https://acme.com",
+    });
     expect(classifyInstant("list segments")).toMatchObject({ tool: "list_segments" });
     expect(classifyInstant("show the Enterprise segment")).toMatchObject({
       tool: "get_segment",

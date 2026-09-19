@@ -32,6 +32,8 @@ export const FAST_PATH_TOOLS = new Set([
   "list_variant_stats",
   "select_variant",
   "create_variant",
+  "log_social_message",
+  "extract_contact_details",
   "list_segments",
   "list_pipelines",
   "list_swarm_runs",
@@ -389,11 +391,34 @@ export function formatFastReply(input: {
   }
 
   if (tool === "update_pipeline_entry") {
-    const r = payload as { name?: string | null; who?: string | null; stage?: string | null };
+    const r = payload as {
+      name?: string | null;
+      who?: string | null;
+      stage?: string | null;
+      conversationStatus?: string | null;
+    };
     const who = r.who ?? query;
     const dest = r.name ?? "the pipeline";
+    if (r.conversationStatus && !r.stage) {
+      return `Marked ${who} as ${r.conversationStatus.toLowerCase().replace(/_/g, " ")} in ${dest}.`;
+    }
     const stage = (r.stage ?? "the next stage").toLowerCase();
     return `Moved ${who} to ${stage} in ${dest}.`;
+  }
+
+  if (tool === "log_social_message") {
+    const r = payload as { name?: string | null; channel?: string | null };
+    const who = r.name ?? query;
+    const channel = (r.channel ?? "social").toLowerCase();
+    return `Logged a ${channel} message with ${who}.`;
+  }
+
+  if (tool === "extract_contact_details") {
+    const r = payload as { url?: string; found?: number };
+    const n = r.found ?? 0;
+    return n > 0
+      ? `Found ${n} public contact${n === 1 ? "" : "s"} on ${r.url ?? query}. Review before saving.`
+      : `No public contacts on ${r.url ?? query}.`;
   }
 
   if (tool === "save_email_context") {
@@ -661,8 +686,17 @@ export type FastPathRunners = {
   updatePipelineEntry?: (
     pipelineId: string,
     entryId: string,
-    patch: { stage?: InstantRoute["stage"] },
+    patch: {
+      stage?: InstantRoute["stage"];
+      conversationStatus?: InstantRoute["conversationStatus"];
+    },
   ) => Promise<unknown>;
+  saveSocialMessage?: (input: {
+    contactId: string;
+    channel: NonNullable<InstantRoute["channel"]>;
+    body: string;
+  }) => Promise<unknown>;
+  extractSiteContacts?: (url: string) => Promise<unknown>;
   findPipelineEntry?: (
     pipelineId: string,
     contactId: string,
@@ -1258,7 +1292,8 @@ async function runTool(
         return { error: `I did not find a pipeline named "${instant?.name ?? query}".` };
       }
       const stage = instant?.stage;
-      if (!stage) {
+      const conversationStatus = instant?.conversationStatus;
+      if (!stage && !conversationStatus) {
         return { error: "Say the stage, like move Jane to Engaging in Outbound." };
       }
       const contactId = contact.id;
@@ -1270,15 +1305,69 @@ async function runTool(
         return { error: `${contact.name ?? query} is not in ${hit.name ?? instant?.name ?? "that pipeline"}.` };
       }
       const entryId = entry.id;
-      return write("update_pipeline_entry", { pipelineId, entryId, stage }, async () => {
+      const patch = {
+        ...(stage ? { stage } : {}),
+        ...(conversationStatus ? { conversationStatus } : {}),
+      };
+      const args: Record<string, string> = { pipelineId, entryId };
+      if (stage) args.stage = stage;
+      if (conversationStatus) args.conversationStatus = conversationStatus;
+      return write("update_pipeline_entry", args, async () => {
         const result = runners.updatePipelineEntry
-          ? await runners.updatePipelineEntry(pipelineId, entryId, { stage })
+          ? await runners.updatePipelineEntry(pipelineId, entryId, patch)
           : { error: "Pipeline stage update is unavailable." };
         if (result && typeof result === "object" && !("error" in result)) {
-          return { ...(result as object), who: contact.name ?? query, name: hit.name ?? instant?.name, stage };
+          return {
+            ...(result as object),
+            who: contact.name ?? query,
+            name: hit.name ?? instant?.name,
+            ...(stage ? { stage } : {}),
+            ...(conversationStatus ? { conversationStatus } : {}),
+          };
         }
         return result;
       });
+    }
+    case "log_social_message": {
+      const found =
+        prefetch && typeof prefetch === "object" && prefetch !== null && !("crm" in prefetch)
+          ? prefetch
+          : prefetch && typeof prefetch === "object" && prefetch !== null && "crm" in prefetch
+            ? (prefetch as { crm: unknown }).crm
+            : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const body = instant?.note?.trim();
+      if (!body) {
+        return { error: "Say the message after a colon, like log a linkedin message to Jane: thanks." };
+      }
+      const contactId = contact.id;
+      const channel = instant?.channel ?? "other";
+      return write(
+        "log_social_message",
+        { contactId, channel, direction: "OUTBOUND", body },
+        async () => {
+          const result = runners.saveSocialMessage
+            ? await runners.saveSocialMessage({ contactId, channel, body })
+            : { error: "Social log is unavailable." };
+          if (result && typeof result === "object" && !("error" in result)) {
+            return { ...(result as object), name: contact.name ?? query, channel };
+          }
+          return result;
+        },
+      );
+    }
+    case "extract_contact_details": {
+      const url = query.trim();
+      if (!url) return { error: "Say the site, like extract contacts from acme.com." };
+      return write("extract_contact_details", { url }, async () =>
+        runners.extractSiteContacts
+          ? runners.extractSiteContacts(url)
+          : { error: "Contact extract is unavailable." },
+      );
     }
     case "save_email_context": {
       const found =

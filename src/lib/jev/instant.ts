@@ -19,6 +19,7 @@ export type InstantRoute = {
   note?: string;
   durationSec?: number;
   stage?: "NEW" | "ENRICHED" | "PROSPECTING" | "ENGAGING" | "REPLYING" | "WON" | "LOST";
+  conversationStatus?: "OPEN" | "AWAITING_REPLY" | "STALLED" | "CLOSED";
   subject?: string;
   detail?: boolean;
   source: "instant";
@@ -182,6 +183,70 @@ const PIPELINE_STAGE_WORDS: Record<string, NonNullable<InstantRoute["stage"]>> =
   won: "WON",
   lost: "LOST",
 };
+
+const CONVERSATION_STATUS_WORDS: Record<string, NonNullable<InstantRoute["conversationStatus"]>> = {
+  open: "OPEN",
+  "awaiting reply": "AWAITING_REPLY",
+  awaiting_reply: "AWAITING_REPLY",
+  stalled: "STALLED",
+  closed: "CLOSED",
+};
+
+function parseConversationStatus(text: string): {
+  query: string;
+  name: string;
+  conversationStatus: NonNullable<InstantRoute["conversationStatus"]>;
+} | null {
+  const m = text.match(
+    /^(please\s+)?(mark|set|move)\s+(.+?)\s+(as|to)\s+(?:the\s+)?(open|awaiting reply|awaiting_reply|stalled|closed)(?:\s+(?:status|conversation))?\s+(?:in|on|of)\s+(?:the\s+)?(.+?)$/i,
+  );
+  if (!m?.[3] || !m[5] || !m[6]) return null;
+  const conversationStatus = CONVERSATION_STATUS_WORDS[m[5].toLowerCase()];
+  const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const name = m[6]
+    .replace(/\s+pipeline\s*$/i, "")
+    .replace(/\b(the|a|an)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!conversationStatus || !query || !name || query.length > 80 || name.length > 80) return null;
+  return { query, name, conversationStatus };
+}
+
+function parseLogSocial(text: string): {
+  query: string;
+  channel: NonNullable<InstantRoute["channel"]>;
+  note: string;
+} | null {
+  const m = text.match(
+    /^(please\s+)?(save|log|record)\s+(?:this |the |a |an )?(linkedin|x|twitter|instagram|facebook|social)\s+(dm|message|comment)\s+(?:to|on|with|for)\s+(.+?)[:\-]\s*(.+)$/i,
+  );
+  if (!m?.[3] || !m[5] || !m[6]) return null;
+  const raw = m[3].toLowerCase();
+  const channel: NonNullable<InstantRoute["channel"]> =
+    raw === "linkedin"
+      ? "linkedin"
+      : raw === "x" || raw === "twitter"
+        ? "x"
+        : raw === "instagram"
+          ? "instagram"
+          : raw === "facebook"
+            ? "facebook"
+            : "other";
+  const query = m[5].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const note = m[6].trim();
+  if (!query || !note || query.length > 80 || note.length > 10_000) return null;
+  return { query, channel, note };
+}
+
+function parseExtractContacts(text: string): { query: string } | null {
+  if (!/\b(extract|scrape|pull)\b/i.test(text)) return null;
+  if (!/\b(contacts?|emails?|phones?|socials?)\b/i.test(text)) return null;
+  const url = text.match(/https?:\/\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
+  const domain = text.match(/\b((?:[a-z0-9-]+\.)+[a-z]{2,})\b/i)?.[1]?.toLowerCase();
+  const query = url ?? (domain && !/^(www|http|https)$/i.test(domain) ? `https://${domain}` : "");
+  if (!query || query.length > 500) return null;
+  return { query };
+}
 
 function parsePipelineStage(text: string): {
   query: string;
@@ -562,6 +627,16 @@ export function classifyInstant(
       source: "instant",
     };
   }
+  const conversation = parseConversationStatus(text);
+  if (conversation && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_pipeline_entry",
+      query: conversation.query,
+      name: conversation.name,
+      conversationStatus: conversation.conversationStatus,
+      source: "instant",
+    };
+  }
   const statusUpdate = parseStatusUpdate(text);
   if (statusUpdate && !COMPOUND.test(text) && !DESTRUCTIVE.test(text)) {
     return {
@@ -609,6 +684,16 @@ export function classifyInstant(
       query: outsideCall.query,
       note: outsideCall.note,
       durationSec: outsideCall.durationSec,
+      source: "instant",
+    };
+  }
+  const logSocial = parseLogSocial(text);
+  if (logSocial && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text) && !COMPOSE.test(text)) {
+    return {
+      tool: "log_social_message",
+      query: logSocial.query,
+      note: logSocial.note,
+      channel: logSocial.channel,
       source: "instant",
     };
   }
@@ -742,6 +827,11 @@ export function classifyInstant(
   }
 
   if (tooHardForInstant(text)) return null;
+
+  const extractContacts = parseExtractContacts(text);
+  if (extractContacts) {
+    return { tool: "extract_contact_details", query: extractContacts.query, source: "instant" };
+  }
 
   const enrichContact = parseEnrichContact(text);
   if (enrichContact) {

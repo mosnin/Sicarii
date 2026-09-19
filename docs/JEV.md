@@ -614,9 +614,15 @@ Scalar now does that on `/api/agent`:
     detect, and social-save persist through `updateEntity` /
     `updateContact`. CRM company and contact detail pages load through
     `getEntity` / `getContact` (contacts capped at 100, channel history
-    at 50). Instant `add a subject variant: following up` /
+    at 50).     Instant `add a subject variant: following up` /
     `create an opener variant: hey` skip TypeSafe and run
     `create_variant` under auto-mode.
+37. Contact-field enrich persist goes through `updateContact`. Instant
+    `log a linkedin message to Jane: thanks`, `mark Jane as awaiting
+    reply in Outbound`, and `extract contacts from acme.com` skip
+    TypeSafe and run `log_social_message` / `update_pipeline_entry` /
+    `extract_contact_details` under auto-mode. Paid extract still
+    meters at the ops layer.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

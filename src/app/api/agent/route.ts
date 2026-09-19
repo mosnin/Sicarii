@@ -947,7 +947,8 @@ export async function POST(req: Request) {
               instant?.tool === "log_outreach" ||
               instant?.tool === "sync_call" ||
               instant?.tool === "log_call" ||
-              instant?.tool === "save_email_context"
+              instant?.tool === "save_email_context" ||
+              instant?.tool === "log_social_message"
             ? searchCrm(userId, instant.query).catch(() => null)
           : instant?.tool === "add_to_pipeline" ||
               instant?.tool === "update_pipeline_entry" ||
@@ -1059,7 +1060,23 @@ export async function POST(req: Request) {
         syncCall: (logId) => syncContactCall(userId, logId),
         logCall: (input) => saveCall(userId, { ...input, direction: "OUTBOUND" }),
         updatePipelineEntry: (pipelineId, entryId, patch) =>
-          updatePipelineEntry(userId, pipelineId, entryId, { stage: patch.stage }),
+          updatePipelineEntry(userId, pipelineId, entryId, {
+            ...(patch.stage ? { stage: patch.stage } : {}),
+            ...(patch.conversationStatus ? { conversationStatus: patch.conversationStatus } : {}),
+          }),
+        saveSocialMessage: (input) =>
+          saveSocialMessage(userId, {
+            contactId: input.contactId,
+            channel: requireNormalized(
+              input.channel,
+              normalizeSocialChannel,
+              "channel",
+              "linkedin, x, instagram, facebook, other",
+            ),
+            direction: "OUTBOUND",
+            body: input.body,
+          }),
+        extractSiteContacts: (url) => extractSiteContacts(userId, url),
         findPipelineEntry: (pipelineId, contactId) =>
           findPipelineEntryByContact(userId, pipelineId, contactId).catch(() => null),
         saveEmail: (input) =>

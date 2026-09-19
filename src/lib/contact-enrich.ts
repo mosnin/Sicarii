@@ -9,7 +9,7 @@
 // returning nothing over a wrong value.
 
 import { prisma } from "@/lib/prisma";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, updateContact } from "@/lib/crm-operations";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
@@ -276,12 +276,9 @@ export async function enrichContactField(
     throw new OpError(`Couldn't find a ${field} for this contact.`, 404);
   }
 
-  const updated = await prisma.contact.update({
-    where: { id: contactId },
-    data: {
-      [field]: value,
-      ...(contact.status === "NEW" ? { status: "ENRICHED" } : {}),
-    },
+  const updated = await updateContact(userId, contactId, {
+    [field]: value,
+    ...(contact.status === "NEW" ? { status: "ENRICHED" as const } : {}),
   });
 
   // Debit only on a hit (the not-found paths above throw before this point);
