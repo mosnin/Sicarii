@@ -57,6 +57,13 @@ exponential growth into a plateau.
 - **Jev decides, code acts, the generator stays dark.** A lookup or routed
   discover tool never waits on streamText. That is the 10x, not a hint in
   the system prompt. _(Card 0015)_
+- **Instant local routes skip TypeSafe on unambiguous CRM utterances.**
+  How-many is a count, not a list page guessed as a number. Deletes stay
+  off the instant path. _(Card 0015)_
+- **Scan before persist or leave.** CRM writes, Product Context, shares,
+  speech, API key names, and inbound voice go through `assertCleanArtifact`.
+  Live miss denies when configured; unconfigured local stays fail-open.
+  _(Card 0015)_
 - **Token-efficient memory = fresh context + recall.** Don't replay history; mint a
   fresh conversation per load and pull top-k vector matches on demand. _(Card 0005)_
 - **One relationship, one thread.** Conversation history is channel-labeled and

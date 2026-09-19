@@ -47,7 +47,7 @@
 | Doc | What it covers |
 |---|---|
 | [`OAUTH.md`](OAUTH.md) | The OAuth 2.1 authorization server at `/oauth/*`: endpoints, scopes, PKCE + rotation + replay rules, storage, env vars, how to register a client |
-| [`JEV.md`](JEV.md) | Jev System One: theory, install, contract, wired surfaces, security posture |
+| [`JEV.md`](JEV.md) | Jev System One finished install: theory, status, product map, leftover changelog, debts |
 | [`COMPANY_OS.md`](COMPANY_OS.md) | Company OS overview + warden packs (opencompany / openwork) |
 
 ## Audits

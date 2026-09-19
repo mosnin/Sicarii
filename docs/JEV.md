@@ -3,9 +3,41 @@
 Scalar's decision plane is Jev (TypeSafe System One). Generation is Qwen via
 OpenRouter. Voice in and out is OpenAI. Jev never writes prose.
 
-This file is the install guide, the theory, and the map of every surface that
-was wired. Read it when you add a gate, change a threshold, or debug why a
-write was allowed.
+This file is the finished install. The leftover loop on
+`cursor/jev-loop-core-bb09` is closed. Read this when you add a gate, change
+a threshold, debug why a write was allowed, or need to know what the product
+does without walking 65 ticks.
+
+---
+
+## Status
+
+**SHIPPED** on 2026-09-19. The long-running leftover loop is stopped. The
+goal is complete. No timer is armed to continue it.
+
+Jev decides. Code acts. Qwen stays dark on the instant CRM path. Writes,
+speech, Product Context, shares, and inbound voice are scanned before they
+leave the box or enter the CRM. Unconfigured local still fails open so a
+missing key does not brick the app. Production sets `JEV_REQUIRED=1` once a
+Jev key is present.
+
+What still needs a **live key**, not more leftover code:
+
+- One observed TypeSafe 70-500ms evaluate
+- Labeled CRM-turn `pnpm jevcal`, then pin `jev-1.13.0`
+- Confirm current OpenRouter Qwen ids and OpenAI Realtime session shape
+- `JEV_REQUIRED=1` on production after the key is in
+
+What was left off **on purpose** (speed or re-entry, not unfinished work):
+
+- Generate-before-stream (would delay first token)
+- `shouldKeepToolBlob` on generate (another TypeSafe hop before first token)
+- Deletes and `place_call` stay off the instant path
+- In-app `buy_credits` / `buy_plan` stay x402 HTTP
+- In-app `jev_evaluate` / `jev_decide` / `jev_loop` stay MCP-only so the
+  generator cannot re-enter decide
+- Unstructured compose stays on the generate path
+- Clerk / Stripe / Exa webhooks stay raw (not CRM ops)
 
 ---
 
@@ -275,7 +307,9 @@ Authenticated HTTP (`getAuthenticatedUser` on every route):
 
 MCP tools (all `gated`): `jev_evaluate`, `jev_decide`, `jev_triage`,
 `jev_verify_citations`, `jev_grade_page`, `jev_scan_malicious`, `jev_loop`,
-`score_fit`.
+`score_fit`, `count_entities`, `count_contacts`, `count_due_followups`,
+`count_segments`, `count_pipelines`, `count_pending_drafts`,
+`count_swarm_runs`.
 
 Write MCP tools run `runAutoModeThen(bucket, pendingArgs, "MCP <bucket>", ...)`.
 That includes `update_segment`, `delete_segment`, `remove_segment_member`,
@@ -316,7 +350,8 @@ Do not ask Qwen to classify.
 
 ## 11. What was built
 
-Two stacked branches off Scalar `main`:
+Six stacked branches off Scalar `main`. The last one is the finished
+product this file describes.
 
 1. **`cursor/jev-scalar-core-bb09` (PR #100).** Kernel, harness, decide,
    first wiring: agent loop, route-intent, fit-score, semantic-sort, voice,
@@ -343,43 +378,15 @@ Two stacked branches off Scalar `main`:
    hermes transcript prune, slim tool results, unique-record cards, instant
    enrich / tell-me-about, ICP score overlay on analyze.
 
-6. **`cursor/jev-loop-core-bb09`.** MCP payloads drop enrichment/transcript
-   blobs and pretty-print. Segment/pipeline deletes go through auto-mode.
-   Discover dedupe queries only the incoming names/domains. Segment build
-   excludes pipelined contacts in SQL. Instant follow-ups and credits skip
-   TypeSafe. List runners no longer bounce through `searchCrm`. Recall
-   overlaps decide. `jev_decide` takes `priorAssistant`. Routing skips
-   tool-guard questions on non-write utterances. Agent `search_web` /
-   `google_search` join auto-mode. Getters omit enrichment. Escalate uses
-   the grounded system prompt. Autopilot pause is gated. Segment/pipeline
-   reads are capped. Instant understands "follow up". HTTP decide takes
-   `priorAssistant`. Fast-path prints autopilot budget from the payload.
-   Outreach, activity, calls, and call prompts are scanned. Autopilot
-   proposals go through `gateMoney`. Recall is rate-limited at the ops
-   layer. Pipeline add/metrics and HTTP entity/contact reads are bounded.
-   Tool turns hide unused paid discovery. Contact getters skip channel
-   history. Notes, variants, and breakup edits are scanned. Instant
-   variant pick/stats skip TypeSafe. Instant Field reads (segments,
-   pipelines, drafts, swarm runs) skip TypeSafe. Paid discovery is
-   rate-limited at the ops layer. Segment/pipeline/autopilot text is
-   scanned. Inngest crons take at most 50 due jobs. HTTP Field
-   create/list uses the ops layer. Schedule and monitor queries are
-   scanned. Instant email/activity/call/social history skips TypeSafe.
-   The in-app agent can save emails and create variants under auto-mode.
-   Live Jev misses on identity, generated output, and log-phase wardens
-   deny. Unconfigured still fails open. Welcome discovery reuses the
-   targeted CRM dedupe instead of loading every entity. HTTP company and
-   contact lists go through the ops layer (500-row HTTP ceiling). The
-   in-app agent now has get/create segment and pipeline, enrich_contact,
-   find_socials, pause_autopilot, and place_call, matching MCP.
-   Instant create-segment / create-pipeline / pause-autopilot /
-   enrich-contact / find-socials skip TypeSafe. Generate clips huge
-   recent tool dumps. HTTP creates go through the ops layer. Instant
-   named Field gets and pipeline metrics skip TypeSafe. Agent Field
-   writes and metrics match MCP. HTTP PATCH/DELETE and bulk create go
-   through ops. Instant remember, provenance, and smart-segment skip
-   TypeSafe. Agent memory, provenance, smart-segment, and call log tools
-   match MCP.
+6. **`cursor/jev-loop-core-bb09` (PR #105, wrapped).** The leftover loop
+   that closed this file. Instant CRM (lookups, lists, counts, creates,
+   field writes, outreach, Field, discover, score, triage, scan, grade,
+   structured citation verify) skips TypeSafe and skips the generator.
+   HTTP company/contact/Field paths go through the ops layer. Writes,
+   Product Context, shares, speech, API key names, and inbound voice are
+   scanned. Live TypeSafe misses on identity, scan, money, and writes
+   deny when configured. Unconfigured local stays fail-open. The
+   changelog of every leftover tick is section 16.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -407,14 +414,14 @@ Fixed in the same sweep:
   continues, unless `JEV_REQUIRED` is set).
 - `JEV_REQUIRED=1` is the production fail-closed flag. Doctor reports it.
 
-Still owed (documented):
+Still owed (documented in section 17):
 
 - Live TypeSafe observation (no key in this checkout).
 - Labeled CRM-turn jevcal, then pin `jev-1.13.0`.
 - Unconfigured identity, scan, money, and write gates still fail-open
   unless `JEV_REQUIRED=1`. Live evaluate misses on those surfaces now
   deny (including real-company filter, generated-output scan, and
-  log-phase wardens).
+  log-phase wardens). That fail-open is intentional for local.
 
 See `docs/engineering/jev-sweep-2026-09-19.md`.
 
@@ -476,6 +483,68 @@ Scalar now does that on `/api/agent`:
    `inventedCrm` is backup when keys are present.
 10. Instant `enrich Acme` resolves the record and runs enrich under auto-mode.
     Analyze turns overlay ICP fit when product context exists.
+
+The leftover ticks that grew this path are section 16.
+
+---
+
+## 15. Product as shipped
+
+This is the map to use. The 65-tick changelog is the audit trail, not the
+product.
+
+### Instant path (TypeSafe dark, generator dark)
+
+`classifyInstant` + `executeFastPath`. Writes still pass auto-mode.
+
+| Kind | Examples | Runner |
+|------|----------|--------|
+| Lookup / list | show Jane, list companies, open company Acme, emails/calls/social for Jane | `search_crm`, `list_*`, `get_*` |
+| Count | how many companies, follow-ups, segments, pipelines, drafts, swarm runs | `count_*` (real totals, not a page guessed as a number) |
+| Create | add company Acme (phone/size/tags/description/notes), add contact Jane (source/tags/website/location/socials/notes) | `create_entity`, `create_contact` |
+| Field write | set Jane title/email/linkedin, set Acme industry/website, mark Jane as contacted, deal score | `update_contact`, `update_entity` |
+| Outreach | I emailed Jane, add a note, log a 12 minute call, linkedin message | `log_outreach`, `add_activity`, `log_call`, `log_social_message` |
+| Field | add Jane to Outbound, move Jane to Engaging, rename pipeline, how many segments | `add_to_*`, `update_pipeline_entry`, `update_pipeline` |
+| Discover / enrich | find companies, enrich Acme, recent discoveries, extract contacts from acme.com | `find_companies`, `enrich_*`, `extract_contact_details` |
+| Jev tools | triage this, scan this artifact, grade this page, verify citations claim/quote, score Acme | `jev_*`, `score_fit` |
+| Plans | draft breakups, propose a 50 credit daily autopilot | `draft_breakups`, `propose_autopilot_plan` |
+
+Collision on website/location: contact-only retargets to the person;
+company-and-contact asks to qualify. `from LinkedIn` on create-contact is
+the lead source, not the company. Deletes stay off this path.
+
+### Grounded generate (Qwen only when a sentence is required)
+
+Fact card from unique CRM hits. Hermes-jev-compact transcript. Slim tool
+results. Local invented-name gate. Routed tool turns expose `READ_CORE`
+plus the picked tool. Memory embeddings run in `after()`.
+
+### Scan before persist or leave
+
+`assertCleanArtifact` / `scanMalicious` on CRM writes, notes, variants,
+breakup edits, Product Context, share copies, voice speak, API key names,
+and inbound AgentPhone transcripts. `gateMoney` on spend proposals.
+
+### Live miss vs unconfigured
+
+Configured + live evaluate miss on identity, scan, money, writes, workspace
+policy, share, Product Context, speech, key names, and inbound voice:
+**deny**. Unconfigured: **fail-open**. `JEV_REQUIRED=1` is the production
+fail-closed flag.
+
+### Ops bounds
+
+HTTP company/contact lists: page 500, ceiling 500. Default list limit 50,
+max 200. Exports cap 10_000. Geo map cap 2_000. Crons take 50 due jobs.
+Recall is rate-limited. MCP `ok()` drops enrichment/transcript blobs.
+
+---
+
+## 16. Loop changelog
+
+Items 11-65 are the leftover weave that closed this product. Item numbers
+match the loop ticks so an older PR comment still lands.
+
 11. `list companies` / `list contacts` hit the list tables (no enrichment
     blob, no contact join on companies). `who needs a follow-up` and
     `how many credits do I have` are instant too.
@@ -765,11 +834,29 @@ still needs its provider keys. Write tools still pass auto-mode.
 
 ---
 
-## 15. Debts owed to reality
+## 17. Closed, leftover, owed
 
-- Live `TYPESAFE_API_KEY` and one observed 70-500ms route-intent.
-- `pnpm jevcal` on **labeled CRM turns** (not only fixtures); then pin
-  `jev-1.13.0`.
-- Confirm OpenRouter Qwen model ids against the current catalog.
-- Confirm OpenAI Realtime session shape against a live key.
-- Set `JEV_REQUIRED=1` on production once a Jev key is present.
+The leftover loop is closed. Do not arm it again unless a founder asks.
+
+**Closed in code (this file, HEAD of `cursor/jev-loop-core-bb09`):**
+instant CRM path, grounded generate, scan-before-persist on the privileged
+surfaces, ops-layer HTTP for company/contact/Field, live-miss deny when
+configured, fail-open when unconfigured.
+
+**Intentional leftovers** (do not treat as unfinished ticks):
+
+- Generate-before-stream and `shouldKeepToolBlob` on generate (first token)
+- Deletes and `place_call` off instant
+- In-app x402 buy tools and `jev_evaluate` / `jev_decide` / `jev_loop`
+- Unstructured compose
+- Non-CRM HTTP (intent-monitors, keys themselves, research-schedules,
+  settings besides Product Context, Clerk/Stripe/Exa webhooks)
+
+**Owed to a live key** (founder + env, not more leftover code):
+
+- Live `TYPESAFE_API_KEY` and one observed 70-500ms route-intent
+- `pnpm jevcal` on labeled CRM turns (not only fixtures); then pin
+  `jev-1.13.0`
+- Confirm OpenRouter Qwen model ids against the current catalog
+- Confirm OpenAI Realtime session shape against a live key
+- Set `JEV_REQUIRED=1` on production once a Jev key is present

@@ -1,10 +1,12 @@
 # Gate Card 0015: Jev as Scalar's System One
 
-Date: 2026-09-19 · Verdict: **SHIP** (build-verified) · Led by: engineer → vision
+Date: 2026-09-19 · Verdict: **SHIP** (loop wrapped) · Led by: engineer → vision
 
 > Founder: implement Jev into Scalar so decisions are an order of magnitude
 > faster; power Scalar mostly by Jev + Qwen (OpenRouter) and voice by OpenAI.
 > Rungs: ASSERTED(0)·REASONED(1)·TESTED(2)·OBSERVED(3).
+>
+> The leftover loop is closed. `docs/JEV.md` is the finished install.
 
 ## The gates
 
@@ -36,8 +38,14 @@ Date: 2026-09-19 · Verdict: **SHIP** (build-verified) · Led by: engineer → v
 
 ## Debts owed to reality
 
+These need a live key. They are not leftover code ticks.
+
 - Live `TYPESAFE_API_KEY` + one observed 70-500ms route-intent.
 - Sweep `src/lib/jev/policy.ts` on labeled CRM turns (`pnpm jevcal`); pin `jev-1.13.0`.
 - Confirm OpenRouter Qwen model ids against the current catalog.
 - Confirm OpenAI Realtime session shape against a live key.
 - Set `JEV_REQUIRED=1` on production once a Jev key is present.
+
+Generate-before-stream, unconfigured fail-open, deletes off instant, and
+in-app `jev_evaluate` / `jev_decide` / `jev_loop` staying MCP-only are
+intentional. See `docs/JEV.md` section 17.
