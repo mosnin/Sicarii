@@ -1296,12 +1296,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Stamp lat/lng on one owned entity after a Nominatim (or cache) hit. */
 export async function applyEntityGeocode(userId: string, entityId: string, location: string) {
-  const { result } = await geocodeCached(location);
-  return updateEntity(userId, entityId, {
+  const { result, cached } = await geocodeCached(location);
+  await updateEntity(userId, entityId, {
     lat: result?.lat ?? null,
     lng: result?.lng ?? null,
     geocodedAt: new Date(),
   });
+  return { cached, geocoded: Boolean(result) };
 }
 
 /** Backfill coordinates for entities that have a location but no lat/lng. */
@@ -1429,4 +1430,28 @@ export async function deleteImportedBySource(userId: string, sources: unknown) {
     deletedEntities: entities.count,
     sources: clean,
   };
+}
+
+/** Exact email/domain match for the Discover "already in CRM?" check. */
+export async function matchDiscover(
+  userId: string,
+  input: { email?: string | null; domain?: string | null },
+) {
+  const email = input.email?.trim().toLowerCase() || null;
+  const domain = input.domain?.trim().toLowerCase() || null;
+  const [contact, entity] = await Promise.all([
+    email
+      ? prisma.contact.findFirst({
+          where: { userId, email: { equals: email, mode: "insensitive" } },
+          omit: { enrichment: true },
+        })
+      : Promise.resolve(null),
+    domain
+      ? prisma.entity.findFirst({
+          where: { userId, domain: { equals: domain, mode: "insensitive" } },
+          omit: { enrichment: true },
+        })
+      : Promise.resolve(null),
+  ]);
+  return { contact, entity };
 }

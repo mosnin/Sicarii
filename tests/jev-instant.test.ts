@@ -75,6 +75,15 @@ describe("classifyInstant", () => {
       query: "Jane",
       name: "ICP",
     });
+    expect(classifyInstant("I emailed Jane")).toMatchObject({
+      tool: "log_outreach",
+      query: "Jane",
+      channel: "email",
+    });
+    expect(classifyInstant("log that I called Jane")).toMatchObject({
+      tool: "log_outreach",
+      channel: "phone",
+    });
     expect(classifyInstant("show my pipelines")).toMatchObject({ tool: "list_pipelines" });
     expect(classifyInstant("show the Outbound pipeline")).toMatchObject({
       tool: "get_pipeline",

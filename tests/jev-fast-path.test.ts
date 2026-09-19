@@ -57,6 +57,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "update_contact", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "add_to_pipeline", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "add_to_segment", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "log_outreach", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });
@@ -271,6 +272,13 @@ describe("formatFastReply", () => {
         payload: { who: "Jane", name: "ICP", added: 0 },
       }),
     ).toBe("Jane is already in ICP.");
+    expect(
+      formatFastReply({
+        tool: "log_outreach",
+        query: "Jane",
+        payload: { name: "Jane", channel: "email" },
+      }),
+    ).toBe("Logged email outreach to Jane.");
   });
 
   it("explains an empty CRM lookup", () => {

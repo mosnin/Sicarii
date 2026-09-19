@@ -50,6 +50,7 @@ export const FAST_PATH_TOOLS = new Set([
   "update_contact",
   "add_to_pipeline",
   "add_to_segment",
+  "log_outreach",
   "pipeline_metrics",
   "remember",
   "get_provenance",
@@ -455,6 +456,13 @@ export function formatFastReply(input: {
     return `Added ${who} to ${dest}.`;
   }
 
+  if (tool === "log_outreach") {
+    const r = payload as { name?: string | null; channel?: string | null; status?: string | null };
+    const who = r.name ?? query;
+    const channel = (r.channel ?? "outreach").toLowerCase();
+    return `Logged ${channel} outreach to ${who}.`;
+  }
+
   if (tool === "pipeline_metrics") {
     const r = payload as {
       name?: string;
@@ -570,6 +578,11 @@ export type FastPathRunners = {
   updateContact?: (id: string, patch: { status?: string }) => Promise<unknown>;
   addToPipeline?: (pipelineId: string, contactIds: string[]) => Promise<unknown>;
   addToSegment?: (segmentId: string, contactIds: string[]) => Promise<unknown>;
+  logOutreach?: (
+    contactId: string,
+    summary: string,
+    channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other",
+  ) => Promise<unknown>;
   pipelineMetrics?: (id: string) => Promise<unknown>;
   remember?: (content: string) => Promise<unknown>;
   getProvenance?: (recordType: "contact" | "entity", recordId: string) => Promise<unknown>;
@@ -888,6 +901,31 @@ async function runTool(
           : { error: "Pipeline add is unavailable." };
         if (result && typeof result === "object" && !("error" in result)) {
           return { ...(result as object), who, name: dest };
+        }
+        return result;
+      });
+    }
+    case "log_outreach": {
+      const found =
+        prefetch && typeof prefetch === "object" && prefetch !== null && !("crm" in prefetch)
+          ? prefetch
+          : prefetch && typeof prefetch === "object" && prefetch !== null && "crm" in prefetch
+            ? (prefetch as { crm: unknown }).crm
+            : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const contactId = contact.id;
+      const channel = instant?.channel ?? "other";
+      const summary = `Logged ${channel} outreach from chat.`;
+      return write("log_outreach", { contactId, summary, channel }, async () => {
+        const result = runners.logOutreach
+          ? await runners.logOutreach(contactId, summary, channel)
+          : { error: "Outreach log is unavailable." };
+        if (result && typeof result === "object" && !("error" in result)) {
+          return { ...(result as object), name: contact.name ?? query, channel };
         }
         return result;
       });

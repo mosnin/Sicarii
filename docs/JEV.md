@@ -575,6 +575,10 @@ Scalar now does that on `/api/agent`:
     `deleteImportedBySource`). Instant `add Jane to the Outbound pipeline`
     / `put Jane in the ICP segment` skip TypeSafe and run `add_to_pipeline`
     / `add_to_segment` under auto-mode. Agent and MCP gain `add_to_segment`.
+30. Bulk-create geocode writes through `applyEntityGeocode`. Discover match
+    goes through `matchDiscover` and omits enrichment blobs. Instant
+    `I emailed Jane` / `log that I called Jane` skip TypeSafe and run
+    `log_outreach` under auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

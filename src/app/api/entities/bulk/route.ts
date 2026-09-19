@@ -3,10 +3,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { geocodeCached } from "@/lib/geocode";
 import { checkCreationBudget } from "@/lib/creation-guard";
 import { filterRealCompanies } from "@/lib/jev";
-import { createEntity, OpError } from "@/lib/crm-operations";
+import { applyEntityGeocode, createEntity, OpError } from "@/lib/crm-operations";
 
 export const maxDuration = 60;
 
@@ -118,13 +117,7 @@ export async function POST(req: NextRequest) {
       after(async () => {
         for (const e of toGeocode.slice(0, 40)) {
           try {
-            const { result, cached } = await geocodeCached(e.location);
-            await prisma.entity.update({
-              where: { id: e.id },
-              data: result
-                ? { lat: result.lat, lng: result.lng, geocodedAt: new Date() }
-                : { geocodedAt: new Date() },
-            });
+            const { cached } = await applyEntityGeocode(user.id, e.id, e.location);
             if (!cached) await sleep(1100);
           } catch {
             /* leave it for the map backfill loop */

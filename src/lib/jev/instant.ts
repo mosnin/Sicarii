@@ -15,6 +15,7 @@ export type InstantRoute = {
   company?: string;
   field?: "linkedin" | "email" | "phone";
   status?: "NEW" | "ENRICHED" | "CONTACTED" | "REPLIED" | "QUALIFIED" | "WON" | "LOST" | "ARCHIVED";
+  channel?: "email" | "linkedin" | "phone" | "x" | "instagram" | "facebook" | "other";
   detail?: boolean;
   source: "instant";
 };
@@ -29,6 +30,42 @@ const CONTACT_STATUS_WORDS: Record<string, NonNullable<InstantRoute["status"]>> 
   lost: "LOST",
   archived: "ARCHIVED",
 };
+
+const OUTREACH_CHANNEL: Record<string, NonNullable<InstantRoute["channel"]>> = {
+  emailed: "email",
+  called: "phone",
+  texted: "other",
+  messaged: "other",
+  dm: "other",
+  dms: "other",
+  pinged: "other",
+  linkedin: "linkedin",
+  linkedined: "linkedin",
+};
+
+function parseLogOutreach(text: string): {
+  query: string;
+  channel: NonNullable<InstantRoute["channel"]>;
+} | null {
+  const direct = text.match(
+    /^(please\s+)?(i |just )?(emailed|called|texted|messaged|dms?|pinged|linkedin(?:ed)?)\s+(.+)$/i,
+  );
+  const logged = text.match(
+    /^(please\s+)?(log|record|note) (that i )?(emailed|called|texted|messaged|dms?|pinged|linkedin(?:ed)?|outreach to|a call with)\s+(.+)$/i,
+  );
+  const verb = (direct?.[3] ?? logged?.[4] ?? "").toLowerCase();
+  const rawWho = direct?.[4] ?? logged?.[5] ?? "";
+  const channel =
+    OUTREACH_CHANNEL[verb] ??
+    (verb.includes("call") ? "phone" : verb.includes("email") || verb.includes("outreach") ? "other" : null);
+  const query = rawWho
+    .replace(/\s+(about|regarding|re:|that)\b[\s\S]*$/i, "")
+    .replace(/\b(the|a|an|contact|person)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!channel || !query || query.length > 80) return null;
+  return { query, channel };
+}
 
 function parseAddToField(text: string): {
   query: string;
@@ -358,6 +395,15 @@ export function classifyInstant(
       tool: addToField.tool,
       query: addToField.query,
       name: addToField.name,
+      source: "instant",
+    };
+  }
+  const outreach = parseLogOutreach(text);
+  if (outreach && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text) && !COMPOSE.test(text)) {
+    return {
+      tool: "log_outreach",
+      query: outreach.query,
+      channel: outreach.channel,
       source: "instant",
     };
   }

@@ -919,7 +919,9 @@ export async function POST(req: Request) {
             ? listSegments(userId).catch(() => null)
           : instant?.tool === "get_entity"
             ? listEntities(userId, instant.query || undefined).catch(() => null)
-          : instant?.tool === "get_contact" || instant?.tool === "update_contact"
+          : instant?.tool === "get_contact" ||
+              instant?.tool === "update_contact" ||
+              instant?.tool === "log_outreach"
             ? searchCrm(userId, instant.query).catch(() => null)
           : instant?.tool === "add_to_pipeline"
             ? Promise.all([
@@ -1064,6 +1066,7 @@ export async function POST(req: Request) {
           }),
         addToPipeline: (pipelineId, contactIds) => addToPipeline(userId, pipelineId, { contactIds }),
         addToSegment: (segmentId, contactIds) => addToSegment(userId, segmentId, contactIds),
+        logOutreach: (contactId, summary, channel) => logOutreach(userId, { contactId, summary, channel }),
         pipelineMetrics: (id) => pipelineMetrics(userId, id),
         remember: async (content) => {
           const remembered = await storeMemory(userId, "message", content);
