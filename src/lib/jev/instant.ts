@@ -14,9 +14,32 @@ export type InstantRoute = {
   email?: string;
   company?: string;
   field?: "linkedin" | "email" | "phone";
+  status?: "NEW" | "ENRICHED" | "CONTACTED" | "REPLIED" | "QUALIFIED" | "WON" | "LOST" | "ARCHIVED";
   detail?: boolean;
   source: "instant";
 };
+
+const CONTACT_STATUS_WORDS: Record<string, NonNullable<InstantRoute["status"]>> = {
+  new: "NEW",
+  enriched: "ENRICHED",
+  contacted: "CONTACTED",
+  replied: "REPLIED",
+  qualified: "QUALIFIED",
+  won: "WON",
+  lost: "LOST",
+  archived: "ARCHIVED",
+};
+
+function parseStatusUpdate(text: string): { query: string; status: NonNullable<InstantRoute["status"]> } | null {
+  const m = text.match(
+    /^(please\s+)?(mark|set|move)\s+(.+?)\s+(as|to)\s+(new|enriched|contacted|replied|qualified|won|lost|archived)\b/i,
+  );
+  if (!m?.[3] || !m[5]) return null;
+  const status = CONTACT_STATUS_WORDS[m[5].toLowerCase()];
+  const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  if (!status || !query || query.length > 80) return null;
+  return { query, status };
+}
 
 const COMPOUND = /\b(and then|then |also |after that|as well as)\b/i;
 const COMPOSE =
@@ -300,6 +323,15 @@ export function classifyInstant(
     /^(please\s+)?(list|show|get|open|tell me about)\b/i.test(text)
   ) {
     return { tool: "get_pipeline", query: namedPipeline, name: namedPipeline, source: "instant" };
+  }
+  const statusUpdate = parseStatusUpdate(text);
+  if (statusUpdate && !COMPOUND.test(text) && !DESTRUCTIVE.test(text)) {
+    return {
+      tool: "update_contact",
+      query: statusUpdate.query,
+      status: statusUpdate.status,
+      source: "instant",
+    };
   }
   if (
     !COMPOUND.test(text) &&

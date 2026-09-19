@@ -563,6 +563,11 @@ Scalar now does that on `/api/agent`:
     `updateEntity` / `updateContact` so descriptions are scanned.
     Instant `open company Acme` / `show the Acme company` /
     `open contact Jane` skip TypeSafe and skip `streamText`.
+28. HTTP Field GET/DELETE and pipeline entries go through
+    `getSegment` / `deleteSegment` / `getPipeline` / `deletePipeline` /
+    `addToPipeline` / `updatePipelineEntry`. Instant `mark Jane as
+    contacted` / `set Jane to qualified` skip TypeSafe, resolve the
+    contact, and run `update_contact` under auto-mode.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

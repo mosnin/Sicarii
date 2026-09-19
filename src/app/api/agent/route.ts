@@ -909,7 +909,7 @@ export async function POST(req: Request) {
             ? listSegments(userId).catch(() => null)
           : instant?.tool === "get_entity"
             ? listEntities(userId, instant.query || undefined).catch(() => null)
-          : instant?.tool === "get_contact"
+          : instant?.tool === "get_contact" || instant?.tool === "update_contact"
             ? searchCrm(userId, instant.query).catch(() => null)
           : instant?.tool === "get_pipeline" || instant?.tool === "pipeline_metrics"
             ? listPipelines(userId).catch(() => null)
@@ -1029,6 +1029,19 @@ export async function POST(req: Request) {
         getEntity: (id) => getEntity(userId, id, { includeEnrichment: false }),
         getContact: (id) =>
           getContact(userId, id, { includeEnrichment: false, includeChannelHistory: false }),
+        updateContact: (id, patch) =>
+          updateContact(userId, id, {
+            status: patch.status as
+              | "NEW"
+              | "ENRICHED"
+              | "CONTACTED"
+              | "REPLIED"
+              | "QUALIFIED"
+              | "WON"
+              | "LOST"
+              | "ARCHIVED"
+              | undefined,
+          }),
         pipelineMetrics: (id) => pipelineMetrics(userId, id),
         remember: async (content) => {
           const remembered = await storeMemory(userId, "message", content);

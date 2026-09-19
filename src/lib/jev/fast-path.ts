@@ -47,6 +47,7 @@ export const FAST_PATH_TOOLS = new Set([
   "get_pipeline",
   "get_entity",
   "get_contact",
+  "update_contact",
   "pipeline_metrics",
   "remember",
   "get_provenance",
@@ -437,6 +438,13 @@ export function formatFastReply(input: {
     return `${who}${at}${extra ? ` (${extra})` : ""}.`;
   }
 
+  if (tool === "update_contact") {
+    const r = payload as { name?: string | null; status?: string | null };
+    const who = r.name ?? query;
+    const status = (r.status ?? "updated").toLowerCase();
+    return `Marked ${who} as ${status}.`;
+  }
+
   if (tool === "pipeline_metrics") {
     const r = payload as {
       name?: string;
@@ -549,6 +557,7 @@ export type FastPathRunners = {
   getPipeline?: (id: string) => Promise<unknown>;
   getEntity?: (id: string) => Promise<unknown>;
   getContact?: (id: string) => Promise<unknown>;
+  updateContact?: (id: string, patch: { status?: string }) => Promise<unknown>;
   pipelineMetrics?: (id: string) => Promise<unknown>;
   remember?: (content: string) => Promise<unknown>;
   getProvenance?: (recordType: "contact" | "entity", recordId: string) => Promise<unknown>;
@@ -800,6 +809,25 @@ async function runTool(
       return runners.getContact
         ? runners.getContact(contact.id)
         : { error: "Contact get is unavailable." };
+    }
+    case "update_contact": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      const contactId = contact.id;
+      const status = instant?.status;
+      if (!status) {
+        return { error: "Say which status to set (contacted, qualified, won, lost)." };
+      }
+      return write("update_contact", { id: contactId, status }, async () =>
+        runners.updateContact
+          ? runners.updateContact(contactId, { status })
+          : { error: "Contact update is unavailable." },
+      );
     }
     case "get_segment":
     case "get_pipeline":

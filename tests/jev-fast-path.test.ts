@@ -54,6 +54,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "get_usage", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_contact", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "update_contact", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });
@@ -247,6 +248,13 @@ describe("formatFastReply", () => {
         payload: { name: "Jane", title: "CFO", company: "Acme", email: "jane@acme.com" },
       }),
     ).toBe("Jane at Acme (CFO, jane@acme.com).");
+    expect(
+      formatFastReply({
+        tool: "update_contact",
+        query: "Jane",
+        payload: { name: "Jane", status: "CONTACTED" },
+      }),
+    ).toBe("Marked Jane as contacted.");
   });
 
   it("explains an empty CRM lookup", () => {

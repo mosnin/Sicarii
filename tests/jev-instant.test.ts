@@ -56,6 +56,15 @@ describe("classifyInstant", () => {
       tool: "get_contact",
       name: "Jane",
     });
+    expect(classifyInstant("mark Jane as contacted")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      status: "CONTACTED",
+    });
+    expect(classifyInstant("set Jane to qualified")).toMatchObject({
+      tool: "update_contact",
+      status: "QUALIFIED",
+    });
     expect(classifyInstant("show my pipelines")).toMatchObject({ tool: "list_pipelines" });
     expect(classifyInstant("show the Outbound pipeline")).toMatchObject({
       tool: "get_pipeline",
