@@ -521,13 +521,57 @@ describe("executeFastPath", () => {
         recall: async () => [],
         listPendingDrafts: async () => [],
         getAutopilotStatus: async () => ({}),
-        createEntity: async (name) => ({ name, domain: null }),
+        createEntity: async (name, domain, extra) => ({ name, domain: domain ?? null, ...extra }),
         createContact: async () => ({ name: "y" }),
         enrichEntity: async () => ({ name: "x" }),
       },
     });
     expect(result?.tool).toBe("create_entity");
     expect(result?.text).toContain("Added Acme");
+  });
+
+  it("creates a company with phone, size, and tags from an instant route", async () => {
+    let captured: {
+      name: string;
+      domain?: string;
+      extra?: { phone?: string; size?: string; tags?: string[] };
+    } | null = null;
+    const result = await executeFastPath({
+      message: "add a company called Acme size 50-200 phone 512-555-0100 tagged enterprise",
+      decision: { kind: "tool", tool: "create_entity", confidence: 0.94 },
+      instant: {
+        tool: "create_entity",
+        query: "Acme",
+        name: "Acme",
+        phone: "512-555-0100",
+        size: "50-200",
+        tags: ["enterprise"],
+        source: "instant",
+      },
+      runners: {
+        searchCrm: async () => ({ entities: [], contacts: [] }),
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async (name, domain, extra) => {
+          captured = { name, domain, extra };
+          return { name, domain: domain ?? null, ...extra };
+        },
+        createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
+      },
+    });
+    expect(result?.tool).toBe("create_entity");
+    expect(captured).toEqual({
+      name: "Acme",
+      domain: undefined,
+      extra: { phone: "512-555-0100", size: "50-200", tags: ["enterprise"] },
+    });
   });
 
   it("reuses a speculative CRM prefetch", async () => {

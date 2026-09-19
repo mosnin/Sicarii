@@ -722,24 +722,49 @@ function parseCreateEntity(text: string): {
   website?: string;
   industry?: string;
   location?: string;
+  phone?: string;
+  size?: string;
+  tags?: string[];
 } | null {
   if (!/\b(add|create|save|new)\b/i.test(text)) return null;
   if (!/\b(company|business|entity)\b/i.test(text)) return null;
   const domain = parseDomain(text);
   const website = text.match(/https?:\/\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
   const industry = text
-    .match(/\bindustry\s+["']?([^"',]+?)(?=\s+(?:located in|location|website|https?:)|["',]|$)/i)?.[1]
+    .match(
+      /\bindustry\s+["']?([^"',]+?)(?=\s+(?:located in|location|website|phone|size|tagged|tags|https?:)|["',]|$)/i,
+    )?.[1]
     ?.trim();
   const location = text
-    .match(/\b(?:located in|location)\s+["']?([^"',]+?)(?=\s+(?:industry|website|https?:)|["',]|$)/i)?.[1]
+    .match(
+      /\b(?:located in|location)\s+["']?([^"',]+?)(?=\s+(?:industry|website|phone|size|tagged|tags|https?:)|["',]|$)/i,
+    )?.[1]
     ?.trim();
+  const size = text
+    .match(
+      /\bsize\s+["']?([^"',]+?)(?=\s+(?:industry|located in|location|website|phone|tagged|tags|https?:)|["',]|$)/i,
+    )?.[1]
+    ?.trim();
+  const tagged = text
+    .match(
+      /\b(?:tagged|tags)\s+(?:as\s+)?["']?([^"']+?)(?=\s+(?:industry|located in|location|website|phone|size|https?:)|["']|$)/i,
+    )?.[1]
+    ?.trim();
+  const tags = tagged ? parseTagList(tagged) : null;
+  const phone =
+    text.match(/\bphone\s+["']?(\+?[\d][\d .\-()]{6,18}\d)/i)?.[1]?.trim() ??
+    text.match(/\b(\+?[\d][\d .\-()]{6,18}\d)\b/)?.[1]?.trim();
   const called = text.match(
     /\b(?:add|create|save|new)\b[\s\S]+?\b(?:company|business|entity)\b[\s\S]+?\b(?:called|named)\s+["']?([^"',.]+)["']?/i,
   );
   const stripDomain = (raw: string) =>
     raw
-      .replace(/\s+(?:industry|located in|location|website|https?:)\b[\s\S]*$/i, "")
+      .replace(
+        /\s+(?:industry|located in|location|website|https?:|size|phone|tagged|tags)\b[\s\S]*$/i,
+        "",
+      )
       .replace(/\b((?:[a-z0-9-]+\.)+[a-z]{2,})\b/i, "")
+      .replace(/\b\+?[\d][\d .\-()]{6,18}\d\b/, "")
       .replace(/[()]/g, "")
       .trim()
       .slice(0, 120);
@@ -747,6 +772,9 @@ function parseCreateEntity(text: string): {
     ...(website && website.length <= 500 ? { website } : {}),
     ...(industry && industry.length <= 80 ? { industry } : {}),
     ...(location && location.length <= 80 ? { location } : {}),
+    ...(phone && phone.length >= 5 && phone.length <= 50 ? { phone } : {}),
+    ...(size && size.length <= 40 ? { size } : {}),
+    ...(tags ? { tags } : {}),
   };
   if (called?.[1]) return { name: stripDomain(called[1]), domain, ...extra };
   const asCompany = text.match(
@@ -1484,6 +1512,9 @@ export function classifyInstant(
       website: entity.website,
       industry: entity.industry,
       location: entity.location,
+      phone: entity.phone,
+      size: entity.size,
+      tags: entity.tags,
       source: "instant",
     };
   }

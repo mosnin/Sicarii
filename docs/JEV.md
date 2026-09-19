@@ -694,6 +694,10 @@ Scalar now does that on `/api/agent`:
     discovery when a query is present, otherwise `other`. No credit
     cap means the utterance is not instant. Pause and status still
     win on those words.
+53. Instant `add a company called Acme size 50-200 phone 512-555-0100
+    tagged enterprise, inbound` keeps phone, size, and tags (MCP
+    parity). In-app `create_entity` accepts those fields. `tag company
+    Acme as enterprise` stays an update.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

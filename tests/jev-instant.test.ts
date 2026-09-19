@@ -467,6 +467,27 @@ describe("classifyInstant", () => {
       industry: "SaaS",
       location: "Austin",
     });
+    expect(
+      classifyInstant(
+        "add a company called Acme size 50-200 phone 512-555-0100 tagged enterprise, inbound",
+      ),
+    ).toMatchObject({
+      tool: "create_entity",
+      name: "Acme",
+      size: "50-200",
+      phone: "512-555-0100",
+      tags: ["enterprise", "inbound"],
+    });
+    expect(classifyInstant("add Acme as a company size 50-200")).toMatchObject({
+      tool: "create_entity",
+      name: "Acme",
+      size: "50-200",
+    });
+    expect(classifyInstant("tag company Acme as enterprise")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      tags: ["enterprise"],
+    });
   });
 
   it("parses a create-contact utterance", () => {

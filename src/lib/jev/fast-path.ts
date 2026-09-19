@@ -807,7 +807,14 @@ export type FastPathRunners = {
   createEntity: (
     name: string,
     domain?: string,
-    extra?: { website?: string; industry?: string; location?: string },
+    extra?: {
+      website?: string;
+      industry?: string;
+      location?: string;
+      phone?: string;
+      size?: string;
+      tags?: string[];
+    },
   ) => Promise<unknown>;
   createContact: (input: {
     name?: string;
@@ -1086,12 +1093,18 @@ async function runTool(
           ...(instant?.website ? { website: instant.website } : {}),
           ...(instant?.industry ? { industry: instant.industry } : {}),
           ...(instant?.location ? { location: instant.location } : {}),
+          ...(instant?.phone ? { phone: instant.phone } : {}),
+          ...(instant?.size ? { size: instant.size } : {}),
+          ...(instant?.tags?.length ? { tags: instant.tags } : {}),
         },
         () =>
           runners.createEntity(instant?.name ?? query, instant?.domain, {
             ...(instant?.website ? { website: instant.website } : {}),
             ...(instant?.industry ? { industry: instant.industry } : {}),
             ...(instant?.location ? { location: instant.location } : {}),
+            ...(instant?.phone ? { phone: instant.phone } : {}),
+            ...(instant?.size ? { size: instant.size } : {}),
+            ...(instant?.tags?.length ? { tags: instant.tags } : {}),
           }),
       );
     case "create_contact":

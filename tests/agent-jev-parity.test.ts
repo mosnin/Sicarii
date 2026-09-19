@@ -106,5 +106,8 @@ describe("agent Jev parity", () => {
     expect(source).toMatch(/update_contact:[\s\S]*source: z\.string\(\)/);
     expect(source).toMatch(/create_contact:[\s\S]*website: z\.string\(\)/);
     expect(source).toMatch(/create_contact:[\s\S]*tags: z\.array/);
+    expect(source).toMatch(/create_entity:[\s\S]*phone: z\.string\(\)/);
+    expect(source).toMatch(/create_entity:[\s\S]*size: z\.string\(\)/);
+    expect(source).toMatch(/create_entity:[\s\S]*tags: z\.array/);
   });
 });
