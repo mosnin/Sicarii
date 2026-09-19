@@ -189,7 +189,13 @@ describe("isWriteTool", () => {
     expect(isWriteTool("build_smart_segment")).toBe(true);
     expect(isWriteTool("search_web")).toBe(true);
     expect(isWriteTool("search_crm")).toBe(false);
+    expect(isWriteTool("extract_contact_details")).toBe(true);
+    expect(isWriteTool("find_socials")).toBe(true);
+    expect(isWriteTool("contact_extract")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("search_web")).toBe(true);
     expect(AUTO_MODE_TOOLS.has("google_search")).toBe(true);
+    for (const tool of AUTO_MODE_TOOLS) {
+      expect(isWriteTool(tool), tool).toBe(true);
+    }
   });
 });

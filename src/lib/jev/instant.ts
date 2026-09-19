@@ -559,29 +559,48 @@ function parseDomain(text: string): string | undefined {
   return hit;
 }
 
-function parseCreateEntity(text: string): { name: string; domain?: string } | null {
+function parseCreateEntity(text: string): {
+  name: string;
+  domain?: string;
+  website?: string;
+  industry?: string;
+  location?: string;
+} | null {
   if (!/\b(add|create|save|new)\b/i.test(text)) return null;
   if (!/\b(company|business|entity)\b/i.test(text)) return null;
   const domain = parseDomain(text);
+  const website = text.match(/https?:\/\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
+  const industry = text
+    .match(/\bindustry\s+["']?([^"',]+?)(?=\s+(?:located in|location|website|https?:)|["',]|$)/i)?.[1]
+    ?.trim();
+  const location = text
+    .match(/\b(?:located in|location)\s+["']?([^"',]+?)(?=\s+(?:industry|website|https?:)|["',]|$)/i)?.[1]
+    ?.trim();
   const called = text.match(
     /\b(?:add|create|save|new)\b[\s\S]+?\b(?:company|business|entity)\b[\s\S]+?\b(?:called|named)\s+["']?([^"',.]+)["']?/i,
   );
   const stripDomain = (raw: string) =>
     raw
+      .replace(/\s+(?:industry|located in|location|website|https?:)\b[\s\S]*$/i, "")
       .replace(/\b((?:[a-z0-9-]+\.)+[a-z]{2,})\b/i, "")
       .replace(/[()]/g, "")
       .trim()
       .slice(0, 120);
-  if (called?.[1]) return { name: stripDomain(called[1]), domain };
+  const extra = {
+    ...(website && website.length <= 500 ? { website } : {}),
+    ...(industry && industry.length <= 80 ? { industry } : {}),
+    ...(location && location.length <= 80 ? { location } : {}),
+  };
+  if (called?.[1]) return { name: stripDomain(called[1]), domain, ...extra };
   const asCompany = text.match(
     /\b(?:add|create|save)\s+["']?([^"',]+?)["']?\s+as\s+an?\s+(?:company|business|entity)\b/i,
   );
-  if (asCompany?.[1]) return { name: stripDomain(asCompany[1]), domain };
+  if (asCompany?.[1]) return { name: stripDomain(asCompany[1]), domain, ...extra };
   const companyX = text.match(
     /\b(?:add|create|save|new)\s+an?\s+(?:company|business|entity)\s+(?:called|named\s+)?["']?([^"',.]+)["']?/i,
   );
   if (companyX?.[1] && !/^(called|named|in|for|with|to)$/i.test(companyX[1].trim())) {
-    return { name: stripDomain(companyX[1].replace(/^(called|named)\s+/i, "")), domain };
+    return { name: stripDomain(companyX[1].replace(/^(called|named)\s+/i, "")), domain, ...extra };
   }
   return null;
 }
@@ -590,6 +609,9 @@ function parseCreateContact(text: string): {
   name?: string;
   email?: string;
   company?: string;
+  title?: string;
+  phone?: string;
+  linkedin?: string;
 } | null {
   if (!/\b(add|create|save|new)\b/i.test(text)) return null;
   if (!/\b(contact|person)\b/i.test(text)) return null;
@@ -605,10 +627,18 @@ function parseCreateContact(text: string): {
   );
   const name = (named?.[1] ?? addName?.[1])?.trim();
   if (!name && !email) return null;
+  const title =
+    text.match(/\btitle\s+["']?([^"',]+?)(?=\s+(?:\d|https?:)|["',]|$)/i)?.[1]?.trim() ??
+    text.match(/\bas\s+(?!an?\s+(?:contact|person)\b)([A-Z][A-Za-z0-9&/]{1,40}(?:\s+[A-Z][A-Za-z0-9&/]{1,40}){0,3})\b/)?.[1]?.trim();
+  const phone = text.match(/\b(\+?[\d][\d .\-()]{6,18}\d)\b/)?.[1]?.trim();
+  const linkedin = text.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s]+/i)?.[0]?.replace(/[.,)]+$/, "");
   return {
     name,
     email,
     company: atCo?.[1]?.replace(/[.,]+$/, "").trim(),
+    ...(title && title.length <= 80 ? { title } : {}),
+    ...(phone && phone.length >= 5 && phone.length <= 50 ? { phone } : {}),
+    ...(linkedin && linkedin.length <= 500 ? { linkedin } : {}),
   };
 }
 
@@ -1203,6 +1233,9 @@ export function classifyInstant(
       name: contact.name,
       email: contact.email,
       company: contact.company,
+      title: contact.title,
+      phone: contact.phone,
+      linkedin: contact.linkedin,
       source: "instant",
     };
   }
@@ -1214,6 +1247,9 @@ export function classifyInstant(
       query: entity.name,
       name: entity.name,
       domain: entity.domain,
+      website: entity.website,
+      industry: entity.industry,
+      location: entity.location,
       source: "instant",
     };
   }

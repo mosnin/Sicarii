@@ -387,6 +387,14 @@ describe("classifyInstant", () => {
       name: "Acme",
       domain: "acme.com",
     });
+    expect(
+      classifyInstant("add a company called Acme industry SaaS located in Austin"),
+    ).toMatchObject({
+      tool: "create_entity",
+      name: "Acme",
+      industry: "SaaS",
+      location: "Austin",
+    });
   });
 
   it("parses a create-contact utterance", () => {
@@ -395,6 +403,16 @@ describe("classifyInstant", () => {
       name: "Jane Doe",
       email: "jane@acme.com",
       company: "Acme",
+    });
+    expect(
+      classifyInstant("add contact Jane Doe at Acme as CFO 512-555-0100 https://linkedin.com/in/jane"),
+    ).toMatchObject({
+      tool: "create_contact",
+      name: "Jane Doe",
+      company: "Acme",
+      title: "CFO",
+      phone: "512-555-0100",
+      linkedin: "https://linkedin.com/in/jane",
     });
   });
 

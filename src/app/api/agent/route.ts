@@ -360,6 +360,8 @@ export async function POST(req: Request) {
         facebook: z.string().optional(),
         instagram: z.string().optional(),
         twitter: z.string().optional(),
+        website: z.string().optional(),
+        location: z.string().optional(),
         source: z.string().optional(),
         notes: z.string().optional(),
         entityId: z.string().optional(),
@@ -1101,7 +1103,8 @@ export async function POST(req: Request) {
         recall: (query) => recallMemory(userId, query),
         listPendingDrafts: () => listPendingDrafts(userId, {}),
         getAutopilotStatus: () => getAutopilotStatus(userId),
-        createEntity: (name, domain) => createEntity(userId, { name, domain, source: "agent" }),
+        createEntity: (name, domain, extra) =>
+          createEntity(userId, { name, domain, ...extra, source: "agent" }),
         createContact: (input) => createContact(userId, { ...input, source: "agent" }),
         enrichEntity: (id) => enrichEntity(userId, id),
         updateEntity: (id, patch) => updateEntity(userId, id, patch),

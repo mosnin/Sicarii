@@ -90,6 +90,8 @@ export const WRITE_BUCKETS = new Set([
   "remember",
   "save_email_context",
   "contact_extract",
+  "extract_contact_details",
+  "find_socials",
   "create_segment",
   "build_segment",
   "build_smart_segment",

@@ -657,6 +657,11 @@ Scalar now does that on `/api/agent`:
     other MCP leftover fields. Instant `set Acme description to ...`,
     `set company Acme phone to ...`, `set contact Jane website to ...`,
     and `set Jane contact location to Austin` skip TypeSafe.
+46. Live TypeSafe misses on `extract_contact_details` and `find_socials`
+    now confirm (same as other paid writes). Instant create-contact
+    keeps title / phone / LinkedIn, and create-company keeps industry /
+    location / website. In-app `create_contact` accepts website and
+    location (MCP parity).
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

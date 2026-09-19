@@ -748,8 +748,19 @@ export type FastPathRunners = {
   recall: (query: string) => Promise<unknown>;
   listPendingDrafts: () => Promise<unknown>;
   getAutopilotStatus: () => Promise<unknown>;
-  createEntity: (name: string, domain?: string) => Promise<unknown>;
-  createContact: (input: { name?: string; email?: string; company?: string }) => Promise<unknown>;
+  createEntity: (
+    name: string,
+    domain?: string,
+    extra?: { website?: string; industry?: string; location?: string },
+  ) => Promise<unknown>;
+  createContact: (input: {
+    name?: string;
+    email?: string;
+    company?: string;
+    title?: string;
+    phone?: string;
+    linkedin?: string;
+  }) => Promise<unknown>;
   enrichEntity: (id: string) => Promise<unknown>;
   updateEntity?: (
     id: string,
@@ -1000,18 +1011,39 @@ async function runTool(
     case "create_entity":
       return write(
         "create_entity",
-        { name: instant?.name ?? query, domain: instant?.domain ?? null },
-        () => runners.createEntity(instant?.name ?? query, instant?.domain),
+        {
+          name: instant?.name ?? query,
+          domain: instant?.domain ?? null,
+          ...(instant?.website ? { website: instant.website } : {}),
+          ...(instant?.industry ? { industry: instant.industry } : {}),
+          ...(instant?.location ? { location: instant.location } : {}),
+        },
+        () =>
+          runners.createEntity(instant?.name ?? query, instant?.domain, {
+            ...(instant?.website ? { website: instant.website } : {}),
+            ...(instant?.industry ? { industry: instant.industry } : {}),
+            ...(instant?.location ? { location: instant.location } : {}),
+          }),
       );
     case "create_contact":
       return write(
         "create_contact",
-        { name: instant?.name ?? null, email: instant?.email ?? null, company: instant?.company ?? null },
+        {
+          name: instant?.name ?? null,
+          email: instant?.email ?? null,
+          company: instant?.company ?? null,
+          ...(instant?.title ? { title: instant.title } : {}),
+          ...(instant?.phone ? { phone: instant.phone } : {}),
+          ...(instant?.linkedin ? { linkedin: instant.linkedin } : {}),
+        },
         () =>
           runners.createContact({
             name: instant?.name,
             email: instant?.email,
             company: instant?.company,
+            title: instant?.title,
+            phone: instant?.phone,
+            linkedin: instant?.linkedin,
           }),
       );
     case "enrich_entity": {
