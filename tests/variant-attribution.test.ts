@@ -59,6 +59,17 @@ vi.mock("@/lib/variant-operations", () => ({
   assertVariantOwned: (...args: unknown[]) => assertVariantOwned(...args),
   attributeReply: (...args: unknown[]) => attributeReply(...args),
 }));
+vi.mock("@/lib/jev", () => ({
+  runWardens: async () => ({ allow: true, reasons: [], source: "fallback" }),
+  triageInbound: async () => ({
+    category: "other",
+    action: "wait",
+    severity: 1,
+    urgency: 0,
+    confidence: 0,
+    source: "fallback",
+  }),
+}));
 
 import { logOutreach, saveSocialMessage } from "@/lib/crm-operations";
 

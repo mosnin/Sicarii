@@ -14,6 +14,7 @@ and operate the whole thing over MCP.
   - `scalar-link-contacts` - link people to companies, dedupe, bulk-enrich.
   - `scalar-intent-monitors` - schedule recurring intent scans and deep research.
   - `scalar-mcp-agent` - drive Scalar's CRM from an external agent via MCP.
+  - `scalar-jev` - use Jev for routing, scoring, and tool gates. Qwen writes. OpenAI speaks.
 - MCP server: Scalar's remote Streamable HTTP server at
   `https://www.tryscalar.xyz/api/mcp/mcp`, declared in the plugin manifest. It
   starts automatically when the plugin is enabled and exposes Scalar's tools

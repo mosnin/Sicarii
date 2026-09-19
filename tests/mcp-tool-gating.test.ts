@@ -89,6 +89,10 @@ const mustBeGated = [
   "verify_entity",
   "detect_tech",
   "place_call",
+  "jev_evaluate",
+  "jev_decide",
+  "jev_triage",
+  "jev_verify_citations",
 ];
 
 describe("MCP route: write tools are rate-limited", () => {

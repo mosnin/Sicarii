@@ -16,6 +16,7 @@ import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
 import { getPeopleAtCompany, isExploriumConfigured } from "@/lib/explorium";
 import { recordProvenance, CONFIDENCE } from "@/lib/provenance";
 import { findVerifiedEmail, isEmailWaterfallConfigured } from "@/lib/enrich/email-waterfall";
+import { verifyIdentity } from "@/lib/jev";
 
 export type Field = "linkedin" | "email" | "phone";
 
@@ -242,6 +243,26 @@ export async function enrichContactField(
           if (person?.phone) { value = person.phone; via = "explorium"; }
         } catch (e) { console.warn("[enrich] explorium phone failed", e); providerError = true; }
       }
+    }
+  }
+
+  if (value) {
+    const identity = await verifyIdentity({
+      contactName: contact.name,
+      company: contact.company ?? contact.entity?.name,
+      domain:
+        toDomain(contact.website) ||
+        toDomain(contact.entity?.website) ||
+        toDomain(contact.entity?.domain) ||
+        null,
+      candidate: value,
+      field,
+    });
+    if (!identity.allow) {
+      throw new OpError(
+        `Jev blocked this ${field} candidate (identity: ${identity.reasons.join(", ")}). Prefer nothing over a wrong person.`,
+        422,
+      );
     }
   }
 

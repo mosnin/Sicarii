@@ -18,6 +18,7 @@
 import { prisma } from "@/lib/prisma";
 import { listDueFollowups, listContacts, searchCrm } from "@/lib/crm-operations";
 import { computePulse } from "@/lib/pulse";
+import { rankWithJev } from "@/lib/jev";
 
 export type VoiceIntentId = "followups" | "pulse" | "pipeline_hot" | "search" | "unknown";
 
@@ -87,7 +88,23 @@ async function speakFollowups(userId: string): Promise<string> {
   if (due.length === 0) {
     return "You have no follow-ups due right now. You're all caught up.";
   }
-  const names = due
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { productContext: true },
+  });
+  const rankedIds = user?.productContext
+    ? await rankWithJev(
+        due.map((c) => ({
+          id: c.id,
+          text: [c.name, c.company, c.email, c.status].filter(Boolean).join(" "),
+        })),
+        user.productContext,
+      )
+    : null;
+  const ordered = rankedIds
+    ? [...due].sort((a, b) => rankedIds.indexOf(a.id) - rankedIds.indexOf(b.id))
+    : due;
+  const names = ordered
     .slice(0, MAX_NAMED_ITEMS)
     .map((c) => c.name?.trim() || c.company?.trim() || c.email?.trim() || "an unnamed contact");
   const list = joinNames(names);
@@ -157,13 +174,16 @@ const OP_FAILED_SPEECH = "I couldn't pull that up right now. Please try again in
 export async function voiceIntent(
   userId: string,
   rawText: string,
+  preclassified?: { intent: VoiceIntentId; query?: string },
 ): Promise<{ speech: string; intent: VoiceIntentId }> {
   const text = typeof rawText === "string" ? rawText.trim().slice(0, 2000) : "";
   if (!text) {
     return { speech: NO_INPUT_SPEECH, intent: "unknown" };
   }
 
-  const { intent, query } = classifyVoiceIntent(text);
+  const classified = preclassified ?? classifyVoiceIntent(text);
+  const intent = classified.intent;
+  const query = classified.query;
   try {
     switch (intent) {
       case "followups":

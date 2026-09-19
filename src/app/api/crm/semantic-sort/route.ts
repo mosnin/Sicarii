@@ -4,6 +4,7 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isJevConfigured, rankWithJev } from "@/lib/jev";
 
 const MODEL = process.env.OPENAI_REFINER_MODEL ?? "gpt-5-mini";
 
@@ -20,13 +21,21 @@ export async function POST(req: NextRequest) {
     const user = await getAuthenticatedUser();
     const rate = await checkRateLimit(`semantic-sort:${user.id}`, 20, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: "Smart sort needs OPENAI_API_KEY." }, { status: 501 });
+    if (!isJevConfigured() && !process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: "Smart sort needs TYPESAFE_API_KEY or OPENAI_API_KEY." }, { status: 501 });
     }
 
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     const { kind, query, items } = parsed.data;
+
+    if (isJevConfigured()) {
+      const orderedIds = await rankWithJev(items, query);
+      if (orderedIds) return NextResponse.json({ orderedIds, source: "jev" });
+    }
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: "Smart sort needs TYPESAFE_API_KEY or OPENAI_API_KEY." }, { status: 501 });
+    }
 
     const { object } = await generateObject({
       model: openai(MODEL),

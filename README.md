@@ -2,8 +2,9 @@
 
 The CRM your agents run. Next.js 16 (App Router), React 19, TypeScript,
 Tailwind v4, Prisma on Supabase Postgres, Clerk auth, Stripe + x402 billing.
-Agents operate the CRM over MCP; deep context lives in `CLAUDE.md` and
-`docs/README.md`.
+Decisions are Jev (TypeSafe System One). Generation is Qwen via OpenRouter.
+Voice is OpenAI. Agents operate the CRM over MCP; deep context lives in
+`CLAUDE.md`, `docs/JEV.md`, and `docs/README.md`.
 
 ## Local setup
 

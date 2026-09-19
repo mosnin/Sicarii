@@ -20,6 +20,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma, type BreakupDraftStatus, type ContactStatus, type ConversationStatus } from "@prisma/client";
 import { OpError, logOutreach, clampListLimit } from "@/lib/crm-operations";
 import { ensureCredits, spendCredits } from "@/lib/credits";
+import { gateOutboundDraft } from "@/lib/jev";
 
 const MODEL = process.env.OPENAI_BREAKUP_MODEL ?? "gpt-5-mini";
 
@@ -226,6 +227,20 @@ Write a short, specific, non-generic breakup email (subject + body) grounded in 
     generatedAt: new Date().toISOString(),
   } satisfies Prisma.InputJsonValue;
 
+  const outbound = await gateOutboundDraft({
+    subject: draft.subject,
+    body: draft.body,
+    contact: { name: contact.name, company: contact.company },
+    history: historyText,
+    phase: "draft",
+  });
+  if (!outbound.allow) {
+    throw new OpError(
+      `Jev rejected this breakup draft (${outbound.reasons.join(", ")}). No credits spent.`,
+      422,
+    );
+  }
+
   const created = await prisma.breakupDraft.create({
     data: {
       userId,
@@ -359,6 +374,18 @@ export async function updateBreakupDraft(
 export async function approveBreakupDraft(userId: string, id: string) {
   const draft = await getOwnedDraft(userId, id);
   if (draft.status !== "PENDING") throw new OpError("This draft has already been decided", 409);
+
+  const outbound = await gateOutboundDraft({
+    subject: draft.subject,
+    body: draft.body,
+    phase: "send",
+  });
+  if (!outbound.allow) {
+    throw new OpError(
+      `Jev blocked sending this draft (${outbound.reasons.join(", ")}). Edit it or dismiss it.`,
+      409,
+    );
+  }
 
   // Owed to reality: no AgentMail send capability exists yet (see comment
   // above) - mark it ready and log the outreach honestly rather than

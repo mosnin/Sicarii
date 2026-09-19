@@ -7,6 +7,7 @@ import { z } from "zod";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import type { FoundCompany } from "@/lib/exa";
+import { deriveAnglesWithJev } from "@/lib/jev";
 
 export const MIN_ANGLES = 2;
 export const MAX_ANGLES = 6;
@@ -36,6 +37,13 @@ export function clampAngleCount(n?: number): number {
  *  response) - the caller (crm-operations) decides how to surface it. */
 export async function deriveAngles(goal: string, n?: number): Promise<string[]> {
   const count = clampAngleCount(n);
+  const trimmedGoalEarly = goal.trim();
+  if (trimmedGoalEarly) {
+    const jevAngles = await deriveAnglesWithJev(trimmedGoalEarly, count);
+    if (jevAngles && jevAngles.length >= MIN_ANGLES) {
+      return jevAngles.slice(0, count);
+    }
+  }
   if (!isAngleDerivationConfigured()) {
     throw new Error(
       "Angle derivation is not configured (OPENAI_API_KEY missing). Pass angles explicitly instead.",

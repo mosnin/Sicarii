@@ -25,6 +25,7 @@ import {
 
 export { OpError } from "@/lib/op-error";
 import { OpError } from "@/lib/op-error";
+import { runWardens, triageInbound } from "@/lib/jev";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -725,11 +726,30 @@ export async function saveSocialMessage(userId: string, input: SocialMessageInpu
   const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
   if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
 
+  if (input.direction === "OUTBOUND") {
+    const warden = await runWardens({
+      payload: input.body,
+      goal: `social ${input.channel} to ${contact.name ?? contact.id}`,
+      phase: "send",
+    });
+    if (!warden.allow) {
+      throw new OpError(`Jev blocked this outbound social message (${warden.reasons.join(", ")}).`, 422);
+    }
+  }
+
+  const inboundTriage =
+    input.direction === "INBOUND" ? await triageInbound(input.body) : null;
+  const inboundIsNoise =
+    inboundTriage?.source === "jev" &&
+    inboundTriage.action === "close" &&
+    inboundTriage.confidence >= 0.7;
+
   const recordsSend = input.direction === "OUTBOUND" && Boolean(input.variantId);
   if (recordsSend) await assertVariantOwned(userId, input.variantId!);
 
   const { contactId, variantId, ...rest } = input;
-  const becomesReplied = input.direction === "INBOUND" && contact.status === "CONTACTED";
+  const becomesReplied =
+    input.direction === "INBOUND" && contact.status === "CONTACTED" && !inboundIsNoise;
   const touch: Prisma.ContactUncheckedUpdateInput =
     input.direction === "OUTBOUND"
       ? {

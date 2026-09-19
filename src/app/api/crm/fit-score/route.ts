@@ -4,6 +4,7 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isJevConfigured, scoreFitWithJev } from "@/lib/jev";
 
 const MODEL = process.env.OPENAI_REFINER_MODEL ?? "gpt-5-mini";
 
@@ -19,8 +20,8 @@ export async function POST(req: NextRequest) {
     const user = await getAuthenticatedUser();
     const rate = await checkRateLimit(`fit-score:${user.id}`, 15, 60_000);
     if (!rate.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: "Fit scoring needs OPENAI_API_KEY." }, { status: 501 });
+    if (!isJevConfigured() && !process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: "Fit scoring needs TYPESAFE_API_KEY or OPENAI_API_KEY." }, { status: 501 });
     }
 
     const productContext = user.productContext?.trim();
@@ -34,6 +35,14 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     const { kind, items } = parsed.data;
+
+    if (isJevConfigured()) {
+      const scores = await scoreFitWithJev(items, productContext);
+      if (scores) return NextResponse.json({ scores, source: "jev" });
+    }
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: "Fit scoring needs TYPESAFE_API_KEY or OPENAI_API_KEY." }, { status: 501 });
+    }
 
     const { object } = await generateObject({
       model: openai(MODEL),

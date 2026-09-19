@@ -81,6 +81,10 @@ vi.mock("@ai-sdk/openai", () => ({
   openai: vi.fn(() => "mock-model"),
 }));
 
+vi.mock("@/lib/jev", () => ({
+  gateOutboundDraft: async () => ({ allow: true, reasons: [], source: "fallback" }),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { ensureCredits, spendCredits } from "@/lib/credits";
 import { generateObject } from "ai";

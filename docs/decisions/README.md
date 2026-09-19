@@ -48,6 +48,9 @@ exponential growth into a plateau.
 - **Gate every paid integration behind its key.** Synthoz/Tavily/OpenAI features
   build and run without keys (clear 5xx / no-op), so the app is never bricked by a
   missing secret. _(Cards 0003, 0005)_
+- **Jev decides, code routes, Qwen writes.** Classification, routing, scoring,
+  and tool gates are System One questions. Chat models do not pick tools or
+  invent confidence. _(Card 0015)_
 - **Token-efficient memory = fresh context + recall.** Don't replay history; mint a
   fresh conversation per load and pull top-k vector matches on demand. _(Card 0005)_
 - **One relationship, one thread.** Conversation history is channel-labeled and
@@ -78,6 +81,8 @@ exponential growth into a plateau.
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
+| Live Jev + Qwen turn | 0015 · Feasible | `TYPESAFE_API_KEY` + `OPENROUTER_API_KEY` + one observed agent/route-intent | founder + eng |
+| Jev threshold sweep | 0015 · Feasible | labeled CRM turns through `src/lib/jev/eval/validate.ts`; pin `jev-1.13.0` | eng |
 
 ## Kills & falsifieds (do not re-open)
 

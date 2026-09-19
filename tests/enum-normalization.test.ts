@@ -52,6 +52,17 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: (ops: Promise<unknown>[]) => Promise.all(ops),
   },
 }));
+vi.mock("@/lib/jev", () => ({
+  runWardens: async () => ({ allow: true, reasons: [], source: "fallback" }),
+  triageInbound: async () => ({
+    category: "other",
+    action: "wait",
+    severity: 1,
+    urgency: 0,
+    confidence: 0,
+    source: "fallback",
+  }),
+}));
 
 import { saveSocialMessage, listSocialMessages, addActivity } from "@/lib/crm-operations";
 import {
