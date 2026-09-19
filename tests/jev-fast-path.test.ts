@@ -56,6 +56,7 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "jev_triage", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "jev_scan_malicious", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "jev_grade_page", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "score_fit", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_contact", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "update_contact", confidence: 0.94 })).toBe(true);
@@ -375,6 +376,20 @@ describe("formatFastReply", () => {
         payload: { name: "Jane" },
       }),
     ).toBe("Logged a call with Jane.");
+    expect(
+      formatFastReply({
+        tool: "score_fit",
+        query: "Acme",
+        payload: { name: "Acme", score: 82, kind: "entity" },
+      }),
+    ).toBe("Acme scores 82/100 as a fit.");
+    expect(
+      formatFastReply({
+        tool: "score_fit",
+        query: "Acme",
+        payload: { error: "Add your Product Context first. Fit is scored against it." },
+      }),
+    ).toBe("Add your Product Context first. Fit is scored against it.");
   });
 
   it("explains an empty CRM lookup", () => {
@@ -518,5 +533,37 @@ describe("executeFastPath", () => {
     expect(listed).toBe(1);
     expect(result?.tool).toBe("list_entities");
     expect(result?.text).toContain("Acme");
+  });
+
+  it("scores a named CRM hit without generation", async () => {
+    const result = await executeFastPath({
+      message: "score Acme",
+      decision: { kind: "tool", tool: "score_fit", confidence: 0.94 },
+      instant: { tool: "score_fit", query: "Acme", source: "instant" },
+      prefetch: { entities: [{ id: "e1", name: "Acme", industry: "SaaS" }], contacts: [] },
+      runners: {
+        searchCrm: async () => {
+          throw new Error("prefetch should skip searchCrm");
+        },
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
+        enrichEntity: async () => ({ name: "x" }),
+        scoreCrmFit: async (found, query) => {
+          expect(query).toBe("Acme");
+          expect(found).toMatchObject({ entities: [{ name: "Acme" }] });
+          return { id: "e1", name: "Acme", kind: "entity", score: 82 };
+        },
+      },
+    });
+    expect(result?.tool).toBe("score_fit");
+    expect(result?.text).toBe("Acme scores 82/100 as a fit.");
   });
 });

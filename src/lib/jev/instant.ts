@@ -717,6 +717,21 @@ function parseCreateVariant(text: string): { kind: "SUBJECT" | "OPENER"; note: s
   return { kind, note };
 }
 
+function parseScoreFit(text: string): { query: string } | null {
+  if (/\bdeal(?:\s+|-)?score\b/i.test(text)) return null;
+  if (/\bas\s+(new|enriched|contacted|replied|qualified|won|lost|archived)\b/i.test(text)) return null;
+  if (/\b(this|the following)\b/i.test(text) && /\b(page|draft|artifact)\b/i.test(text)) return null;
+  const m = text.match(
+    /^(please\s+)?(?:how (?:good|strong) a fit (?:is|are)|(?:what(?:'s| is) the )?fit(?:[- ]score)?(?: for)?|score(?: the)?(?: fit(?: of| for)?)?)\s+(.+?)\s*$/i,
+  );
+  const query = (m?.[2] ?? "")
+    .replace(/\b(the|a|an|company|contact|person|fit|score)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!query || query.length > 80) return null;
+  return { query };
+}
+
 function parseJevTriage(text: string): { note: string } | null {
   const m = text.match(/^(please\s+)?triage (this|the following)(?: inbound)?[:\-]\s*(.+)$/i);
   const note = m?.[3]?.trim();
@@ -786,6 +801,10 @@ export function classifyInstant(
       note: createVariant.note,
       source: "instant",
     };
+  }
+  const scoreFit = parseScoreFit(text);
+  if (scoreFit && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return { tool: "score_fit", query: scoreFit.query, source: "instant" };
   }
   const jevTriage = parseJevTriage(text);
   if (jevTriage && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {

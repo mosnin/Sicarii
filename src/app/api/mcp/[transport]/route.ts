@@ -19,9 +19,11 @@ import {
   triageInbound,
   tryEvaluate,
   verifyCitations,
+  scoreFirstCrmFit,
   type Json,
   type QuestionMap,
 } from "@/lib/jev";
+import { prisma } from "@/lib/prisma";
 import {
   topUpHint,
   isX402Configured,
@@ -1368,6 +1370,23 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       async ({ goal, history }, extra) =>
         gated(extra, "jev_loop", 40, async () => evaluateLoop({ goal, history })),
+    );
+
+    server.tool(
+      "score_fit",
+      "Score how well a CRM company or contact fits the saved Product Context using Jev (0-100). Does not write CRM state.",
+      { query: z.string().max(80) },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ query }, extra) =>
+        gated(extra, "score_fit", 40, async () => {
+          const userId = userIdFrom(extra);
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { productContext: true },
+          });
+          const found = await searchCrm(userId, query);
+          return scoreFirstCrmFit(found, user?.productContext ?? "", query);
+        }),
     );
   },
   {

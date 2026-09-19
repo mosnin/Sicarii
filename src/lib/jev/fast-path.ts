@@ -76,6 +76,7 @@ export const FAST_PATH_TOOLS = new Set([
   "jev_triage",
   "jev_scan_malicious",
   "jev_grade_page",
+  "score_fit",
 ]);
 
 const READ_CORE = [
@@ -89,6 +90,7 @@ const READ_CORE = [
   "list_pipelines",
   "get_segment",
   "get_pipeline",
+  "score_fit",
 ] as const;
 
 const DISCOVER_CORE = [
@@ -453,6 +455,13 @@ export function formatFastReply(input: {
     return `Page score ${r.score}${r.grade ? ` (${r.grade})` : ""}.`;
   }
 
+  if (tool === "score_fit") {
+    const r = payload as { name?: string | null; score?: number; error?: string };
+    if (r.score == null) return r.error ?? "Jev could not score that fit.";
+    const who = r.name ?? query;
+    return `${who} scores ${r.score}/100 as a fit.`;
+  }
+
   if (tool === "save_email_context") {
     const r = payload as { name?: string | null; subject?: string | null };
     const who = r.name ?? query;
@@ -782,6 +791,7 @@ export type FastPathRunners = {
   triageInbound?: (text: string) => Promise<unknown>;
   scanMalicious?: (artifact: string, kind?: string) => Promise<unknown>;
   gradePage?: (page: string) => Promise<unknown>;
+  scoreCrmFit?: (found: unknown, query: string) => Promise<unknown>;
   verifyCitations?: (
     claims: Array<{ claim: string; quote: string; url?: string }>,
   ) => Promise<unknown>;
@@ -1127,6 +1137,12 @@ async function runTool(
       const text = instant?.note?.trim() || query;
       if (!text) return { error: "Say the page after a colon, like grade this page: ..." };
       return runners.gradePage ? runners.gradePage(text) : { error: "Jev could not grade that page." };
+    }
+    case "score_fit": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      if (!runners.scoreCrmFit) return { error: "Add your Product Context first. Fit is scored against it." };
+      return runners.scoreCrmFit(found, query);
     }
     case "list_variant_stats":
       return runners.listVariantStats ? runners.listVariantStats() : [];

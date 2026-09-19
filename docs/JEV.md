@@ -274,7 +274,8 @@ Authenticated HTTP (`getAuthenticatedUser` on every route):
 | GET | `/.well-known/company-os-app` | connector advert |
 
 MCP tools (all `gated`): `jev_evaluate`, `jev_decide`, `jev_triage`,
-`jev_verify_citations`, `jev_grade_page`, `jev_scan_malicious`, `jev_loop`.
+`jev_verify_citations`, `jev_grade_page`, `jev_scan_malicious`, `jev_loop`,
+`score_fit`.
 
 Write MCP tools run `runAutoModeThen(bucket, pendingArgs, "MCP <bucket>", ...)`.
 That includes `update_segment`, `delete_segment`, `remove_segment_member`,
@@ -662,6 +663,11 @@ Scalar now does that on `/api/agent`:
     keeps title / phone / LinkedIn, and create-company keeps industry /
     location / website. In-app `create_contact` accepts website and
     location (MCP parity).
+47. Instant `score Acme`, `how good a fit is Acme`, and `fit score for
+    Jane` skip TypeSafe and skip the generator. In-app and MCP
+    `score_fit` score the first CRM hit against Product Context via
+    Jev (0-100). Missing Product Context or a CRM miss returns the
+    reason instead of inventing a number.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

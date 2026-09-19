@@ -172,6 +172,18 @@ describe("classifyInstant", () => {
       tool: "jev_grade_page",
       note: "Scalar finds the right companies",
     });
+    expect(classifyInstant("score Acme")).toMatchObject({
+      tool: "score_fit",
+      query: "Acme",
+    });
+    expect(classifyInstant("how good a fit is Acme")).toMatchObject({
+      tool: "score_fit",
+      query: "Acme",
+    });
+    expect(classifyInstant("fit score for Jane")).toMatchObject({
+      tool: "score_fit",
+      query: "Jane",
+    });
     expect(classifyInstant("mark Jane as awaiting reply in Outbound")).toMatchObject({
       tool: "update_pipeline_entry",
       query: "Jane",

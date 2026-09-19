@@ -98,6 +98,7 @@ const mustBeGated = [
   "jev_grade_page",
   "jev_scan_malicious",
   "jev_loop",
+  "score_fit",
   "update_segment",
   "delete_segment",
   "remove_segment_member",

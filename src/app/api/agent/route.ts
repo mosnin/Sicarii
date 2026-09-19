@@ -29,6 +29,7 @@ import {
   quietAskDetermined,
   resolveGenerationModel,
   scoreFitWithJev,
+  scoreFirstCrmFit,
   shouldKeepMemory,
   superviseForeman,
   triageInbound,
@@ -861,6 +862,19 @@ export async function POST(req: Request) {
       }),
       execute: ({ claims }) => exec(() => verifyCitations(claims)),
     }),
+    score_fit: tool({
+      description:
+        "Score how well a CRM company or contact fits the saved Product Context using Jev (0-100). Does not write CRM state.",
+      inputSchema: z.object({ query: z.string().max(80) }),
+      execute: ({ query }) =>
+        exec(async () => {
+          if (!productContext?.trim()) {
+            return { error: "Add your Product Context first. Fit is scored against it." };
+          }
+          const found = await searchCrm(userId, query);
+          return scoreFirstCrmFit(found, productContext, query);
+        }),
+    }),
     remove_segment_member: tool({
       description: "Remove one contact from a segment. Keeps the contact and the segment.",
       inputSchema: z.object({
@@ -964,6 +978,7 @@ export async function POST(req: Request) {
     jev_scan_malicious: "Scan an artifact for hostile content.",
     jev_grade_page: "Grade a page or draft with Jev.",
     jev_verify_citations: "Verify claim/quote pairs with Jev.",
+    score_fit: "Score a company or contact against Product Context.",
     remove_segment_member: "Remove a contact from a segment.",
     remove_pipeline_entry: "Remove a contact from a pipeline.",
     update_pipeline_entry: "Update a pipeline entry's stage or score.",
@@ -1040,7 +1055,8 @@ export async function POST(req: Request) {
               instant?.tool === "find_socials" ||
               instant?.tool === "get_provenance" ||
               instant?.tool === "verify_entity" ||
-              instant?.tool === "detect_tech"
+              instant?.tool === "detect_tech" ||
+              instant?.tool === "score_fit"
             ? searchCrm(userId, instant.query).catch(() => null)
         : prefetchQuery !== null
           ? instant?.tool === "list_entities"
@@ -1239,6 +1255,10 @@ export async function POST(req: Request) {
               return Object.entries(scores).map(([id, score]) => ({ id, score }));
             }
           : undefined,
+        scoreCrmFit: (found, query) =>
+          productContext?.trim()
+            ? scoreFirstCrmFit(found, productContext, query)
+            : Promise.resolve({ error: "Add your Product Context first. Fit is scored against it." }),
       },
     });
     if (fast) {
