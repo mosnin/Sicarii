@@ -44,6 +44,18 @@ describe("classifyInstant", () => {
       tool: "get_segment",
       name: "Enterprise",
     });
+    expect(classifyInstant("open company Acme")).toMatchObject({
+      tool: "get_entity",
+      name: "Acme",
+    });
+    expect(classifyInstant("show the Acme company")).toMatchObject({
+      tool: "get_entity",
+      name: "Acme",
+    });
+    expect(classifyInstant("open contact Jane")).toMatchObject({
+      tool: "get_contact",
+      name: "Jane",
+    });
     expect(classifyInstant("show my pipelines")).toMatchObject({ tool: "list_pipelines" });
     expect(classifyInstant("show the Outbound pipeline")).toMatchObject({
       tool: "get_pipeline",

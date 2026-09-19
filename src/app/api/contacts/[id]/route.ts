@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
-import { OpError, updateContact, deleteContact } from "@/lib/crm-operations";
+import { OpError, deleteContact, getContact, updateContact } from "@/lib/crm-operations";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -35,13 +34,6 @@ const updateContactSchema = z.object({
   entityId: z.string().uuid().nullable().optional(),
 });
 
-// Load a contact and assert the authenticated user owns it.
-async function getOwnedContact(id: string, userId: string) {
-  const contact = await prisma.contact.findUnique({ where: { id } });
-  if (!contact || contact.userId !== userId) return null;
-  return contact;
-}
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -49,18 +41,15 @@ export async function GET(
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    const contact = await getOwnedContact(id, user.id);
-    if (!contact) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    const emails = await prisma.contactEmail.findMany({
-      where: { contactId: id },
-      orderBy: { sentAt: "desc" },
-      take: 50,
-    });
-    return NextResponse.json({ contact, emails });
+    const row = await getContact(user.id, id, { includeChannelHistory: true });
+    const { emails, socialMessages: _social, ...contact } = row as typeof row & {
+      emails?: unknown;
+      socialMessages?: unknown;
+    };
+    return NextResponse.json({ contact, emails: emails ?? [] });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("GET /api/contacts/[id]", e);
     return NextResponse.json({ error: "Failed to load contact" }, { status: 500 });
   }
@@ -73,10 +62,6 @@ export async function PATCH(
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    const existing = await getOwnedContact(id, user.id);
-    if (!existing) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
 
     const json = await req.json().catch(() => null);
     const parsed = updateContactSchema.safeParse(json);
@@ -87,15 +72,11 @@ export async function PATCH(
       );
     }
 
-    try {
-      const contact = await updateContact(user.id, id, parsed.data);
-      return NextResponse.json({ contact });
-    } catch (e) {
-      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
-      throw e;
-    }
+    const contact = await updateContact(user.id, id, parsed.data);
+    return NextResponse.json({ contact });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("PATCH /api/contacts/[id]", e);
     return NextResponse.json({ error: "Failed to update contact" }, { status: 500 });
   }
@@ -108,19 +89,11 @@ export async function DELETE(
   try {
     const user = await getAuthenticatedUser();
     const { id } = await params;
-    const existing = await getOwnedContact(id, user.id);
-    if (!existing) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-    try {
-      await deleteContact(user.id, id);
-      return NextResponse.json({ ok: true });
-    } catch (e) {
-      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
-      throw e;
-    }
+    await deleteContact(user.id, id);
+    return NextResponse.json({ ok: true });
   } catch (e) {
     if (e instanceof NextResponse) return e;
+    if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
     console.error("DELETE /api/contacts/[id]", e);
     return NextResponse.json({ error: "Failed to delete contact" }, { status: 500 });
   }

@@ -45,6 +45,8 @@ export const FAST_PATH_TOOLS = new Set([
   "find_socials",
   "get_segment",
   "get_pipeline",
+  "get_entity",
+  "get_contact",
   "pipeline_metrics",
   "remember",
   "get_provenance",
@@ -408,6 +410,33 @@ export function formatFastReply(input: {
     return `Pipeline ${r.name ?? query} has ${n} entr${n === 1 ? "y" : "ies"}.`;
   }
 
+  if (tool === "get_entity") {
+    const r = payload as {
+      name?: string;
+      domain?: string | null;
+      industry?: string | null;
+      location?: string | null;
+      _count?: { contacts?: number };
+      contacts?: unknown[];
+    };
+    const extra = [r.domain, r.industry, r.location].filter(Boolean).join(", ");
+    const n = r._count?.contacts ?? r.contacts?.length;
+    return `${r.name ?? query}${extra ? ` (${extra})` : ""}${n != null ? `. ${n} contact${n === 1 ? "" : "s"}.` : "."}`;
+  }
+
+  if (tool === "get_contact") {
+    const r = payload as {
+      name?: string | null;
+      email?: string | null;
+      title?: string | null;
+      company?: string | null;
+    };
+    const who = r.name ?? query;
+    const at = r.company ? ` at ${r.company}` : "";
+    const extra = [r.title, r.email].filter(Boolean).join(", ");
+    return `${who}${at}${extra ? ` (${extra})` : ""}.`;
+  }
+
   if (tool === "pipeline_metrics") {
     const r = payload as {
       name?: string;
@@ -518,6 +547,8 @@ export type FastPathRunners = {
   findSocials?: (contactId: string) => Promise<unknown>;
   getSegment?: (id: string) => Promise<unknown>;
   getPipeline?: (id: string) => Promise<unknown>;
+  getEntity?: (id: string) => Promise<unknown>;
+  getContact?: (id: string) => Promise<unknown>;
   pipelineMetrics?: (id: string) => Promise<unknown>;
   remember?: (content: string) => Promise<unknown>;
   getProvenance?: (recordType: "contact" | "entity", recordId: string) => Promise<unknown>;
@@ -742,6 +773,34 @@ async function runTool(
           ? runners.createPipeline(instant?.name ?? query)
           : { error: "Pipeline create is unavailable." },
       );
+    case "get_entity": {
+      const listed =
+        prefetch && typeof prefetch === "object"
+          ? prefetch
+          : await (runners.listEntities ? runners.listEntities(query || undefined) : []);
+      const rows = Array.isArray(listed)
+        ? listed
+        : ((listed as { entities?: unknown[] }).entities ?? []);
+      const hit = matchNamed(rows, instant?.name ?? query);
+      if (!hit?.id) {
+        return { error: `I did not find a company named "${query}".` };
+      }
+      return runners.getEntity
+        ? runners.getEntity(hit.id)
+        : { error: "Company get is unavailable." };
+    }
+    case "get_contact": {
+      const found =
+        prefetch && typeof prefetch === "object" ? prefetch : await runners.searchCrm(query);
+      const facts = factsFromSearch(found);
+      const contact = facts.find((f) => f.kind === "contact" && f.id);
+      if (!contact?.id) {
+        return { error: `I did not find a contact named "${query}" in the CRM.` };
+      }
+      return runners.getContact
+        ? runners.getContact(contact.id)
+        : { error: "Contact get is unavailable." };
+    }
     case "get_segment":
     case "get_pipeline":
     case "pipeline_metrics": {

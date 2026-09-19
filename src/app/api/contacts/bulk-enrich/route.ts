@@ -6,7 +6,7 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, updateContact } from "@/lib/crm-operations";
 import { spendCredits, hasCredits, type CreditAction } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
@@ -125,9 +125,9 @@ export async function POST(req: NextRequest) {
 
       const keys = Object.keys(update);
       if (keys.length > 0) {
-        await prisma.contact.update({
-          where: { id: c.id },
-          data: { ...update, ...(c.status === "NEW" ? { status: "ENRICHED" } : {}) },
+        await updateContact(user.id, c.id, {
+          ...update,
+          ...(c.status === "NEW" ? { status: "ENRICHED" as const } : {}),
         });
         enriched++;
         fieldsFilled += keys.length;

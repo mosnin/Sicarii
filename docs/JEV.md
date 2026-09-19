@@ -557,6 +557,12 @@ Scalar now does that on `/api/agent`:
     list` skip TypeSafe. Agent `get_usage`, `delete_entity`, and
     `delete_contact` match MCP. Deletes stay off the instant path and
     still pass auto-mode.
+27. HTTP company and contact GET/PATCH/DELETE by id go through
+    `getEntity` / `getContact` / update / delete (one ownership query,
+    no pre-fetch). Aspect enrich and bulk enrich persist through
+    `updateEntity` / `updateContact` so descriptions are scanned.
+    Instant `open company Acme` / `show the Acme company` /
+    `open contact Jane` skip TypeSafe and skip `streamText`.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

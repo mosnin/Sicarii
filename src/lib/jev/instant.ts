@@ -122,6 +122,26 @@ function parseCreateContact(text: string): {
   };
 }
 
+function parseNamedRecord(
+  text: string,
+  nouns: string,
+): string | null {
+  const called = text.match(
+    new RegExp(`\\b(?:${nouns})\\b\\s+(?:called|named)\\s+["']?([^"',.]{1,80})`, "i"),
+  );
+  if (called?.[1]?.trim()) return called[1].trim().slice(0, 120);
+  const openNoun = text.match(
+    new RegExp(`\\b(?:open|get|show)\\s+(?:the\\s+)?(?:${nouns})\\s+["']?([^"',.]{1,80})`, "i"),
+  );
+  if (openNoun?.[1]?.trim()) return openNoun[1].trim().slice(0, 120);
+  const theX = text.match(
+    new RegExp(`\\b(?:the|a|an)\\s+["']?([A-Z][^"']{0,80}?)["']?\\s+(?:${nouns})\\b`),
+  );
+  const name = theX?.[1]?.trim();
+  if (name && !/^(all|my|our)$/i.test(name)) return name.slice(0, 120);
+  return null;
+}
+
 function parseNamedField(text: string, noun: "segment" | "pipeline"): string | null {
   const called = text.match(
     new RegExp(`\\b${noun}\\b\\s+(?:called|named)\\s+["']?([^"',.]{1,80})`, "i"),
@@ -244,6 +264,24 @@ export function classifyInstant(
         .replace(/\s+/g, " ")
         .trim();
     return { tool: "pipeline_metrics", query: name, name: name || undefined, source: "instant" };
+  }
+  const namedCompany = parseNamedRecord(text, "company|entity|business");
+  if (
+    namedCompany &&
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    /^(please\s+)?(list|show|get|open)\b/i.test(text)
+  ) {
+    return { tool: "get_entity", query: namedCompany, name: namedCompany, source: "instant" };
+  }
+  const namedPerson = parseNamedRecord(text, "contact|person");
+  if (
+    namedPerson &&
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    /^(please\s+)?(list|show|get|open)\b/i.test(text)
+  ) {
+    return { tool: "get_contact", query: namedPerson, name: namedPerson, source: "instant" };
   }
   const namedSegment = parseNamedField(text, "segment");
   if (

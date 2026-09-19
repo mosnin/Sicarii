@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { enrichDomain, isExploriumConfigured } from "@/lib/explorium";
-import { OpError } from "@/lib/crm-operations";
+import { OpError, updateEntity } from "@/lib/crm-operations";
 import { spendCredits, hasCredits } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
@@ -62,7 +62,15 @@ export async function POST(req: NextRequest) {
           if (!entity.description && f.description) data.description = f.description;
           if (!entity.website && f.website) data.website = f.website;
         }
-        await prisma.entity.update({ where: { id: entity.id }, data });
+        await updateEntity(user.id, entity.id, {
+          status: "ENRICHED",
+          enrichment: { ...existing, firmographics: result.raw },
+          ...(typeof data.industry === "string" ? { industry: data.industry } : {}),
+          ...(typeof data.location === "string" ? { location: data.location } : {}),
+          ...(typeof data.phone === "string" ? { phone: data.phone } : {}),
+          ...(typeof data.description === "string" ? { description: data.description } : {}),
+          ...(typeof data.website === "string" ? { website: data.website } : {}),
+        });
         enriched++;
       } catch (e) {
         console.error(`[bulk-enrich] entity ${entity.id} failed`, e);

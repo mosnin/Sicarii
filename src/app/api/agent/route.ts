@@ -907,6 +907,10 @@ export async function POST(req: Request) {
             ? listPendingDrafts(userId, {}).catch(() => null)
           : instant?.tool === "get_segment"
             ? listSegments(userId).catch(() => null)
+          : instant?.tool === "get_entity"
+            ? listEntities(userId, instant.query || undefined).catch(() => null)
+          : instant?.tool === "get_contact"
+            ? searchCrm(userId, instant.query).catch(() => null)
           : instant?.tool === "get_pipeline" || instant?.tool === "pipeline_metrics"
             ? listPipelines(userId).catch(() => null)
           : instant?.tool === "pause_autopilot"
@@ -1022,6 +1026,9 @@ export async function POST(req: Request) {
         findSocials: (contactId) => findContactSocials(userId, contactId),
         getSegment: (id) => getSegment(userId, id),
         getPipeline: (id) => getPipeline(userId, id),
+        getEntity: (id) => getEntity(userId, id, { includeEnrichment: false }),
+        getContact: (id) =>
+          getContact(userId, id, { includeEnrichment: false, includeChannelHistory: false }),
         pipelineMetrics: (id) => pipelineMetrics(userId, id),
         remember: async (content) => {
           const remembered = await storeMemory(userId, "message", content);

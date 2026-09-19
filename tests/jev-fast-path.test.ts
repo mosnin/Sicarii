@@ -52,6 +52,8 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "tool", tool: "verify_entity", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "detect_tech", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "get_usage", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "get_entity", confidence: 0.94 })).toBe(true);
+    expect(canSkipGeneration({ kind: "tool", tool: "get_contact", confidence: 0.94 })).toBe(true);
     expect(canSkipGeneration({ kind: "tool", tool: "delete_entity", confidence: 0.94 })).toBe(false);
   });
 });
@@ -231,6 +233,20 @@ describe("formatFastReply", () => {
         payload: { creditsRemaining: 80, plan: "starter", actionCosts: { enrich: 8, find_companies: 12 } },
       }),
     ).toContain("Costs: enrich 8");
+    expect(
+      formatFastReply({
+        tool: "get_entity",
+        query: "Acme",
+        payload: { name: "Acme", domain: "acme.com", _count: { contacts: 2 } },
+      }),
+    ).toBe("Acme (acme.com). 2 contacts.");
+    expect(
+      formatFastReply({
+        tool: "get_contact",
+        query: "Jane",
+        payload: { name: "Jane", title: "CFO", company: "Acme", email: "jane@acme.com" },
+      }),
+    ).toBe("Jane at Acme (CFO, jane@acme.com).");
   });
 
   it("explains an empty CRM lookup", () => {
