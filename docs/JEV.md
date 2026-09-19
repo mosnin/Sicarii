@@ -672,6 +672,11 @@ Scalar now does that on `/api/agent`:
     `mark company Acme as archived` skip TypeSafe and run
     `update_entity` under auto-mode. Unqualified `mark Jane as
     contacted` stays a contact write.
+49. Instant `set Jane source to linkedin`, `tag Jane as ICP, inbound`,
+    and `tag company Acme as enterprise` skip TypeSafe. In-app
+    `update_contact` accepts source and tags, `create_contact` accepts
+    tags, and `update_entity` accepts tags (MCP parity). Provenance
+    `source of` stays a read.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

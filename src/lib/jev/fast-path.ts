@@ -601,8 +601,12 @@ export function formatFastReply(input: {
       website?: string | null;
       location?: string | null;
       notes?: string | null;
+      source?: string | null;
+      tags?: string[] | null;
     };
     const who = r.name ?? query;
+    if (r.source && !r.status) return `Set ${who}'s source to ${r.source}.`;
+    if (r.tags && r.tags.length > 0 && !r.status) return `Tagged ${who} as ${r.tags.join(", ")}.`;
     if (r.title && !r.status) return `Set ${who}'s title to ${r.title}.`;
     if (r.email && !r.status) return `Set ${who}'s email to ${r.email}.`;
     if (r.phone && !r.status) return `Set ${who}'s phone to ${r.phone}.`;
@@ -633,8 +637,12 @@ export function formatFastReply(input: {
       phone?: string | null;
       size?: string | null;
       status?: string | null;
+      tags?: string[] | null;
     };
     const who = r.name ?? query;
+    if (r.tags && r.tags.length > 0 && !r.industry && !r.location && !r.domain && !r.website && !r.description && !r.phone && !r.size && !r.notes && !r.status) {
+      return `Tagged ${who} as ${r.tags.join(", ")}.`;
+    }
     if (r.status && !r.industry && !r.location && !r.domain && !r.website && !r.description && !r.phone && !r.size && !r.notes) {
       return `Marked ${who} as ${r.status.toLowerCase()}.`;
     }
@@ -791,6 +799,7 @@ export type FastPathRunners = {
       phone?: string;
       size?: string;
       status?: "NEW" | "ENRICHED" | "ARCHIVED";
+      tags?: string[];
     },
   ) => Promise<unknown>;
   listEntities?: (q?: string) => Promise<unknown>;
@@ -871,6 +880,8 @@ export type FastPathRunners = {
       website?: string;
       location?: string;
       notes?: string;
+      source?: string;
+      tags?: string[];
     },
   ) => Promise<unknown>;
   addToPipeline?: (pipelineId: string, contactIds: string[]) => Promise<unknown>;
@@ -1093,7 +1104,8 @@ async function runTool(
       const phone = instant?.phone?.trim();
       const size = instant?.size?.trim();
       const status = instant?.entityStatus;
-      if (!industry && !location && !domain && !website && !notes && !description && !phone && !size && !status) {
+      const tags = instant?.tags;
+      if (!industry && !location && !domain && !website && !notes && !description && !phone && !size && !status && !(tags && tags.length > 0)) {
         return { error: "Say the field, like set Acme industry to SaaS." };
       }
       const entityId = first.id;
@@ -1107,6 +1119,7 @@ async function runTool(
         ...(phone ? { phone } : {}),
         ...(size ? { size } : {}),
         ...(status ? { status } : {}),
+        ...(tags && tags.length > 0 ? { tags } : {}),
       };
       return write("update_entity", { id: entityId, ...patch }, async () => {
         const result = runners.updateEntity
@@ -1279,6 +1292,8 @@ async function runTool(
       const notes = instant?.note?.trim();
       const website = instant?.website?.trim();
       const location = instant?.location?.trim();
+      const crmSource = instant?.crmSource?.trim();
+      const tags = instant?.tags;
       if (
         !status &&
         dealScore == null &&
@@ -1292,11 +1307,13 @@ async function runTool(
         !instagram &&
         !notes &&
         !website &&
-        !location
+        !location &&
+        !crmSource &&
+        !(tags && tags.length > 0)
       ) {
         return { error: "Say which status to set (contacted, qualified, won, lost)." };
       }
-      const args: Record<string, string | number> = { id: contactId };
+      const args: Record<string, string | number | string[]> = { id: contactId };
       if (status) args.status = status;
       if (dealScore != null) args.dealScore = dealScore;
       if (title) args.title = title;
@@ -1310,6 +1327,8 @@ async function runTool(
       if (notes) args.notes = notes;
       if (website) args.website = website;
       if (location) args.location = location;
+      if (crmSource) args.source = crmSource;
+      if (tags && tags.length > 0) args.tags = tags;
       const patch = {
         ...(status ? { status } : {}),
         ...(dealScore != null ? { dealScore } : {}),
@@ -1324,6 +1343,8 @@ async function runTool(
         ...(notes ? { notes } : {}),
         ...(website ? { website } : {}),
         ...(location ? { location } : {}),
+        ...(crmSource ? { source: crmSource } : {}),
+        ...(tags && tags.length > 0 ? { tags } : {}),
       };
       return write("update_contact", args, async () => {
         const result = runners.updateContact

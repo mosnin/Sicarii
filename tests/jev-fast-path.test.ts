@@ -404,6 +404,27 @@ describe("formatFastReply", () => {
         payload: { name: "Acme", status: "ARCHIVED" },
       }),
     ).toBe("Marked Acme as archived.");
+    expect(
+      formatFastReply({
+        tool: "update_contact",
+        query: "Jane",
+        payload: { name: "Jane", source: "linkedin" },
+      }),
+    ).toBe("Set Jane's source to linkedin.");
+    expect(
+      formatFastReply({
+        tool: "update_contact",
+        query: "Jane",
+        payload: { name: "Jane", tags: ["ICP", "inbound"] },
+      }),
+    ).toBe("Tagged Jane as ICP, inbound.");
+    expect(
+      formatFastReply({
+        tool: "update_entity",
+        query: "Acme",
+        payload: { name: "Acme", tags: ["enterprise"] },
+      }),
+    ).toBe("Tagged Acme as enterprise.");
   });
 
   it("explains an empty CRM lookup", () => {

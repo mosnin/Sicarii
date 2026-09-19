@@ -34,6 +34,8 @@ export type InstantRoute = {
   direction?: "INBOUND" | "OUTBOUND";
   size?: string;
   entityStatus?: "NEW" | "ENRICHED" | "ARCHIVED";
+  crmSource?: string;
+  tags?: string[];
   detail?: boolean;
   source: "instant";
 };
@@ -461,6 +463,61 @@ function parseContactPatch(text: string): {
   }
   if (value.length > 80) return null;
   return { query, company: value };
+}
+
+function parseTagList(raw: string): string[] | null {
+  const tags = raw
+    .split(/[,;]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (tags.length === 0 || tags.length > 8) return null;
+  if (tags.some((t) => t.length > 50)) return null;
+  return tags;
+}
+
+function parseContactSource(text: string): { query: string; crmSource: string } | null {
+  if (/\b(company|business|entity)\b/i.test(text)) return null;
+  if (/\b(source of|where did|how do we know|provenance)\b/i.test(text)) return null;
+  const m = text.match(
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+(?:lead )?source\s+to\s+(.+)$/i,
+  );
+  if (!m?.[3] || !m[4]) return null;
+  const query = m[3].replace(/\b(the|a|an|contact|person)\b/gi, " ").replace(/\s+/g, " ").trim();
+  const crmSource = m[4].trim().replace(/[.!?]+$/, "");
+  if (!query || query.length > 80 || !crmSource || crmSource.length > 100) return null;
+  return { query, crmSource };
+}
+
+function parseContactTags(text: string): { query: string; tags: string[] } | null {
+  if (/\b(company|business|entity)\b/i.test(text)) return null;
+  const tagged = text.match(/^(please\s+)?tag\s+(.+?)\s+as\s+(.+)$/i);
+  const setTags = text.match(
+    /^(please\s+)?(set|update|change)\s+(.+?)(?:'s)?\s+tags?\s+to\s+(.+)$/i,
+  );
+  const query = (tagged?.[2] ?? setTags?.[3] ?? "")
+    .replace(/\b(the|a|an|contact|person)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tags = parseTagList(tagged?.[3] ?? setTags?.[4] ?? "");
+  if (!query || query.length > 80 || !tags) return null;
+  return { query, tags };
+}
+
+function parseEntityTags(text: string): { query: string; tags: string[] } | null {
+  if (!/\b(company|business|entity)\b/i.test(text)) return null;
+  const tagged = text.match(
+    /^(please\s+)?tag\s+(?:the\s+)?(?:company|business|entity)\s+(.+?)\s+as\s+(.+)$/i,
+  );
+  const setTags = text.match(
+    /^(please\s+)?(set|update|change)\s+(?:the\s+)?(?:company|business|entity)\s+(.+?)(?:'s)?\s+tags?\s+to\s+(.+)$/i,
+  );
+  const query = (tagged?.[2] ?? setTags?.[3] ?? "")
+    .replace(/\b(the|a|an)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const tags = parseTagList(tagged?.[3] ?? setTags?.[4] ?? "");
+  if (!query || query.length > 80 || !tags) return null;
+  return { query, tags };
 }
 
 function parseDealScore(text: string): { query: string; dealScore: number } | null {
@@ -1042,6 +1099,33 @@ export function classifyInstant(
       facebook: contactPatch.facebook,
       instagram: contactPatch.instagram,
       note: contactPatch.note,
+      source: "instant",
+    };
+  }
+  const contactSource = parseContactSource(text);
+  if (contactSource && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_contact",
+      query: contactSource.query,
+      crmSource: contactSource.crmSource,
+      source: "instant",
+    };
+  }
+  const contactTags = parseContactTags(text);
+  if (contactTags && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_contact",
+      query: contactTags.query,
+      tags: contactTags.tags,
+      source: "instant",
+    };
+  }
+  const entityTags = parseEntityTags(text);
+  if (entityTags && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return {
+      tool: "update_entity",
+      query: entityTags.query,
+      tags: entityTags.tags,
       source: "instant",
     };
   }

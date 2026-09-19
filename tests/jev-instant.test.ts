@@ -199,6 +199,21 @@ describe("classifyInstant", () => {
       query: "Acme",
       entityStatus: "ARCHIVED",
     });
+    expect(classifyInstant("set Jane source to linkedin")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      crmSource: "linkedin",
+    });
+    expect(classifyInstant("tag Jane as ICP, inbound")).toMatchObject({
+      tool: "update_contact",
+      query: "Jane",
+      tags: ["ICP", "inbound"],
+    });
+    expect(classifyInstant("tag company Acme as enterprise")).toMatchObject({
+      tool: "update_entity",
+      query: "Acme",
+      tags: ["enterprise"],
+    });
     expect(classifyInstant("mark Jane as awaiting reply in Outbound")).toMatchObject({
       tool: "update_pipeline_entry",
       query: "Jane",
