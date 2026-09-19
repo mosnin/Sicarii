@@ -31,6 +31,10 @@ import {
   scoreFitWithJev,
   shouldKeepMemory,
   superviseForeman,
+  triageInbound,
+  scanMalicious,
+  gradePage,
+  verifyCitations,
 } from "@/lib/jev";
 import { AUTO_MODE_TOOLS, runAutoModeThen } from "@/lib/jev/harness";
 import { SKILLS } from "@/lib/skills";
@@ -811,6 +815,43 @@ export async function POST(req: Request) {
       inputSchema: z.object({ id: z.string() }),
       execute: ({ id }) => exec(() => detectEntityTech(userId, id)),
     }),
+    jev_triage: tool({
+      description:
+        "Classify an inbound email, social message, or note with Jev (category, action, severity, urgency). Does not write CRM state.",
+      inputSchema: z.object({ text: z.string().max(4000) }),
+      execute: ({ text }) => exec(() => triageInbound(text)),
+    }),
+    jev_scan_malicious: tool({
+      description:
+        "Scan an untrusted artifact for data-theft, hidden network, or concealment. Returns allow=false when Jev is sure it is hostile.",
+      inputSchema: z.object({
+        artifact: z.string().max(4000),
+        kind: z.string().max(40).optional(),
+      }),
+      execute: ({ artifact, kind }) => exec(() => scanMalicious(artifact, kind ?? "artifact")),
+    }),
+    jev_grade_page: tool({
+      description:
+        "Grade a page or draft with Jev (0-100 score and letter). Does not write CRM state.",
+      inputSchema: z.object({ page: z.string().max(20_000) }),
+      execute: ({ page }) => exec(() => gradePage(page)),
+    }),
+    jev_verify_citations: tool({
+      description:
+        "Verify claim/quote pairs with Jev. Returns keep=false when the quote does not support the claim.",
+      inputSchema: z.object({
+        claims: z
+          .array(
+            z.object({
+              claim: z.string().max(400),
+              quote: z.string().max(600),
+              url: z.string().max(500).optional(),
+            }),
+          )
+          .max(20),
+      }),
+      execute: ({ claims }) => exec(() => verifyCitations(claims)),
+    }),
     remove_segment_member: tool({
       description: "Remove one contact from a segment. Keeps the contact and the segment.",
       inputSchema: z.object({
@@ -910,6 +951,10 @@ export async function POST(req: Request) {
     log_call: "Log an outside phone call on a contact.",
     verify_entity: "Verify a company against public legal registries.",
     detect_tech: "Fingerprint a company's website tech stack.",
+    jev_triage: "Classify inbound text with Jev.",
+    jev_scan_malicious: "Scan an artifact for hostile content.",
+    jev_grade_page: "Grade a page or draft with Jev.",
+    jev_verify_citations: "Verify claim/quote pairs with Jev.",
     remove_segment_member: "Remove a contact from a segment.",
     remove_pipeline_entry: "Remove a contact from a pipeline.",
     update_pipeline_entry: "Update a pipeline entry's stage or score.",
@@ -1058,6 +1103,10 @@ export async function POST(req: Request) {
         listDueFollowups: () => listDueFollowups(userId, {}),
         getBilling: () => getBilling(userId),
         getUsage: () => getUsage(userId),
+        triageInbound: (text) => triageInbound(text),
+        scanMalicious: (artifact, kind) => scanMalicious(artifact, kind ?? "artifact"),
+        gradePage: (page) => gradePage(page),
+        verifyCitations: (claims) => verifyCitations(claims),
         listVariantStats: () => listVariantStats(userId, {}),
         selectVariant: (kind) => selectVariant(userId, { kind }),
         createVariant: (kind, text) => createVariant(userId, { kind, text }),

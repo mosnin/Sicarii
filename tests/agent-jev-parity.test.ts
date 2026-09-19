@@ -95,5 +95,9 @@ describe("agent Jev parity", () => {
     expect(source).toContain("delete_contact:");
     expect(source).toContain("get_usage:");
     expect(source).toContain("get_balance:");
+    expect(source).toContain("jev_triage:");
+    expect(source).toContain("jev_scan_malicious:");
+    expect(source).toContain("jev_grade_page:");
+    expect(source).toContain("jev_verify_citations:");
   });
 });

@@ -73,6 +73,9 @@ export const FAST_PATH_TOOLS = new Set([
   "build_smart_segment",
   "verify_entity",
   "detect_tech",
+  "jev_triage",
+  "jev_scan_malicious",
+  "jev_grade_page",
 ]);
 
 const READ_CORE = [
@@ -430,6 +433,26 @@ export function formatFastReply(input: {
       : `No public contacts on ${r.url ?? query}.`;
   }
 
+  if (tool === "jev_triage") {
+    const r = payload as { category?: string; action?: string; source?: string };
+    return `Inbound classified as ${r.category ?? "other"} (${r.action ?? "wait"}).`;
+  }
+
+  if (tool === "jev_scan_malicious") {
+    const r = payload as { allow?: boolean; reasons?: string[] };
+    if (r.allow === false) {
+      const why = (r.reasons ?? []).join(", ") || "flagged";
+      return `Jev blocked this artifact (${why}).`;
+    }
+    return "Jev allowed this artifact.";
+  }
+
+  if (tool === "jev_grade_page") {
+    const r = payload as { score?: number; grade?: string };
+    if (r.score == null) return "Jev could not grade that page.";
+    return `Page score ${r.score}${r.grade ? ` (${r.grade})` : ""}.`;
+  }
+
   if (tool === "save_email_context") {
     const r = payload as { name?: string | null; subject?: string | null };
     const who = r.name ?? query;
@@ -714,6 +737,12 @@ export type FastPathRunners = {
   listDueFollowups?: () => Promise<unknown>;
   getBilling?: () => Promise<unknown>;
   getUsage?: () => Promise<unknown>;
+  triageInbound?: (text: string) => Promise<unknown>;
+  scanMalicious?: (artifact: string, kind?: string) => Promise<unknown>;
+  gradePage?: (page: string) => Promise<unknown>;
+  verifyCitations?: (
+    claims: Array<{ claim: string; quote: string; url?: string }>,
+  ) => Promise<unknown>;
   listVariantStats?: () => Promise<unknown>;
   selectVariant?: (kind: "SUBJECT" | "OPENER") => Promise<unknown>;
   createVariant?: (kind: "SUBJECT" | "OPENER", text: string) => Promise<unknown>;
@@ -1005,6 +1034,25 @@ async function runTool(
       return runners.getUsage
         ? runners.getUsage()
         : { creditsRemaining: 0, plan: "unknown", actionCosts: {} };
+    case "jev_triage": {
+      const text = instant?.note?.trim() || query;
+      if (!text) return { error: "Say the inbound after a colon, like triage this: thanks for the intro." };
+      return runners.triageInbound
+        ? runners.triageInbound(text)
+        : { category: "other", action: "wait", source: "fallback" };
+    }
+    case "jev_scan_malicious": {
+      const text = instant?.note?.trim() || query;
+      if (!text) return { error: "Say the artifact after a colon, like scan this artifact: ..." };
+      return runners.scanMalicious
+        ? runners.scanMalicious(text, "artifact")
+        : { allow: true, reasons: [], source: "fallback" };
+    }
+    case "jev_grade_page": {
+      const text = instant?.note?.trim() || query;
+      if (!text) return { error: "Say the page after a colon, like grade this page: ..." };
+      return runners.gradePage ? runners.gradePage(text) : { error: "Jev could not grade that page." };
+    }
     case "list_variant_stats":
       return runners.listVariantStats ? runners.listVariantStats() : [];
     case "select_variant": {

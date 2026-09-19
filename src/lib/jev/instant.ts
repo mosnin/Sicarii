@@ -580,6 +580,29 @@ function parseCreateVariant(text: string): { kind: "SUBJECT" | "OPENER"; note: s
   return { kind, note };
 }
 
+function parseJevTriage(text: string): { note: string } | null {
+  const m = text.match(/^(please\s+)?triage (this|the following)(?: inbound)?[:\-]\s*(.+)$/i);
+  const note = m?.[3]?.trim();
+  if (!note || note.length > 4000) return null;
+  return { note };
+}
+
+function parseJevScan(text: string): { note: string } | null {
+  const m = text.match(
+    /^(please\s+)?scan (this|the following)(?: (artifact|email|note|snippet))?(?: for (?:malice|threats?))?[:\-]\s*(.+)$/i,
+  );
+  const note = m?.[4]?.trim();
+  if (!note || note.length > 4000) return null;
+  return { note };
+}
+
+function parseJevGrade(text: string): { note: string } | null {
+  const m = text.match(/^(please\s+)?grade (this|the following)(?: page)?[:\-]\s*(.+)$/i);
+  const note = m?.[3]?.trim();
+  if (!note || note.length > 20_000) return null;
+  return { note };
+}
+
 function parseMaps(text: string): { query: string; location: string } | null {
   if (!/\b(dentist|dentists|restaurant|restaurants|salon|salons|lawyer|lawyers|plumber|plumbers|clinic|gym|coffee|barbershop|local)\b/i.test(
     text,
@@ -626,6 +649,18 @@ export function classifyInstant(
       note: createVariant.note,
       source: "instant",
     };
+  }
+  const jevTriage = parseJevTriage(text);
+  if (jevTriage && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return { tool: "jev_triage", query: jevTriage.note.slice(0, 80), note: jevTriage.note, source: "instant" };
+  }
+  const jevScan = parseJevScan(text);
+  if (jevScan && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return { tool: "jev_scan_malicious", query: jevScan.note.slice(0, 80), note: jevScan.note, source: "instant" };
+  }
+  const jevGrade = parseJevGrade(text);
+  if (jevGrade && !COMPOUND.test(text) && !DESTRUCTIVE.test(text) && !SEND.test(text)) {
+    return { tool: "jev_grade_page", query: jevGrade.note.slice(0, 80), note: jevGrade.note, source: "instant" };
   }
 
   // COMPOSE matches "draft" / "breakup", so these reads must win first.

@@ -643,6 +643,10 @@ Scalar now does that on `/api/agent`:
     a `get_billing` alias (MCP parity) on the fast path. Instant `set
     Jane linkedin to https://linkedin.com/in/jane` and `set Acme
     website to https://acme.com` skip TypeSafe.
+42. The in-app agent exposes `jev_triage`, `jev_scan_malicious`,
+    `jev_grade_page`, and `jev_verify_citations` (MCP parity). Instant
+    `triage this: ...`, `scan this artifact: ...`, and `grade this page: ...`
+    skip TypeSafe and skip the generator.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.
