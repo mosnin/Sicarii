@@ -13,6 +13,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const OWNER = "user-A";
 const ATTACKER = "user-B";
 
+vi.mock("@/lib/agentphone", () => ({
+  placeCall: vi.fn(() => {
+    throw new Error("ISOLATION BREACH: placeCall was called on an unauthorized record");
+  }),
+  getCall: vi.fn(() => {
+    throw new Error("ISOLATION BREACH: getCall was called on an unauthorized record");
+  }),
+}));
+
 vi.mock("@/lib/prisma", () => {
   // Inlined inside the factory: vi.mock is hoisted above module-level consts.
   const owner = "user-A";
@@ -43,7 +52,10 @@ vi.mock("@/lib/prisma", () => {
         create: forbid("contactCall.create"),
         findMany: forbid("contactCall.findMany"),
       },
-      contactEmail: { findMany: forbid("contactEmail.findMany") },
+      contactEmail: {
+        findMany: forbid("contactEmail.findMany"),
+        create: forbid("contactEmail.create"),
+      },
       fieldProvenance: { findMany: forbid("fieldProvenance.findMany") },
       activity: { create: forbid("activity.create") },
       user: { findUnique: vi.fn().mockResolvedValue({ agentPhoneApiKey: "k" }) },
@@ -65,6 +77,8 @@ import {
   listContactCalls,
   syncContactCall,
   listContactEmails,
+  saveEmail,
+  placeContactCall,
   OpError,
 } from "@/lib/crm-operations";
 import { getProvenanceMap } from "@/lib/provenance";
@@ -101,6 +115,15 @@ describe("ops-layer tenant isolation", () => {
   it("call history + sync deny a non-owner of the parent contact", async () => {
     await expectDenied(() => listContactCalls(ATTACKER, "c1"));
     await expectDenied(() => syncContactCall(ATTACKER, "call1"));
+  });
+
+  it("saveEmail + placeContactCall deny a non-owner and never write or dial", async () => {
+    await expectDenied(() =>
+      saveEmail(ATTACKER, { contactId: "c1", direction: "OUTBOUND", body: "x" }),
+    );
+    await expectDenied(() =>
+      placeContactCall(ATTACKER, { contactId: "c1", systemPrompt: "hi" }),
+    );
   });
 
   it("listContactEmails denies a non-owner of the contact and never reads its emails", async () => {

@@ -680,7 +680,11 @@ export interface EmailInput {
   sentAt?: Date | null;
 }
 
-/** Save an email exchange onto a contact (e.g. agent-saved context). */
+/** Save an email exchange onto a contact and keep pipeline state honest,
+ *  the same way saveSocialMessage does: OUTBOUND stamps lastContactedAt and
+ *  advances NEW/ENRICHED to CONTACTED; INBOUND advances CONTACTED to REPLIED
+ *  and attributes the reply to the most-recent unreplied variant send.
+ *  Never downgrades a status. */
 export async function saveEmail(userId: string, input: EmailInput) {
   const contact = await prisma.contact.findUnique({
     where: { id: input.contactId },
@@ -688,7 +692,36 @@ export async function saveEmail(userId: string, input: EmailInput) {
   if (!contact || contact.userId !== userId)
     throw new OpError("Contact not found", 404);
   const { contactId, ...rest } = input;
-  return prisma.contactEmail.create({ data: { contactId, ...rest } });
+  const becomesReplied = input.direction === "INBOUND" && contact.status === "CONTACTED";
+  const touch: Prisma.ContactUncheckedUpdateInput =
+    input.direction === "OUTBOUND"
+      ? {
+          lastContactedAt: new Date(),
+          ...(ADVANCE_FROM_OUTREACH.has(contact.status) ? { status: "CONTACTED" as const } : {}),
+        }
+      : becomesReplied
+        ? { status: "REPLIED" as const }
+        : {};
+
+  const [email] = await prisma.$transaction([
+    prisma.contactEmail.create({ data: { contactId, ...rest } }),
+    ...(Object.keys(touch).length > 0
+      ? [prisma.contact.update({ where: { id: contactId }, data: touch })]
+      : []),
+  ]);
+
+  // Attribution must never fail the saved email. A later inbound (or a retry)
+  // can still claim an unreplied send because attributeReply is a no-op when
+  // nothing is left to claim.
+  if (input.direction === "INBOUND") {
+    try {
+      await attributeReply(contactId);
+    } catch (e) {
+      console.error("saveEmail attributeReply failed", e);
+    }
+  }
+
+  return email;
 }
 
 /* -------------------------- Social messages ------------------------- */
@@ -717,10 +750,10 @@ export interface SocialMessageInput {
  *
  *  Self-optimizing outreach hook: an OUTBOUND message carrying variantId
  *  records a VariantSend (and bumps that variant's sends counter) so the
- *  bandit has data to learn from. An INBOUND message that flips the contact
- *  to REPLIED attributes the reply to that contact's most-recent unreplied
- *  variant send, if any - this is the one place a reply is detected, so it
- *  is the one place attribution can happen honestly. */
+ *  bandit has data to learn from. An INBOUND message attributes the reply
+ *  to that contact's most-recent unreplied variant send, if any (same
+ *  seam as saveEmail). attributeReply is a no-op when nothing is left to
+ *  claim, so calling it on every inbound cannot double-count. */
 export async function saveSocialMessage(userId: string, input: SocialMessageInput) {
   const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
   if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
@@ -754,9 +787,16 @@ export async function saveSocialMessage(userId: string, input: SocialMessageInpu
   ]);
 
   // Attribution reads/writes its own row atomically (see attributeReply) and
-  // runs after the message is durably saved; it must never block or fail the
-  // reply itself just because there's nothing to attribute.
-  if (becomesReplied) await attributeReply(contactId);
+  // runs after the message is durably saved. Call it on every INBOUND (it is
+  // a no-op when nothing is left to claim) so a retry after a failed
+  // attribution still lands, and wrap it so a DB blip cannot 500 the save.
+  if (input.direction === "INBOUND") {
+    try {
+      await attributeReply(contactId);
+    } catch (e) {
+      console.error("saveSocialMessage attributeReply failed", e);
+    }
+  }
 
   return message;
 }
@@ -810,9 +850,30 @@ export async function searchCrm(userId: string, q: string) {
 
 const ADVANCE_FROM_OUTREACH = new Set(["NEW", "ENRICHED"]);
 
+// Working-status rank so an explicit log_outreach status cannot walk a
+// contact backwards (NEW over REPLIED, CONTACTED over WON). LOST/ARCHIVED/
+// WON share the terminal rank so an explicit close is still allowed.
+const STATUS_RANK: Record<string, number> = {
+  NEW: 0,
+  ENRICHED: 1,
+  CONTACTED: 2,
+  REPLIED: 3,
+  QUALIFIED: 4,
+  WON: 5,
+  LOST: 5,
+  ARCHIVED: 5,
+};
+
+function nextOutreachStatus(current: string, override?: ContactStatus): ContactStatus {
+  const advanced = (ADVANCE_FROM_OUTREACH.has(current) ? "CONTACTED" : current) as ContactStatus;
+  if (!override) return advanced;
+  if ((STATUS_RANK[override] ?? 0) < (STATUS_RANK[current] ?? 0)) return advanced;
+  return override;
+}
+
 /** Record an outbound touch on a contact: stamp lastContactedAt, advance status
- *  (explicit override wins; otherwise bump NEW/ENRICHED -> CONTACTED and never
- *  downgrade a contact already further along), and log an Activity, atomically.
+ *  (explicit override may advance or close, never downgrade; otherwise bump
+ *  NEW/ENRICHED -> CONTACTED), and log an Activity, atomically.
  *  This is the memory that lets an agent follow up reliably. */
 export interface ActivityActor {
   id: string; // ApiKey.id (agent) or users.id (human member)
@@ -831,9 +892,9 @@ export async function logOutreach(
     // this touch, from select_variant. Optional and backward-compatible -
     // omitting it behaves exactly as before. When set, records a VariantSend
     // and bumps that variant's sends counter so the bandit has data to learn
-    // from; a later reply on this contact (detected in saveSocialMessage, the
-    // only place INBOUND advances a contact to REPLIED today) attributes back
-    // to it.
+    // from; a later reply on this contact (detected in saveEmail /
+    // saveSocialMessage when an INBOUND message advances CONTACTED -> REPLIED)
+    // attributes back to it.
     variantId?: string | null;
   }
 ) {
@@ -842,8 +903,7 @@ export async function logOutreach(
 
   if (input.variantId) await assertVariantOwned(userId, input.variantId);
 
-  const nextStatus =
-    input.status ?? (ADVANCE_FROM_OUTREACH.has(existing.status) ? "CONTACTED" : existing.status);
+  const nextStatus = nextOutreachStatus(existing.status, input.status);
 
   const [contact] = await prisma.$transaction([
     prisma.contact.update({
@@ -1020,27 +1080,36 @@ export async function placeContactCall(
     initialGreeting: input.initialGreeting,
   });
 
-  const call = await prisma.contactCall.create({
-    data: {
-      contactId: contact.id,
-      direction: "OUTBOUND",
-      toNumber,
-      agentPhoneCallId: placed.callId || null,
-      status: placed.status ?? "in-progress",
-      startedAt: placed.startedAt ? new Date(placed.startedAt) : new Date(),
-    },
-  });
+  // placeCall degrades to callId: "" when the live response has no usable
+  // id (unverified AgentPhone shapes). That is NOT a successful send: do
+  // not log a call or mark the contact CONTACTED, or follow-ups will skip
+  // someone who was never actually reached.
+  if (!placed.callId) {
+    throw new OpError(
+      "AgentPhone accepted the request but returned no call id. The call was not logged and the contact was not marked contacted.",
+      502,
+    );
+  }
 
-  // Advance status (never downgrade) and stamp the outreach timestamp.
-  await prisma.contact.update({
-    where: { id: contact.id },
-    data: {
-      lastContactedAt: new Date(),
-      ...(contact.status === "NEW" || contact.status === "ENRICHED"
-        ? { status: "CONTACTED" as const }
-        : {}),
-    },
-  });
+  const [call] = await prisma.$transaction([
+    prisma.contactCall.create({
+      data: {
+        contactId: contact.id,
+        direction: "OUTBOUND",
+        toNumber,
+        agentPhoneCallId: placed.callId,
+        status: placed.status ?? "in-progress",
+        startedAt: placed.startedAt ? new Date(placed.startedAt) : new Date(),
+      },
+    }),
+    prisma.contact.update({
+      where: { id: contact.id },
+      data: {
+        lastContactedAt: new Date(),
+        ...(ADVANCE_FROM_OUTREACH.has(contact.status) ? { status: "CONTACTED" as const } : {}),
+      },
+    }),
+  ]);
 
   return {
     callId: placed.callId,

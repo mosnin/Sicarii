@@ -1,8 +1,8 @@
 // Integration of self-optimizing outreach into the shared ops layer:
 // logOutreach/saveSocialMessage record a VariantSend when a caller supplies
-// variantId, and saveSocialMessage attributes a reply when an INBOUND message
-// advances a contact CONTACTED -> REPLIED. Also pins backward compatibility:
-// both functions must behave exactly as before when variantId is omitted.
+// variantId, and inbound social (and email) attribute a reply via
+// attributeReply. Also pins backward compatibility: both functions must
+// behave exactly as before when variantId is omitted.
 //
 // Mocks @/lib/prisma (array-form $transaction, same convention as
 // tests/enum-normalization.test.ts) and @/lib/variant-operations (so this
@@ -142,16 +142,32 @@ describe("saveSocialMessage + variant attribution", () => {
     expect(attributeReply).toHaveBeenCalledWith("c1");
   });
 
-  it("INBOUND that does NOT change status (contact not CONTACTED) never calls attributeReply", async () => {
+  it("INBOUND still calls attributeReply when status does not flip (retry / already REPLIED): the claim itself is a no-op if nothing is left", async () => {
     contactFindUnique.mockResolvedValue({ id: "c1", userId: USER, status: "NEW" });
     await saveSocialMessage(USER, { contactId: "c1", channel: "LINKEDIN", direction: "INBOUND", body: "hello" });
-    expect(attributeReply).not.toHaveBeenCalled();
+    expect(attributeReply).toHaveBeenCalledTimes(1);
+    expect(attributeReply).toHaveBeenCalledWith("c1");
   });
 
-  it("a second INBOUND after the contact is already REPLIED does not re-attribute (status stays REPLIED, no repeat call)", async () => {
+  it("a second INBOUND after the contact is already REPLIED still asks attributeReply (safe no-op) so a prior failed claim can land", async () => {
     contactFindUnique.mockResolvedValue({ id: "c1", userId: USER, status: "REPLIED" });
     await saveSocialMessage(USER, { contactId: "c1", channel: "LINKEDIN", direction: "INBOUND", body: "another message" });
-    expect(attributeReply).not.toHaveBeenCalled();
+    expect(attributeReply).toHaveBeenCalledTimes(1);
+  });
+
+  it("INBOUND still saves the message when attributeReply throws", async () => {
+    contactFindUnique.mockResolvedValue({ id: "c1", userId: USER, status: "CONTACTED" });
+    attributeReply.mockRejectedValueOnce(new Error("db blip"));
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const message = await saveSocialMessage(USER, {
+      contactId: "c1",
+      channel: "LINKEDIN",
+      direction: "INBOUND",
+      body: "sure",
+    });
+    expect(message).toMatchObject({ contactId: "c1" });
+    expect(contactSocialMessageCreate).toHaveBeenCalledTimes(1);
+    err.mockRestore();
   });
 
   it("OUTBOUND never records a send without verifying variant ownership first", async () => {

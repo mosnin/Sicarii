@@ -52,6 +52,11 @@ constraints (dedupe first) · Explorium top-up (currently 403ing in prod).
 **Hard rule this cycle:** no new surfaces, providers, or tools. Moments, not
 features. Radar/Field/Map/Skills stay demoted.
 
+**Send-path honesty (this cycle):** a provider response with no call id is not
+a send; inbound email advances CONTACTED -> REPLIED and attributes the bandit
+the same way inbound social does; AgentMail thread match is a whole address;
+`log_outreach` cannot downgrade status.
+
 **DONE recent cycles:** rebrand + product marketing site (intelligence-first) ·
 manifesto · 26-tool MCP server + OAuth (DCR/PKCE, redirect-validated) · billing
 meter + Creem scaffolding + pricing w/ launch sale · CSV export + pagination ·
