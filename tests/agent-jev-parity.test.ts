@@ -22,7 +22,7 @@ const source = readFileSync(agentPath, "utf8");
 describe("agent Jev parity", () => {
   it("omits enrichment on get_entity and get_contact", () => {
     expect(source).toContain("getEntity(userId, id, { includeEnrichment: false })");
-    expect(source).toContain("getContact(userId, id, { includeEnrichment: false })");
+    expect(source).toContain("includeChannelHistory: false");
   });
 
   it("keeps paid search tools in auto-mode", () => {

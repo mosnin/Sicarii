@@ -66,6 +66,16 @@ describe("activeToolNames", () => {
     expect(names).not.toContain("buy_credits");
   });
 
+  it("hides paid discovery when Jev picked a single write tool", () => {
+    const names = activeToolNames(
+      { kind: "tool", tool: "draft_breakups", confidence: 0.9 },
+      all,
+    );
+    expect(names).toContain("draft_breakups");
+    expect(names).toContain("search_crm");
+    expect(names).not.toContain("find_companies");
+  });
+
   it("picks a subset from a tool map", () => {
     const tools = { search_crm: 1, buy_credits: 2, find_companies: 3 };
     const picked = pickActiveTools(tools, { kind: "deterministic", action: "lookup", confidence: 0.9 });

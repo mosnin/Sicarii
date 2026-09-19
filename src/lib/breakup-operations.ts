@@ -19,6 +19,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { Prisma, type BreakupDraftStatus, type ContactStatus, type ConversationStatus } from "@prisma/client";
 import { OpError, logOutreach, clampListLimit } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 import { ensureCredits, spendCredits } from "@/lib/credits";
 import { gateOutboundDraft } from "@/lib/jev";
 
@@ -350,6 +351,17 @@ export async function updateBreakupDraft(
   const subject = input.subject?.trim();
   const body = input.body?.trim();
   if (subject === "" || body === "") throw new OpError("Subject and body cannot be empty", 400);
+  const nextSubject = subject ?? draft.subject;
+  const nextBody = body ?? draft.body;
+  await assertCleanArtifact([nextSubject, nextBody].join("\n"), "breakup");
+  const outbound = await gateOutboundDraft({
+    subject: nextSubject,
+    body: nextBody,
+    phase: "draft",
+  });
+  if (!outbound.allow) {
+    throw new OpError(`Jev blocked this breakup edit (${outbound.reasons.join(", ")}).`, 422);
+  }
   return prisma.breakupDraft.update({
     where: { id },
     data: {

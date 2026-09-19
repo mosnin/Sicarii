@@ -473,7 +473,9 @@ const handler = createMcpHandler(
       { id: z.string() },
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ id }, extra) =>
-        run(() => getContact(userIdFrom(extra), id, { includeEnrichment: false })),
+        run(() =>
+          getContact(userIdFrom(extra), id, { includeEnrichment: false, includeChannelHistory: false }),
+        ),
     );
 
     server.tool(

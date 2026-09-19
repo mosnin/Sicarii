@@ -26,15 +26,8 @@ import {
 export { OpError } from "@/lib/op-error";
 import { OpError } from "@/lib/op-error";
 import { keepNamedCompanies, rerankHits, runWardens, scanMalicious, triageInbound } from "@/lib/jev";
-
-async function assertCleanArtifact(text: string, kind: string) {
-  const payload = text.trim();
-  if (!payload) return;
-  const malicious = await scanMalicious(payload, kind);
-  if (!malicious.allow) {
-    throw new OpError(`Jev blocked this ${kind} as malicious (${malicious.reasons.join(", ")}).`, 422);
-  }
-}
+export { assertCleanArtifact } from "@/lib/clean-artifact";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -127,7 +120,8 @@ export async function getEntity(
   return entity;
 }
 
-export function createEntity(userId: string, input: EntityInput) {
+export async function createEntity(userId: string, input: EntityInput) {
+  await assertCleanArtifact([input.notes, input.description].filter(Boolean).join("\n"), "notes");
   const { enrichment, tags, ...rest } = input;
   return prisma.entity.create({
     data: {
@@ -147,6 +141,7 @@ export async function updateEntity(
   const existing = await prisma.entity.findUnique({ where: { id } });
   if (!existing || existing.userId !== userId)
     throw new OpError("Entity not found", 404);
+  await assertCleanArtifact([input.notes, input.description].filter(Boolean).join("\n"), "notes");
   const { enrichment, ...rest } = input;
   const data: Prisma.EntityUncheckedUpdateInput = { ...rest };
   if (enrichment !== undefined) {
@@ -674,17 +669,20 @@ export function listContacts(
 export async function getContact(
   userId: string,
   id: string,
-  opts?: { includeEnrichment?: boolean },
+  opts?: { includeEnrichment?: boolean; includeChannelHistory?: boolean },
 ) {
   const includeEnrichment = opts?.includeEnrichment ?? true;
+  const includeChannelHistory = opts?.includeChannelHistory ?? true;
   const contact = await prisma.contact.findUnique({
     where: { id },
     include: {
       entity: { select: { id: true, name: true } },
-      // Capped: a long relationship otherwise blows up the payload (and an
-      // agent's context) with every message ever saved.
-      emails: { orderBy: { sentAt: "desc" }, take: 50 },
-      socialMessages: { orderBy: { createdAt: "desc" }, take: 50 },
+      ...(includeChannelHistory
+        ? {
+            emails: { orderBy: { sentAt: "desc" as const }, take: 50 },
+            socialMessages: { orderBy: { createdAt: "desc" as const }, take: 50 },
+          }
+        : {}),
     },
     ...(includeEnrichment ? {} : { omit: { enrichment: true } }),
   });
@@ -701,6 +699,7 @@ async function assertEntityOwned(userId: string, entityId: string) {
 export async function createContact(userId: string, input: ContactInput) {
   const { enrichment, tags, entityId, ...rest } = input;
   if (entityId) await assertEntityOwned(userId, entityId);
+  await assertCleanArtifact(input.notes ?? "", "notes");
   return prisma.contact.create({
     data: {
       ...rest,
@@ -720,6 +719,7 @@ export async function updateContact(
   const existing = await prisma.contact.findUnique({ where: { id } });
   if (!existing || existing.userId !== userId)
     throw new OpError("Contact not found", 404);
+  await assertCleanArtifact(input.notes ?? "", "notes");
   const { enrichment, entityId, ...rest } = input;
   if (entityId) await assertEntityOwned(userId, entityId);
   const data: Prisma.ContactUncheckedUpdateInput = { ...rest };

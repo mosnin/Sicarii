@@ -21,6 +21,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { OpError } from "@/lib/op-error";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 import { selectByThompsonSampling, type VariantArm, type Rng } from "@/lib/variant-bandit";
 
 export type VariantKind = "SUBJECT" | "OPENER";
@@ -54,6 +55,7 @@ export async function createVariant(userId: string, input: VariantInput) {
   if (!VARIANT_KINDS.includes(input.kind)) throw new OpError("kind must be SUBJECT or OPENER", 400);
   if (!input.text?.trim()) throw new OpError("text is required", 400);
   if (input.segmentId) await assertSegmentOwned(userId, input.segmentId);
+  await assertCleanArtifact(input.text, "variant");
   return prisma.outreachVariant.create({
     data: {
       userId,
@@ -112,6 +114,7 @@ export async function listVariantStats(userId: string, opts: { segmentId?: strin
   const variants = await prisma.outreachVariant.findMany({
     where: { userId, ...(opts.segmentId !== undefined ? { segmentId: opts.segmentId } : {}) },
     orderBy: [{ segmentId: "asc" }, { kind: "asc" }, { updatedAt: "desc" }],
+    take: 200,
   });
 
   const withRate = variants.map((v) => ({

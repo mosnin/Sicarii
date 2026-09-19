@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { geocodeCached } from "@/lib/geocode";
+import { OpError } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 const ENTITY_STATUSES = ["NEW", "ENRICHED", "ARCHIVED"] as const;
 
@@ -82,6 +84,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { enrichment, tags, ...rest } = parsed.data;
+    try {
+      await assertCleanArtifact([parsed.data.notes, parsed.data.description].filter(Boolean).join("\n"), "notes");
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
     const entity = await prisma.entity.create({
       data: {
         ...rest,

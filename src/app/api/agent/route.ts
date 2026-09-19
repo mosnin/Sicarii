@@ -290,7 +290,8 @@ export async function POST(req: Request) {
     get_contact: tool({
       description: "Get one contact by id, with linked entity and saved emails.",
       inputSchema: z.object({ id: z.string() }),
-      execute: ({ id }) => exec(() => getContact(userId, id, { includeEnrichment: false })),
+      execute: ({ id }) =>
+        exec(() => getContact(userId, id, { includeEnrichment: false, includeChannelHistory: false })),
     }),
     create_contact: tool({
       description:
@@ -483,6 +484,8 @@ export async function POST(req: Request) {
           ? getAutopilotStatus(userId).catch(() => null)
           : instant?.tool === "enrich_entity"
             ? searchCrm(userId, instant.query).catch(() => null)
+          : instant?.tool === "list_variant_stats"
+            ? listVariantStats(userId, {}).catch(() => null)
         : prefetchQuery !== null
           ? instant?.tool === "list_entities"
             ? listEntities(userId, prefetchQuery || undefined).catch(() => null)
@@ -551,6 +554,8 @@ export async function POST(req: Request) {
         listContacts: (q) => listContacts(userId, { q }),
         listDueFollowups: () => listDueFollowups(userId, {}),
         getBilling: () => getBilling(userId),
+        listVariantStats: () => listVariantStats(userId, {}),
+        selectVariant: (kind) => selectVariant(userId, { kind }),
         scoreFit: productContext
           ? async (rows) => {
               const scores = await scoreFitWithJev(rows, productContext);

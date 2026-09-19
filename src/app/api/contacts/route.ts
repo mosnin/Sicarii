@@ -4,6 +4,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { OpError } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -100,6 +102,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { enrichment, tags, entityId, ...rest } = parsed.data;
+    try {
+      await assertCleanArtifact(parsed.data.notes ?? "", "notes");
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
 
     // If assigning to an entity, it must belong to this user.
     if (entityId) {

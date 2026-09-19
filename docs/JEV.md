@@ -356,6 +356,9 @@ Two stacked branches off Scalar `main`:
    Outreach, activity, calls, and call prompts are scanned. Autopilot
    proposals go through `gateMoney`. Recall is rate-limited at the ops
    layer. Pipeline add/metrics and HTTP entity/contact reads are bounded.
+   Tool turns hide unused paid discovery. Contact getters skip channel
+   history. Notes, variants, and breakup edits are scanned. Instant
+   variant pick/stats skip TypeSafe.
 
 Repo patterns were distilled, not vendored. Eighty Jev GitHub repos do not
 belong in `node_modules`. The kernel is the house style.
@@ -471,6 +474,11 @@ Scalar now does that on `/api/agent`:
     caps segment expansion. `pipelineMetrics` aggregates in SQL. HTTP
     entity/contact detail pages cap nested lists. HTTP decide accepts
     optional `tools` / `skills` catalogs.
+16. A routed tool turn only exposes `READ_CORE` plus the picked tool.
+    `get_contact` omits email/social history unless asked. MCP dumps
+    truncate long `body`/`notes`. Notes, variant text, and breakup edits
+    are scanned. Instant `pick a subject line` / `variant stats` skip
+    TypeSafe. Autopilot cron loads at most 50 due plans.
 
 Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
 still needs its provider keys. Write tools still pass auto-mode.

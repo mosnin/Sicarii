@@ -32,6 +32,11 @@ describe("classifyInstant", () => {
     expect(classifyInstant("who needs a follow-up")).toMatchObject({ tool: "list_due_followups" });
     expect(classifyInstant("who should I follow up with")).toMatchObject({ tool: "list_due_followups" });
     expect(classifyInstant("how many credits do I have")).toMatchObject({ tool: "get_billing" });
+    expect(classifyInstant("show variant stats")).toMatchObject({ tool: "list_variant_stats" });
+    expect(classifyInstant("pick a subject line")).toMatchObject({
+      tool: "select_variant",
+      query: "SUBJECT",
+    });
   });
 
   it("routes discovery and local maps", () => {

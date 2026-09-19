@@ -242,6 +242,8 @@ export const runAutopilotPlans = inngest.createFunction(
     const plans = await prisma.autopilotPlan.findMany({
       where: { status: "active", nextRunAt: { lte: now } },
       include: { allocations: true },
+      orderBy: { nextRunAt: "asc" },
+      take: 50,
     });
 
     let processed = 0;

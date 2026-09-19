@@ -130,6 +130,24 @@ export function classifyInstant(
 ): InstantRoute | null {
   const text = message.trim();
   if (!text) return null;
+
+  if (/\b(variant stats|winning (subject|opener)|reply rates?)\b/i.test(text)) {
+    return { tool: "list_variant_stats", query: text, source: "instant" };
+  }
+  if (
+    !COMPOUND.test(text) &&
+    !DESTRUCTIVE.test(text) &&
+    !SEND.test(text) &&
+    (/\b(pick|choose|select|best)\b.+\b(subject(?: line)?|opener|variant)\b/i.test(text) ||
+      /^(pick|choose|select) (a |the )?(subject(?: line)?|opener|variant)\b/i.test(text))
+  ) {
+    return {
+      tool: "select_variant",
+      query: /\bopener\b/i.test(text) ? "OPENER" : "SUBJECT",
+      source: "instant",
+    };
+  }
+
   if (tooHardForInstant(text)) return null;
 
   if (/^(yes|yep|yeah|do it|go ahead|please do|discover (them|those|it)|find them|add them)$/i.test(text)) {

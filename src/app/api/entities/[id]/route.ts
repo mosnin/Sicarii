@@ -3,6 +3,8 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { OpError } from "@/lib/crm-operations";
+import { assertCleanArtifact } from "@/lib/clean-artifact";
 
 const ENTITY_STATUSES = ["NEW", "ENRICHED", "ARCHIVED"] as const;
 
@@ -72,6 +74,12 @@ export async function PATCH(
     }
 
     const { enrichment, ...rest } = parsed.data;
+    try {
+      await assertCleanArtifact([parsed.data.notes, parsed.data.description].filter(Boolean).join("\n"), "notes");
+    } catch (e) {
+      if (e instanceof OpError) return NextResponse.json({ error: e.message }, { status: e.status });
+      throw e;
+    }
     const data: Prisma.EntityUncheckedUpdateInput = { ...rest };
     if (enrichment !== undefined) {
       data.enrichment =

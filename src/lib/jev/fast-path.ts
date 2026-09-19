@@ -28,6 +28,8 @@ export const FAST_PATH_TOOLS = new Set([
   "enrich_entity",
   "list_due_followups",
   "get_billing",
+  "list_variant_stats",
+  "select_variant",
 ]);
 
 const READ_CORE = [
@@ -70,18 +72,17 @@ export function canSkipGeneration(decision: Handler): boolean {
 
 export function activeToolNames(decision: Handler, allNames: string[]): string[] {
   if (decision.kind === "escalate") return allNames;
+  if (decision.kind === "tool") {
+    const picked = decision.tool.startsWith("skill:") ? "" : decision.tool;
+    const allow = new Set<string>(READ_CORE);
+    if (picked) allow.add(picked);
+    return allNames.filter((n) => allow.has(n));
+  }
   const allow = new Set<string>(
     decision.kind === "deterministic" && decision.action === "mutate"
       ? MUTATE_CORE
       : DISCOVER_CORE,
   );
-  if (decision.kind === "tool") {
-    const picked = decision.tool.startsWith("skill:") ? "" : decision.tool;
-    if (picked) allow.add(picked);
-    if (!FAST_PATH_TOOLS.has(picked)) {
-      for (const n of READ_CORE) allow.add(n);
-    }
-  }
   if (decision.kind === "generate") allow.add("draft_breakups");
   return allNames.filter((n) => allow.has(n));
 }
@@ -250,6 +251,25 @@ export function formatFastReply(input: {
     return `You have ${b.creditsRemaining ?? 0} credits remaining on the ${b.plan ?? "current"} plan.`;
   }
 
+  if (tool === "list_variant_stats") {
+    const rows = Array.isArray(payload) ? payload : [];
+    if (rows.length === 0) return "There are no outreach variants yet. Create a subject line or opener first.";
+    const winner = rows.find((row) => (row as { winning?: boolean }).winning) as
+      | { text?: string; kind?: string; replyRate?: number }
+      | undefined;
+    if (winner?.text) {
+      return `The winning ${String(winner.kind ?? "variant").toLowerCase()} is "${winner.text.slice(0, 120)}" (${Math.round((winner.replyRate ?? 0) * 100)}% reply rate) across ${rows.length} variants.`;
+    }
+    return `${rows.length} outreach variant${rows.length === 1 ? "" : "s"} on file. None has enough sends to call a winner yet.`;
+  }
+
+  if (tool === "select_variant") {
+    const v = payload as { text?: string; kind?: string; error?: string };
+    if (v.error) return v.error;
+    if (!v.text) return "No active variants in that pool. Create one first.";
+    return `Use this ${String(v.kind ?? "variant").toLowerCase()}: ${v.text.slice(0, 280)}`;
+  }
+
   return "Done.";
 }
 
@@ -270,6 +290,8 @@ export type FastPathRunners = {
   listContacts?: (q?: string) => Promise<unknown>;
   listDueFollowups?: () => Promise<unknown>;
   getBilling?: () => Promise<unknown>;
+  listVariantStats?: () => Promise<unknown>;
+  selectVariant?: (kind: "SUBJECT" | "OPENER") => Promise<unknown>;
   scoreFit?: (rows: Array<{ id: string; text: string }>) => Promise<Array<{ id: string; score: number }>>;
 };
 
@@ -298,7 +320,8 @@ export async function executeFastPath(input: {
         tool === "list_contacts" ||
         tool === "list_due_followups" ||
         tool === "get_billing" ||
-        tool === "get_autopilot_status") &&
+        tool === "get_autopilot_status" ||
+        tool === "list_variant_stats") &&
       input.prefetch != null;
     payload = lookupHit
       ? input.prefetch
@@ -408,6 +431,14 @@ async function runTool(
       return runners.listDueFollowups ? runners.listDueFollowups() : [];
     case "get_billing":
       return runners.getBilling ? runners.getBilling() : { creditsRemaining: 0, plan: "unknown" };
+    case "list_variant_stats":
+      return runners.listVariantStats ? runners.listVariantStats() : [];
+    case "select_variant": {
+      const kind = query === "OPENER" ? "OPENER" : "SUBJECT";
+      return runners.selectVariant
+        ? runners.selectVariant(kind)
+        : { error: "No active variants in that pool. Create one first." };
+    }
     case "list_entities":
       return runners.listEntities ? runners.listEntities(query || undefined) : runners.searchCrm(query);
     case "list_contacts":

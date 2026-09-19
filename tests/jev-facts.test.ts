@@ -100,6 +100,15 @@ describe("stripHeavyFields", () => {
     expect(slim.contacts?.[0]?.name).toBe("Jane");
     expect(slim.contacts?.[0]?.enrichment).toBeUndefined();
   });
+
+  it("truncates long note and body fields", () => {
+    const slim = stripHeavyFields({
+      notes: "n".repeat(800),
+      body: "b".repeat(800),
+    }) as { notes?: string; body?: string };
+    expect(slim.notes).toHaveLength(400);
+    expect(slim.body).toHaveLength(400);
+  });
 });
 
 describe("compactUiMessages", () => {

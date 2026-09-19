@@ -244,6 +244,8 @@ const HEAVY_KEYS = new Set([
   "rawHtml",
 ]);
 
+const TRUNCATE_KEYS = new Set(["body", "notes", "description", "content", "subject"]);
+
 /** Drop blob fields and cap nested arrays so MCP/tool dumps stay small. */
 export function stripHeavyFields(payload: unknown, depth = 0): unknown {
   if (payload == null || depth > 6) return payload;
@@ -254,6 +256,10 @@ export function stripHeavyFields(payload: unknown, depth = 0): unknown {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
     if (HEAVY_KEYS.has(key)) continue;
+    if (typeof value === "string" && TRUNCATE_KEYS.has(key) && value.length > 400) {
+      out[key] = value.slice(0, 400);
+      continue;
+    }
     out[key] = stripHeavyFields(value, depth + 1);
   }
   return out;
