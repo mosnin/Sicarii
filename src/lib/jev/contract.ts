@@ -200,11 +200,40 @@ export function scoreToHundred(a: ScoreAnswer): number {
   return Math.max(0, Math.min(100, Math.round((a.score / max) * 100)));
 }
 
-/** State hygiene: named fields, bounded strings, never dump the whole CRM. */
+/** Keys that must never leave Scalar toward TypeSafe / Gateway / OpenRouter. */
+export function isSensitiveStateKey(key: string): boolean {
+  if (key === "hasPayment") return false;
+  const k = key.replace(/[-_]/g, "").toLowerCase();
+  return /payment|secret|token|password|authorization|cookie|apikey|bearer|privatekey|credential/.test(k);
+}
+
+function redactValue(value: unknown): Json {
+  if (value == null) return null;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) return value.map((item) => redactValue(item));
+  if (typeof value === "object") {
+    const out: Record<string, Json> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = isSensitiveStateKey(k) ? "[redacted]" : redactValue(v);
+    }
+    return out;
+  }
+  return null;
+}
+
+/** Strip payment blobs, tokens, and secrets before evaluate leaves the box. */
+export function redactEvaluateState(state: Json): Json {
+  return redactValue(state);
+}
+
+/** State hygiene: redact secrets, named fields, bounded strings. */
 export function compactState(state: Json, maxChars = 28_000): Json {
-  const raw = JSON.stringify(state);
-  if (raw.length <= maxChars) return state;
-  if (typeof state === "string") return state.slice(0, maxChars);
+  const cleaned = redactEvaluateState(state);
+  const raw = JSON.stringify(cleaned);
+  if (raw.length <= maxChars) return cleaned;
+  if (typeof cleaned === "string") return cleaned.slice(0, maxChars);
   return { truncated: true, preview: raw.slice(0, maxChars) };
 }
 

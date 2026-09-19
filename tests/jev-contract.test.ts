@@ -9,6 +9,7 @@ import {
   gateNoul,
   scoreToHundred,
   compactState,
+  redactEvaluateState,
   JevError,
 } from "@/lib/jev/contract";
 
@@ -132,5 +133,29 @@ describe("compactState", () => {
   it("truncates oversized strings", () => {
     const out = compactState("x".repeat(100), 20);
     expect(typeof out === "string" && out.length).toBe(20);
+  });
+
+  it("redacts payment blobs before they can be sent", () => {
+    const out = compactState({
+      credits: 1000,
+      hasPayment: true,
+      xPayment: "base64-secret-header",
+      nested: { authorization: "Bearer xyz", ok: 1 },
+    });
+    expect(out).toEqual({
+      credits: 1000,
+      hasPayment: true,
+      xPayment: "[redacted]",
+      nested: { authorization: "[redacted]", ok: 1 },
+    });
+  });
+});
+
+describe("redactEvaluateState", () => {
+  it("keeps hasPayment and drops xPayment", () => {
+    expect(redactEvaluateState({ xPayment: "abc", hasPayment: true })).toEqual({
+      xPayment: "[redacted]",
+      hasPayment: true,
+    });
   });
 });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { isJevConfigured, tryEvaluate, type QuestionMap } from "@/lib/jev";
+import { isJevConfigured, redactEvaluateState, tryEvaluate, type Json, type QuestionMap } from "@/lib/jev";
 
 const schema = z.object({
   state: z.unknown(),
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
 
     const result = await tryEvaluate({
-      state: parsed.data.state as never,
+      state: redactEvaluateState((parsed.data.state ?? {}) as Json),
       questions: parsed.data.questions as QuestionMap,
       onFailure: "fail-closed",
     });

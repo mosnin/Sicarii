@@ -11,6 +11,8 @@ export {
   asScore,
   scoreToHundred,
   compactState,
+  redactEvaluateState,
+  isSensitiveStateKey,
   noulConfidence,
   JevError,
   UNTRUSTED,

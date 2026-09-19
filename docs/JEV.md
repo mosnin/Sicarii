@@ -157,7 +157,7 @@ The app still boots with none of these keys.
 | Situation | Routing / classify | Write tool (auto-mode) | Money / send / memory |
 |-----------|--------------------|------------------------|-----------------------|
 | No Jev key | fail-open (heuristic / allow) | allow unless `JEV_REQUIRED=1` (then confirm) | allow unless `JEV_REQUIRED=1` (then block / stop) |
-| Live evaluate error | fail-open (`null`) | **confirm** if `isWriteTool(name)` | money: block; autopilot: stop; send: block |
+| Live evaluate error | fail-open (`null`) | **confirm** if `isWriteTool(name)` | money: block; autopilot: stop; send: block; identity + malicious scan: block |
 | Jev answers | code applies policy.ts | block destructive/exfil; confirm the rest | `GATES.money.autoAt` |
 
 `isWriteTool` covers prefixed names (`create_contact`, `buy_credits`) **and**
@@ -166,7 +166,10 @@ A live TypeSafe outage on those buckets must ask for confirmation, not allow.
 
 MCP auto-mode receives the **zod-parsed args** (never an empty `{}`). Payment
 blobs (`xPayment`) are not sent to Jev; only `{ credits, hasPayment }` /
-`{ plan, hasPayment }`.
+`{ plan, hasPayment }`. `compactState` / `redactEvaluateState` strip
+`xPayment`, tokens, and secrets from every evaluate (HTTP, MCP, kernel)
+before the request leaves Scalar. HTTP `/api/x402/topup` and
+`/api/x402/subscribe` call `gateMoney` the same way MCP buy tools do.
 
 Unconfigured Jev still silently disables identity, malicious scan, and spend
 authorization **unless** `JEV_REQUIRED=1` (or `true` / `yes`) is set. Production
@@ -349,7 +352,8 @@ Still owed (documented):
 
 - Live TypeSafe observation (no key in this checkout).
 - Labeled CRM-turn jevcal, then pin `jev-1.13.0`.
-- Identity still fail-opens on a live miss unless `JEV_REQUIRED` is set.
+- Identity and malicious scan fail-closed on a **live** miss. They still
+  fail-open when no key is set, unless `JEV_REQUIRED=1`.
 
 See `docs/engineering/jev-sweep-2026-09-19.md`.
 
