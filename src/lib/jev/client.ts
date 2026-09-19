@@ -18,12 +18,21 @@ import {
   type QuestionMap,
 } from "./contract";
 import { CLIENT_DEFAULTS, JEV_MODEL } from "./policy";
+import {
+  evaluateCacheKey,
+  isJevCircuitOpen,
+  readEvaluateCache,
+  recordJevFailure,
+  recordJevSuccess,
+  writeEvaluateCache,
+} from "./runtime";
 
 export type JevEvaluateRequest<Q extends QuestionMap = QuestionMap> = {
   state: Json;
   questions: Q;
   model?: string;
   timeoutMs?: number;
+  maxRetries?: number;
   signal?: AbortSignal;
   zdr?: boolean;
   onFailure?: FailureMode;
@@ -234,9 +243,10 @@ export function createJevClient(config: JevClientConfig = {}): JevClient {
       throw new JevError("Jev is not configured. Set TYPESAFE_API_KEY, AI_GATEWAY_API_KEY, or OPENROUTER_API_KEY.");
     }
 
+    const retries = req.maxRetries ?? maxRetries;
     let lastError: JevError | null = null;
     for (const attempt of attempts) {
-      for (let i = 0; i <= maxRetries; i++) {
+      for (let i = 0; i <= retries; i++) {
         try {
           const { status, json } = await attempt.run();
           if (status === 429 || status === 529) {
@@ -306,10 +316,28 @@ export async function tryEvaluate<Q extends QuestionMap>(
   client?: JevClient,
 ): Promise<JevResult<Q> | null> {
   if (!client && !isJevConfigured()) return null;
+  const useRuntime = !client;
+  if (useRuntime && isJevCircuitOpen()) {
+    if (req.onFailure === "fail-closed") {
+      throw new JevError("Jev circuit open.", { retryable: true });
+    }
+    return null;
+  }
+  const cacheKey = useRuntime ? evaluateCacheKey(req.state, req.questions) : null;
+  if (cacheKey) {
+    const hit = readEvaluateCache(cacheKey);
+    if (hit) return hit as JevResult<Q>;
+  }
   const resolved = client ?? getJevClient();
   try {
-    return await resolved.evaluate(req);
+    const result = await resolved.evaluate(req);
+    if (useRuntime) {
+      recordJevSuccess();
+      if (cacheKey) writeEvaluateCache(cacheKey, result);
+    }
+    return result;
   } catch (e) {
+    if (useRuntime) recordJevFailure();
     if (req.onFailure === "fail-closed") throw e;
     console.warn("[jev] evaluate failed open", e instanceof Error ? e.message : e);
     return null;

@@ -93,7 +93,10 @@ src/lib/jev/
   contract.ts      primitives, validators, gates
   policy.ts        every threshold in one file
   client.ts        TypeSafe -> Gateway -> OpenRouter
-  decide.ts        turn orchestrator
+  decide.ts        turn orchestrator (instant local routes first)
+  instant.ts       regex System One for obvious CRM turns
+  query.ts         lookup prefix strip / maps split
+  runtime.ts       evaluate memo + circuit breaker
   harness.ts       model router + auto-mode
   gates.ts         identity, slop, warden, triage, citations, money, ...
   generate.ts      Qwen / OpenAI generation picker (not evaluate)
@@ -231,7 +234,7 @@ picks dimensions and tools. Code fills templates.
 
 | Surface | Jev job | Generator |
 |---------|---------|-----------|
-| `/api/agent` | **Fast path:** one `decideTurn`, then code executes lookup/discover tools and streams prose. Chat model only when Jev grants generation. Active tool subset + Foreman on the generate path. Memory embed is off the critical path (`after`). | Qwen or OpenAI, and only if needed |
+| `/api/agent` | **Instant path:** obvious lookups / discover / create / "yes, find them" skip TypeSafe and the chat model. Speculative CRM search overlaps decide. Routing evaluate uses an 800ms / 0-retry budget and a circuit breaker. Chat model only when Jev grants generation. Memory embed is off the critical path (`after`). | Qwen or OpenAI, and only if needed |
 | `/api/discover/route-intent` | Choice over the discovery catalog | heuristic params |
 | `/api/crm/fit-score` | Score per record vs product context | none |
 | `/api/crm/semantic-sort` | Noul per record vs intent | none |
@@ -390,16 +393,24 @@ classify. The 10x people post is not "Jev sits next to gpt-4o." It is
 
 Scalar now does that on `/api/agent`:
 
-1. One `decideTurn` (no extra `routeModel` round trip).
-2. If the turn is lookup/analyze or a routed read/discover tool, `executeFastPath`
-   runs the ops layer and `fastPathResponse` streams the same UI SSE the chat
-   widget already understands. No `streamText`. No tool-schema tokens.
-3. If Jev grants generation, `pickActiveTools` hides unused tools so the
+1. `classifyInstant` handles obvious CRM utterances in process (show me X,
+   find companies, add Acme as a company, "yes" after an empty miss). TypeSafe
+   stays dark. This is the Hermes / Pokemon-harness pattern: the if-statement
+   is free when the utterance is not ambiguous.
+2. Speculative `searchCrm` starts before `decideTurn` returns. User-message
+   persist overlaps the same window.
+3. Ambiguous turns still call Jev, but routing uses an 800ms / 0-retry budget.
+   Three live failures open a 20s circuit so a down TypeSafe hop cannot stack
+   2.5s retries. Successful evaluates memoize for 45s.
+4. If the turn is lookup/analyze or a routed read/discover/create tool,
+   `executeFastPath` runs the ops layer and `fastPathResponse` streams the
+   same UI SSE. No `streamText`. No tool-schema tokens.
+5. If Jev grants generation, `pickActiveTools` hides unused tools so the
    generator sees a smaller catalog.
-4. `storeMemory` embeddings run in `after()`, not before the first token.
+6. `storeMemory` embeddings run in `after()`, not before the first token.
 
-Lookups also work when OpenRouter/OpenAI are unset. Discovery still needs
-its provider keys.
+Lookups and instant creates work when OpenRouter/OpenAI are unset. Discovery
+still needs its provider keys. Write tools still pass auto-mode.
 
 ---
 

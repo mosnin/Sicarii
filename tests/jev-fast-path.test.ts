@@ -39,6 +39,10 @@ describe("canSkipGeneration", () => {
     expect(canSkipGeneration({ kind: "deterministic", action: "mutate", confidence: 0.9 })).toBe(false);
     expect(canSkipGeneration({ kind: "generate", model: "qwen", effort: "low", confidence: 0.8 })).toBe(false);
   });
+
+  it("skips the chat model on an instant create", () => {
+    expect(canSkipGeneration({ kind: "tool", tool: "create_entity", confidence: 0.94 })).toBe(true);
+  });
 });
 
 describe("activeToolNames", () => {
@@ -111,6 +115,8 @@ describe("executeFastPath", () => {
         recall: async () => [],
         listPendingDrafts: async () => [],
         getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
       },
     });
     expect(result?.tool).toBe("search_crm");
@@ -131,8 +137,60 @@ describe("executeFastPath", () => {
         recall: async () => [],
         listPendingDrafts: async () => [],
         getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
       },
     });
     expect(result).toBeNull();
+  });
+
+  it("creates a company from an instant route without generation", async () => {
+    const result = await executeFastPath({
+      message: "add Acme as a company",
+      decision: { kind: "tool", tool: "create_entity", confidence: 0.94 },
+      instant: { tool: "create_entity", query: "Acme", name: "Acme", source: "instant" },
+      runners: {
+        searchCrm: async () => ({ entities: [], contacts: [] }),
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async (name) => ({ name, domain: null }),
+        createContact: async () => ({ name: "y" }),
+      },
+    });
+    expect(result?.tool).toBe("create_entity");
+    expect(result?.text).toContain("Added Acme");
+  });
+
+  it("reuses a speculative CRM prefetch", async () => {
+    let searches = 0;
+    const result = await executeFastPath({
+      message: "show me acme",
+      decision: { kind: "tool", tool: "search_crm", confidence: 0.94 },
+      prefetch: { entities: [{ name: "Acme", domain: "acme.com" }], contacts: [] },
+      runners: {
+        searchCrm: async () => {
+          searches += 1;
+          return { entities: [], contacts: [] };
+        },
+        findCompanies: async () => ({ added: 0 }),
+        mapsLeads: async () => ({ added: 0 }),
+        swarmDiscover: async () => ({ added: 0 }),
+        searchWeb: async () => [],
+        googleSearch: async () => ({ results: [] }),
+        recall: async () => [],
+        listPendingDrafts: async () => [],
+        getAutopilotStatus: async () => ({}),
+        createEntity: async () => ({ name: "x" }),
+        createContact: async () => ({ name: "y" }),
+      },
+    });
+    expect(searches).toBe(0);
+    expect(result?.text).toContain("Acme (acme.com)");
   });
 });
