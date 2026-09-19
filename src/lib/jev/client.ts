@@ -133,7 +133,7 @@ async function postJson(
     });
     const json = await res.json().catch(() => null);
     return { status: res.status, json };
-  } catch (e) {
+  } catch {
     const aborted = ctrl.signal.aborted;
     throw new JevError(aborted ? "Jev request timed out." : "Jev request failed.", {
       retryable: aborted,

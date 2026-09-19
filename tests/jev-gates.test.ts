@@ -22,7 +22,7 @@ import type { JevResult, QuestionMap } from "@/lib/jev/contract";
 
 function mockClient(answers: JevResult["answers"]): JevClient {
   return {
-    async evaluate<Q extends QuestionMap>(req: { questions: Q }): Promise<JevResult<Q>> {
+    async evaluate<Q extends QuestionMap>(_req: { questions: Q }): Promise<JevResult<Q>> {
       return {
         model: "mock",
         answers: answers as JevResult<Q>["answers"],
