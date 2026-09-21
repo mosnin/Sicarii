@@ -6,6 +6,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
 import { AgentMailKeyForm } from "@/components/dashboard/agentmail-key-form";
@@ -160,9 +161,15 @@ export default async function SettingsPage() {
       <FloatIn delay={0.2}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">AgentMail</CardTitle>
+            <CardTitle className="text-base">AgentMail (bring your own account)</CardTitle>
             <CardDescription>
-              Connect your AgentMail account to send and sync email onto contacts.
+              Connect an existing AgentMail account to surface its threads on
+              contacts. To give your agents mailboxes that Scalar provisions,
+              warms up and monitors, use{" "}
+              <Link href="/mailboxes" className="text-primary hover:underline">
+                Mailboxes
+              </Link>
+              .
             </CardDescription>
           </CardHeader>
           <CardContent>

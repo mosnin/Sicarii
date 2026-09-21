@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "Invalid body", details: parsed.error.flatten() }, { status: 400 });
 
     const origin = appOrigin(req);
-    const successUrl = `${origin}/settings?tab=mailboxes&order=success`;
-    const cancelUrl = `${origin}/settings?tab=mailboxes&order=cancelled`;
+    const successUrl = `${origin}/mailboxes?order=success`;
+    const cancelUrl = `${origin}/mailboxes?order=cancelled`;
     const body = parsed.data;
     const order =
       body.kind === "domain"
