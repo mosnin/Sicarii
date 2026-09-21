@@ -37,7 +37,10 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: (args: unknown) => contactFindUnique(args),
       update: (args: unknown) => contactUpdate(args),
     },
-    contactEmail: { create: (args: unknown) => contactEmailCreate(args) },
+    contactEmail: {
+      create: (args: unknown) => contactEmailCreate(args),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
     user: { findUnique: (args: unknown) => userFindUnique(args) },
     activity: { create: vi.fn() },
     variantSend: { create: vi.fn() },
@@ -139,12 +142,42 @@ describe("sendOutreachEmail", () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
+  it("refuses a do-not-contact row before calling the provider", async () => {
+    contactFindUnique.mockResolvedValue({
+      id: "c1",
+      userId: OWNER,
+      email: "lead@target.com",
+      status: "ENRICHED",
+      doNotContact: true,
+      doNotContactReason: "bounce",
+    });
+    await expect(
+      sendOutreachEmail(OWNER, { contactId: "c1", subject: "hi", body: "quick question?" }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(sendViaSmtpCiphertext).not.toHaveBeenCalled();
+    expect(mailboxFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("hides another tenant's contact from send", async () => {
+    contactFindUnique.mockResolvedValue({
+      id: "c1",
+      userId: OWNER,
+      email: "lead@target.com",
+      doNotContact: false,
+    });
+    await expect(
+      sendOutreachEmail(ATTACKER, { contactId: "c1", subject: "hi", body: "quick question?" }),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(sendViaSmtpCiphertext).not.toHaveBeenCalled();
+  });
+
   it("hits the daily cap before calling the provider", async () => {
     contactFindUnique.mockResolvedValue({
       id: "c1",
       userId: OWNER,
       email: "lead@target.com",
       status: "ENRICHED",
+      doNotContact: false,
     });
     mailboxFindFirst.mockResolvedValue(
       readyBox({ sentToday: 40, sentTodayOn: new Date(), dailySendLimit: 40 }),
@@ -161,8 +194,10 @@ describe("sendOutreachEmail", () => {
       userId: OWNER,
       email: "lead@target.com",
       status: "ENRICHED",
+      doNotContact: false,
     });
     mailboxFindFirst.mockResolvedValue(readyBox());
+    mailboxFindUnique.mockResolvedValue(readyBox());
     mailboxUpdate.mockResolvedValue(readyBox());
     contactUpdate.mockResolvedValue({
       id: "c1",

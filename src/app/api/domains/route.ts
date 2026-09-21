@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { OpError } from "@/lib/op-error";
-import { addOwnedDomain, listDomains, searchDomainsForUser } from "@/lib/mailbox-operations";
+import { addOwnedDomain, checkDomainDnsForUser, listDomains, searchDomainsForUser } from "@/lib/mailbox-operations";
 
 function op(e: unknown) {
   if (e instanceof NextResponse) return e;
@@ -31,11 +31,18 @@ export async function POST(req: NextRequest) {
       action?: string;
       name?: string;
       query?: string;
+      domainId?: string;
     } | null;
 
     if (body?.action === "search") {
       if (!body.query) return NextResponse.json({ error: "query is required." }, { status: 400 });
       const result = await searchDomainsForUser(body.query);
+      return NextResponse.json(result);
+    }
+
+    if (body?.action === "check_dns") {
+      if (!body.domainId) return NextResponse.json({ error: "domainId is required." }, { status: 400 });
+      const result = await checkDomainDnsForUser(user.id, body.domainId);
       return NextResponse.json(result);
     }
 

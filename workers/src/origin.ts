@@ -20,11 +20,24 @@ export async function callOrigin(env: Env, job: MailboxJob): Promise<unknown> {
   return text ? JSON.parse(text) : {};
 }
 
-export async function listIds(
+export type IdPage = { ids: string[]; nextCursor: string | null };
+
+export async function listPage(
   env: Env,
-  type: "warmup-list" | "fulfill-list",
-): Promise<string[]> {
-  const data = (await callOrigin(env, { type })) as { mailboxIds?: unknown };
-  if (!Array.isArray(data.mailboxIds)) return [];
-  return data.mailboxIds.filter((id): id is string => typeof id === "string" && id.length > 0);
+  job: Extract<
+    MailboxJob,
+    { type: "warmup-list" | "fulfill-list" | "send-slot-list" | "outreach-tick" | "imap-list" | "dns-list" }
+  >,
+): Promise<IdPage> {
+  const data = (await callOrigin(env, job)) as {
+    result?: { ids?: unknown; mailboxIds?: unknown; nextCursor?: unknown };
+    ids?: unknown;
+    mailboxIds?: unknown;
+    nextCursor?: unknown;
+  };
+  const body = data.result && typeof data.result === "object" ? data.result : data;
+  const raw = Array.isArray(body.ids) ? body.ids : Array.isArray(body.mailboxIds) ? body.mailboxIds : [];
+  const ids = raw.filter((id): id is string => typeof id === "string" && id.length > 0);
+  const nextCursor = typeof body.nextCursor === "string" && body.nextCursor.length > 0 ? body.nextCursor : null;
+  return { ids, nextCursor };
 }

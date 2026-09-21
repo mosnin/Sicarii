@@ -52,15 +52,26 @@ describe("worker fan-out", () => {
     }) as typeof fetch;
 
     const warmup = await handleScheduled("20 * * * *", env);
-    expect(warmup).toEqual({ enqueued: 2, type: "warmup-one" });
-    expect(sent).toEqual([
+    expect(warmup).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ enqueued: 2, type: "warmup-one" }),
+        expect.objectContaining({ type: "send-one" }),
+        expect.objectContaining({ type: "dns-one" }),
+      ]),
+    );
+    expect(sent.filter((j) => j.type === "warmup-one")).toEqual([
       { type: "warmup-one", mailboxId: "m1" },
       { type: "warmup-one", mailboxId: "m2" },
     ]);
 
     sent.length = 0;
     const fulfill = await handleScheduled("*/10 * * * *", env);
-    expect(fulfill).toEqual({ enqueued: 2, type: "fulfill-one" });
+    expect(fulfill).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ enqueued: 2, type: "fulfill-one" }),
+        expect.objectContaining({ type: "imap-one" }),
+      ]),
+    );
     globalThis.fetch = origFetch;
   });
 });

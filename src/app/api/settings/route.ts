@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { sealIfPlain, secretDisplayLast4 } from "@/lib/mailbox-crypto";
 
 const patchSchema = z.object({
   productContext: z.string().max(20000).optional(),
@@ -44,11 +45,12 @@ export async function PATCH(req: NextRequest) {
       data.productContext = parsed.data.productContext;
     }
     if (parsed.data.agentMailApiKey !== undefined) {
-      // Empty string clears the key.
-      data.agentMailApiKey = parsed.data.agentMailApiKey || null;
+      // Empty string clears the key. New writes are sealed with the same
+      // secret-box as SMTP. Existing plaintext stays readable until rewritten.
+      data.agentMailApiKey = parsed.data.agentMailApiKey ? sealIfPlain(parsed.data.agentMailApiKey) : null;
     }
     if (parsed.data.agentPhoneApiKey !== undefined) {
-      data.agentPhoneApiKey = parsed.data.agentPhoneApiKey || null;
+      data.agentPhoneApiKey = parsed.data.agentPhoneApiKey ? sealIfPlain(parsed.data.agentPhoneApiKey) : null;
     }
     if (parsed.data.taskWebhookUrl !== undefined) {
       data.taskWebhookUrl = parsed.data.taskWebhookUrl || null;
@@ -75,8 +77,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       productContext: updated.productContext ?? "",
-      agentMailKeyLast4: updated.agentMailApiKey ? updated.agentMailApiKey.slice(-4) : null,
-      agentPhoneKeyLast4: updated.agentPhoneApiKey ? updated.agentPhoneApiKey.slice(-4) : null,
+      agentMailKeyLast4: secretDisplayLast4(updated.agentMailApiKey),
+      agentPhoneKeyLast4: secretDisplayLast4(updated.agentPhoneApiKey),
       taskWebhookUrl: updated.taskWebhookUrl ?? "",
       autoRadar: updated.autoRadar,
     });

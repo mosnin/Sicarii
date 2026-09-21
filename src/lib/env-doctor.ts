@@ -213,7 +213,7 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
           "Premium Inboxes webhook",
           "PREMIUM_INBOXES_WEBHOOK_SECRET",
           env,
-          "Verifies /api/webhooks/premium-inboxes when an inbox is provisioned.",
+          "Verifies /api/webhooks/premium-inboxes and is also accepted on /api/webhooks/inbound-email. WORKER_SECRET / CRON_SECRET work for inbound too.",
         ),
         optionalKey(
           "Mailbox Stripe price",
@@ -233,7 +233,12 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
           env,
           "AES key for SMTP passwords. Falls back to MCP_OAUTH_SECRET / CLERK_SECRET_KEY.",
         ),
-        optionalKey("Warmup sink", "WARMUP_SINK_EMAIL", env, "Address warmup ticks send to when a mailbox has no pool."),
+        optionalKey(
+          "Warmup sink",
+          "WARMUP_SINK_EMAIL",
+          env,
+          "The only warmup destination unless a mailbox has explicit targets. No peer-inbox network.",
+        ),
         allOrNothing(
           "Cloudflare mailbox worker",
           ["WORKERS_URL", "WORKER_SECRET"],

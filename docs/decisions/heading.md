@@ -8,20 +8,16 @@ hardened (audits 2026-06-06 -> 09; PRs #19-#29) - and still **unfelt**. Nothing
 has been observed running end to end, and the product has zero choreographed
 moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
 
-**Parallel cycle shipped: 0015 - Agent mailboxes** (`0015-agent-mailboxes.md`)
-and **0016 - Cloudflare mailbox jobs** (`0016-cloudflare-mailbox-jobs.md`).
-Agents can send for real: `/mailboxes` to buy/connect a domain + inbox,
-warmup ramp, `send_email` over MCP. Background warmup / inbound / fulfillment
-run on Cloudflare Workers when `WORKERS_URL` is set. Owed: `prisma db push`,
-Stripe mailbox and domain prices, GoDaddy / Premium Inboxes keys, Worker
-deploy, one live send.
+**Parallel cycle shipped: 0015 - Agent mailboxes**, **0016 - Cloudflare
+mailbox jobs**, **0017 - Safe warmup + scale** (`0017-safe-warmup-and-scale.md`).
+Agents can send for real. Warmup is readiness (DNS, age, cap, health), not
+a fake engagement network. List jobs are cursor-paginated so 2 and 2000
+inboxes share one path. Owed: `prisma db push`, Stripe mailbox/domain prices,
+GoDaddy / Premium Inboxes keys, Worker deploy, one live warmup + send.
+Not observed at fleet scale.
 
-**Parallel research shipped: 0017 - Safe warmup volume**
-(`0017-safe-warmup-and-scale.md`, evidence in
-`docs/engineering/mailbox-warmup-limits.md`). Default: 0 cold until day 21,
-first ready day = 5, ceiling 20. Skills: `scalar-safe-warmup`,
-`scalar-outreach-copy`. Implementer should import
-`src/lib/mailbox-warmup-limits.ts` over the leftover 5/10/20/30/40 table.
+Default warmup (researched): 0 cold until day 21, first ready day = 5,
+ceiling 20. Skills: `scalar-safe-warmup`, `scalar-outreach-copy`.
 
 **The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
 
@@ -31,7 +27,7 @@ first ready day = 5, ceiling 20. Skills: `scalar-safe-warmup`,
 | 1 | **Moment 1 - The First Run**: one sentence -> the CRM builds itself, live, in 60s | agents (Wave A) | SHIPPED (code): `/welcome` + streaming orchestrator, honest sample-degradation until Phase 0. Live observation owed. |
 | 2 | **Moment 2 - The Pulse**: "While you were away, your agent added 14 companies..." | agents (Wave A) | SHIPPED (code): `User.lastSeenAt` + `computePulse` (agent-added entities, distinct enriched refs from CreditLedger, MonitorRun signals) rendered in the dashboard hero band; never an empty brag. Needs `prisma db push` + live observation. |
 | 3 | **Moment 3 - Visible Trust**: provenance on every enriched field + the honest blank | agents (Wave B) | SHIPPED (code): `FieldProvenance` + `via Explorium, 3d ago` + re-verify endpoint. |
-| 4 | **Moment 4 - The Handshake**: /connect page that listens and flips green on the first agent write (+ first live OAuth observation) | agents (Wave B) | after Wave A |
+| 4 | **Moment 4 - The Handshake**: /connect page that listens and flips green on the first agent write (+ first live OAuth observation) | agents (Wave B) | SHIPPED (code): `/connect` polls `/api/connect/status` (API key lastUsedAt or OAuth token). Live observation owed. |
 | 5 | **Gate out**: founder runs all four moments as one journey; subtraction holds; RECORD | Founder | last |
 
 **Parallel cycle shipped: 0008 - Social channels** (`0008-social-channels.md`).

@@ -38,6 +38,7 @@ import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats } from "@/lib/variant-operations";
 import { CREDIT_COSTS } from "@/lib/credits";
 import { draftOutreachForUser, listMailboxes, sendOutreachEmail } from "@/lib/mailbox-operations";
+import { enqueueOutreach } from "@/lib/mailbox-queue";
 
 export const maxDuration = 60;
 
@@ -452,6 +453,19 @@ export async function POST(req: Request) {
         senderName: z.string().max(80).optional(),
       }),
       execute: (args) => exec(() => draftOutreachForUser(userId, args)),
+    }),
+    enqueue_email: tool({
+      description:
+        "Queue one outreach send for later. Idempotent. Use send_email when you need the result now.",
+      inputSchema: z.object({
+        contactId: z.string(),
+        mailboxId: z.string(),
+        subject: z.string().min(1).max(200),
+        body: z.string().min(1).max(20_000),
+        variantId: z.string().optional(),
+        idempotencyKey: z.string().max(240).optional(),
+      }),
+      execute: (args) => exec(() => enqueueOutreach(userId, args)),
     }),
     send_email: tool({
       description:

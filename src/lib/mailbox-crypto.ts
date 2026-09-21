@@ -82,3 +82,59 @@ export function smtpLast4(username: string): string {
   const trimmed = username.trim();
   return trimmed.slice(-4).padStart(4, "*");
 }
+
+/** Generic secret-box for AgentMail / AgentPhone / IMAP strings.
+ *  Same AES-256-GCM envelope as SMTP. Plaintext values stay readable
+ *  until a write seals them (no live rotate in this environment). */
+export function isSealedSecret(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const parts = value.split(".");
+  return parts.length === 4 && parts[0] === PREFIX;
+}
+
+export function sealSecret(plaintext: string): string {
+  const iv = randomBytes(IV_LEN);
+  const cipher = createCipheriv(ALGO, keyBytes(), iv);
+  const enc = Buffer.concat([cipher.update(Buffer.from(plaintext, "utf8")), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `${PREFIX}.${iv.toString("base64url")}.${tag.toString("base64url")}.${enc.toString("base64url")}`;
+}
+
+export function openSecret(ciphertext: string): string {
+  const parts = ciphertext.split(".");
+  if (parts.length !== 4 || parts[0] !== PREFIX) {
+    throw new Error("Unrecognized secret-box format.");
+  }
+  const iv = Buffer.from(parts[1]!, "base64url");
+  const tag = Buffer.from(parts[2]!, "base64url");
+  const enc = Buffer.from(parts[3]!, "base64url");
+  if (iv.length !== IV_LEN || tag.length !== TAG_LEN) {
+    throw new Error("Corrupt secret-box.");
+  }
+  const decipher = createDecipheriv(ALGO, keyBytes(), iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
+}
+
+/** Decrypt if sealed; otherwise return the stored plaintext (migration debt). */
+export function openUserSecret(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (!isSealedSecret(value)) return value;
+  try {
+    return openSecret(value);
+  } catch {
+    return null;
+  }
+}
+
+export function sealIfPlain(value: string): string {
+  if (isSealedSecret(value)) return value;
+  if (!mailboxCryptoConfigured()) return value;
+  return sealSecret(value);
+}
+
+export function secretDisplayLast4(value: string | null | undefined): string | null {
+  const plain = openUserSecret(value);
+  if (!plain) return null;
+  return plain.slice(-4);
+}

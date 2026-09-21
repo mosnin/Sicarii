@@ -530,12 +530,19 @@ CREATE TABLE IF NOT EXISTS "domains" (
   "stripeSessionId" TEXT,
   "expiresAt" TIMESTAMP(3),
   "lastError" TEXT,
+  "spfOk" BOOLEAN,
+  "dkimOk" BOOLEAN,
+  "dmarcOk" BOOLEAN,
+  "mxOk" BOOLEAN,
+  "dnsCheckedAt" TIMESTAMP(3),
+  "dnsRecords" JSONB,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "domains_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "domains_userId_name_key" ON "domains" ("userId", "name");
 CREATE INDEX IF NOT EXISTS "domains_userId_status_idx" ON "domains" ("userId", "status");
+CREATE INDEX IF NOT EXISTS "domains_dnsCheckedAt_idx" ON "domains" ("dnsCheckedAt");
 
 CREATE TABLE IF NOT EXISTS "mailboxes" (
   "id" TEXT NOT NULL,
@@ -558,6 +565,22 @@ CREATE TABLE IF NOT EXISTS "mailboxes" (
   "smtpLast4" TEXT,
   "warmupTargets" JSONB,
   "lastError" TEXT,
+  "warmupSentToday" INTEGER NOT NULL DEFAULT 0,
+  "warmupSentTodayOn" TIMESTAMP(3),
+  "hourlySent" INTEGER NOT NULL DEFAULT 0,
+  "hourlySentOn" TIMESTAMP(3),
+  "hourlySendLimit" INTEGER NOT NULL DEFAULT 8,
+  "healthScore" INTEGER NOT NULL DEFAULT 100,
+  "lastWarmupAt" TIMESTAMP(3),
+  "nextEligibleAt" TIMESTAMP(3),
+  "consecutiveFailures" INTEGER NOT NULL DEFAULT 0,
+  "pausedReason" TEXT,
+  "imapHost" TEXT,
+  "imapPort" INTEGER,
+  "imapSecure" BOOLEAN NOT NULL DEFAULT true,
+  "imapCiphertext" TEXT,
+  "lastInboundAt" TIMESTAMP(3),
+  "lastImapUid" INTEGER,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "mailboxes_pkey" PRIMARY KEY ("id")
@@ -565,6 +588,8 @@ CREATE TABLE IF NOT EXISTS "mailboxes" (
 CREATE UNIQUE INDEX IF NOT EXISTS "mailboxes_userId_email_key" ON "mailboxes" ("userId", "email");
 CREATE INDEX IF NOT EXISTS "mailboxes_userId_status_idx" ON "mailboxes" ("userId", "status");
 CREATE INDEX IF NOT EXISTS "mailboxes_status_idx" ON "mailboxes" ("status");
+CREATE INDEX IF NOT EXISTS "mailboxes_status_nextEligibleAt_idx" ON "mailboxes" ("status", "nextEligibleAt");
+CREATE INDEX IF NOT EXISTS "mailboxes_nextEligibleAt_idx" ON "mailboxes" ("nextEligibleAt");
 CREATE INDEX IF NOT EXISTS "mailboxes_domainId_idx" ON "mailboxes" ("domainId");
 CREATE INDEX IF NOT EXISTS "mailboxes_providerOrderId_idx" ON "mailboxes" ("providerOrderId");
 CREATE INDEX IF NOT EXISTS "mailboxes_email_idx" ON "mailboxes" ("email");
@@ -577,15 +602,84 @@ CREATE TABLE IF NOT EXISTS "mailbox_events" (
   "toAddr" TEXT,
   "subject" TEXT,
   "providerId" TEXT,
+  "messageId" TEXT,
+  "inReplyTo" TEXT,
+  "references" TEXT,
+  "classification" TEXT,
+  "idempotencyKey" TEXT,
   "meta" JSONB,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "mailbox_events_pkey" PRIMARY KEY ("id")
 );
 CREATE INDEX IF NOT EXISTS "mailbox_events_mailboxId_createdAt_idx" ON "mailbox_events" ("mailboxId", "createdAt");
 CREATE INDEX IF NOT EXISTS "mailbox_events_mailboxId_kind_idx" ON "mailbox_events" ("mailboxId", "kind");
+CREATE UNIQUE INDEX IF NOT EXISTS "mailbox_events_idempotencyKey_key" ON "mailbox_events" ("idempotencyKey");
+CREATE INDEX IF NOT EXISTS "mailbox_events_classification_idx" ON "mailbox_events" ("classification");
+
+CREATE TABLE IF NOT EXISTS "mailbox_send_jobs" (
+  "id" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "mailboxId" TEXT NOT NULL,
+  "contactId" TEXT NOT NULL,
+  "idempotencyKey" TEXT NOT NULL,
+  "kind" TEXT NOT NULL DEFAULT 'outreach',
+  "status" TEXT NOT NULL DEFAULT 'queued',
+  "subject" TEXT NOT NULL,
+  "body" TEXT NOT NULL,
+  "variantId" TEXT,
+  "attemptCount" INTEGER NOT NULL DEFAULT 0,
+  "lastError" TEXT,
+  "scheduledAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "mailbox_send_jobs_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "mailbox_send_jobs_idempotencyKey_key" ON "mailbox_send_jobs" ("idempotencyKey");
+CREATE INDEX IF NOT EXISTS "mailbox_send_jobs_status_scheduledAt_idx" ON "mailbox_send_jobs" ("status", "scheduledAt");
+CREATE INDEX IF NOT EXISTS "mailbox_send_jobs_userId_status_idx" ON "mailbox_send_jobs" ("userId", "status");
+CREATE INDEX IF NOT EXISTS "mailbox_send_jobs_mailboxId_status_idx" ON "mailbox_send_jobs" ("mailboxId", "status");
+
+ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "doNotContact" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "doNotContactReason" TEXT;
+ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "doNotContactAt" TIMESTAMP(3);
+CREATE INDEX IF NOT EXISTS "contacts_userId_doNotContact_idx" ON "contacts" ("userId", "doNotContact");
+
+ALTER TABLE "contact_emails" ADD COLUMN IF NOT EXISTS "messageId" TEXT;
+ALTER TABLE "contact_emails" ADD COLUMN IF NOT EXISTS "inReplyTo" TEXT;
+ALTER TABLE "contact_emails" ADD COLUMN IF NOT EXISTS "references" TEXT;
+CREATE INDEX IF NOT EXISTS "contact_emails_messageId_idx" ON "contact_emails" ("messageId");
 
 ALTER TABLE "contact_emails" ADD COLUMN IF NOT EXISTS "mailboxId" TEXT;
 CREATE INDEX IF NOT EXISTS "contact_emails_mailboxId_idx" ON "contact_emails" ("mailboxId");
+
+-- 0017 additive columns for DBs that already ran the 0015 CREATE TABLE.
+ALTER TABLE "domains" ADD COLUMN IF NOT EXISTS "spfOk" BOOLEAN;
+ALTER TABLE "domains" ADD COLUMN IF NOT EXISTS "dkimOk" BOOLEAN;
+ALTER TABLE "domains" ADD COLUMN IF NOT EXISTS "dmarcOk" BOOLEAN;
+ALTER TABLE "domains" ADD COLUMN IF NOT EXISTS "mxOk" BOOLEAN;
+ALTER TABLE "domains" ADD COLUMN IF NOT EXISTS "dnsCheckedAt" TIMESTAMP(3);
+ALTER TABLE "domains" ADD COLUMN IF NOT EXISTS "dnsRecords" JSONB;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "warmupSentToday" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "warmupSentTodayOn" TIMESTAMP(3);
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "hourlySent" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "hourlySentOn" TIMESTAMP(3);
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "hourlySendLimit" INTEGER NOT NULL DEFAULT 8;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "healthScore" INTEGER NOT NULL DEFAULT 100;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "lastWarmupAt" TIMESTAMP(3);
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "nextEligibleAt" TIMESTAMP(3);
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "consecutiveFailures" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "pausedReason" TEXT;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "imapHost" TEXT;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "imapPort" INTEGER;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "imapSecure" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "imapCiphertext" TEXT;
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "lastInboundAt" TIMESTAMP(3);
+ALTER TABLE "mailboxes" ADD COLUMN IF NOT EXISTS "lastImapUid" INTEGER;
+ALTER TABLE "mailbox_events" ADD COLUMN IF NOT EXISTS "messageId" TEXT;
+ALTER TABLE "mailbox_events" ADD COLUMN IF NOT EXISTS "inReplyTo" TEXT;
+ALTER TABLE "mailbox_events" ADD COLUMN IF NOT EXISTS "references" TEXT;
+ALTER TABLE "mailbox_events" ADD COLUMN IF NOT EXISTS "classification" TEXT;
+ALTER TABLE "mailbox_events" ADD COLUMN IF NOT EXISTS "idempotencyKey" TEXT;
 
 CREATE INDEX IF NOT EXISTS "memory_chunks_embedding_hnsw_idx"
   ON "memory_chunks" USING hnsw ("embedding" vector_cosine_ops);

@@ -62,6 +62,8 @@ exponential growth into a plateau.
 - **Warmup volume takes the floor when sources disagree.** Default is a new
   domain + new inbox: 0 cold until day 21, first ready day = 5, ceiling 20.
   No peer-network. No Instantly marketing 40-100. _(Card 0017)_
+- **Fan-out by id, never collect the fleet.** Cron lists one page (200),
+  enqueues ones, continues via cursor. Same code path at 2 and at 2000. _(Card 0017)_
 
 ## Open debts (owed to reality)
 
@@ -82,8 +84,8 @@ exponential growth into a plateau.
 | 5-second spark (agent) | 0005 · Desirable | observe discover→push→enrich live | founder |
 | find_socials verification quality | 0008 · Feasible | one live run with a real Tavily key | founder + eng |
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
-| Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
-| Mailbox schema on prod | 0015 · Deliverable | `pnpm prisma db push` (domains, mailboxes, mailbox_events, contact_emails.mailboxId) | founder |
+| Provider keys encrypted at rest | audit 07-11 / 0017 | encrypt-on-write shipped; plaintext still readable until Settings rewrite | founder (re-save keys) |
+| Mailbox schema on prod | 0015 / 0017 · Deliverable | `pnpm prisma db push` (domains, mailboxes, events, send jobs, DNC, DNS, health, RFC, IMAP) | founder |
 | Live mailbox send | 0015 · Feasible | Stripe mailbox/domain prices + one SMTP or Premium Inboxes fulfillment + one `send_email` | founder + eng |
 | Cloudflare mailbox worker live | 0016 · Deliverable | `wrangler deploy` + `WORKERS_URL` / `WORKER_SECRET` + one unattended warmup hour | founder |
 | Live warmup placement | 0017 · Feasible | One new domain, 21 days of sink mail, then five real cold sends. Record bounce / complaint / placement. | founder + eng |

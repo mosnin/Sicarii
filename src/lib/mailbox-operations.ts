@@ -16,12 +16,32 @@ import {
 } from "@/lib/mailbox-crypto";
 import {
   dailySendLimitForWarmupDay,
+  DEFAULT_HOURLY_SEND_LIMIT,
+  followUpSubject,
+  inferWarmupProfile,
   mailboxIsSendReady,
-  remainingSendsToday,
+  maxColdSendsForDay,
+  nextHourBoundary,
+  remainingColdToday,
+  remainingHourly,
+  remainingWarmupToday,
   sameUtcDay,
   shouldPromoteToReady,
+  warmupSendsForDay,
+  WARMUP_SENDS_PER_TICK,
   warmupDayFromStart,
+  WARMUP_READY_DAY,
 } from "@/lib/mailbox-warmup";
+import { STEADY_STATE_COLD_BYOK, STEADY_STATE_COLD_NEW_DOMAIN } from "@/lib/mailbox-warmup-limits";
+import { clampFanoutLimit, decodeIdCursor, pageFromIds, type IdPage } from "@/lib/mailbox-page";
+import {
+  computeHealthScore,
+  pauseReasonLabel,
+  shouldAutoPause,
+  type DnsFlags,
+} from "@/lib/mailbox-health";
+import { dnsHardStopEnabled, inspectDomainDns } from "@/lib/mailbox-dns";
+import { openUserSecret, sealSecret } from "@/lib/mailbox-crypto";
 import { draftColdOutreach, outreachLooksHealthy, type ColdDraft } from "@/lib/mailbox-draft";
 import {
   checkDomainAvailability,
@@ -49,6 +69,14 @@ export type PublicMailbox = {
   dailySendLimit: number;
   sentToday: number;
   remainingToday: number;
+  remainingWarmupToday: number;
+  remainingHourly: number;
+  healthScore: number;
+  pausedReason: string | null;
+  pausedReasonLabel: string | null;
+  consecutiveFailures: number;
+  lastInboundAt: Date | null;
+  inboundStatus: "receiving" | "none";
   warmupStartedAt: Date | null;
   smtpLast4: string | null;
   lastError: string | null;
@@ -67,6 +95,15 @@ function toPublic(
     dailySendLimit: number;
     sentToday: number;
     sentTodayOn: Date | null;
+    warmupSentToday?: number;
+    warmupSentTodayOn?: Date | null;
+    hourlySent?: number;
+    hourlySentOn?: Date | null;
+    hourlySendLimit?: number;
+    healthScore?: number;
+    pausedReason?: string | null;
+    consecutiveFailures?: number;
+    lastInboundAt?: Date | null;
     warmupStartedAt: Date | null;
     smtpLast4: string | null;
     lastError: string | null;
@@ -75,6 +112,15 @@ function toPublic(
   },
   now = new Date(),
 ): PublicMailbox {
+  const warmupSentToday = row.warmupSentToday ?? 0;
+  const warmupSentTodayOn = row.warmupSentTodayOn ?? null;
+  const hourlySent = row.hourlySent ?? 0;
+  const hourlySentOn = row.hourlySentOn ?? null;
+  const hourlySendLimit = row.hourlySendLimit ?? DEFAULT_HOURLY_SEND_LIMIT;
+  const profile = inferWarmupProfile(row);
+  const day = row.warmupStartedAt ? warmupDayFromStart(row.warmupStartedAt, now) : row.warmupDay;
+  const warmupCap = warmupSendsForDay(day, profile);
+  const coldCap = maxColdSendsForDay(day, profile);
   return {
     id: row.id,
     email: row.email,
@@ -86,12 +132,29 @@ function toPublic(
     warmupDay: row.warmupDay,
     dailySendLimit: row.dailySendLimit,
     sentToday: sameUtcDay(row.sentTodayOn, now) ? row.sentToday : 0,
-    remainingToday: remainingSendsToday({
+    remainingToday: remainingColdToday({
       sentToday: row.sentToday,
       sentTodayOn: row.sentTodayOn,
-      dailySendLimit: row.dailySendLimit,
+      warmupSentToday,
+      warmupSentTodayOn,
+      dailySendLimit: dailySendLimitForWarmupDay(day, profile),
+      coldCap,
+      status: row.status,
       now,
     }),
+    remainingWarmupToday: remainingWarmupToday({
+      warmupSentToday,
+      warmupSentTodayOn,
+      dailySendLimit: warmupCap,
+      now,
+    }),
+    remainingHourly: remainingHourly({ hourlySent, hourlySentOn, hourlySendLimit, now }),
+    healthScore: row.healthScore ?? 100,
+    pausedReason: row.pausedReason ?? null,
+    pausedReasonLabel: pauseReasonLabel(row.pausedReason),
+    consecutiveFailures: row.consecutiveFailures ?? 0,
+    lastInboundAt: row.lastInboundAt ?? null,
+    inboundStatus: row.lastInboundAt ? "receiving" : "none",
     warmupStartedAt: row.warmupStartedAt,
     smtpLast4: row.smtpLast4,
     lastError: row.lastError,
@@ -206,6 +269,7 @@ export async function connectSmtpMailbox(
     smtp: SmtpSecret;
     alreadyWarm?: boolean;
     domainId?: string;
+    imap?: { host: string; port?: number; secure?: boolean; username?: string; password?: string };
   },
 ) {
   if (!mailboxCryptoConfigured()) {
@@ -220,6 +284,17 @@ export async function connectSmtpMailbox(
   const now = new Date();
   const warming = !input.alreadyWarm;
   const ciphertext = encryptSmtpSecret(input.smtp);
+  const imapCiphertext = input.imap?.host
+    ? sealSecret(
+        JSON.stringify({
+          host: input.imap.host,
+          port: input.imap.port ?? 993,
+          secure: input.imap.secure !== false,
+          username: input.imap.username ?? input.smtp.username,
+          password: input.imap.password ?? input.smtp.password,
+        }),
+      )
+    : null;
   try {
     const row = await prisma.mailbox.create({
       data: {
@@ -230,10 +305,15 @@ export async function connectSmtpMailbox(
         status: warming ? "warming" : "ready",
         domainId: input.domainId ?? null,
         warmupStartedAt: warming ? now : null,
-        warmupDay: warming ? 1 : WARM_READY,
-        dailySendLimit: warming ? dailySendLimitForWarmupDay(1) : 40,
+        warmupDay: warming ? 1 : 21,
+        dailySendLimit: warming ? dailySendLimitForWarmupDay(1) : STEADY_STATE_COLD_BYOK,
         smtpCiphertext: ciphertext,
         smtpLast4: smtpLast4(input.smtp.username),
+        imapHost: input.imap?.host ?? null,
+        imapPort: input.imap?.port ?? null,
+        imapSecure: input.imap?.secure ?? true,
+        imapCiphertext,
+        nextEligibleAt: now,
       },
       include: { domain: { select: { name: true } } },
     });
@@ -252,7 +332,7 @@ export async function connectSmtpMailbox(
   }
 }
 
-const WARM_READY = 21;
+const WARM_READY = WARMUP_READY_DAY;
 
 export async function requestPurchasedMailbox(
   userId: string,
@@ -359,15 +439,17 @@ export async function fulfillMailboxProvision(input: {
   return toPublic(updated, now);
 }
 
-export async function pauseMailbox(userId: string, mailboxId: string) {
+export async function pauseMailbox(userId: string, mailboxId: string, reason = "operator") {
   const box = await assertMailboxOwned(userId, mailboxId);
   if (box.status === "paused") return toPublic(box);
   const updated = await prisma.mailbox.update({
     where: { id: mailboxId },
-    data: { status: "paused" },
+    data: { status: "paused", pausedReason: reason },
     include: { domain: { select: { name: true } } },
   });
-  await prisma.mailboxEvent.create({ data: { mailboxId, kind: "pause" } });
+  await prisma.mailboxEvent.create({
+    data: { mailboxId, kind: "pause", meta: { reason } },
+  });
   return toPublic(updated);
 }
 
@@ -377,7 +459,7 @@ export async function resumeMailbox(userId: string, mailboxId: string) {
   const next = box.warmupDay >= WARM_READY || box.smtpCiphertext ? (box.warmupDay >= WARM_READY ? "ready" : "warming") : "requested";
   const updated = await prisma.mailbox.update({
     where: { id: mailboxId },
-    data: { status: next },
+    data: { status: next, pausedReason: null, lastError: null },
     include: { domain: { select: { name: true } } },
   });
   await prisma.mailboxEvent.create({ data: { mailboxId, kind: "resume", meta: { status: next } } });
@@ -388,7 +470,7 @@ export async function markMailboxReady(userId: string, mailboxId: string) {
   const box = await assertMailboxOwned(userId, mailboxId);
   const updated = await prisma.mailbox.update({
     where: { id: box.id },
-    data: { status: "ready", dailySendLimit: 40, lastError: null },
+    data: { status: "ready", dailySendLimit: STEADY_STATE_COLD_BYOK, lastError: null, warmupStartedAt: box.warmupStartedAt },
     include: { domain: { select: { name: true } } },
   });
   await prisma.mailboxEvent.create({ data: { mailboxId, kind: "provision", meta: { via: "mark_ready" } } });
@@ -406,24 +488,84 @@ async function pickMailbox(userId: string, mailboxId?: string | null) {
   throw new OpError("No ready mailbox. Buy or connect one on /mailboxes, or wait for warmup to finish.", 409);
 }
 
-async function consumeSendSlot(box: { id: string; sentToday: number; sentTodayOn: Date | null; dailySendLimit: number }, now: Date) {
-  const remaining = remainingSendsToday({
-    sentToday: box.sentToday,
-    sentTodayOn: box.sentTodayOn,
-    dailySendLimit: box.dailySendLimit,
+type SlotBox = {
+  id: string;
+  status: string;
+  warmupDay?: number;
+  warmupStartedAt?: Date | null;
+  sentToday: number;
+  sentTodayOn: Date | null;
+  warmupSentToday?: number;
+  warmupSentTodayOn?: Date | null;
+  hourlySent?: number;
+  hourlySentOn?: Date | null;
+  hourlySendLimit?: number;
+  dailySendLimit: number;
+};
+
+async function consumeSendSlot(box: SlotBox, now: Date, kind: "cold" | "warmup") {
+  const hourlyLeft = remainingHourly({
+    hourlySent: box.hourlySent ?? 0,
+    hourlySentOn: box.hourlySentOn ?? null,
+    hourlySendLimit: box.hourlySendLimit ?? DEFAULT_HOURLY_SEND_LIMIT,
     now,
   });
-  if (remaining <= 0) {
-    throw new OpError(`Daily send cap reached (${box.dailySendLimit}). Try again tomorrow or wait for warmup to raise the cap.`, 429);
+  if (hourlyLeft <= 0) {
+    throw new OpError("Hourly send cap reached. Wait for the next hour.", 429);
   }
-  const reset = !sameUtcDay(box.sentTodayOn, now);
+  if (kind === "warmup") {
+    const remaining = remainingWarmupToday({
+      warmupSentToday: box.warmupSentToday ?? 0,
+      warmupSentTodayOn: box.warmupSentTodayOn ?? null,
+      dailySendLimit: warmupSendsForDay(box.warmupDay || 1, inferWarmupProfile(box)),
+      now,
+    });
+    if (remaining <= 0) {
+      throw new OpError(`Warmup day cap reached (${box.dailySendLimit}).`, 429);
+    }
+  } else {
+    const remaining = remainingColdToday({
+      sentToday: box.sentToday,
+      sentTodayOn: box.sentTodayOn,
+      warmupSentToday: box.warmupSentToday ?? 0,
+      warmupSentTodayOn: box.warmupSentTodayOn ?? null,
+      dailySendLimit: box.dailySendLimit,
+      coldCap: maxColdSendsForDay(box.warmupDay || 1, inferWarmupProfile(box)),
+      status: box.status,
+      now,
+    });
+    if (remaining <= 0) {
+      throw new OpError(
+        `Daily send cap reached (${box.dailySendLimit}). Try again tomorrow or wait for warmup to raise the cap.`,
+        429,
+      );
+    }
+  }
+  const hourReset = !sameUtcHour(box.hourlySentOn ?? null, now);
+  const dayReset = kind === "warmup" ? !sameUtcDay(box.warmupSentTodayOn ?? null, now) : !sameUtcDay(box.sentTodayOn, now);
   await prisma.mailbox.update({
     where: { id: box.id },
     data: {
-      sentToday: reset ? 1 : { increment: 1 },
-      sentTodayOn: now,
+      hourlySent: hourReset ? 1 : { increment: 1 },
+      hourlySentOn: now,
+      nextEligibleAt: nextHourBoundary(now),
+      ...(kind === "warmup"
+        ? {
+            warmupSentToday: dayReset ? 1 : { increment: 1 },
+            warmupSentTodayOn: now,
+            lastWarmupAt: now,
+          }
+        : {
+            sentToday: dayReset ? 1 : { increment: 1 },
+            sentTodayOn: now,
+          }),
     },
   });
+}
+
+function sameUtcHour(a: Date | null | undefined, b: Date): boolean {
+  if (!a) return false;
+  return a.toISOString().slice(0, 13) === b.toISOString().slice(0, 13);
 }
 
 async function deliver(box: {
@@ -448,9 +590,10 @@ async function deliver(box: {
   }
   if (box.provider === "agentmail") {
     const user = await prisma.user.findUnique({ where: { id: box.userId }, select: { agentMailApiKey: true } });
-    if (!user?.agentMailApiKey) throw new OpError("Connect an AgentMail key in Settings to send from this mailbox.", 409);
+    const key = openUserSecret(user?.agentMailApiKey);
+    if (!key) throw new OpError("Connect an AgentMail key in Settings to send from this mailbox.", 409);
     const inboxId = box.providerInboxId ?? box.email;
-    return sendViaAgentMail(user.agentMailApiKey, inboxId, payload);
+    return sendViaAgentMail(key, inboxId, payload);
   }
   if (box.provider === "bird") {
     if (!birdConfigured()) throw new OpError("Bird is not configured on this deployment.", 501);
@@ -472,13 +615,19 @@ export async function sendOutreachEmail(
 ) {
   const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
   if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  if (contact.doNotContact) {
+    throw new OpError(
+      `Contact is on the do-not-contact list${contact.doNotContactReason ? ` (${contact.doNotContactReason})` : ""}.`,
+      409,
+    );
+  }
   const to = contact.email?.trim();
   if (!to) throw new OpError("This contact has no email. Enrich them first.", 400);
 
-  const subject = input.subject.trim();
+  const requestedSubject = input.subject.trim();
   const body = input.body.trim();
-  if (!subject || !body) throw new OpError("subject and body are required.", 400);
-  if (subject.length > 200) throw new OpError("subject is too long.", 400);
+  if (!requestedSubject || !body) throw new OpError("subject and body are required.", 400);
+  if (requestedSubject.length > 200) throw new OpError("subject is too long.", 400);
   if (body.length > 20_000) throw new OpError("body is too long.", 400);
 
   const box = await pickMailbox(userId, input.mailboxId);
@@ -494,14 +643,24 @@ export async function sendOutreachEmail(
     );
   }
 
+  const prior = await prisma.contactEmail.findFirst({
+    where: { contactId: contact.id, mailboxId: box.id, direction: "OUTBOUND" },
+    orderBy: { createdAt: "desc" },
+    select: { subject: true, messageId: true },
+  });
+  const subject = prior?.subject ? followUpSubject(prior.subject, requestedSubject) : requestedSubject;
+  const messageId = `<${box.id}.${now.getTime()}@scalar>`;
+  const inReplyTo = prior?.messageId ?? null;
+  const references = [prior?.messageId, messageId].filter(Boolean).join(" ") || null;
+
   await ensureCredits(userId, "send_email");
-  await consumeSendSlot(box, now);
+  await consumeSendSlot(box, now, "cold");
   let delivered;
   try {
     delivered = await deliver(box, { to, subject, text: body });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Send failed.";
-    await prisma.mailbox.update({ where: { id: box.id }, data: { lastError: message.slice(0, 500) } });
+    await recordMailboxFailure(box.id, message);
     throw new OpError(message, 502);
   }
 
@@ -514,6 +673,9 @@ export async function sendOutreachEmail(
     toAddr: to,
     mailboxId: box.id,
     agentMailMessageId: delivered.providerId ?? null,
+    messageId,
+    inReplyTo,
+    references,
     sentAt: now,
     savedAsContext: true,
   });
@@ -531,9 +693,12 @@ export async function sendOutreachEmail(
       toAddr: to,
       subject,
       providerId: delivered.providerId ?? null,
+      messageId,
+      inReplyTo,
+      references,
     },
   });
-  await prisma.mailbox.update({ where: { id: box.id }, data: { lastError: null } });
+  await recordMailboxSuccess(box.id);
   await spendCredits(userId, "send_email", { ref: saved.id });
 
   return {
@@ -557,6 +722,9 @@ export async function recordInboundReply(
     fromAddr: string;
     toAddr?: string;
     providerId?: string;
+    messageId?: string | null;
+    inReplyTo?: string | null;
+    references?: string | null;
   },
 ) {
   const saved = await saveEmail(userId, {
@@ -568,10 +736,17 @@ export async function recordInboundReply(
     toAddr: input.toAddr ?? null,
     mailboxId: input.mailboxId ?? null,
     agentMailMessageId: input.providerId ?? null,
+    messageId: input.messageId ?? null,
+    inReplyTo: input.inReplyTo ?? null,
+    references: input.references ?? null,
     savedAsContext: true,
     sentAt: new Date(),
   });
   if (input.mailboxId) {
+    await prisma.mailbox.update({
+      where: { id: input.mailboxId },
+      data: { lastInboundAt: new Date() },
+    });
     await prisma.mailboxEvent.create({
       data: {
         mailboxId: input.mailboxId,
@@ -580,10 +755,75 @@ export async function recordInboundReply(
         toAddr: input.fromAddr,
         subject: input.subject ?? null,
         providerId: input.providerId ?? null,
+        messageId: input.messageId ?? null,
+        inReplyTo: input.inReplyTo ?? null,
+        references: input.references ?? null,
+        classification: "REPLY",
       },
     });
   }
   return saved;
+}
+
+export async function setDoNotContact(
+  userId: string,
+  contactId: string,
+  reason: string,
+  at = new Date(),
+) {
+  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  if (!contact || contact.userId !== userId) throw new OpError("Contact not found", 404);
+  return prisma.contact.update({
+    where: { id: contactId },
+    data: { doNotContact: true, doNotContactReason: reason.slice(0, 120), doNotContactAt: at },
+  });
+}
+
+export async function recordMailboxFailure(mailboxId: string, message: string) {
+  const box = await prisma.mailbox.findUnique({
+    where: { id: mailboxId },
+    include: { domain: true },
+  });
+  if (!box) return;
+  const consecutiveFailures = (box.consecutiveFailures ?? 0) + 1;
+  const dns: DnsFlags | null = box.domain
+    ? {
+        spfOk: box.domain.spfOk,
+        dkimOk: box.domain.dkimOk,
+        dmarcOk: box.domain.dmarcOk,
+        mxOk: box.domain.mxOk,
+        spfPlusAll: box.domain.spfOk === false && /plus_all|\+all/i.test(box.domain.lastError ?? ""),
+      }
+    : null;
+  const healthScore = computeHealthScore({ consecutiveFailures, dns });
+  const pause = shouldAutoPause({ consecutiveFailures, healthScore, dns });
+  await prisma.mailbox.update({
+    where: { id: mailboxId },
+    data: {
+      lastError: message.slice(0, 500),
+      consecutiveFailures,
+      healthScore,
+      ...(pause ? { status: "paused", pausedReason: pause } : {}),
+    },
+  });
+  if (pause) {
+    await prisma.mailboxEvent.create({
+      data: { mailboxId, kind: "health", meta: { pause, consecutiveFailures, healthScore } },
+    });
+  }
+}
+
+export async function recordMailboxSuccess(mailboxId: string) {
+  const box = await prisma.mailbox.findUnique({ where: { id: mailboxId } });
+  if (!box) return;
+  const healthScore = computeHealthScore({
+    consecutiveFailures: 0,
+    dns: null,
+  });
+  await prisma.mailbox.update({
+    where: { id: mailboxId },
+    data: { lastError: null, consecutiveFailures: 0, healthScore: Math.max(box.healthScore ?? 100, healthScore) },
+  });
 }
 
 export function draftMailboxOutreach(input: {
@@ -632,11 +872,38 @@ export async function runWarmupForMailbox(
   mailboxId: string,
   now = new Date(),
 ): Promise<{ warmed: number; promoted: number; sent: number; skipped?: boolean }> {
-  const box = await prisma.mailbox.findUnique({ where: { id: mailboxId } });
+  const box = await prisma.mailbox.findUnique({
+    where: { id: mailboxId },
+    include: { domain: true },
+  });
   if (!box || box.status !== "warming" || !box.warmupStartedAt) {
     return { warmed: 0, promoted: 0, sent: 0, skipped: true };
   }
+  if (box.nextEligibleAt && box.nextEligibleAt.getTime() > now.getTime()) {
+    return { warmed: 0, promoted: 0, sent: 0, skipped: true };
+  }
   if (await alreadyTickedThisHour(box.id, now)) {
+    return { warmed: 0, promoted: 0, sent: 0, skipped: true };
+  }
+
+  const dns: DnsFlags | null = box.domain
+    ? {
+        spfOk: box.domain.spfOk,
+        dkimOk: box.domain.dkimOk,
+        dmarcOk: box.domain.dmarcOk,
+        mxOk: box.domain.mxOk,
+        spfPlusAll: box.domain.spfOk === false && /plus_all|\+all/i.test(JSON.stringify(box.domain.dnsRecords ?? "")),
+      }
+    : null;
+  const hard = dns ? shouldAutoPause({ consecutiveFailures: 0, healthScore: 100, dns }) : null;
+  if (hard && dnsHardStopEnabled() && (hard === "spf_plus_all" || hard === "mx_missing")) {
+    await prisma.mailbox.update({
+      where: { id: box.id },
+      data: { status: "paused", pausedReason: hard, healthScore: computeHealthScore({ consecutiveFailures: 0, dns }) },
+    });
+    await prisma.mailboxEvent.create({
+      data: { mailboxId: box.id, kind: "health", meta: { pause: hard, via: "warmup_dns" } },
+    });
     return { warmed: 0, promoted: 0, sent: 0, skipped: true };
   }
 
@@ -648,8 +915,12 @@ export async function runWarmupForMailbox(
     where: { id: box.id },
     data: {
       warmupDay: day,
-      dailySendLimit: nextStatus === "ready" ? 40 : limit,
+      dailySendLimit: nextStatus === "ready" ? STEADY_STATE_COLD_NEW_DOMAIN : limit,
       status: nextStatus,
+      healthScore: computeHealthScore({
+        consecutiveFailures: box.consecutiveFailures ?? 0,
+        dns,
+      }),
     },
   });
   let promoted = 0;
@@ -660,9 +931,9 @@ export async function runWarmupForMailbox(
     });
   }
 
-  const remaining = remainingSendsToday({
-    sentToday: box.sentToday,
-    sentTodayOn: box.sentTodayOn,
+  const remaining = remainingWarmupToday({
+    warmupSentToday: box.warmupSentToday ?? 0,
+    warmupSentTodayOn: box.warmupSentTodayOn ?? null,
     dailySendLimit: limit,
     now,
   });
@@ -671,11 +942,15 @@ export async function runWarmupForMailbox(
     await prisma.mailboxEvent.create({
       data: { mailboxId: box.id, kind: "clock", meta: { day, remaining, delivered: false } },
     });
+    await prisma.mailbox.update({
+      where: { id: box.id },
+      data: { lastWarmupAt: now, nextEligibleAt: nextHourBoundary(now) },
+    });
     return { warmed: 1, promoted, sent: 0 };
   }
 
   let sent = 0;
-  const toSend = Math.min(remaining, 3, targets.length);
+  const toSend = Math.min(remaining, WARMUP_SENDS_PER_TICK, targets.length);
   for (let i = 0; i < toSend; i++) {
     const to = targets[i % targets.length]!;
     try {
@@ -687,8 +962,14 @@ export async function runWarmupForMailbox(
         text: "Just keeping this thread warm. No action needed.",
       });
       await consumeSendSlot(
-        { ...box, dailySendLimit: limit, sentToday: box.sentToday + i, sentTodayOn: i === 0 ? box.sentTodayOn : now },
+        {
+          ...box,
+          dailySendLimit: limit,
+          warmupSentToday: (box.warmupSentToday ?? 0) + i,
+          warmupSentTodayOn: i === 0 ? box.warmupSentTodayOn ?? null : now,
+        },
         now,
+        "warmup",
       );
       await prisma.mailboxEvent.create({
         data: {
@@ -697,12 +978,13 @@ export async function runWarmupForMailbox(
           toAddr: to,
           subject: "Re: catching up",
           providerId: result.providerId ?? null,
+          classification: "WARMUP",
         },
       });
       sent += 1;
     } catch (e) {
       const message = e instanceof Error ? e.message : "warmup send failed";
-      await prisma.mailbox.update({ where: { id: box.id }, data: { lastError: message.slice(0, 500) } });
+      await recordMailboxFailure(box.id, message);
       break;
     }
   }
@@ -710,21 +992,140 @@ export async function runWarmupForMailbox(
 }
 
 export async function runWarmupTick(now = new Date()): Promise<{ warmed: number; promoted: number; sent: number }> {
-  const boxes = await prisma.mailbox.findMany({
-    where: { status: "warming" },
-    select: { id: true },
-    take: 200,
-  });
+  const page = await listWarmingMailboxPage(undefined, 200, now);
   let warmed = 0;
   let promoted = 0;
   let sent = 0;
-  for (const box of boxes) {
-    const result = await runWarmupForMailbox(box.id, now);
+  for (const id of page.ids) {
+    const result = await runWarmupForMailbox(id, now);
     warmed += result.warmed;
     promoted += result.promoted;
     sent += result.sent;
   }
   return { warmed, promoted, sent };
+}
+
+export async function listWarmingMailboxPage(
+  cursor?: string | null,
+  limit?: number,
+  now = new Date(),
+): Promise<IdPage> {
+  const take = clampFanoutLimit(limit);
+  const after = decodeIdCursor(cursor);
+  const rows = await prisma.mailbox.findMany({
+    where: {
+      status: "warming",
+      AND: [
+        { OR: [{ nextEligibleAt: null }, { nextEligibleAt: { lte: now } }] },
+        ...(after ? [{ id: { gt: after } }] : []),
+      ],
+    },
+    select: { id: true },
+    orderBy: { id: "asc" },
+    take: take + 1,
+  });
+  return pageFromIds(rows, take);
+}
+
+export async function listPendingMailboxPage(cursor?: string | null, limit?: number): Promise<IdPage> {
+  const take = clampFanoutLimit(limit);
+  const after = decodeIdCursor(cursor);
+  const rows = await prisma.mailbox.findMany({
+    where: {
+      status: { in: ["requested", "provisioning"] },
+      ...(after ? { id: { gt: after } } : {}),
+    },
+    select: { id: true },
+    orderBy: { id: "asc" },
+    take: take + 1,
+  });
+  return pageFromIds(rows, take);
+}
+
+export async function listImapMailboxPage(cursor?: string | null, limit?: number): Promise<IdPage> {
+  const take = clampFanoutLimit(limit);
+  const after = decodeIdCursor(cursor);
+  const rows = await prisma.mailbox.findMany({
+    where: {
+      OR: [{ imapCiphertext: { not: null } }, { imapHost: { not: null } }],
+      status: { in: ["warming", "ready", "paused"] },
+      ...(after ? { id: { gt: after } } : {}),
+    },
+    select: { id: true },
+    orderBy: { id: "asc" },
+    take: take + 1,
+  });
+  return pageFromIds(rows, take);
+}
+
+export async function listDomainDnsPage(cursor?: string | null, limit?: number, now = new Date()): Promise<IdPage> {
+  const take = clampFanoutLimit(limit);
+  const after = decodeIdCursor(cursor);
+  const stale = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const rows = await prisma.domain.findMany({
+    where: {
+      OR: [{ dnsCheckedAt: null }, { dnsCheckedAt: { lt: stale } }],
+      ...(after ? { id: { gt: after } } : {}),
+    },
+    select: { id: true },
+    orderBy: { id: "asc" },
+    take: take + 1,
+  });
+  return pageFromIds(rows, take);
+}
+
+export async function checkDomainDnsById(domainId: string) {
+  const domain = await prisma.domain.findUnique({ where: { id: domainId } });
+  if (!domain) return { skipped: true };
+  const posture = await inspectDomainDns(domain.name);
+  await prisma.domain.update({
+    where: { id: domain.id },
+    data: {
+      spfOk: posture.spfOk,
+      dkimOk: posture.dkimOk,
+      dmarcOk: posture.dmarcOk,
+      mxOk: posture.mxOk,
+      dnsCheckedAt: posture.checkedAt,
+      dnsRecords: posture.records,
+      lastError: posture.hardStopReason,
+    },
+  });
+  if (posture.hardStop && dnsHardStopEnabled()) {
+    const reason = posture.hardStopReason === "spf_plus_all" ? "spf_plus_all" : "mx_missing";
+    const boxes = await prisma.mailbox.findMany({
+      where: { domainId: domain.id, status: { in: ["warming", "ready"] } },
+      select: { id: true },
+    });
+    for (const box of boxes) {
+      await prisma.mailbox.update({
+        where: { id: box.id },
+        data: {
+          status: "paused",
+          pausedReason: reason,
+          healthScore: computeHealthScore({
+            consecutiveFailures: 0,
+            dns: {
+              spfOk: posture.spfOk,
+              dkimOk: posture.dkimOk,
+              dmarcOk: posture.dmarcOk,
+              mxOk: posture.mxOk,
+              spfPlusAll: posture.spfPlusAll,
+            },
+          }),
+        },
+      });
+      await prisma.mailboxEvent.create({
+        data: { mailboxId: box.id, kind: "health", meta: { pause: reason, via: "dns" } },
+      });
+    }
+  }
+  return { ...posture, skipped: false };
+}
+
+export async function checkDomainDnsForUser(userId: string, domainId: string) {
+  const domain = await prisma.domain.findUnique({ where: { id: domainId } });
+  if (!domain || domain.userId !== userId) throw new OpError("Domain not found", 404);
+  return checkDomainDnsById(domainId);
 }
 
 export async function pollPendingMailboxOrders(filter?: {

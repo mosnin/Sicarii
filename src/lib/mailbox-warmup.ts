@@ -3,22 +3,32 @@
 // inbox should not blast. The clock is day-based so a mailbox that sits idle
 // still matures; real warmup mail is sent on top when SMTP is connected.
 
-export const WARMUP_READY_DAY = 21;
+import {
+  dailyTotalCapForDay,
+  maxColdSendsForDay,
+  warmupSendsForDay,
+  WARMUP_READY_DAY,
+  type WarmupProfile,
+} from "@/lib/mailbox-warmup-limits";
 
-// Conservative researched ramp (warmup vs first-cold, three profiles) lives in
-// src/lib/mailbox-warmup-limits.ts. Import dailyTotalCapForDay /
-// maxColdSendsForDay / warmupSendsForDay from there when this table is
-// replaced. Do not keep both as competing sources. This 5/10/20/30/40
-// ladder is more aggressive than the researched default and is leftover
-// from the first mailbox ship.
+export { WARMUP_READY_DAY };
+export { dailyTotalCapForDay, maxColdSendsForDay, warmupSendsForDay };
+export type { WarmupProfile };
 
-export function dailySendLimitForWarmupDay(day: number): number {
-  if (!Number.isFinite(day) || day <= 0) return 0;
-  if (day <= 3) return 5;
-  if (day <= 7) return 10;
-  if (day <= 14) return 20;
-  if (day <= 21) return 30;
-  return 40;
+/** Total messages this inbox may send today (warmup + allowed cold). */
+export function dailySendLimitForWarmupDay(
+  day: number,
+  profile: WarmupProfile = "new_domain_new_inbox",
+): number {
+  return dailyTotalCapForDay(day, profile);
+}
+
+export function inferWarmupProfile(box: {
+  status: string;
+  warmupStartedAt?: Date | null;
+}): WarmupProfile {
+  if (!box.warmupStartedAt && box.status === "ready") return "already_warm_byok";
+  return "new_domain_new_inbox";
 }
 
 /** Calendar days since warmup started, 1-indexed. */
@@ -74,22 +84,25 @@ export function remainingWarmupToday(input: {
   return Math.max(0, input.dailySendLimit - used);
 }
 
-/** Cold remaining. On a warming inbox, total volume (warmup + cold) cannot
- *  exceed the day cap, so cold cannot hide inside warmup. */
+/** Cold remaining. Warming new-domain inboxes have coldCap 0. Warmup
+ *  volume never counts as cold remaining. */
 export function remainingColdToday(input: {
   sentToday: number;
   sentTodayOn: Date | null;
   warmupSentToday: number;
   warmupSentTodayOn: Date | null;
   dailySendLimit: number;
+  coldCap?: number;
   status: string;
   now: Date;
 }): number {
   const coldUsed = sameUtcDay(input.sentTodayOn, input.now) ? input.sentToday : 0;
-  const coldLeft = Math.max(0, input.dailySendLimit - coldUsed);
+  const coldCap = input.coldCap ?? (input.status === "warming" ? 0 : input.dailySendLimit);
+  const coldLeft = Math.max(0, coldCap - coldUsed);
   if (input.status !== "warming") return coldLeft;
   const warmUsed = sameUtcDay(input.warmupSentTodayOn, input.now) ? input.warmupSentToday : 0;
-  return Math.max(0, Math.min(coldLeft, input.dailySendLimit - warmUsed - coldUsed));
+  const totalLeft = Math.max(0, input.dailySendLimit - warmUsed - coldUsed);
+  return Math.min(coldLeft, totalLeft);
 }
 
 export function remainingHourly(input: {

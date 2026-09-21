@@ -70,7 +70,7 @@ proof the product is working. (Quality-gated: deduped, named, real.)
 | **Contact** | A person, ideally linked to an Entity. Enrich LinkedIn/email/phone per-field. | Built |
 | **Deal** | An opportunity with stage + value, **advanced automatically by the agent** from activity. | Planned (today: status fields on records) |
 | **Email** | Threads on the contact, sent from a Scalar **Mailbox** (Premium Inboxes / SMTP / AgentMail) or saved as context. | Built |
-| **Mailbox** | An agent's sending identity: domain + inbox, warmup, daily cap. Humans buy or connect; agents send. | Built |
+| **Mailbox** | An agent's sending identity: domain + inbox, safe warmup, health, daily/hourly cap. Humans buy or connect; agents send. | Built |
 | **Memory** | Token-efficient vector recall over messages + CRM data so the agent stays consistent. | Built |
 
 **Relationship rule:** contacts belong to entities. Unassigned contacts can be
@@ -97,7 +97,9 @@ never a duplicate).
   don't have.
 - **Schedule** - recurring intent monitors + research jobs run in the background
   (Inngest). Mailbox warmup, inbound, and inbox fulfillment run on Cloudflare
-  Workers so they keep moving when the site is idle.
+  Workers so they keep moving when the site is idle. List jobs are
+  cursor-paginated (200 per cron) so the same path serves two inboxes or
+  thousands.
 - **Agent** - built-in agent, plus a **secure MCP server** so any external agent
   can operate the CRM through the same shared ops layer.
 
@@ -116,7 +118,7 @@ high-stakes actions (e.g. sending email). Trust by construction, not by lockdown
   model (gpt-5-mini) refines noisy search into clean companies.
 - **Scheduling:** Inngest (intent monitors, research, autopilot). Cloudflare
   Workers for mailbox warmup, inbound, and fulfillment (`workers/`).
-- **Email:** Agent mailboxes (Premium Inboxes + GoDaddy + BYOK SMTP), plus optional AgentMail BYOK for thread sync.
+- **Email:** Agent mailboxes (Premium Inboxes + GoDaddy + BYOK SMTP), plus optional AgentMail BYOK for thread sync. Warmup is readiness (DNS/auth/age/cap), not a fake engagement network. Inbound is classified (reply vs bounce vs warmup) before it touches the CRM.
 - **Agent access:** secure MCP server + per-user API keys, shared `crm-operations`
   layer so REST, MCP, and the in-app agent behave identically.
 

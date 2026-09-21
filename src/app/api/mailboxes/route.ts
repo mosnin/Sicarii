@@ -8,6 +8,7 @@ import {
   listMailboxes,
   requestPurchasedMailbox,
 } from "@/lib/mailbox-operations";
+import { enqueueOutreach } from "@/lib/mailbox-queue";
 
 function op(e: unknown) {
   if (e instanceof NextResponse) return e;
@@ -48,6 +49,11 @@ export async function POST(req: NextRequest) {
         password?: string;
       };
       mailboxId?: string;
+      contactId?: string;
+      subject?: string;
+      body?: string;
+      variantId?: string;
+      idempotencyKey?: string;
     } | null;
 
     if (body?.action === "events" && body.mailboxId) {
@@ -73,6 +79,21 @@ export async function POST(req: NextRequest) {
         },
       });
       return NextResponse.json({ mailbox }, { status: 201 });
+    }
+
+    if (body?.action === "enqueue") {
+      if (!body.mailboxId || !body.contactId || !body.subject || !body.body) {
+        return NextResponse.json({ error: "mailboxId, contactId, subject, and body are required." }, { status: 400 });
+      }
+      const job = await enqueueOutreach(user.id, {
+        mailboxId: body.mailboxId,
+        contactId: body.contactId,
+        subject: body.subject,
+        body: body.body,
+        variantId: body.variantId,
+        idempotencyKey: body.idempotencyKey,
+      });
+      return NextResponse.json(job, { status: 201 });
     }
 
     if (body?.action === "request") {

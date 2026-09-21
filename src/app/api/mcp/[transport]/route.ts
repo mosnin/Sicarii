@@ -112,6 +112,7 @@ import {
   searchDomainsForUser,
   sendOutreachEmail,
 } from "@/lib/mailbox-operations";
+import { enqueueOutreach } from "@/lib/mailbox-queue";
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -1221,7 +1222,7 @@ const handler = createMcpHandler(
     );
     server.tool(
       "send_email",
-      "Send a real email to a contact from a Scalar mailbox. Logs the message on the contact, stamps lastContactedAt, and attributes variantId when provided. Fails if no mailbox is ready, the daily cap is hit, or the contact has no email. Costs 2 credits on a successful send. Prefer a ready mailbox; warming inboxes cannot send outreach until day 21.",
+      "Send a real email to a contact from a Scalar mailbox. Logs the message on the contact, stamps lastContactedAt, and attributes variantId when provided. Fails if no mailbox is ready, the daily cap is hit, the contact is on the do-not-contact list, or the contact has no email. Costs 2 credits on a successful send. Prefer a ready mailbox; warming inboxes cannot send outreach until day 21.",
       {
         contactId: z.string(),
         subject: z.string().min(1).max(200),
@@ -1238,6 +1239,30 @@ const handler = createMcpHandler(
             body: a.body,
             mailboxId: a.mailboxId,
             variantId: a.variantId ?? null,
+          }),
+        ),
+    );
+    server.tool(
+      "enqueue_email",
+      "Queue one outreach send for later (high volume). Idempotent on mailbox + contact + subject/body. Does not send in this request. send_email remains the synchronous path when you need the result now.",
+      {
+        contactId: z.string(),
+        mailboxId: z.string(),
+        subject: z.string().min(1).max(200),
+        body: z.string().min(1).max(20_000),
+        variantId: z.string().optional(),
+        idempotencyKey: z.string().max(240).optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (a, extra) =>
+        gated(extra, "enqueue_email", 60, (userId) =>
+          enqueueOutreach(userId, {
+            contactId: a.contactId,
+            mailboxId: a.mailboxId,
+            subject: a.subject,
+            body: a.body,
+            variantId: a.variantId,
+            idempotencyKey: a.idempotencyKey,
           }),
         ),
     );

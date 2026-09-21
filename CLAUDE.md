@@ -73,7 +73,9 @@ Deep context and all decisions are indexed in `@docs/README.md`.
   Auth: **Clerk**. UI: Radix + shadcn-style kit in `src/components/ui`,
   `lucide-react`, `motion`, `next-themes`. Payments: **Stripe** (cards; migrated
   off Creem.io 2026-06-12) + x402 USDC for agents. Uploads: Uploadthing.
-  Mailbox background: **Cloudflare Workers** (`workers/`, queues + cron).
+  Mailbox background: **Cloudflare Workers** (`workers/`, queues + cron,
+  cursor-paginated fan-out). Safe warmup + health live in
+  `src/lib/mailbox-warmup-limits.ts` and `mailbox-operations.ts`.
 - **ORM / DB:** target is **Prisma** ORM on **Supabase** Postgres.
   ⚠️ _The tree still ships the original **Drizzle + Neon** layer (`src/db/`,
   `drizzle.config.ts`). Migration to Prisma is an open cycle - see the Heading._

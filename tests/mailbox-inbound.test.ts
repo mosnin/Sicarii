@@ -8,13 +8,16 @@ const contactFindUnique = vi.fn();
 const contactEmailCreate = vi.fn();
 const contactUpdate = vi.fn();
 
+const mailboxUpdate = vi.fn();
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     mailbox: {
       findUnique: (args: unknown) => mailboxFindUnique(args),
       findFirst: (args: unknown) => mailboxFindFirst(args),
+      update: (args: unknown) => mailboxUpdate(args),
     },
-    mailboxEvent: { create: (args: unknown) => mailboxEventCreate(args) },
+    mailboxEvent: { create: (args: unknown) => mailboxEventCreate(args), count: vi.fn().mockResolvedValue(0) },
     contact: {
       findFirst: (args: unknown) => contactFindFirst(args),
       findUnique: (args: unknown) => contactFindUnique(args),
@@ -51,7 +54,9 @@ describe("ingestInboundEmail", () => {
       subject: "hello",
     });
 
-    expect(result).toEqual({ matched: false, mailboxId: "mb1" });
+    expect(result.matched).toBe(false);
+    expect(result.mailboxId).toBe("mb1");
+    expect(result.classification).toBe("REPLY");
     expect(contactEmailCreate).not.toHaveBeenCalled();
     expect(mailboxEventCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -78,7 +83,31 @@ describe("ingestInboundEmail", () => {
     expect(result.matched).toBe(true);
     expect(result.contactId).toBe("c1");
     expect(result.emailId).toBe("em1");
+    expect(result.classification).toBe("REPLY");
     expect(contactEmailCreate).toHaveBeenCalled();
+  });
+
+  it("does not write the CRM for a warmup sink message", async () => {
+    mailboxFindFirst.mockResolvedValue({
+      id: "mb1",
+      userId: "u1",
+      email: "alex@acme.com",
+      warmupTargets: ["sink@scalar.dev"],
+    });
+    contactFindFirst.mockResolvedValue({ id: "c1" });
+    mailboxEventCreate.mockResolvedValue({ id: "ev1" });
+    mailboxUpdate.mockResolvedValue({});
+
+    const result = await ingestInboundEmail({
+      from: "sink@scalar.dev",
+      to: "alex@acme.com",
+      text: "Just keeping this thread warm.",
+      subject: "Re: catching up",
+    });
+
+    expect(result.classification).toBe("WARMUP");
+    expect(contactEmailCreate).not.toHaveBeenCalled();
+    expect(contactUpdate).not.toHaveBeenCalled();
   });
 
   it("404s when no mailbox owns the To address", async () => {

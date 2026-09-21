@@ -8,6 +8,9 @@ describe("mailbox job contract", () => {
     expect(queueForJob({ type: "inbound-email", from: "a@x.com", to: "b@y.com", text: "hi" })).toBe("inbound");
     expect(queueForJob({ type: "fulfill-one", mailboxId: "m1" })).toBe("fulfill");
     expect(queueForJob({ type: "warmup-list" })).toBe("fulfill");
+    expect(queueForJob({ type: "send-one", jobId: "j1" })).toBe("send");
+    expect(queueForJob({ type: "imap-one", mailboxId: "m1" })).toBe("inbound");
+    expect(queueForJob({ type: "dns-one", domainId: "d1" })).toBe("fulfill");
   });
 
   it("rejects unknown or incomplete jobs", () => {
@@ -15,6 +18,17 @@ describe("mailbox job contract", () => {
     expect(() => parseMailboxJob({ type: "nope" })).toThrow(/Unknown job type/);
     expect(() => parseMailboxJob({ type: "warmup-one" })).toThrow(/mailboxId/);
     expect(() => parseMailboxJob({ type: "inbound-email", from: "a@x.com", to: "b@y.com" })).toThrow(/text/);
+    expect(() => parseMailboxJob({ type: "send-one" })).toThrow(/jobId/);
+    expect(() => parseMailboxJob({ type: "imap-one" })).toThrow(/mailboxId/);
+  });
+
+  it("accepts a cursor on list jobs", () => {
+    expect(parseMailboxJob({ type: "warmup-list", cursor: "abc", limit: 50 })).toMatchObject({
+      type: "warmup-list",
+      cursor: "abc",
+      limit: 50,
+    });
+    expect(parseMailboxJob({ type: "send-slot-list" })).toMatchObject({ type: "send-slot-list" });
   });
 
   it("accepts a well-formed inbound job", () => {

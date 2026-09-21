@@ -91,6 +91,7 @@ const mustBeGated = [
   "place_call",
   "search_domains",
   "send_email",
+  "enqueue_email",
   "pause_mailbox",
   "resume_mailbox",
 ];

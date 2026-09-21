@@ -25,6 +25,7 @@ import {
 
 export { OpError } from "@/lib/op-error";
 import { OpError } from "@/lib/op-error";
+import { openUserSecret } from "@/lib/mailbox-crypto";
 
 const CONTACT_STATUSES = [
   "NEW",
@@ -677,6 +678,9 @@ export interface EmailInput {
   agentMailMessageId?: string | null;
   agentMailThreadId?: string | null;
   mailboxId?: string | null;
+  messageId?: string | null;
+  inReplyTo?: string | null;
+  references?: string | null;
   savedAsContext?: boolean;
   sentAt?: Date | null;
 }
@@ -1016,7 +1020,8 @@ export async function placeContactCall(
     where: { id: userId },
     select: { agentPhoneApiKey: true },
   });
-  if (!user?.agentPhoneApiKey)
+  const agentPhoneKey = openUserSecret(user?.agentPhoneApiKey);
+  if (!agentPhoneKey)
     throw new OpError("Connect your AgentPhone account in Settings first (no AgentPhone key).", 501);
 
   const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
@@ -1026,7 +1031,7 @@ export async function placeContactCall(
   if (!toNumber)
     throw new OpError("No phone number for this contact - add one or pass toNumber in E.164 form.", 400);
 
-  const placed = await placeCall(user.agentPhoneApiKey, {
+  const placed = await placeCall(agentPhoneKey, {
     toNumber,
     systemPrompt: input.systemPrompt,
     agentId: input.agentId,
@@ -1092,10 +1097,11 @@ export async function syncContactCall(userId: string, callLogId: string) {
     where: { id: userId },
     select: { agentPhoneApiKey: true },
   });
-  if (!user?.agentPhoneApiKey)
+  const agentPhoneKey = openUserSecret(user?.agentPhoneApiKey);
+  if (!agentPhoneKey)
     throw new OpError("Connect your AgentPhone account in Settings first.", 501);
 
-  const detail = await getCall(user.agentPhoneApiKey, call.agentPhoneCallId);
+  const detail = await getCall(agentPhoneKey, call.agentPhoneCallId);
   return prisma.contactCall.update({
     where: { id: callLogId },
     data: {

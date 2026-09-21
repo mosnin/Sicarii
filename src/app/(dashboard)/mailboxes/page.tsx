@@ -19,6 +19,12 @@ type Mailbox = {
   dailySendLimit: number;
   sentToday: number;
   remainingToday: number;
+  remainingWarmupToday?: number;
+  remainingHourly?: number;
+  healthScore?: number;
+  pausedReasonLabel?: string | null;
+  inboundStatus?: "receiving" | "none";
+  lastInboundAt?: string | null;
   lastError: string | null;
 };
 
@@ -27,6 +33,11 @@ type Domain = {
   name: string;
   registrar: string;
   status: string;
+  spfOk?: boolean | null;
+  dkimOk?: boolean | null;
+  dmarcOk?: boolean | null;
+  mxOk?: boolean | null;
+  dnsCheckedAt?: string | null;
   _count?: { mailboxes: number };
 };
 
@@ -144,10 +155,29 @@ export default function MailboxesPage() {
           <div className="grid gap-2 sm:grid-cols-2">
             {domains.map((d) => (
               <div key={d.id} className="rounded-2xl border border-border bg-card px-4 py-3">
+                <div className="flex items-start justify-between gap-2">
                 <p className="font-brand text-sm">{d.name}</p>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  onClick={async () => {
+                    await fetch("/api/domains", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "check_dns", domainId: d.id }),
+                    });
+                    load();
+                  }}
+                >
+                  Check DNS
+                </button>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {d.status} · {d.registrar}
                   {d._count ? ` · ${d._count.mailboxes} inbox${d._count.mailboxes === 1 ? "" : "es"}` : ""}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {dnsLine(d)}
                 </p>
               </div>
             ))}
@@ -170,6 +200,18 @@ export default function MailboxesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function dnsFlag(ok: boolean | null | undefined, label: string): string {
+  if (ok === true) return `${label} ok`;
+  if (ok === false) return `${label} fail`;
+  return `${label} unchecked`;
+}
+
+function dnsLine(d: Domain): string {
+  return [dnsFlag(d.spfOk, "SPF"), dnsFlag(d.dkimOk, "DKIM"), dnsFlag(d.dmarcOk, "DMARC"), dnsFlag(d.mxOk, "MX")].join(
+    " · ",
   );
 }
 
@@ -504,8 +546,13 @@ function MailboxCard({ box, delay, onChanged }: { box: Mailbox; delay: number; o
               {box.domainName ? ` · ${box.domainName}` : ""}
               {` · ${box.provider}`}
               {box.status === "warming" ? ` · day ${box.warmupDay} of 21` : ""}
-              {` · ${box.remainingToday} left today`}
+              {` · ${box.remainingToday} cold left`}
+              {box.remainingWarmupToday != null ? ` · ${box.remainingWarmupToday} warmup left` : ""}
+              {box.remainingHourly != null ? ` · ${box.remainingHourly}/hr` : ""}
+              {box.healthScore != null ? ` · health ${box.healthScore}` : ""}
+              {` · inbound ${box.inboundStatus === "receiving" ? "receiving" : "none yet"}`}
             </p>
+            {box.pausedReasonLabel && <p className="mt-1 text-xs text-muted-foreground">{box.pausedReasonLabel}</p>}
             {box.lastError && <p className="mt-1 text-xs text-destructive">{box.lastError}</p>}
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">

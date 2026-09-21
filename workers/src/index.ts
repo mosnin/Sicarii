@@ -1,8 +1,8 @@
 import { authorize } from "./auth";
 import type { ExecutionContext, ForwardableEmailMessage, MessageBatch, ScheduledController } from "./cf";
 import { parseRawEmail } from "./email";
-import { callOrigin, listIds } from "./origin";
-import { queueNameFor, type Env, type MailboxJob } from "./types";
+import { callOrigin, listPage } from "./origin";
+import { isListJob, queueNameFor, type Env, type MailboxJob } from "./types";
 
 const WARMUP_CRON = "20 * * * *";
 
@@ -22,21 +22,57 @@ export async function handleEnqueue(req: Request, env: Env): Promise<Response> {
   return Response.json({ queued: true, queue: binding, type: job.type });
 }
 
-export async function handleScheduled(cron: string, env: Env): Promise<{ enqueued: number; type: string }> {
-  if (cron === WARMUP_CRON) {
-    const ids = await listIds(env, "warmup-list");
-    await Promise.all(ids.map((mailboxId) => env.SEND_QUEUE.send({ type: "warmup-one", mailboxId })));
-    return { enqueued: ids.length, type: "warmup-one" };
+async function fanOutList(
+  env: Env,
+  listJob: Extract<
+    MailboxJob,
+    { type: "warmup-list" | "fulfill-list" | "send-slot-list" | "outreach-tick" | "imap-list" | "dns-list" }
+  >,
+): Promise<{ enqueued: number; type: string; nextCursor: string | null }> {
+  const page = await listPage(env, listJob);
+  const ones: MailboxJob[] = page.ids.map((id) => {
+    switch (listJob.type) {
+      case "warmup-list":
+        return { type: "warmup-one", mailboxId: id };
+      case "fulfill-list":
+        return { type: "fulfill-one", mailboxId: id };
+      case "imap-list":
+        return { type: "imap-one", mailboxId: id };
+      case "dns-list":
+        return { type: "dns-one", domainId: id };
+      case "send-slot-list":
+      case "outreach-tick":
+        return { type: "send-one", jobId: id };
+    }
+  });
+  await Promise.all(ones.map((job) => env[queueNameFor(job)].send(job)));
+  if (page.nextCursor) {
+    const next: MailboxJob = { ...listJob, cursor: page.nextCursor };
+    await env.FULFILL_QUEUE.send(next);
   }
-  const ids = await listIds(env, "fulfill-list");
-  await Promise.all(ids.map((mailboxId) => env.FULFILL_QUEUE.send({ type: "fulfill-one", mailboxId })));
-  return { enqueued: ids.length, type: "fulfill-one" };
+  return { enqueued: ones.length, type: ones[0]?.type ?? listJob.type, nextCursor: page.nextCursor };
+}
+
+export async function handleScheduled(cron: string, env: Env): Promise<{ enqueued: number; type: string }[]> {
+  if (cron === WARMUP_CRON) {
+    const results = await Promise.all([
+      fanOutList(env, { type: "warmup-list" }),
+      fanOutList(env, { type: "send-slot-list" }),
+      fanOutList(env, { type: "dns-list" }),
+    ]);
+    return results;
+  }
+  return Promise.all([fanOutList(env, { type: "fulfill-list" }), fanOutList(env, { type: "imap-list" })]);
 }
 
 export async function handleQueueBatch(batch: MessageBatch<MailboxJob>, env: Env): Promise<void> {
   for (const message of batch.messages) {
     try {
-      await callOrigin(env, message.body);
+      if (isListJob(message.body)) {
+        await fanOutList(env, message.body);
+      } else {
+        await callOrigin(env, message.body);
+      }
       message.ack();
     } catch (e) {
       console.error("[scalar-mailbox-jobs] job failed", message.body.type, e);
@@ -77,9 +113,11 @@ export default {
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(handleScheduled(controller.cron, env).then((result) => {
-      console.log("[scalar-mailbox-jobs] cron", controller.cron, result);
-    }));
+    ctx.waitUntil(
+      handleScheduled(controller.cron, env).then((result) => {
+        console.log("[scalar-mailbox-jobs] cron", controller.cron, result);
+      }),
+    );
   },
 
   async queue(batch: MessageBatch<MailboxJob>, env: Env): Promise<void> {

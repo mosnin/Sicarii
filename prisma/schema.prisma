@@ -103,6 +103,7 @@ model User {
   // GoDaddy, or BYOK SMTP). See docs/decisions/0015-agent-mailboxes.md.
   domains           Domain[]
   mailboxes         Mailbox[]
+  mailboxJobs       MailboxSendJob[]
   // OAuth 2.1 authorization server: grants this human approved, and grants
   // that read this account (a workspace row only ever has the latter).
   oauthGrants       OauthGrant[] @relation("OauthGrantSubject")
@@ -329,6 +330,13 @@ model Contact {
   activities      Activity[]
   breakupDrafts   BreakupDraft[]
   variantSends    VariantSend[]
+  mailboxJobs     MailboxSendJob[]
+
+  // Identity-safe outreach halt. Bounce, unsubscribe, and stop set this.
+  // send_email and queued send refuse before they touch a provider.
+  doNotContact       Boolean   @default(false)
+  doNotContactReason String?
+  doNotContactAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -336,6 +344,7 @@ model Contact {
   @@index([userId])
   @@index([userId, status])
   @@index([userId, status, lastContactedAt])
+  @@index([userId, doNotContact])
   @@index([entityId])
   @@index([userId, updatedAt])
   @@index([userId, createdAt])
@@ -446,6 +455,10 @@ model ContactEmail {
   toAddr         String?
   subject        String?
   body           String?        @db.Text
+  // RFC 5322 threading so follow-ups keep the original subject.
+  messageId      String?
+  inReplyTo      String?
+  references     String?        @db.Text
   // Whether the agent flagged this message as durable context.
   savedAsContext Boolean        @default(false)
 
@@ -455,6 +468,7 @@ model ContactEmail {
   @@index([contactId])
   @@index([agentMailThreadId])
   @@index([mailboxId])
+  @@index([messageId])
   @@map("contact_emails")
 }
 
@@ -1115,12 +1129,20 @@ model Domain {
   stripeSessionId String?
   expiresAt       DateTime?
   lastError       String?
+  // DNS posture. Safe warmup prerequisite. See docs/decisions/0017.
+  spfOk           Boolean?
+  dkimOk          Boolean?
+  dmarcOk         Boolean?
+  mxOk            Boolean?
+  dnsCheckedAt    DateTime?
+  dnsRecords      Json?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   mailboxes       Mailbox[]
 
   @@unique([userId, name])
   @@index([userId, status])
+  @@index([dnsCheckedAt])
   @@map("domains")
 }
 
@@ -1142,6 +1164,24 @@ model Mailbox {
   dailySendLimit       Int       @default(5)
   sentToday            Int       @default(0)
   sentTodayOn          DateTime?
+  // Warmup volume is counted separately from cold outreach so neither
+  // budget can lie about the other.
+  warmupSentToday      Int       @default(0)
+  warmupSentTodayOn    DateTime?
+  hourlySent           Int       @default(0)
+  hourlySentOn         DateTime?
+  hourlySendLimit      Int       @default(8)
+  healthScore          Int       @default(100)
+  lastWarmupAt         DateTime?
+  nextEligibleAt       DateTime?
+  consecutiveFailures  Int       @default(0)
+  pausedReason         String?
+  imapHost             String?
+  imapPort             Int?
+  imapSecure           Boolean   @default(true)
+  imapCiphertext       String?   @db.Text
+  lastInboundAt        DateTime?
+  lastImapUid          Int?
   stripeSubscriptionId String?
   stripeSessionId      String?
   providerInboxId      String?
@@ -1154,10 +1194,13 @@ model Mailbox {
   updatedAt            DateTime  @updatedAt
   events               MailboxEvent[]
   emails               ContactEmail[]
+  jobs                 MailboxSendJob[]
 
   @@unique([userId, email])
   @@index([userId, status])
   @@index([status])
+  @@index([status, nextEligibleAt])
+  @@index([nextEligibleAt])
   @@index([domainId])
   @@index([providerOrderId])
   @@index([email])
@@ -1170,15 +1213,49 @@ model MailboxEvent {
   id         String   @id @default(uuid())
   mailboxId  String
   mailbox    Mailbox  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
-  kind       String // warmup | outreach | bounce | reply | provision | pause | resume | clock
-  contactId  String?
-  toAddr     String?
-  subject    String?
-  providerId String?
-  meta       Json?
-  createdAt  DateTime @default(now())
+  kind           String // warmup | outreach | bounce | reply | provision | pause | resume | clock | health
+  contactId      String?
+  toAddr         String?
+  subject        String?
+  providerId     String?
+  messageId      String?
+  inReplyTo      String?
+  references     String?  @db.Text
+  classification String?
+  idempotencyKey String?  @unique
+  meta           Json?
+  createdAt      DateTime @default(now())
 
   @@index([mailboxId, createdAt])
   @@index([mailboxId, kind])
+  @@index([classification])
   @@map("mailbox_events")
+}
+
+// Queued bulk send. One row per (mailbox, contact, idempotency key).
+// Retries must not double-send. Agent send_email stays synchronous.
+model MailboxSendJob {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mailboxId       String
+  mailbox         Mailbox  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  contactId       String
+  contact         Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  idempotencyKey  String   @unique
+  kind            String   @default("outreach") // outreach
+  status          String   @default("queued") // queued | running | sent | failed | skipped
+  subject         String
+  body            String   @db.Text
+  variantId       String?
+  attemptCount    Int      @default(0)
+  lastError       String?
+  scheduledAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([userId, status])
+  @@index([mailboxId, status])
+  @@map("mailbox_send_jobs")
 }

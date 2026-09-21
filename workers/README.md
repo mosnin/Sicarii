@@ -8,10 +8,13 @@ async send keep running when nobody is hitting the site.
 
 | Trigger | Queue / cron | Origin job |
 |---|---|---|
-| `20 * * * *` | fan-out to `scalar-send-email` | `warmup-one` per warming mailbox |
-| `*/10 * * * *` | fan-out to `scalar-mailbox-fulfillment` | `fulfill-one` per pending order |
+| `20 * * * *` | one page of `warmup-list` / `send-slot-list` / `dns-list` (200 max), then next cursor | `warmup-one`, `send-one`, `dns-one` |
+| `*/10 * * * *` | one page of `fulfill-list` / `imap-list` | `fulfill-one`, `imap-one` |
 | Email Routing | `scalar-inbound-email` | `inbound-email` |
 | `POST /enqueue` | routed by job type | `send-email` and the jobs above |
+
+List jobs never collect the whole fleet. Cron enqueues at most 200 ones, then
+re-lists the next page via `nextCursor` so many crons drain thousands.
 
 ## Secrets (Worker)
 
