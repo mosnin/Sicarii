@@ -186,6 +186,41 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
       ],
     },
     {
+      group: "Outreach infrastructure",
+      checks: [
+        optionalKey(
+          "GoDaddy domains (buy + DNS)",
+          "GODADDY_PAT",
+          env,
+          "Programmatic domain search, quote, registration, and SPF/DMARC publishing. Without it /api/outreach/domains returns 501."
+        ),
+        optionalKey(
+          "Bird email rail (send + webhooks)",
+          "BIRD_API_KEY",
+          env,
+          "Transmits cold/warm email and reports delivery. Without it the send queue holds and send-test returns 501."
+        ),
+        optionalKey(
+          "Bird webhook signing",
+          "BIRD_WEBHOOK_SECRET",
+          env,
+          "HMAC secret verifying /api/webhooks/bird. Without it the route fails closed (503) rather than accepting unsigned events."
+        ),
+        optionalKey(
+          "PremiumInboxes DFY inboxes",
+          "PREMIUMINBOXES_API_KEY",
+          env,
+          "Submits done-for-you inbox orders directly. Without it, orders return a manual intake CSV for the ops team instead."
+        ),
+        optionalKey(
+          "Warmup seed addresses",
+          "WARMUP_SEED_ADDRESSES",
+          env,
+          "Comma-separated seed inboxes that receive (and engage) warmup probes. Without it the warmup tick holds honestly instead of faking engagement."
+        ),
+      ],
+    },
+    {
       group: "Billing",
       checks: [
         (() => {

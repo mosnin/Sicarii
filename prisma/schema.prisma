@@ -99,6 +99,17 @@ model User {
   // within their approved credit ceiling.
   autopilotPlans    AutopilotPlan[]
   breakupDrafts     BreakupDraft[]
+  // Agent outreach mailboxes (Card 0015): relation fields only — every FK
+  // lives on the new tables, so this adds NO columns to `users` (see the
+  // voiceInboundSecret note above for why that matters on this project).
+  outreachDomains   OutreachDomain[]
+  domainOrders      DomainOrder[]
+  mailboxOrders     MailboxOrder[]
+  mailboxes         Mailbox[]
+  outreachSequences OutreachSequence[]
+  enrollments       SequenceEnrollment[]
+  outreachSends     OutreachSend[]
+  suppressions      Suppression[]
   // OAuth 2.1 authorization server: grants this human approved, and grants
   // that read this account (a workspace row only ever has the latter).
   oauthGrants       OauthGrant[] @relation("OauthGrantSubject")
@@ -325,6 +336,9 @@ model Contact {
   activities      Activity[]
   breakupDrafts   BreakupDraft[]
   variantSends    VariantSend[]
+  // Agent outreach mailboxes (Card 0015): virtual back-refs, no Contact DDL.
+  enrollments     SequenceEnrollment[]
+  outreachSends   OutreachSend[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1092,4 +1106,324 @@ model OauthToken {
   @@index([familyId])
   @@index([expiresAt])
   @@map("oauth_tokens")
+}
+
+// ── Agent outreach mailboxes (Card 0015) ─────────────────────────────────────
+// Native cold/warm email: domains bought via GoDaddy, mailboxes provisioned
+// via PremiumInboxes (done-for-you), sends via Bird. New tables ONLY — the
+// User model below gains relation-field (virtual) back-refs and NO new
+// columns, so `prisma db push` never ALTERs `users` (see the voiceInboundSecret
+// note: column/index changes on users fail on this Supabase project).
+//
+// Status literals are Strings (same convention as Activity.kind), not enums,
+// so lifecycle additions never need an enum migration:
+//   OutreachDomain.status: "pending_payment" | "registering" | "active" |
+//     "dns_pending" | "failed" | "external" (BYO domain, verified manually)
+//   Mailbox.status: "ordered" | "provisioning" | "warming" | "ready" |
+//     "paused" | "burned"
+//   Mailbox.platform: "google" | "microsoft"
+//   Mailbox.provider: "premiuminboxes" | "bird" | "bring_your_own"
+//   SequenceEnrollment.status: "active" | "paused" | "completed" | "bounced" |
+//     "replied" | "unsubscribed"
+//   OutreachSend.status: "pending_approval" | "queued" | "sent" | "delivered" |
+//     "bounced" | "complained" | "replied" | "failed" | "skipped"
+//   Suppression.reason: "bounce" | "complaint" | "unsubscribe" | "manual"
+
+// A sending domain owned by the user: bought in-app through GoDaddy
+// (DomainOrder -> registration) or connected externally (BYO, verified via
+// DNS checklist). DNS verification state lives here; individual records are
+// derived from src/lib/outreach/dns.ts, not stored.
+model OutreachDomain {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  domain   String // bare domain, lowercased at write time, e.g. "getacme.co"
+  provider String @default("godaddy") // "godaddy" | "external"
+  status   String @default("pending_payment")
+
+  // GoDaddy registration receipt (null for external domains).
+  godaddyOrderId String?
+  registeredAt   DateTime?
+
+  // DNS verification snapshot (recomputed by the verify job; null = unchecked).
+  dnsVerifiedAt DateTime?
+  dnsDetail     Json? // { spf: true, dkim: true, dmarc: "p=none|quarantine|reject"|false, ... }
+
+  // Domain-level reputation guard: when true, rotation skips every mailbox on
+  // this domain until a human clears it (blocklist hit, mass bounces).
+  quarantined   Boolean   @default(false)
+  quarantineWhy String?
+
+  mailboxes Mailbox[]
+  orders    DomainOrder[]
+  mailboxOrders MailboxOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, domain])
+  @@index([userId])
+  @@index([userId, status])
+  @@map("outreach_domains")
+}
+
+// A Stripe-paid intent to register one domain via GoDaddy. The Stripe webhook
+// (checkout.session.completed with metadata.kind = "domain_order") completes
+// the registration; idempotencyKey = the GoDaddy Idempotency-Key header value
+// so a retried webhook never double-registers (GoDaddy honors the key too).
+model DomainOrder {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  domainId String?
+  domain   OutreachDomain? @relation(fields: [domainId], references: [id], onDelete: SetNull)
+
+  domainName     String // requested FQDN, lowercased
+  periodYears    Int    @default(1)
+  quoteToken     String? @db.Text // GoDaddy price-lock token (10-min TTL; null once used/expired)
+  quotedCentsUsd Int? // locked price for the receipt UI
+  idempotencyKey String  @unique // also sent as GoDaddy Idempotency-Key
+  stripeSessionId String? @unique // checkout session that paid for this order
+  // GoDaddy async operation ref (operation id or poll URL) while registering.
+  providerOp     String?  @db.Text
+  status         String  @default("pending_payment") // "pending_payment" | "paid" | "registering" | "done" | "failed"
+  failureWhy     String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("domain_orders")
+}
+
+// One sending identity. Credentials live with the provider (PremiumInboxes /
+// Bird hold the actual Google/M365/SMTP auth); Scalar stores only the provider
+// ref + connection status — never a password or token (same rule as ApiKey:
+// secrets hashed at rest, shown once; here we don't hold them at all).
+model Mailbox {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  domainId String
+  domain   OutreachDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  email    String // full address, lowercased, e.g. "leo@getacme.co"
+  platform String @default("google") // "google" | "microsoft"
+  provider String @default("premiuminboxes") // "premiuminboxes" | "bird" | "bring_your_own"
+  status   String @default("ordered")
+
+  // Provider-side reference (PremiumInboxes inbox id / Bird sending identity).
+  // Opaque: never logged, never returned to a different user.
+  providerRef String?
+
+  // Deliverability pacing. dailyCap is the ceiling the rotation picker
+  // enforces; sentToday resets on the warmup/send tick (UTC day). New
+  // mailboxes start at the warmup ramp value, not at full cap.
+  dailyCap  Int @default(20)
+  sentToday Int @default(0)
+  capDay    DateTime @default(now()) // which UTC day sentToday belongs to
+
+  // Warmup pointer: 0 = not started, 1..30 = ramp day (see warmup.ts).
+  // readyAt is set when the ramp completes with clean signals.
+  warmupDay Int       @default(0)
+  readyAt   DateTime?
+
+  // Consecutive hard bounces / complaints observed via the Bird webhook.
+  // Crossing the threshold auto-pauses the mailbox into recovery (status
+  // "paused" with pauseWhy) instead of burning the domain.
+  hardBounces Int     @default(0)
+  complaints  Int     @default(0)
+  pausedAt    DateTime?
+  pauseWhy    String?  @db.Text
+
+  warmupDays  MailboxWarmupDay[]
+  sends       OutreachSend[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, email])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([domainId])
+  @@map("mailboxes")
+}
+
+// Per-day warmup ledger for one mailbox: what the ramp sent and what the
+// seeds did back. Auditable proof the account was warmed, not a vibe.
+model MailboxWarmupDay {
+  id        String  @id @default(uuid())
+  mailboxId String
+  mailbox   Mailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  day      Int // 1..30 ramp day
+  target   Int // planned warmup sends that day (warmup.ts)
+  sent     Int @default(0)
+  opened   Int @default(0)
+  replied  Int @default(0)
+  bounced  Int @default(0)
+  // Placement signal for the day: "inbox" | "spam" | "unknown" (seed reports).
+  placement String @default("unknown")
+
+  createdAt DateTime @default(now())
+
+  @@unique([mailboxId, day])
+  @@index([mailboxId])
+  @@map("mailbox_warmup_days")
+}
+
+// A multi-step outreach cadence. Steps are JSON (delay days + template +
+// variant pool per step) so copy iteration never needs a migration:
+// [{ dayOffset: 0, subject: "...", body: "...", variantKind: "subject"|"opener"|null }]
+// requireApproval defaults true: enrollments queue as pending_approval until a
+// human releases them via the session-gated REST approve route (Card 0012
+// precedent — agents can never self-release cold sends).
+model OutreachSequence {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name            String
+  steps           Json // SequenceStep[]
+  status          String  @default("active") // "active" | "paused" | "archived"
+  requireApproval Boolean @default(true)
+  stopOnReply     Boolean @default(true)
+  dailyCap        Int     @default(200) // max sends/day across all mailboxes for this sequence
+
+  enrollments SequenceEnrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("outreach_sequences")
+}
+
+// One contact's journey through a sequence. nextRunAt drives the scheduler;
+// approvedAt is the human release (null = still queued, never transmitted).
+model SequenceEnrollment {
+  id         String           @id @default(uuid())
+  sequenceId String
+  sequence   OutreachSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  contactId  String
+  contact    Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status      String    @default("active")
+  currentStep Int       @default(0)
+  nextRunAt   DateTime  @default(now())
+  approvedAt  DateTime?
+  stopReason  String? // "reply" | "bounce" | "unsubscribe" | "manual" | null
+
+  sends OutreachSend[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sequenceId, contactId])
+  @@index([userId, status, nextRunAt])
+  @@index([contactId])
+  @@map("sequence_enrollments")
+}
+
+// Every queued/transmitted message. subject/body are snapshots (templates may
+// change later); variantId attributes back to the bandit pool when the send
+// used a select_variant pick. providerMessageId = Bird message id for webhook
+// correlation. A row is created at QUEUE time (pending_approval) so nothing
+// transmits without a record.
+model OutreachSend {
+  id           String              @id @default(uuid())
+  userId       String
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mailboxId    String?
+  mailbox      Mailbox?            @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+  enrollmentId String?
+  enrollment   SequenceEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  // Null + isWarmup for warmup-probe sends (to seed addresses, not contacts).
+  contactId    String?
+  contact      Contact?            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  isWarmup     Boolean             @default(false)
+
+  toAddr   String
+  fromAddr String
+  subject  String
+  body     String  @db.Text
+  step     Int     @default(0)
+  variantId String?
+
+  status            String    @default("pending_approval")
+  providerMessageId String?
+  failureWhy        String?   @db.Text
+  // Idempotency for the send path: the scheduler claims a queued row by
+  // setting claimKey once (unique) before calling Bird, so two concurrent
+  // ticks can never double-send the same row.
+  claimKey String? @unique
+
+  queuedAt    DateTime  @default(now())
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  openedAt    DateTime?
+  repliedAt   DateTime?
+
+  @@index([userId, status])
+  @@index([mailboxId])
+  @@index([enrollmentId])
+  @@index([contactId])
+  @@index([providerMessageId])
+  @@map("outreach_sends")
+}
+
+// Per-user suppression list: addresses that must never be mailed again.
+// Checked at QUEUE time and again at SEND time (a lot can change between the
+// two). Bird-side suppression is defense in depth, not the only check.
+model Suppression {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  email  String // lowercased
+  reason String // "bounce" | "complaint" | "unsubscribe" | "manual"
+  source String? // "bird_webhook" | "user" | "sequence" | provider message id
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, email])
+  @@index([userId])
+  @@map("suppressions")
+}
+
+// Tracks one PremiumInboxes fulfillment batch: the provider order id (API
+// mode) or the manual intake CSV hash (manual mode), and which mailbox rows
+// it produced. Lets ops confirm delivery exactly once (confirmMailboxOrder is
+// idempotent on providerOrderId / mailbox emails).
+model MailboxOrder {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  domainId String
+  domain   OutreachDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  platform String @default("google") // "google" | "microsoft" (String, same convention as Mailbox)
+  count    Int
+  mode     String // "api" | "manual"
+  // API mode: the provider's order id. Manual mode: "manual:<sha256(intakeCsv)>".
+  providerOrderId String? @unique
+  intakeCsv       String? @db.Text // stored only in manual mode (the exact intake sent)
+  status          String  @default("ordered") // "ordered" | "provisioning" | "done" | "failed"
+  failureWhy      String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([domainId])
+  @@map("mailbox_orders")
 }

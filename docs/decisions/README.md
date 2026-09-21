@@ -56,6 +56,12 @@ exponential growth into a plateau.
 - **Discovery saves only what it can verify.** find_socials auto-saves a profile
   only on name AND company match; everything else is a candidate for review.
   Null over wrong, on every enrichment path. _(Cards 0003, 0008)_
+- **Agents queue, humans release.** Anything that sends outside Scalar (breakup
+  drafts, now cold email) is enqueued by agents and released only through a
+  session-gated REST route — never an MCP tool. _(Cards 0012, 0015)_
+- **New tables only; never ALTER `users`.** Back-relation fields on `User` are
+  Prisma-virtual; real columns on `users` break `prisma db push` on this
+  Supabase project. _(Card 0015)_
 
 ## Open debts (owed to reality)
 
@@ -78,6 +84,9 @@ exponential growth into a plateau.
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
+| Outreach provider keys + live round-trip | 0015 · Feasible | GoDaddy PAT, PremiumInboxes terms/key, Bird key; domain-search → mailbox-order → warmup-tick → test-send observed | founder + eng |
+| Outreach schema on prod | 0015 · Deliverable | `pnpm prisma db push` (8 new tables, additive only) | founder |
+| Outreach money + policy | 0015 · Viable | Stripe domain/mailbox products, final DFY price, auto-send default, unsubscribe-footer counsel review | founder + banker |
 
 ## Kills & falsifieds (do not re-open)
 

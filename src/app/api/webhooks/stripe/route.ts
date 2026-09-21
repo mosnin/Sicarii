@@ -97,6 +97,25 @@ export async function POST(req: Request) {
 // event id), so a retry re-runs safely and the caller can defer marking the
 // event processed until after this returns.
 async function applyStripeEvent(type: string, obj: StripeObject, eventId?: string): Promise<void> {
+  // One-off domain purchase (Card 0015): a payment-mode Checkout whose
+  // metadata carries kind=domain_order. Completes the GoDaddy registration —
+  // plan logic below is untouched (this branch returns first).
+  if (type === "checkout.session.completed") {
+    const m = obj.metadata;
+    const meta = m && typeof m === "object" ? (m as Record<string, unknown>) : {};
+    if (meta.kind === "domain_order") {
+      const orderId = typeof meta.orderId === "string" ? meta.orderId : "";
+      const sessionId = typeof obj.id === "string" ? obj.id : "";
+      if (!orderId || !sessionId) {
+        console.warn("[stripe] domain_order checkout missing orderId/session id");
+        return;
+      }
+      const { completeDomainOrderPaid } = await import("@/lib/outreach-operations");
+      await completeDomainOrderPaid(orderId, sessionId);
+      return;
+    }
+  }
+
   // Initial purchase: a Checkout completed in subscription mode.
   if (type === "checkout.session.completed") {
     const { userId, plan } = metaOf(obj);

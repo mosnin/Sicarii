@@ -32,6 +32,10 @@ deep copy, workspace agent keys with Activity attribution, team plan $299/30d.
 Owed: enable Organizations in Clerk + org webhook events + STRIPE_PRICE_TEAM,
 then one live org round-trip (create, invite, switch, share, agent write).
 
+**Parallel cycle shipped: 0015 - Agent outreach mailboxes** (`0015-agent-outreach-mailboxes.md`).
+Domains (GoDaddy) + DFY inboxes (PremiumInboxes) + warmup + sequences + Bird
+send rail, agents-queue/humans-release, REST+MCP+inngest, no UI yet. Owed:
+`prisma db push` (8 additive tables) + provider keys + one live
 **Parallel cycle shipped: 0007 - x402 agent payments** (`0007-x402-agent-payments.md`).
 The CRM your agents run now lets the agents pay for it: USDC top-ups
 (`/api/x402/topup`) and 30-day plan purchase (`/api/x402/subscribe`) over HTTP

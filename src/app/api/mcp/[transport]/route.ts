@@ -103,6 +103,13 @@ import {
 } from "@/lib/autopilot-operations";
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { createVariant, selectVariant, listVariantStats } from "@/lib/variant-operations";
+import {
+  listMailboxes,
+  orderMailboxes,
+  createSequence,
+  enrollContacts,
+  queueSingleSend,
+} from "@/lib/outreach-operations";
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -1086,8 +1093,80 @@ const handler = createMcpHandler(
       async (a, extra) => run(() => listActivities(userIdFrom(extra), a)),
     );
 
-    /* ------------------------- Breakup drafts ---------------------- */
-    // Scan for stalled deals and draft a polite "breakup" email for each,
+    /* ------------------- Agent outreach mailboxes ------------------ */
+    // Native cold/warm email (Card 0015): the operator buys domains + DFY
+    // mailboxes in the app; you warm them, run sequences, and queue sends.
+    // SAFETY: queueing is all you can do — every send sits pending_approval
+    // until a HUMAN releases it from the dashboard (approve is a
+    // session-gated REST action, never an MCP tool, same as breakup drafts).
+    // Never promise a send has gone out; report queued vs approved honestly.
+    server.tool(
+      "list_mailboxes",
+      "List your sending mailboxes: address, platform, status (ordered/provisioning/warming/ready/paused/burned), warmup progress, today's volume vs cap, and domain health. Only ready mailboxes (or warming ones under their ramp target) can carry sends.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(() => listMailboxes(userIdFrom(extra))),
+    );
+    server.tool(
+      "order_mailboxes",
+      "Order done-for-you inboxes (Google Workspace or Microsoft 365, provisioned by PremiumInboxes) on one of your verified domains. Creates the order + mailbox rows (ordered/provisioning); with the provider key set it submits directly, otherwise it returns the intake CSV for manual fulfillment. New mailboxes enter a 30-day warmup before carrying cold volume.",
+      {
+        domainId: z.string(),
+        count: z.number().int().min(1).max(50),
+        platform: z.enum(["google", "microsoft"]).optional().describe("mailbox platform (default google)"),
+        localParts: z.array(z.string().max(64)).max(50).optional().describe("requested local parts, e.g. ['leo','mia']"),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (a, extra) =>
+        gated(extra, "order_mailboxes", 10, (userId) => orderMailboxes(userId, a)),
+    );
+    server.tool(
+      "create_sequence",
+      "Create a multi-step cold email sequence (1-10 steps). Each step: dayOffset (days after the previous send), subject, body (supports {{firstName}} {{company}} {{name}} tokens and a {{opener}} slot), and optional variantKind (subject|opener) to pull the bandit's pick at send time. Sequences require human approval by default (requireApproval); enrollments queue as pending until released from the dashboard.",
+      {
+        name: z.string().max(200),
+        steps: z.array(z.object({
+          dayOffset: z.number().int().min(0).max(90),
+          subject: z.string().max(500),
+          body: z.string().max(50000),
+          variantKind: z.enum(["subject", "opener"]).nullable().optional(),
+        })).min(1).max(10),
+        requireApproval: z.boolean().optional(),
+        stopOnReply: z.boolean().optional(),
+        dailyCap: z.number().int().min(1).max(5000).optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (a, extra) =>
+        gated(extra, "create_sequence", 30, (userId) =>
+          createSequence(userId, { ...a, steps: a.steps }),
+        ),
+    );
+    server.tool(
+      "enroll_sequence",
+      "Enroll contacts in a sequence. Returns per-contact verdicts: enrolled vs skipped (no usable email, suppressed, already enrolled). Suppressed addresses are never enrolled. Enrollments on approval-gated sequences wait for human release; tell the operator to approve them from the dashboard.",
+      {
+        sequenceId: z.string(),
+        contactIds: z.array(z.string()).max(500),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (a, extra) =>
+        gated(extra, "enroll_sequence", 30, (userId) => enrollContacts(userId, a.sequenceId, a.contactIds)),
+    );
+    server.tool(
+      "queue_send",
+      "Queue a one-off cold email to a contact (subject + body you composed, optionally using select_variant's pick passed as variantId). The send sits pending_approval — a human releases it from the dashboard; you cannot send it yourself. Suppressed addresses are refused at queue time.",
+      {
+        contactId: z.string(),
+        subject: z.string().max(500),
+        body: z.string().max(50000),
+        variantId: z.string().optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      async (a, extra) =>
+        gated(extra, "queue_send", 60, (userId) => queueSingleSend(userId, a)),
+    );
+
+    /* ------------------------- Breakup drafts ---------------------- */    // Scan for stalled deals and draft a polite "breakup" email for each,
     // grounded only in stored history. Drafts are held PENDING for human
     // review - approving (and thereby sending) a draft is a session-gated REST
     // action (src/app/api/breakup-drafts/[id]/approve), never an MCP tool, so a
@@ -1175,7 +1254,7 @@ THE OPERATING LOOP
 2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). For a broad goal with multiple distinct slices (sub-verticals, geographies, funding stages, hiring signals), use swarm_discover instead: it fans out 2-6 angles in parallel, merges and dedupes across all of them plus the CRM, and tells you which angle found each company - more thorough than one find_companies call, at a clearly stated cost ceiling. All three dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
 3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. For their social profiles (LinkedIn, X, Instagram, Facebook), call find_socials: it auto-saves only name+company-verified profiles and returns the rest as candidates for you to review. Enrich what you will act on, not the whole database; every enrichment costs credits.
 4. Organize. Group not-yet-contacted prospects with build_smart_segment (costs credits when it matches prospects), then create_pipeline to track them through stages. Clean up as you go: update_segment/delete_segment/remove_segment_member and delete_pipeline/remove_pipeline_entry let you rename, retire, or prune segments and pipelines instead of leaving stale ones behind.
-5. Track outreach. This is the memory that makes you reliable. Before writing your first message to a segment (or in general), call select_variant (kind: subject or opener) to get the bandit's current best pick for that pool - it explores automatically while data is thin and converges on the winner as replies come in, so you never need to run your own A/B test. Use the returned text verbatim, then when you email a contact, call save_email_context, then log_outreach (with variantId set to what select_variant returned) to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message the same way (pass variantId on the OUTBOUND message; it advances pipeline state itself and attributes a later reply back to the variant automatically - use list_social_messages to reread a conversation). Check list_variant_stats any time to see reply rates and which variant is winning. If you're not testing variants, log_outreach/log_social_message work exactly the same without variantId. When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). For deals gone fully cold, call draft_breakups to write a grounded breakup email per stalled contact - it only drafts (list_pending_drafts to review); a human approves or dismisses in the app, you never send it yourself. Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping (costs 1 credit per memory actually saved).
+5. Track outreach. This is the memory that makes you reliable. Before writing your first message to a segment (or in general), call select_variant (kind: subject or opener) to get the bandit's current best pick for that pool - it explores automatically while data is thin and converges on the winner as replies come in, so you never need to run your own A/B test. For NATIVE cold email (no external sequencer): check list_mailboxes for ready sending identities; build the cadence with create_sequence ({{firstName}} {{company}} tokens, optional variantKind per step); enroll with enroll_sequence (per-contact verdicts: suppressed or email-less contacts are skipped, fix the list); single important mails go through queue_send. Every native send queues as pending_approval — a human releases it from the dashboard, you never send it yourself, so report queued-vs-approved honestly and never promise delivery. When you email a contact outside a sequence, call save_email_context, then log_outreach (with variantId set to what select_variant returned) to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message the same way (pass variantId on the OUTBOUND message; it advances pipeline state itself and attributes a later reply back to the variant automatically - use list_social_messages to reread a conversation). Check list_variant_stats any time to see reply rates and which variant is winning. If you're not testing variants, log_outreach/log_social_message work exactly the same without variantId. When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). For deals gone fully cold, call draft_breakups to write a grounded breakup email per stalled contact - it only drafts (list_pending_drafts to review); a human approves or dismisses in the app, you never send it yourself. Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping (costs 1 credit per memory actually saved).
 6. Measure and repeat. Use pipeline_metrics and list_variant_stats to see what is working, then loop back to discovery.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.

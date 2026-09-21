@@ -48,6 +48,17 @@ export const CREDIT_COSTS = {
   // synthesis, priced in line with the other single-LLM-call actions
   // (find_socials=4, contact_extract=8).
   breakup_draft: 6,
+  // --- Agent outreach mailboxes (Card 0015) --------------------------------
+  // outreach_send: one cold/warm email transmitted via Bird. Bird's unit cost
+  // is a fraction of a cent; 2 credits ($0.02) keeps the house ~3x margin rule
+  // while staying far under Origami-style per-seat sequencer pricing.
+  // outreach_warmup: one warmup-probe send (same rail, seed addresses). Priced
+  // at 1 — subsidized vs the 3x rule on purpose (warmup is reputation
+  // infrastructure, not product), but NOT free, so warmup can never be abused
+  // as a free-send side channel. Skipped/suppressed sends are never charged
+  // (same "never charge a miss" policy as every other action).
+  outreach_send: 2,
+  outreach_warmup: 1,
   // --- Embedding-backed actions (OpenAI text-embedding-3-small, see
   // src/lib/embeddings.ts) -----------------------------------------------
   //

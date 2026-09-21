@@ -290,4 +290,91 @@ export const runAutopilotPlans = inngest.createFunction(
   }
 );
 
-export const functions = [runIntentMonitors, runResearchSchedules, runAutopilotPlans];
+// ── Agent outreach mailboxes (Card 0015) ────────────────────────────────────
+// 15-min send queue (due enrollments + released singles), hourly domain poll,
+// daily warmup tick + reply poll. Every tick no-ops cleanly when its provider
+// key is absent (key-gated 501s surface inside the ops calls, which the ticks
+// catch per-item — one user's missing key never fails the whole run).
+
+export const processOutreachQueue = inngest.createFunction(
+  {
+    id: "process-outreach-queue",
+    name: "Process outreach send queue",
+    triggers: [{ cron: "*/15 * * * *" }],
+  },
+  async () => {
+    const { processDueSends, processQueuedSends } = await import("@/lib/outreach-send");
+    const due = await processDueSends({ limit: 50 }).catch((e) => {
+      console.error("[inngest] processDueSends failed", e);
+      return { transmitted: 0, failed: 0, skipped: 0, fleetExhausted: false };
+    });
+    const queued = due.fleetExhausted
+      ? { transmitted: 0, failed: 0, skipped: 0, fleetExhausted: true }
+      : await processQueuedSends({ limit: 50 }).catch((e) => {
+          console.error("[inngest] processQueuedSends failed", e);
+          return { transmitted: 0, failed: 0, skipped: 0, fleetExhausted: false };
+        });
+    return {
+      due,
+      queued,
+      transmitted: due.transmitted + queued.transmitted,
+    };
+  }
+);
+
+export const tickMailboxWarmup = inngest.createFunction(
+  {
+    id: "tick-mailbox-warmup",
+    name: "Advance mailbox warmup ramps",
+    triggers: [{ cron: "0 9 * * *" }], // daily, 09:00 UTC
+  },
+  async () => {
+    const { tickWarmup } = await import("@/lib/outreach-send");
+    return await tickWarmup().catch((e) => {
+      console.error("[inngest] tickWarmup failed", e);
+      return { mailboxes: 0, probesSent: 0, advanced: 0, held: 0, regressed: 0, ready: 0, skippedNoSeeds: false };
+    });
+  }
+);
+
+export const pollOutreachDomains = inngest.createFunction(
+  {
+    id: "poll-outreach-domains",
+    name: "Poll GoDaddy domain registrations",
+    triggers: [{ cron: "7 * * * *" }], // 7 min past every hour
+  },
+  async () => {
+    const { pollDomainOrders } = await import("@/lib/outreach-send");
+    return await pollDomainOrders().catch((e) => {
+      console.error("[inngest] pollDomainOrders failed", e);
+      return { checked: 0, completed: 0, failed: 0 };
+    });
+  }
+);
+
+export const pollOutreachReplies = inngest.createFunction(
+  {
+    id: "poll-outreach-replies",
+    name: "Detect outreach replies (stop-on-reply)",
+    triggers: [{ cron: "0 10 * * *" }], // daily, 10:00 UTC (after the warmup tick)
+  },
+  async () => {
+    const { pollRepliesViaAgentMail } = await import("@/lib/outreach-send");
+    return await pollRepliesViaAgentMail().catch((e) => {
+      console.error("[inngest] pollRepliesViaAgentMail failed", e);
+      return { users: 0, replies: 0 };
+    });
+  }
+);
+
+// The serve() export — kept at the END because it references every function
+// above (outreach additions included).
+export const functions = [
+  runIntentMonitors,
+  runResearchSchedules,
+  runAutopilotPlans,
+  processOutreachQueue,
+  tickMailboxWarmup,
+  pollOutreachDomains,
+  pollOutreachReplies,
+];
