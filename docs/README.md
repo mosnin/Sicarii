@@ -34,13 +34,14 @@
 | `decisions/0010-budgeted-autopilot.md` | Budgeted Autopilot: propose a spend plan (draft), human-only approval, atomic per-category budget guard on top of the real credit meter, scheduled execution loop (discovery/enrichment/outreach) over the existing Inngest cron | Revisiting autopilot / scheduled agent budgets |
 | `decisions/0015-agent-mailboxes.md` | Agent mailboxes: domain + inbox identity, Premium Inboxes / GoDaddy / SMTP, warmup, `send_email` | Revisiting outreach / email send |
 | `decisions/0016-cloudflare-mailbox-jobs.md` | Cloudflare Workers as the mailbox background plane (warmup, inbound, fulfillment, send queue) | Revisiting mailbox background / Workers |
+| `decisions/0017-safe-warmup-and-scale.md` | Conservative warmup volume (not Instantly scale). Gate card for the researched ramp. | Revisiting send caps / deliverability |
 
 ## Working knowledge (grows with the product)
 
 | Area | What's there | Owned by |
 |------|--------------|----------|
 | `product/` | Specs, flows, requirements as they evolve | Vision + the human |
-| `engineering/` | Architecture, systems, interfaces, trade-offs | The engineer + the producer |
+| `engineering/` | Architecture, systems, interfaces, trade-offs. Includes `engineering/mailbox-warmup-limits.md` (sourced warmup + first-cold ramp). | The engineer + the producer |
 | `operations/` | Production, economics, go-to-market, metrics | The producer + the banker |
 
 ## Interfaces
@@ -61,6 +62,7 @@
 | [`engineering/world-class-plan-2026-07-02.md`](engineering/world-class-plan-2026-07-02.md) | Synthesis of 4 parallel audits (OWASP, structure, perf, Playwright): waves 1+2 shipped, founder actions, next cycles |
 | [`engineering/mcp-audit-2026-07-11.md`](engineering/mcp-audit-2026-07-11.md) | Deep MCP re-audit (45 tools): isolation + metering clean; 3 P1s found and fixed same-cycle; open items + agent coverage gaps |
 | [`engineering/teams-plan-2026-07-11.md`](engineering/teams-plan-2026-07-11.md) | Teams/workspaces architecture plan: Clerk Orgs + synthetic workspace account, lead sharing semantics, v1 cut (designed, not built) |
+| [`engineering/mailbox-warmup-limits.md`](engineering/mailbox-warmup-limits.md) | Sourced provider caps, vendor ramps, and the conservative Scalar warmup / first-cold table (2026-09-21). Reasoned, not observed. |
 
 ---
 

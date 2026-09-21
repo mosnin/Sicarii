@@ -59,6 +59,9 @@ exponential growth into a plateau.
 - **Background that must outlive a tab belongs on a Worker clock, not a page
   load.** Mailbox warmup, inbound, and fulfillment enqueue to Cloudflare;
   Prisma and SMTP stay on the origin. _(Card 0016)_
+- **Warmup volume takes the floor when sources disagree.** Default is a new
+  domain + new inbox: 0 cold until day 21, first ready day = 5, ceiling 20.
+  No peer-network. No Instantly marketing 40-100. _(Card 0017)_
 
 ## Open debts (owed to reality)
 
@@ -83,6 +86,7 @@ exponential growth into a plateau.
 | Mailbox schema on prod | 0015 · Deliverable | `pnpm prisma db push` (domains, mailboxes, mailbox_events, contact_emails.mailboxId) | founder |
 | Live mailbox send | 0015 · Feasible | Stripe mailbox/domain prices + one SMTP or Premium Inboxes fulfillment + one `send_email` | founder + eng |
 | Cloudflare mailbox worker live | 0016 · Deliverable | `wrangler deploy` + `WORKERS_URL` / `WORKER_SECRET` + one unattended warmup hour | founder |
+| Live warmup placement | 0017 · Feasible | One new domain, 21 days of sink mail, then five real cold sends. Record bounce / complaint / placement. | founder + eng |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
 
 ## Kills & falsifieds (do not re-open)

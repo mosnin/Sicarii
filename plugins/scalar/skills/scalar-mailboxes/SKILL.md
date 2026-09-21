@@ -27,5 +27,6 @@ A mailbox is the agent's sending identity. Outreach that is only logged is not s
 
 - Never claim you sent if `send_email` failed.
 - Do not send from a warming inbox (day < 21) unless the operator marked it ready.
-- Respect the daily cap. Tomorrow is fine.
+- Respect the daily cap. Tomorrow is fine. Caps: `scalar-safe-warmup`.
 - Confirm the contact's email is theirs (name AND company) before the first send.
+- Write the body as a real person: `scalar-outreach-copy` (one question, postal address, honest unsub, no shorteners, no fake Re:).

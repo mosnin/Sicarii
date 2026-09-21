@@ -40,7 +40,10 @@ agent did what. Only team admins can mint workspace keys.
    `verify_entity` (public registries, free), `detect_tech` (site stack, free).
 4. Organize: `build_smart_segment`, `create_pipeline`, `add_to_pipeline`.
 5. Track: `list_mailboxes` then `send_email` when an inbox is ready (that
-   delivers, saves the thread, and stamps outreach). If no mailbox is ready,
+   delivers, saves the thread, and stamps outreach). If the inbox is still
+   warming (day < 21) and the operator has not marked it ready, do not
+   send. Follow `scalar-safe-warmup` for daily caps and
+   `scalar-outreach-copy` before the first send. If no mailbox is ready,
    fall back to `save_email_context` + `log_outreach` and tell the operator.
    After a social
    DM, `log_social_message` (it advances pipeline state itself); after calls,

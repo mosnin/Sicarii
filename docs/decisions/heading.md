@@ -16,6 +16,13 @@ run on Cloudflare Workers when `WORKERS_URL` is set. Owed: `prisma db push`,
 Stripe mailbox and domain prices, GoDaddy / Premium Inboxes keys, Worker
 deploy, one live send.
 
+**Parallel research shipped: 0017 - Safe warmup volume**
+(`0017-safe-warmup-and-scale.md`, evidence in
+`docs/engineering/mailbox-warmup-limits.md`). Default: 0 cold until day 21,
+first ready day = 5, ceiling 20. Skills: `scalar-safe-warmup`,
+`scalar-outreach-copy`. Implementer should import
+`src/lib/mailbox-warmup-limits.ts` over the leftover 5/10/20/30/40 table.
+
 **The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
 
 | # | Phase | Owner | Status |

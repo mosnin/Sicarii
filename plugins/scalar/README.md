@@ -1,9 +1,10 @@
 # Scalar plugin for Claude Code
 
-Scalar is the CRM your agents run. This plugin bundles six Scalar skills and
+Scalar is the CRM your agents run. This plugin bundles eight Scalar skills and
 connects Scalar's remote MCP server so Claude can read and write every record:
 discover leads, enrich accurately, keep the CRM clean, schedule intent monitors,
-and operate the whole thing over MCP.
+operate the whole thing over MCP, and send from a warmed mailbox without
+burning it.
 
 ## What's inside
 
@@ -15,6 +16,8 @@ and operate the whole thing over MCP.
   - `scalar-intent-monitors` - schedule recurring intent scans and deep research.
   - `scalar-mcp-agent` - drive Scalar's CRM from an external agent via MCP.
   - `scalar-mailboxes` - buy or connect an inbox, warm it, send real outreach.
+  - `scalar-safe-warmup` - stay warmup-only until ready; conservative daily caps.
+  - `scalar-outreach-copy` - write and send so mail is less likely to be spam.
 - MCP server: Scalar's remote Streamable HTTP server at
   `https://www.tryscalar.xyz/api/mcp/mcp`, declared in the plugin manifest. It
   starts automatically when the plugin is enabled and exposes Scalar's tools
