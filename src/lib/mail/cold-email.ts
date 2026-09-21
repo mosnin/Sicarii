@@ -22,6 +22,10 @@ Structure (3 lines)
 1. Observation: one concrete, verifiable thing about THEM (a hire, a launch, a
    job post, a stack change, a quote). Must come from the CRM record or
    enrichment, never invented. If you have no real observation, do not send.
+   Tell them something they do not already know; never recite their own news
+   back ("I noticed you...", "Congratulations on the round", "As the CEO of").
+   Swap test: if the email still works with a peer's name in it, the
+   personalisation is fake.
 2. Bridge: one sentence connecting that observation to a problem people in
    their seat have. Name the problem, not your product.
 3. Ask: one soft, low-friction question ("worth a look?", "is this on your
@@ -32,15 +36,22 @@ Voice
 - Write like a peer, not a vendor. Lowercase energy, short words, no adjectives
   stacked on your product. No "revolutionary", "seamless", "leverage",
   "synergy", "cutting-edge", "best-in-class", "excited", "thrilled".
-- Zero exclamation marks. Zero ALL CAPS. No emoji.
+- Zero exclamation marks. Zero ALL CAPS. No emoji. Zero em dashes: they are
+  the loudest machine-written tell; use a comma or a full stop.
+- No "It's not just X, it's Y". No "delve", "unlock", "elevate", "empower",
+  "holistic", "would love to". Vary sentence length; three short sentences in
+  a row reads as generated.
 - Say what you do in five plain words if you must say it at all.
 - Sign with a first name only.
 
 Sequence
 - 3-4 touches over 10-14 days from the SAME mailbox, each a reply in-thread.
 - Follow-ups add new information (a proof point, a relevant example, a
-  different angle), never "just bumping this".
-- Final touch is a graceful close that makes it easy to say no.
+  different angle), never "just bumping this". Rotate the value angle: if the
+  first email's angle got no reply, it did not resonate; do not repeat it.
+- Final touch is a graceful close that makes it easy to say no. Give them a
+  one-word exit ("a 'pass' is enough and I'll step out of your inbox"). Never
+  "I'll take silence as a no": that makes ignoring you the polite option.
 - Stop the moment they reply, bounce, or opt out; Scalar enforces the last two.
 
 Deliverability (Scalar enforces the hard parts)
@@ -96,7 +107,29 @@ const SPAM_PHRASES = [
   "15 minutes",
   "hop on a call",
   "jump on a call",
+  "delve",
+  "tapestry",
+  "navigate the complexities",
+  "game-changer",
+  "unlock",
+  "elevate",
+  "empower",
+  "holistic",
+  "would love to",
+  "pick your brain",
 ];
+
+// Openers that recite the recipient's own bio or news back at them. Both
+// writing sources agree these are the fastest way to read as templated.
+const RECAP_OPENERS = [/^i noticed/i, /^i saw that/i, /^congrat/i, /^as (the )?(ceo|cto|cfo|coo|founder|head|vp|director)\b/i, /^in today's/i, /^i came across/i];
+
+// Breakup lines that make silence the recipient's answer; the allowed form
+// gives them a one-word exit ("a 'pass' is enough and I'll step out").
+const SILENCE_CLOSEOUTS = /(take|read|treat)\s+(your\s+)?silence\s+as|if i don'?t hear (back|from you)[^.]*(leave it|close|assume|move on)|no reply as a (no|pass)/i;
+
+// "It's not just X, it's Y" and its cousins: the signature construction of
+// model-written prose in 2026.
+const NOT_JUST_RE = /\b(is|are|isn'?t|aren'?t|it'?s|that'?s|we'?re|they'?re) not (just|only|merely) [^.?!]{0,60}?\b(it'?s|it is|they'?re|that'?s|this is|but)\b/i;
 
 const BURNED_SUBJECTS = ["quick question", "following up", "follow up", "checking in", "touching base", "introduction", "partnership", "re: ", "fwd: "];
 
@@ -145,6 +178,22 @@ export function lintColdEmail(input: { subject: string; text: string; html?: str
 
   const hits = SPAM_PHRASES.filter((p) => lower.includes(p));
   if (hits.length) warnings.push(`Vendor-speak or spam-trigger phrases: ${hits.slice(0, 5).map((h) => `"${h}"`).join(", ")}.`);
+
+  const emDashes = (text.match(/—/g) ?? []).length + (subject.match(/—/g) ?? []).length;
+  if (emDashes > 0) warnings.push(`${emDashes} em dash${emDashes === 1 ? "" : "es"}; the strongest machine-written tell. Use a comma or a full stop.`);
+
+  if (NOT_JUST_RE.test(text)) warnings.push('"It\'s not just X, it\'s Y" construction; say the one thing it is.');
+
+  if (!input.isReply) {
+    const firstLine = text.split(/\n/).find((l) => l.trim())?.trim() ?? "";
+    // Skip a bare salutation line so the check lands on the real opener.
+    const opener = /^(hi|hey|hello|dear)\b[^\n]{0,40}$/i.test(firstLine) ? (text.split(/\n/).map((l) => l.trim()).filter(Boolean)[1] ?? "") : firstLine;
+    if (RECAP_OPENERS.some((re) => re.test(opener))) {
+      warnings.push(`Opener "${opener.slice(0, 40)}${opener.length > 40 ? "…" : ""}" recites their own news back at them. Lead with something they do not already know.`);
+    }
+  }
+
+  if (SILENCE_CLOSEOUTS.test(text)) warnings.push('Closeout makes silence the answer ("I\'ll take silence as a no"). Offer a one-word exit instead: "a \'pass\' is enough and I\'ll step out of your inbox."');
 
   // Emoji (rough: anything in the supplementary planes or common symbol blocks).
   if (/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(text) || /[\u{1F300}-\u{1FAFF}]/u.test(subject)) warnings.push("Contains emoji.");

@@ -210,7 +210,13 @@ guards are enforced server-side, so your job is judgement and copy.
   one soft question ("worth a look?"). Never ask for 30 minutes.
 - No "I hope this finds you well", no "my name is", no exclamation marks, no
   caps, no emoji, no "leverage / seamless / excited / revolutionary".
-- Follow-ups add something new (a proof point, an example). Never "just bumping".
+- No em dashes (the loudest machine-written tell), no "It's not just X, it's
+  Y", no recap openers ("I noticed...", "Congratulations on...", "As the CEO
+  of..."). Tell them something they do not already know.
+- Follow-ups add something new (a proof point, an example) and rotate the
+  angle. Never "just bumping".
+- Close with a one-word exit ("a 'pass' is enough and I'll step out of your
+  inbox"), never "I'll take silence as a no".
 - Stop on reply, bounce, or opt-out. Honour "stop" instantly.
 
 ## Domains and inboxes

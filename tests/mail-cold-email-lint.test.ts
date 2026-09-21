@@ -65,8 +65,33 @@ describe("lintColdEmail", () => {
     expect(lintColdEmail({ ...GOOD, text: GOOD.text.replace("SDRs", "SaaS SDR CRM leads") }).warnings).toEqual([]);
   });
 
+  it("flags em dashes and the not-just-X construction anywhere, including replies", () => {
+    expect(lintColdEmail({ ...GOOD, text: GOOD.text.replace(" before anyone", " — before anyone") }).warnings.join(" ")).toMatch(/1 em dash;/);
+    expect(lintColdEmail({ ...GOOD, subject: "hiring — fast", isReply: true }).warnings.join(" ")).toMatch(/em dash/);
+    const notJust = { ...GOOD, text: "Hiring three SDRs is not just a headcount move, it's a bet on outbound.\n\nWorth a look?\n\nSam" };
+    expect(lintColdEmail(notJust).warnings.join(" ")).toMatch(/not just X/);
+    expect(lintColdEmail({ ...notJust, isReply: true }).warnings.join(" ")).toMatch(/not just X/);
+  });
+
+  it("flags recap openers on a first touch, looking past a salutation line", () => {
+    const recap = { ...GOOD, text: "I noticed you're hiring three SDRs in Austin.\n\nMost teams lose a week per rep to list-building.\n\nWorth a look?\n\nSam" };
+    expect(lintColdEmail(recap).warnings.join(" ")).toMatch(/recites their own news/);
+    expect(lintColdEmail({ ...recap, text: "Hi Jane,\n\nCongratulations on the Series B.\n\nWorth a look?\n\nSam" }).warnings.join(" ")).toMatch(/recites their own news/);
+    expect(lintColdEmail({ ...recap, text: "As the CEO of Acme you've built a lot.\n\nWorth a look?\n\nSam" }).warnings.join(" ")).toMatch(/recites their own news/);
+    // Replies quote context all the time; leave them alone.
+    expect(lintColdEmail({ ...recap, isReply: true }).warnings.join(" ")).not.toMatch(/recites/);
+  });
+
+  it("flags silence-as-a-no closeouts but allows a one-word exit", () => {
+    expect(lintColdEmail({ ...GOOD, text: GOOD.text + "\n\nIf I don't hear back I'll assume it's not a fit." }).warnings.join(" ")).toMatch(/silence the answer/);
+    expect(lintColdEmail({ ...GOOD, text: GOOD.text + "\n\nI'll take silence as a no." }).warnings.join(" ")).toMatch(/silence the answer/);
+    expect(lintColdEmail({ ...GOOD, text: GOOD.text + "\n\nA one-word 'pass' is enough and I'll step out of your inbox." }).warnings).toEqual([]);
+  });
+
   it("ships the guide agents are pointed at", () => {
     expect(COLD_EMAIL_GUIDE).toMatch(/Under 75 words/);
     expect(COLD_EMAIL_GUIDE).toMatch(/no links/i);
+    expect(COLD_EMAIL_GUIDE).toMatch(/em dashes/);
+    expect(COLD_EMAIL_GUIDE).toMatch(/take silence as a no/);
   });
 });
