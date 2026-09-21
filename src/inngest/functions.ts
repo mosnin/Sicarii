@@ -11,6 +11,7 @@ import { runAutopilotPlanOnce } from "@/lib/autopilot-run";
 import { rolloverAutopilotWindow, cadenceMs } from "@/lib/autopilot-operations";
 import { checkCreationBudget } from "@/lib/creation-guard";
 import { spendCredits } from "@/lib/credits";
+import { runWarmupTick, syncMailbox, sendWarmupReply, fulfillOrder } from "@/lib/mailbox-operations";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -290,4 +291,73 @@ export const runAutopilotPlans = inngest.createFunction(
   }
 );
 
-export const functions = [runIntentMonitors, runResearchSchedules, runAutopilotPlans];
+// ── Agent mailboxes ───────────────────────────────────────────────────────────
+// Four jobs, all thin wrappers over src/lib/mailbox-operations.ts:
+//   - warmup tick (hourly, offset from the other crons): advance warmup days,
+//     recompute health, send this hour's share of peer warmup mail;
+//   - inbound sync (every 10 min): IMAP poll for SMTP mailboxes, messages API
+//     for AgentMail inboxes without a webhook; classifies and applies CRM
+//     side effects (reply -> REPLIED, bounce/unsubscribe -> do-not-contact);
+//   - warmup reply (event, delayed by ingestInbound): answer a peer's warmup
+//     mail so both sides accrue "replied" signals;
+//   - order fulfilment (event from the Stripe webhook): registrar purchase /
+//     AgentMail inbox creation / PremiumInboxes hand-off.
+
+export const runMailWarmup = inngest.createFunction(
+  {
+    id: "run-mail-warmup",
+    name: "Warm up agent mailboxes",
+    triggers: [{ cron: "45 * * * *" }],
+    concurrency: [{ limit: 1 }],
+  },
+  async () => runWarmupTick(),
+);
+
+export const syncMailInbound = inngest.createFunction(
+  {
+    id: "sync-mail-inbound",
+    name: "Sync agent mailbox inbound",
+    triggers: [{ cron: "*/10 * * * *" }],
+    concurrency: [{ limit: 1 }],
+  },
+  async () => {
+    const mailboxes = await prisma.mailbox.findMany({
+      where: { status: { in: ["WARMING", "ACTIVE", "PAUSED"] } },
+      select: { id: true },
+    });
+    let ingested = 0;
+    let rescued = 0;
+    for (const m of mailboxes) {
+      const r = await syncMailbox(m.id);
+      ingested += r.ingested;
+      rescued += r.rescued;
+    }
+    return { mailboxes: mailboxes.length, ingested, rescued };
+  },
+);
+
+export const replyToWarmup = inngest.createFunction(
+  { id: "mail-warmup-reply", name: "Reply to peer warmup mail", triggers: [{ event: "mail/warmup.reply" }], retries: 2 },
+  async ({ event }) => {
+    const { mailboxId, messageId } = event.data as { mailboxId: string; messageId: string };
+    return { sent: await sendWarmupReply(mailboxId, messageId) };
+  },
+);
+
+export const fulfillMailOrder = inngest.createFunction(
+  { id: "mail-order-fulfill", name: "Fulfil a paid mailbox order", triggers: [{ event: "mail/order.paid" }], retries: 3 },
+  async ({ event }) => {
+    const { orderId } = event.data as { orderId: string };
+    return fulfillOrder(orderId);
+  },
+);
+
+export const functions = [
+  runIntentMonitors,
+  runResearchSchedules,
+  runAutopilotPlans,
+  runMailWarmup,
+  syncMailInbound,
+  replyToWarmup,
+  fulfillMailOrder,
+];

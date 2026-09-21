@@ -49,6 +49,7 @@ import {
   type WarmupState,
 } from "@/lib/mail/warmup";
 import { createOrderCheckoutSession, stripeConfigured } from "@/lib/stripe";
+import { ensureCredits, spendCredits } from "@/lib/credits";
 
 export { OpError };
 
@@ -617,6 +618,9 @@ export async function sendMail(userId: string, input: SendMailInput): Promise<Se
   if (mailbox.status === "PAUSED" || mailbox.status === "DISABLED") throw new OpError(`Mailbox ${mailbox.address} is ${mailbox.status.toLowerCase()}.`, 409);
   if (mailbox.healthScore < 50) throw new OpError(`Mailbox ${mailbox.address} health is ${mailbox.healthScore}/100; sending is paused until it recovers.`, 409);
 
+  // Cold sends are metered (1 credit); replies to a human are not.
+  if (!isReply) await ensureCredits(userId, "mail_send");
+
   // Reserve the slot before the provider call so two concurrent sends cannot
   // both squeeze through the last unit of the cap.
   if (!isReply) {
@@ -672,6 +676,8 @@ export async function sendMail(userId: string, input: SendMailInput): Promise<Se
     if (e instanceof OpError) throw e;
     throw Object.assign(new OpError(`Send failed: ${msg}`, 502), { messageId: failed.id });
   }
+
+  if (!isReply) await spendCredits(userId, "mail_send", { ref: row.id }).catch(() => {});
 
   const now = new Date();
   const message = await prisma.mailMessage.update({

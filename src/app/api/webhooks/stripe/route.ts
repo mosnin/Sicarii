@@ -3,11 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { PLANS, refillToAllotment } from "@/lib/credits";
 import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
 import { maybeCleanupIdempotency } from "@/lib/maintenance";
+import { markOrderPaid } from "@/lib/mailbox-operations";
 
 // Stripe billing webhook. Verifies the Stripe-Signature header against
 // STRIPE_WEBHOOK_SECRET, then applies plan changes:
 //   - checkout.session.completed   -> upgrade the user, refill credits, store
-//                                      the Stripe customer id
+//                                      the Stripe customer id; or, when
+//                                      metadata.kind=mailbox_order, mark the
+//                                      domain/inbox order paid and fulfil it
 //   - invoice.paid (cycle renewal) -> refill the meter for the current plan
 //   - customer.subscription.updated-> mid-cycle plan switch (portal/proration)
 //   - customer.subscription.deleted-> drop back to free
@@ -28,9 +31,9 @@ function currentPriceId(obj: StripeObject): string | undefined {
   return typeof id === "string" ? id : undefined;
 }
 
-function metaOf(obj: StripeObject): { userId?: string; plan?: string } {
+function metaOf(obj: StripeObject): { userId?: string; plan?: string; kind?: string; orderId?: string } {
   const m = obj.metadata;
-  return m && typeof m === "object" ? (m as { userId?: string; plan?: string }) : {};
+  return m && typeof m === "object" ? (m as { userId?: string; plan?: string; kind?: string; orderId?: string }) : {};
 }
 
 export async function POST(req: Request) {
@@ -97,6 +100,15 @@ export async function POST(req: Request) {
 // event id), so a retry re-runs safely and the caller can defer marking the
 // event processed until after this returns.
 async function applyStripeEvent(type: string, obj: StripeObject, eventId?: string): Promise<void> {
+  // One-off mailbox order (domain / inboxes): route to the order, not the plan.
+  // markOrderPaid is idempotent (PENDING -> PAID only once) and hands the
+  // vendor work to Inngest, so this branch stays fast and retry-safe.
+  if (type === "checkout.session.completed" && metaOf(obj).kind === "mailbox_order") {
+    const { orderId } = metaOf(obj);
+    if (orderId) await markOrderPaid(orderId, typeof obj.id === "string" ? obj.id : null);
+    return;
+  }
+
   // Initial purchase: a Checkout completed in subscription mode.
   if (type === "checkout.session.completed") {
     const { userId, plan } = metaOf(obj);
