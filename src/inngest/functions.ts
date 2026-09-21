@@ -297,6 +297,10 @@ export const runMailboxWarmup = inngest.createFunction(
     triggers: [{ cron: "20 * * * *" }],
   },
   async () => {
+    const { workersBackgroundConfigured } = await import("@/lib/mailbox-jobs");
+    if (workersBackgroundConfigured()) {
+      return { skipped: "cloudflare-workers" };
+    }
     const { runWarmupTick } = await import("@/lib/mailbox-operations");
     return runWarmupTick();
   },

@@ -29,7 +29,7 @@ import {
   isPlausibleDomain,
   suggestDomains,
 } from "@/lib/godaddy";
-import { placeInboxOrder } from "@/lib/premium-inboxes";
+import { fetchInboxOrder, placeInboxOrder } from "@/lib/premium-inboxes";
 import { birdConfigured, sendViaAgentMail, sendViaBird, sendViaSmtpCiphertext } from "@/lib/mailbox-send";
 
 const LOCAL_PART = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/i;
@@ -240,6 +240,10 @@ export async function connectSmtpMailbox(
     await prisma.mailboxEvent.create({
       data: { mailboxId: row.id, kind: "provision", meta: { via: "smtp", alreadyWarm: Boolean(input.alreadyWarm) } },
     });
+    if (warming) {
+      const { enqueueMailboxJobSafe } = await import("@/lib/mailbox-jobs");
+      await enqueueMailboxJobSafe({ type: "warmup-one", mailboxId: row.id });
+    }
     return toPublic(row, now);
   } catch (e) {
     const code = (e as { code?: string }).code;
@@ -308,6 +312,8 @@ export async function requestPurchasedMailbox(
         meta: { via: "premium_inboxes", orderId: order.orderId, status: order.status },
       },
     });
+    const { enqueueMailboxJobSafe } = await import("@/lib/mailbox-jobs");
+    await enqueueMailboxJobSafe({ type: "fulfill-one", mailboxId: row.id });
     return { mailbox: toPublic(row), order };
   } catch (e) {
     const code = (e as { code?: string }).code;
@@ -613,81 +619,150 @@ function warmupTargetsOf(box: { warmupTargets: unknown; email: string }): string
   return sink ? [sink] : [];
 }
 
+async function alreadyTickedThisHour(mailboxId: string, now: Date): Promise<boolean> {
+  const since = new Date(now.getTime() - 50 * 60 * 1000);
+  const recent = await prisma.mailboxEvent.findFirst({
+    where: { mailboxId, kind: { in: ["clock", "warmup"] }, createdAt: { gte: since } },
+    select: { id: true },
+  });
+  return Boolean(recent);
+}
+
+export async function runWarmupForMailbox(
+  mailboxId: string,
+  now = new Date(),
+): Promise<{ warmed: number; promoted: number; sent: number; skipped?: boolean }> {
+  const box = await prisma.mailbox.findUnique({ where: { id: mailboxId } });
+  if (!box || box.status !== "warming" || !box.warmupStartedAt) {
+    return { warmed: 0, promoted: 0, sent: 0, skipped: true };
+  }
+  if (await alreadyTickedThisHour(box.id, now)) {
+    return { warmed: 0, promoted: 0, sent: 0, skipped: true };
+  }
+
+  const day = warmupDayFromStart(box.warmupStartedAt, now);
+  const limit = dailySendLimitForWarmupDay(day);
+  const nextStatus = shouldPromoteToReady(box.status, day) ? "ready" : box.status;
+
+  await prisma.mailbox.update({
+    where: { id: box.id },
+    data: {
+      warmupDay: day,
+      dailySendLimit: nextStatus === "ready" ? 40 : limit,
+      status: nextStatus,
+    },
+  });
+  let promoted = 0;
+  if (nextStatus === "ready") {
+    promoted = 1;
+    await prisma.mailboxEvent.create({
+      data: { mailboxId: box.id, kind: "provision", meta: { via: "warmup_complete", day } },
+    });
+  }
+
+  const remaining = remainingSendsToday({
+    sentToday: box.sentToday,
+    sentTodayOn: box.sentTodayOn,
+    dailySendLimit: limit,
+    now,
+  });
+  const targets = warmupTargetsOf(box);
+  if (!box.smtpCiphertext || targets.length === 0 || remaining <= 0) {
+    await prisma.mailboxEvent.create({
+      data: { mailboxId: box.id, kind: "clock", meta: { day, remaining, delivered: false } },
+    });
+    return { warmed: 1, promoted, sent: 0 };
+  }
+
+  let sent = 0;
+  const toSend = Math.min(remaining, 3, targets.length);
+  for (let i = 0; i < toSend; i++) {
+    const to = targets[i % targets.length]!;
+    try {
+      const result = await sendViaSmtpCiphertext(box.smtpCiphertext, {
+        from: box.email,
+        fromName: box.displayName,
+        to,
+        subject: "Re: catching up",
+        text: "Just keeping this thread warm. No action needed.",
+      });
+      await consumeSendSlot(
+        { ...box, dailySendLimit: limit, sentToday: box.sentToday + i, sentTodayOn: i === 0 ? box.sentTodayOn : now },
+        now,
+      );
+      await prisma.mailboxEvent.create({
+        data: {
+          mailboxId: box.id,
+          kind: "warmup",
+          toAddr: to,
+          subject: "Re: catching up",
+          providerId: result.providerId ?? null,
+        },
+      });
+      sent += 1;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "warmup send failed";
+      await prisma.mailbox.update({ where: { id: box.id }, data: { lastError: message.slice(0, 500) } });
+      break;
+    }
+  }
+  return { warmed: 1, promoted, sent };
+}
+
 export async function runWarmupTick(now = new Date()): Promise<{ warmed: number; promoted: number; sent: number }> {
   const boxes = await prisma.mailbox.findMany({
     where: { status: "warming" },
+    select: { id: true },
+    take: 200,
   });
   let warmed = 0;
   let promoted = 0;
   let sent = 0;
-
   for (const box of boxes) {
-    if (!box.warmupStartedAt) continue;
-    const day = warmupDayFromStart(box.warmupStartedAt, now);
-    const limit = dailySendLimitForWarmupDay(day);
-    const nextStatus = shouldPromoteToReady(box.status, day) ? "ready" : box.status;
+    const result = await runWarmupForMailbox(box.id, now);
+    warmed += result.warmed;
+    promoted += result.promoted;
+    sent += result.sent;
+  }
+  return { warmed, promoted, sent };
+}
 
-    await prisma.mailbox.update({
-      where: { id: box.id },
-      data: {
-        warmupDay: day,
-        dailySendLimit: nextStatus === "ready" ? 40 : limit,
-        status: nextStatus,
-      },
-    });
-    warmed += 1;
-    if (nextStatus === "ready") {
-      promoted += 1;
-      await prisma.mailboxEvent.create({
-        data: { mailboxId: box.id, kind: "provision", meta: { via: "warmup_complete", day } },
-      });
-    }
-
-    const remaining = remainingSendsToday({
-      sentToday: box.sentToday,
-      sentTodayOn: box.sentTodayOn,
-      dailySendLimit: limit,
-      now,
-    });
-    const targets = warmupTargetsOf(box);
-    if (!box.smtpCiphertext || targets.length === 0 || remaining <= 0) {
-      await prisma.mailboxEvent.create({
-        data: { mailboxId: box.id, kind: "clock", meta: { day, remaining, delivered: false } },
-      });
-      continue;
-    }
-
-    const toSend = Math.min(remaining, 3, targets.length);
-    for (let i = 0; i < toSend; i++) {
-      const to = targets[i % targets.length]!;
-      try {
-        const result = await sendViaSmtpCiphertext(box.smtpCiphertext, {
-          from: box.email,
-          fromName: box.displayName,
-          to,
-          subject: "Re: catching up",
-          text: "Just keeping this thread warm. No action needed.",
+export async function pollPendingMailboxOrders(filter?: {
+  mailboxId?: string;
+  orderId?: string;
+}): Promise<{ checked: number; fulfilled: number }> {
+  const boxes = filter?.mailboxId
+    ? await prisma.mailbox.findMany({ where: { id: filter.mailboxId } })
+    : filter?.orderId
+      ? await prisma.mailbox.findMany({ where: { providerOrderId: filter.orderId } })
+      : await prisma.mailbox.findMany({
+          where: { status: { in: ["requested", "provisioning"] } },
+          take: 50,
         });
-        await consumeSendSlot({ ...box, dailySendLimit: limit, sentToday: box.sentToday + i, sentTodayOn: i === 0 ? box.sentTodayOn : now }, now);
-        await prisma.mailboxEvent.create({
-          data: {
-            mailboxId: box.id,
-            kind: "warmup",
-            toAddr: to,
-            subject: "Re: catching up",
-            providerId: result.providerId ?? null,
-          },
-        });
-        sent += 1;
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "warmup send failed";
-        await prisma.mailbox.update({ where: { id: box.id }, data: { lastError: message.slice(0, 500) } });
-        break;
-      }
+
+  let fulfilled = 0;
+  for (const box of boxes) {
+    if (box.status !== "requested" && box.status !== "provisioning") continue;
+    if (!box.providerOrderId) continue;
+    try {
+      const order = await fetchInboxOrder(box.providerOrderId);
+      if (!order?.ready || !order.email) continue;
+      await fulfillMailboxProvision({
+        mailboxId: box.id,
+        email: order.email,
+        smtp: order.smtp,
+        providerInboxId: order.providerInboxId,
+      });
+      fulfilled += 1;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "fulfillment poll failed";
+      await prisma.mailbox.update({
+        where: { id: box.id },
+        data: { lastError: message.slice(0, 500) },
+      });
     }
   }
-
-  return { warmed, promoted, sent };
+  return { checked: boxes.length, fulfilled };
 }
 
 export async function listMailboxEvents(userId: string, mailboxId: string, limit = 40) {

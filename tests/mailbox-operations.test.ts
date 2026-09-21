@@ -25,7 +25,10 @@ vi.mock("@/lib/prisma", () => ({
       create: (args: unknown) => mailboxCreate(args),
       update: (args: unknown) => mailboxUpdate(args),
     },
-    mailboxEvent: { create: (args: unknown) => mailboxEventCreate(args) },
+    mailboxEvent: {
+      create: (args: unknown) => mailboxEventCreate(args),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
     domain: {
       findUnique: (args: unknown) => domainFindUnique(args),
       create: (args: unknown) => domainCreate(args),

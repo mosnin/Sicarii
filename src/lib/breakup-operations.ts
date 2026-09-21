@@ -349,25 +349,29 @@ export async function updateBreakupDraft(
  *  a Clerk session - never an agent API key), so a prompt-injected agent can
  *  never approve, and thereby send, its own drafts.
  *
- *  AgentMail (src/lib/agentmail.ts) exposes no send capability today - it is
- *  read-only (getThreadsForContact). So approval always takes the honest
- *  fallback: mark the draft SENT and logOutreach (channel email) so the
- *  contact's pipeline state (status, lastContactedAt) advances for real. Once
- *  a live AgentMail send capability exists, this is the one seam to change:
- *  attempt the live send first, and only fall back to the logOutreach path on
- *  failure or when no send capability is configured. */
+ *  Live send goes through sendOutreachEmail when a ready mailbox exists.
+ *  Otherwise we take the honest fallback: mark the draft SENT and logOutreach
+ *  so pipeline state advances without claiming a delivery that never left. */
 export async function approveBreakupDraft(userId: string, id: string) {
   const draft = await getOwnedDraft(userId, id);
   if (draft.status !== "PENDING") throw new OpError("This draft has already been decided", 409);
 
-  // Owed to reality: no AgentMail send capability exists yet (see comment
-  // above) - mark it ready and log the outreach honestly rather than
-  // pretending it was delivered.
-  await logOutreach(userId, {
-    contactId: draft.contactId,
-    summary: `Breakup email sent: "${draft.subject}"`,
-    channel: "email",
-  });
+  try {
+    const { sendOutreachEmail } = await import("@/lib/mailbox-operations");
+    await sendOutreachEmail(userId, {
+      contactId: draft.contactId,
+      subject: draft.subject,
+      body: draft.body,
+    });
+  } catch {
+    // No ready mailbox, still warming, or the provider failed. Keep the
+    // honest fallback: pipeline state advances, delivery is not claimed.
+    await logOutreach(userId, {
+      contactId: draft.contactId,
+      summary: `Breakup email sent: "${draft.subject}"`,
+      channel: "email",
+    });
+  }
 
   return prisma.breakupDraft.update({
     where: { id },

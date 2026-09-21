@@ -33,6 +33,7 @@
 | `decisions/0009-teams-v1.md` | Teams v1: Clerk Orgs + synthetic workspace accounts, lead sharing (deep copy + dedup-merge), workspace agent keys with attribution, team plan $299/30d | Revisiting teams / workspaces |
 | `decisions/0010-budgeted-autopilot.md` | Budgeted Autopilot: propose a spend plan (draft), human-only approval, atomic per-category budget guard on top of the real credit meter, scheduled execution loop (discovery/enrichment/outreach) over the existing Inngest cron | Revisiting autopilot / scheduled agent budgets |
 | `decisions/0015-agent-mailboxes.md` | Agent mailboxes: domain + inbox identity, Premium Inboxes / GoDaddy / SMTP, warmup, `send_email` | Revisiting outreach / email send |
+| `decisions/0016-cloudflare-mailbox-jobs.md` | Cloudflare Workers as the mailbox background plane (warmup, inbound, fulfillment, send queue) | Revisiting mailbox background / Workers |
 
 ## Working knowledge (grows with the product)
 

@@ -16,7 +16,9 @@
     "smoke:mcp": "node scripts/mcp-smoke.mjs",
     "smoke:agentphone": "node scripts/agentphone-smoke.mjs",
     "smoke:voice": "node scripts/voice-smoke.mjs",
-    "doctor": "node --no-warnings scripts/doctor.mjs"
+    "doctor": "node --no-warnings scripts/doctor.mjs",
+    "workers:dev": "wrangler dev --config workers/wrangler.jsonc",
+    "workers:deploy": "wrangler deploy --config workers/wrangler.jsonc"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",

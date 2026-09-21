@@ -8,10 +8,13 @@ hardened (audits 2026-06-06 -> 09; PRs #19-#29) - and still **unfelt**. Nothing
 has been observed running end to end, and the product has zero choreographed
 moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
 
-**Parallel cycle shipped: 0015 - Agent mailboxes** (`0015-agent-mailboxes.md`).
+**Parallel cycle shipped: 0015 - Agent mailboxes** (`0015-agent-mailboxes.md`)
+and **0016 - Cloudflare mailbox jobs** (`0016-cloudflare-mailbox-jobs.md`).
 Agents can send for real: `/mailboxes` to buy/connect a domain + inbox,
-warmup ramp, `send_email` over MCP. Owed: `prisma db push`, Stripe mailbox
-and domain prices, GoDaddy / Premium Inboxes keys, one live send.
+warmup ramp, `send_email` over MCP. Background warmup / inbound / fulfillment
+run on Cloudflare Workers when `WORKERS_URL` is set. Owed: `prisma db push`,
+Stripe mailbox and domain prices, GoDaddy / Premium Inboxes keys, Worker
+deploy, one live send.
 
 **The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
 

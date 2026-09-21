@@ -1,0 +1,25 @@
+{
+  "name": "scalar-mailbox-jobs",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "triggers": {
+    "crons": ["20 * * * *", "*/10 * * * *"]
+  },
+  "queues": {
+    "producers": [
+      { "binding": "SEND_QUEUE", "queue": "scalar-send-email" },
+      { "binding": "INBOUND_QUEUE", "queue": "scalar-inbound-email" },
+      { "binding": "FULFILL_QUEUE", "queue": "scalar-mailbox-fulfillment" }
+    ],
+    "consumers": [
+      { "queue": "scalar-send-email", "max_batch_size": 5, "max_batch_timeout": 10, "max_retries": 5 },
+      { "queue": "scalar-inbound-email", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 5 },
+      { "queue": "scalar-mailbox-fulfillment", "max_batch_size": 5, "max_batch_timeout": 10, "max_retries": 3 }
+    ]
+  }
+}

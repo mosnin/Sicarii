@@ -169,7 +169,7 @@ A mailbox is the agent's sending identity. Outreach that is only logged is not s
 1. Open /mailboxes.
 2. Add a domain you own, or search GoDaddy and buy one.
 3. Request an inbox on that domain (Premium Inboxes) or connect SMTP.
-4. Leave warmup running unless the inbox is already warm.
+4. Leave warmup running unless the inbox is already warm. The Cloudflare worker advances warmup and inbound in the background.
 
 ## Agent loop
 1. list_mailboxes. If none are ready, stop and tell the operator.

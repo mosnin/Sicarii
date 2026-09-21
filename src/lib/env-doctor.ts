@@ -234,6 +234,12 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
           "AES key for SMTP passwords. Falls back to MCP_OAUTH_SECRET / CLERK_SECRET_KEY.",
         ),
         optionalKey("Warmup sink", "WARMUP_SINK_EMAIL", env, "Address warmup ticks send to when a mailbox has no pool."),
+        allOrNothing(
+          "Cloudflare mailbox worker",
+          ["WORKERS_URL", "WORKER_SECRET"],
+          env,
+          "Background plane for warmup, inbound, and inbox fulfillment. Without it, jobs run inline and Inngest still ticks warmup.",
+        ),
         {
           name: "Bird email (optional)",
           status: allSet(env, ["BIRD_API_KEY", "BIRD_WORKSPACE_ID", "BIRD_EMAIL_CHANNEL_ID"])

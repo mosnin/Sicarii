@@ -22,6 +22,7 @@ const isPublicRoute = createRouteMatcher([
   "/dpa(.*)",
   "/refund-policy(.*)",
   "/api/webhooks(.*)",
+  "/api/internal/jobs(.*)",
   "/api/inngest(.*)",
   // Env-doctor report - safe to expose: booleans + env var names only, never
   // secret values. Meant to be curled after a deploy with no shell access.

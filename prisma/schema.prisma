@@ -1157,7 +1157,10 @@ model Mailbox {
 
   @@unique([userId, email])
   @@index([userId, status])
+  @@index([status])
   @@index([domainId])
+  @@index([providerOrderId])
+  @@index([email])
   @@map("mailboxes")
 }
 

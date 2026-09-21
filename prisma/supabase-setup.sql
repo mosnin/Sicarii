@@ -564,7 +564,10 @@ CREATE TABLE IF NOT EXISTS "mailboxes" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "mailboxes_userId_email_key" ON "mailboxes" ("userId", "email");
 CREATE INDEX IF NOT EXISTS "mailboxes_userId_status_idx" ON "mailboxes" ("userId", "status");
+CREATE INDEX IF NOT EXISTS "mailboxes_status_idx" ON "mailboxes" ("status");
 CREATE INDEX IF NOT EXISTS "mailboxes_domainId_idx" ON "mailboxes" ("domainId");
+CREATE INDEX IF NOT EXISTS "mailboxes_providerOrderId_idx" ON "mailboxes" ("providerOrderId");
+CREATE INDEX IF NOT EXISTS "mailboxes_email_idx" ON "mailboxes" ("email");
 
 CREATE TABLE IF NOT EXISTS "mailbox_events" (
   "id" TEXT NOT NULL,

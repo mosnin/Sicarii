@@ -97,3 +97,72 @@ export function verifyPremiumInboxesSignature(rawBody: string, header: string | 
   const b = Buffer.from(header.trim());
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+export type InboxOrderStatus = {
+  orderId: string;
+  ready: boolean;
+  email?: string;
+  providerInboxId?: string;
+  smtp?: {
+    host: string;
+    port: number;
+    secure: boolean;
+    username: string;
+    password: string;
+  };
+  detail: string;
+};
+
+/** Poll a partner order. Returns null when the API is unset or the order is
+ *  still pending. Never invents SMTP credentials. */
+export async function fetchInboxOrder(orderId: string): Promise<InboxOrderStatus | null> {
+  if (!orderId || orderId.startsWith("local_")) return null;
+  if (!premiumInboxesConfigured()) return null;
+
+  const base = process.env.PREMIUM_INBOXES_API_URL!.replace(/\/$/, "");
+  const res = await fetchWithTimeout(`${base}/orders/${encodeURIComponent(orderId)}`, {
+    headers: {
+      Authorization: `Bearer ${process.env.PREMIUM_INBOXES_API_KEY!.trim()}`,
+      Accept: "application/json",
+    },
+  });
+  const text = await res.text();
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Premium Inboxes order status failed (${res.status}): ${text.slice(0, 200)}`);
+  }
+  const data = (text ? JSON.parse(text) : {}) as {
+    id?: string;
+    orderId?: string;
+    status?: string;
+    email?: string;
+    providerInboxId?: string;
+    smtp?: {
+      host?: string;
+      port?: number;
+      secure?: boolean;
+      username?: string;
+      password?: string;
+    };
+  };
+  const status = (data.status ?? "").toLowerCase();
+  const ready = status === "ready" || status === "provisioned" || status === "active" || Boolean(data.smtp?.host);
+  const smtp =
+    data.smtp?.host && data.smtp.username && data.smtp.password
+      ? {
+          host: data.smtp.host,
+          port: data.smtp.port ?? 587,
+          secure: Boolean(data.smtp.secure),
+          username: data.smtp.username,
+          password: data.smtp.password,
+        }
+      : undefined;
+  return {
+    orderId: data.orderId ?? data.id ?? orderId,
+    ready,
+    email: data.email,
+    providerInboxId: data.providerInboxId,
+    smtp,
+    detail: ready ? "Inbox is provisioned." : `Order is ${data.status ?? "pending"}.`,
+  };
+}

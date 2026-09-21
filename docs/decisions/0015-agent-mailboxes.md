@@ -25,9 +25,9 @@ and deferred. The wedge is one identity the agent can actually send from.
   exist; auto-register stays off (`GODADDY_AUTO_PURCHASE`).
 - **BYOK SMTP:** connect an existing inbox; passwords AES-256-GCM encrypted
   (`MAILBOX_SECRET`, fallback to existing signing secrets).
-- **Warmup:** day-based ramp (5 → 40/day, ready at 21). Inngest hourly tick
-  advances the clock and sends to `WARMUP_SINK_EMAIL` / per-mailbox targets
-  when SMTP is present. Honest `clock` events when it cannot deliver.
+- **Warmup:** day-based ramp (5 -> 40/day, ready at 21). Cloudflare Workers
+  own the hourly clock when `WORKERS_URL` is set (see 0016). Inngest remains
+  the fallback. Honest `clock` events when SMTP or a sink is missing.
 - **Send:** `send_email` (MCP + in-app + REST) delivers via SMTP / AgentMail /
   Bird, then `saveEmail` + `logOutreach`. Daily cap enforced first. 2 credits
   on a successful send. Inbound `saveEmail` now attributes replies (closes

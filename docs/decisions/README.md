@@ -56,6 +56,9 @@ exponential growth into a plateau.
 - **Discovery saves only what it can verify.** find_socials auto-saves a profile
   only on name AND company match; everything else is a candidate for review.
   Null over wrong, on every enrichment path. _(Cards 0003, 0008)_
+- **Background that must outlive a tab belongs on a Worker clock, not a page
+  load.** Mailbox warmup, inbound, and fulfillment enqueue to Cloudflare;
+  Prisma and SMTP stay on the origin. _(Card 0016)_
 
 ## Open debts (owed to reality)
 
@@ -79,6 +82,7 @@ exponential growth into a plateau.
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
 | Mailbox schema on prod | 0015 · Deliverable | `pnpm prisma db push` (domains, mailboxes, mailbox_events, contact_emails.mailboxId) | founder |
 | Live mailbox send | 0015 · Feasible | Stripe mailbox/domain prices + one SMTP or Premium Inboxes fulfillment + one `send_email` | founder + eng |
+| Cloudflare mailbox worker live | 0016 · Deliverable | `wrangler deploy` + `WORKERS_URL` / `WORKER_SECRET` + one unattended warmup hour | founder |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
 
 ## Kills & falsifieds (do not re-open)

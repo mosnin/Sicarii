@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored static assets for the ritual framework site, not app code.
     ".ritual/**",
+    "workers/**",
     // Vendored chart engine from the metrics-01 registry component. Registry
     // code, not authored here; kept intact so upstream updates stay diffable.
     "src/components/charts/**",

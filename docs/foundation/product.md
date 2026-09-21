@@ -96,7 +96,8 @@ never a duplicate).
 - **Spawn contacts** - research a company's decision-makers and add the ones you
   don't have.
 - **Schedule** - recurring intent monitors + research jobs run in the background
-  (Inngest) and drop new, deduped records into the CRM automatically.
+  (Inngest). Mailbox warmup, inbound, and inbox fulfillment run on Cloudflare
+  Workers so they keep moving when the site is idle.
 - **Agent** - built-in agent, plus a **secure MCP server** so any external agent
   can operate the CRM through the same shared ops layer.
 
@@ -113,7 +114,8 @@ high-stakes actions (e.g. sending email). Trust by construction, not by lockdown
 - **Data:** Prisma on Supabase Postgres (+ pgvector for memory).
 - **Intelligence:** Exa, Explorium, Pipe0, Bright Data, Tavily, Linkup; a small
   model (gpt-5-mini) refines noisy search into clean companies.
-- **Scheduling:** Inngest (intent monitors, research schedules).
+- **Scheduling:** Inngest (intent monitors, research, autopilot). Cloudflare
+  Workers for mailbox warmup, inbound, and fulfillment (`workers/`).
 - **Email:** Agent mailboxes (Premium Inboxes + GoDaddy + BYOK SMTP), plus optional AgentMail BYOK for thread sync.
 - **Agent access:** secure MCP server + per-user API keys, shared `crm-operations`
   layer so REST, MCP, and the in-app agent behave identically.
