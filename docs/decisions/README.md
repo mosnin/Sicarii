@@ -56,6 +56,11 @@ exponential growth into a plateau.
 - **Discovery saves only what it can verify.** find_socials auto-saves a profile
   only on name AND company match; everything else is a candidate for review.
   Null over wrong, on every enrichment path. _(Cards 0003, 0008)_
+- **Guards live in the ops layer, not the prompt.** The agent is told the
+  rules; `sendMail` enforces do-not-contact, warmup, daily caps and health
+  regardless of what the model decides. Prompts are advice; ops are law. _(Card 0015)_
+- **Vendors without an API get an honest `ACTION_REQUIRED` order state** with
+  the manual steps written on it, never a fake provisioning spinner. _(Card 0015)_
 
 ## Open debts (owed to reality)
 
@@ -78,6 +83,11 @@ exponential growth into a plateau.
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
+| Agent mailboxes schema on prod | 0015 · Deliverable | `pnpm prisma db push` (4 models, 9 enums, `Contact.doNotContact*`) | founder |
+| Agent mailboxes live round-trip | 0015 · Feasible | platform `AGENTMAIL_API_KEY` + webhook secret; one send -> reply -> classified `REPLY` observed | founder + eng |
+| Domain purchase live | 0015 · Feasible | Porkbun funded + one prior manual registration (or GoDaddy past 50-domain gate); one buy -> DNS -> `domain.verified` | founder + eng |
+| Warmup calibration | 0015 · Viable | first real cohort's `healthScore` / bounces vs the 4->40/day, day-14 policy | eng |
+| M365 SMTP Basic retirement | 0015 · Feasible | XOAUTH2 or Graph `sendMail` before late Dec 2026 | eng |
 
 ## Kills & falsifieds (do not re-open)
 
@@ -89,6 +99,8 @@ exponential growth into a plateau.
 | Orange brand palette | REPLACED | rebrand to charcoal/white + `#1E4D2B` green | 0001 |
 | "Fortitudo" agency identity | REPLACED | rebranded to Scalar (agent-operated CRM) | 0001 |
 | Agency app (projects/phases/onboarding/invoices/admin) | REMOVED | founder call "remove & replace"; wrong shape for an agent CRM | 0002 |
+| Bird.com for agent outreach | KILLED | AUP forbids unsolicited mail; shared-IP infra. Transactional only, never cold | 0015 |
+| PremiumInboxes / origami.chat API integration | NOT POSSIBLE | neither has a public API; PremiumInboxes handled via CSV import + `ACTION_REQUIRED` orders | 0015 |
 
 ---
 
