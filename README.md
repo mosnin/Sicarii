@@ -63,6 +63,14 @@ Both the CLI and the route read the same check logic from
   and `organizationMembership.*` events (Teams).
 - Supabase: run `prisma/supabase-setup.sql` section 4 (pgvector HNSW index)
   once in the SQL editor; `db push` cannot create it.
+- Agent mailboxes (`/mailboxes`, optional; each piece is independently gated):
+  `AGENTMAIL_API_KEY` + `AGENTMAIL_WEBHOOK_SECRET` (register
+  `/api/webhooks/agentmail` for `message.received`, `message.bounced`,
+  `domain.verified`) for API inboxes; `MAILBOX_SECRET_KEY` (`openssl rand -hex
+  32`) to import Google / Microsoft inboxes; `PORKBUN_API_KEY` +
+  `PORKBUN_SECRET_API_KEY` or `GODADDY_PAT` to buy sending domains. Domain and
+  inbox orders pay through the existing Stripe webhook. Inngest must be
+  connected for warmup and inbound sync to run.
 
 ## MCP
 

@@ -145,7 +145,7 @@ export function MailboxesManager({ initialNotice }: { initialNotice?: "success" 
 
       {nothingConfigured && (
         <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 text-sm text-muted-foreground">
-          This deployment has no mail providers configured yet. Set <code className="text-foreground">AGENTMAIL_API_KEY</code> for API inboxes, <code className="text-foreground">MAILBOX_SECRET_KEY</code> to import Google / Microsoft inboxes, and <code className="text-foreground">PORKBUN_API_KEY</code> or <code className="text-foreground">GODADDY_PAT</code> to buy domains. See <code className="text-foreground">.env.example</code>.
+          This deployment has no mail providers configured yet. Set <code className="text-foreground">AGENTMAIL_API_KEY</code> for API inboxes, <code className="text-foreground">MAILBOX_SECRET_KEY</code> to import Google / Microsoft inboxes, and <code className="text-foreground">PORKBUN_API_KEY</code> or <code className="text-foreground">GODADDY_PAT</code> to buy domains. See <code className="text-foreground">.env.local.example</code>.
         </div>
       )}
 

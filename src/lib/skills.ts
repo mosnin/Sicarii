@@ -143,10 +143,15 @@ Scalar is the CRM your agents run. Point your own agent at it over MCP.
    read and write entities, contacts, emails, and run discovery/enrichment
    through the same operations the app uses.
 3. To get notified when scheduled tasks finish, set the Agent notifications
-   webhook in Settings; handle the POST in your agent.
+   webhook in Settings; handle the POST in your agent. The same webhook gets
+   mail.reply / mail.bounce / mail.unsubscribe events from agent mailboxes.
+4. To send and receive real email, add a mailbox at Settings > Mailboxes, then
+   use list_mailboxes, review_cold_email, send_email, reply_email, read_inbox
+   and get_email_thread. The scalar-cold-outreach skill is the playbook.
 
 ## Guardrails (always)
-- Confirm before sending email or other high-stakes actions.
+- Confirm before sending email or other high-stakes actions. send_email is a
+  real send; get the operator's go-ahead on the draft first.
 - Never attach enrichment to the wrong person or company. Verify name and company
   first; prefer nothing over a wrong value.
 - Deduplicate before creating records (one company per domain).

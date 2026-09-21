@@ -93,6 +93,53 @@ social messages).
   case-insensitive (`NOTE` and `note` both work). Provide a `contactId` or an
   `entityId`.
 
+## Mailbox tools (real email, from the agent's own inboxes)
+
+Scalar can send and receive mail from mailboxes it manages for the account.
+The full playbook (writing rules, sequence shape, capacity math) is the
+`scalar-cold-outreach` skill; the tool contract is:
+
+- `list_mailboxes {}`: every mailbox with status (`WARMING` / `ACTIVE` /
+  `PAUSED`), warmup day, `coldRemainingToday`, health score, bounces. Call it
+  before a send burst. Zero mailboxes means ask the human to add one at
+  Settings > Mailboxes (or `create_mailbox`).
+- `list_sending_domains {}`: domains with live DNS posture (SPF / DKIM / DMARC /
+  MX) and whether each is connected to AgentMail. Buying a domain is a human
+  step; `quote_domain { domain }` checks availability and year-one price (USD
+  cents). Registrars rate-limit hard: quote a shortlist, not a brainstorm.
+- `create_mailbox { username, domainId?, displayName?, dailyCap? }`: a new
+  AgentMail inbox. It starts `WARMING` and sends no cold mail for 14 days.
+  Keep to 3 inboxes per domain.
+- `review_cold_email { subject, text, html?, isReply? }`: free, instant lint
+  against the writing rules; returns warnings + a heuristic score and the
+  guide itself. Revise until clean before a first touch.
+- `send_email { contactId | to, subject, text, html?, mailboxId?, variantId? }`:
+  one real email, 1 credit. Scalar picks the healthiest mailbox with headroom
+  unless `mailboxId` is set. The send is mirrored onto the contact (they move
+  to `CONTACTED`; `variantId` is attributed like `log_outreach`), so do not
+  also call `log_outreach`. **Hard guards you cannot bypass:** do-not-contact
+  contacts (bounced / opted out), mailboxes still in their first 14 warmup
+  days, exhausted daily caps, poor health. The error tells you when capacity
+  reopens; do not retry in a loop. The result includes `lint` warnings for the
+  message you just sent.
+- `reply_email { messageId, text, html? }`: in-thread. On an INBOUND message
+  it is a real reply: free, uncapped, from the mailbox that received it. On
+  one of YOUR OWN sent messages it is a follow-up: same thread, same person,
+  still cold (cap + 1 credit) and must add something new.
+- `read_inbox { mailboxId?, contactId?, direction?, classification?, since?, limit? }`:
+  newest first, inbound by default, warmup hidden. `classification` is one of
+  `REPLY` (a human wrote back - this is what needs you), `BOUNCE`,
+  `UNSUBSCRIBE` (both already marked the contact do-not-contact),
+  `OUT_OF_OFFICE`, `AUTO_REPLY`, `WARMUP`, `OTHER`.
+- `get_email_thread { messageId }`: the whole conversation, oldest first. Read
+  it before `reply_email`.
+- `update_mailbox { mailboxId, paused?, dailyCap?, warmupEnabled?, sync? }`:
+  pause / resume, change the cold cap, or `sync: true` to pull inbound now.
+
+Sequence discipline: 3-4 touches over 10-14 days from the same mailbox, each
+a `reply_email` on your own previous send. Stop the moment `read_inbox` shows
+a `REPLY`; Scalar stops you on bounce and unsubscribe.
+
 ## Paying your own way
 
 Metered tools gate up front and return a structured
@@ -121,12 +168,18 @@ never double-charge. `get_usage` is the price list.
 
 ## Guardrails (always)
 
-- Confirm before sending email or other high-stakes actions.
+- Confirm before sending email or other high-stakes actions. `send_email` is a
+  real send to a real person; get the operator's go-ahead on the draft (or a
+  standing rule that covers it) first.
 - Deduplicate before creating records (one company per domain).
-- Never fabricate data into the CRM; tools, not guesses.
+- Never fabricate data into the CRM; tools, not guesses. The same goes for the
+  observation line of a cold email: it comes from the record, or you do not send.
 
 ## Webhooks
 
 To get notified when scheduled tasks (intent monitors, research schedules)
 finish, set the Agent notifications webhook in Settings; Scalar POSTs results
-there so your agent can wake up and act.
+there so your agent can wake up and act. The same webhook receives
+`mail.reply`, `mail.bounce`, and `mail.unsubscribe` events as inbound mail
+lands in the agent's mailboxes, so a reply can be answered without polling
+`read_inbox`.
