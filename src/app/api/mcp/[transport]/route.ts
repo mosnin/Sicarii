@@ -103,6 +103,18 @@ import {
 } from "@/lib/autopilot-operations";
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { createVariant, selectVariant, listVariantStats } from "@/lib/variant-operations";
+import {
+  listMailboxes,
+  createAgentMailMailbox,
+  listDomains,
+  quoteDomain,
+  sendMail,
+  listMessages,
+  getThread,
+  updateMailbox,
+  getMailbox,
+  syncMailbox,
+} from "@/lib/mailbox-operations";
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -500,6 +512,132 @@ const handler = createMcpHandler(
       { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async ({ contactId, limit }, extra) =>
         run(() => listContactEmails(userIdFrom(extra), contactId, limit)),
+    );
+
+    /* ------------------------ Agent mailboxes --------------------- */
+    // Real sending. Every tool here goes through src/lib/mailbox-operations.ts,
+    // which owns the guards (do-not-contact, per-mailbox daily cap that stays
+    // low while the mailbox warms up, health gate) - the agent cannot route
+    // around them. save_email_context / log_outreach above remain the way to
+    // record mail sent OUTSIDE Scalar; send_email records itself.
+    server.tool(
+      "list_mailboxes",
+      "List the account's agent mailboxes with live sending state: status (WARMING/ACTIVE/PAUSED), warmup day, today's cold allowance and how much is left (coldRemainingToday), health score, bounces. Call this before a send burst to see capacity; zero mailboxes means ask the human to add one in Settings > Mailboxes (or call create_mailbox).",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_a, extra) => run(() => listMailboxes(userIdFrom(extra))),
+    );
+
+    server.tool(
+      "create_mailbox",
+      "Create a new agent inbox on AgentMail: username@<one of the account's verified sending domains> (domainId from list_sending_domains), or username@agentmail.to when domainId is omitted (fine for replies/tests, poor for cold volume). The inbox starts WARMING: it exchanges peer mail for 14 days before any cold email is allowed, then ramps to its dailyCap over 6 weeks. Keep to 3 inboxes per domain.",
+      {
+        username: z.string().min(1).max(64).describe("local part, e.g. 'sam' or 'sam.lee'"),
+        domainId: z.string().uuid().optional(),
+        displayName: z.string().max(120).optional().describe("From name, e.g. 'Sam Lee'"),
+        dailyCap: z.number().int().min(1).max(200).optional().describe("cold emails/day once fully warmed (default 30)"),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async (a, extra) => gated(extra, "create_mailbox", 5, (userId) => createAgentMailMailbox(userId, a)),
+    );
+
+    server.tool(
+      "list_sending_domains",
+      "List the account's sending domains with live DNS posture (SPF/DKIM/DMARC/MX verified by real lookups), whether each is connected to AgentMail (required before create_mailbox can use it), and the DNS records still to publish for external domains. Buying a domain is a human step (Settings > Mailboxes); an agent can check availability with quote_domain.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async (_a, extra) => run(() => listDomains(userIdFrom(extra))),
+    );
+
+    server.tool(
+      "quote_domain",
+      "Check whether a domain is available to register through Scalar and what it would cost for year one (all-in, cents USD). Use lookalike secondary domains for cold outreach (brand-hq.com, trybrand.io), never the company's primary domain. Registrars rate-limit this hard: quote a shortlist, not a brainstorm.",
+      { domain: z.string().min(4).max(253) },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ domain }, extra) => gated(extra, "quote_domain", 6, () => quoteDomain(domain)),
+    );
+
+    server.tool(
+      "send_email",
+      "Send one real email from an agent mailbox. Give contactId (uses the contact's email; the send is mirrored onto their record, they advance to CONTACTED, and variantId from select_variant is attributed exactly like log_outreach) or a raw `to`. Scalar picks the healthiest mailbox with cold headroom unless you pass mailboxId. HARD GUARDS: refuses do-not-contact contacts (bounced / opted out), refuses when every mailbox has used today's cold allowance or is still in its first 14 warmup days (the error says when it opens), pauses on poor health. Costs 1 credit. To answer a reply in-thread use reply_email instead. Write plain text; short, specific, one ask - see the cold-email guidance in the Scalar skill.",
+      {
+        contactId: z.string().uuid().optional(),
+        to: z.string().email().max(254).optional(),
+        subject: z.string().min(1).max(300),
+        text: z.string().min(1).max(50_000),
+        html: z.string().max(200_000).optional(),
+        mailboxId: z.string().uuid().optional(),
+        variantId: z.string().uuid().optional().describe("id of the OutreachVariant used, from select_variant"),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async (a, extra) =>
+        gated(extra, "send_email", 60, (userId) => sendMail(userId, { ...a, actor: actorFrom(extra) })),
+    );
+
+    server.tool(
+      "reply_email",
+      "Reply in-thread to an inbound message (messageId from read_inbox / get_email_thread). Goes out from the mailbox that received it with correct In-Reply-To/References threading. Replies to a human are not capped or metered, but still refuse do-not-contact contacts.",
+      {
+        messageId: z.string().uuid(),
+        text: z.string().min(1).max(50_000),
+        html: z.string().max(200_000).optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async ({ messageId, text, html }, extra) =>
+        gated(extra, "send_email", 60, (userId) =>
+          sendMail(userId, { replyToMessageId: messageId, subject: "Re:", text, html, actor: actorFrom(extra) }),
+        ),
+    );
+
+    server.tool(
+      "read_inbox",
+      "Read mail that arrived in the account's agent mailboxes, newest first, with the classifier's verdict on each (REPLY = a human wrote back; BOUNCE and UNSUBSCRIBE already marked the contact do-not-contact; OUT_OF_OFFICE / AUTO_REPLY are informational). Default: inbound only, warmup traffic hidden. Filter by classification (REPLY is what needs you), mailboxId, contactId, or since (ISO time). Your task webhook also gets mail.reply / mail.bounce / mail.unsubscribe events as they land.",
+      {
+        mailboxId: z.string().uuid().optional(),
+        contactId: z.string().uuid().optional(),
+        direction: z.enum(["INBOUND", "OUTBOUND"]).optional(),
+        classification: z.enum(["REPLY", "AUTO_REPLY", "OUT_OF_OFFICE", "BOUNCE", "UNSUBSCRIBE", "OTHER"]).optional(),
+        since: z.string().datetime().optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (a, extra) =>
+        run(() =>
+          listMessages(userIdFrom(extra), {
+            ...a,
+            direction: a.direction ?? "INBOUND",
+            since: a.since ? new Date(a.since) : null,
+          }),
+        ),
+    );
+
+    server.tool(
+      "get_email_thread",
+      "The whole conversation a message belongs to (our sends and their replies), oldest first. Read this before reply_email so the answer fits the thread.",
+      { messageId: z.string().uuid() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ messageId }, extra) => run(() => getThread(userIdFrom(extra), messageId)),
+    );
+
+    server.tool(
+      "update_mailbox",
+      "Pause or resume a mailbox, change its cold dailyCap, or turn warmup off (only for an inbox that is already warm elsewhere). Pass sync: true to pull inbound mail now instead of waiting for the 10-minute poller.",
+      {
+        mailboxId: z.string().uuid(),
+        paused: z.boolean().optional(),
+        dailyCap: z.number().int().min(1).max(200).optional(),
+        warmupEnabled: z.boolean().optional(),
+        displayName: z.string().max(120).optional(),
+        sync: z.boolean().optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ mailboxId, sync, ...patch }, extra) =>
+        gated(extra, "update_mailbox", 30, async (userId) => {
+          const mailbox = await updateMailbox(userId, mailboxId, patch);
+          if (!sync) return mailbox;
+          const synced = await syncMailbox(mailbox.id);
+          return { mailbox: await getMailbox(userId, mailboxId), synced };
+        }),
     );
 
     /* ---------------------- Social profiles + DMs ----------------- */

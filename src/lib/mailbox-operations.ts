@@ -552,9 +552,8 @@ export async function chooseSendingMailbox(userId: string, preferDomainId?: stri
  * doNotContact and mailbox health.
  */
 export async function sendMail(userId: string, input: SendMailInput): Promise<SendMailResult> {
-  const subject = input.subject.trim();
+  let subject = input.subject.trim();
   const text = input.text.trim();
-  if (!subject) throw new OpError("subject is required", 400);
   if (!text) throw new OpError("text is required", 400);
   if (subject.length > 300) throw new OpError("subject is too long", 400);
   if (text.length > 50_000) throw new OpError("text is too long", 400);
@@ -571,7 +570,13 @@ export async function sendMail(userId: string, input: SendMailInput): Promise<Se
     if (replyTo.isWarmup) throw new OpError("That is warmup traffic, not a conversation", 400);
     to = replyTo.fromAddr.toLowerCase();
     contactId = replyTo.contactId;
+    // Keep the thread's subject unless the caller wrote a real one.
+    if (!subject || /^re:?$/i.test(subject)) {
+      const base = (replyTo.subject ?? "").replace(/^\s*(re|fwd?):\s*/i, "").trim();
+      subject = base ? `Re: ${base}` : "Re:";
+    }
   }
+  if (!subject) throw new OpError("subject is required", 400);
   if (input.contactId) {
     const c = await prisma.contact.findUnique({ where: { id: input.contactId } });
     if (!c || c.userId !== userId) throw new OpError("Contact not found", 404);

@@ -240,6 +240,56 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
       ],
     },
     {
+      group: "Agent mailboxes",
+      checks: [
+        optionalKey(
+          "AgentMail (platform key)",
+          "AGENTMAIL_API_KEY",
+          env,
+          "Lets Scalar provision agent inboxes and custom sending domains on its own AgentMail organization. Without it, create_mailbox and AgentMail inbox orders return 501."
+        ),
+        optionalKey(
+          "AgentMail webhook secret",
+          "AGENTMAIL_WEBHOOK_SECRET",
+          env,
+          "Verifies /api/webhooks/agentmail. Without it inbound mail still arrives via the 10-minute poller, just slower."
+        ),
+        (() => {
+          const raw = env.MAILBOX_SECRET_KEY?.trim();
+          const ok = Boolean(raw && (/^[0-9a-fA-F]{64}$/.test(raw) || Buffer.from(raw, "base64").length === 32));
+          return {
+            name: "Mailbox secret key (SMTP credentials at rest)",
+            status: (ok ? "pass" : raw ? "partial" : "missing") as CheckStatus,
+            vars: ["MAILBOX_SECRET_KEY"],
+            detail: ok
+              ? "32-byte key set; SMTP/IMAP app passwords are sealed with AES-256-GCM."
+              : raw
+                ? "Set but not 32 bytes (hex64 or base64). Generate one with `openssl rand -hex 32`."
+                : "Not set (optional). Imported Google/Microsoft mailboxes (PremiumInboxes CSV, bring-your-own) cannot be stored.",
+          };
+        })(),
+        (() => {
+          const gd = isSet(env, "GODADDY_PAT") || allSet(env, ["GODADDY_API_KEY", "GODADDY_API_SECRET"]);
+          const pb = allSet(env, ["PORKBUN_API_KEY", "PORKBUN_SECRET_API_KEY"]);
+          const vars = ["GODADDY_PAT", "GODADDY_API_KEY", "GODADDY_API_SECRET", "GODADDY_ENV", "PORKBUN_API_KEY", "PORKBUN_SECRET_API_KEY", "DOMAIN_REGISTRAR"];
+          if (!gd && !pb) {
+            return {
+              name: "Domain registrar",
+              status: "missing" as CheckStatus,
+              vars,
+              detail: "Not set (optional). Domain purchase and quote_domain return 501; domains owned elsewhere can still be added and verified.",
+            };
+          }
+          const which = env.DOMAIN_REGISTRAR?.trim().toLowerCase() || (gd ? "godaddy" : "porkbun");
+          const note =
+            which === "godaddy"
+              ? `GoDaddy${env.GODADDY_ENV === "ote" ? " (OTE sandbox)" : ""} selected. Availability/suggest endpoints need an account with 50+ domains; DNS + purchase need 1+.`
+              : "Porkbun selected. Needs one prior manual registration on the account and a funded balance before /domain/create works.";
+          return { name: "Domain registrar", status: "pass" as CheckStatus, vars, detail: note };
+        })(),
+      ],
+    },
+    {
       group: "Rate limiting",
       checks: [
         allOrNothing(
