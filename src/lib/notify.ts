@@ -15,7 +15,25 @@ export interface TaskWebhookPayload {
 
 // Best-effort POST. Never throws (a bad user URL must not fail the job). The URL
 // is SSRF-checked so it can't be aimed at localhost / internal / cloud-metadata.
-export async function notifyTaskWebhook(url: string | null | undefined, payload: TaskWebhookPayload): Promise<void> {
+// A human replied (or bounced / opted out) to mail sent from one of the
+// account's agent mailboxes. This is the agent's wake-up call to read the
+// thread (read_inbox / get_email_thread) and decide the next move.
+export interface MailWebhookPayload {
+  event: "mail.reply" | "mail.bounce" | "mail.unsubscribe";
+  mailboxId: string;
+  mailboxAddress: string;
+  messageId: string;
+  contactId: string | null;
+  fromAddr: string;
+  subject: string | null;
+  preview: string | null;
+  receivedAt: string;
+}
+
+export async function notifyTaskWebhook(
+  url: string | null | undefined,
+  payload: TaskWebhookPayload | MailWebhookPayload,
+): Promise<void> {
   const safe = safeHttpUrl(url);
   if (!safe) {
     if (url) console.warn(`[notify] refusing webhook to blocked/invalid URL: ${url}`);

@@ -35,7 +35,7 @@ function encodeForm(params: Record<string, string>): string {
     .join("&");
 }
 
-type CheckoutResult = { url: string } | { error: string; status: number };
+type CheckoutResult = { url: string; sessionId?: string } | { error: string; status: number };
 
 /**
  * Create a hosted Stripe Checkout session in subscription mode. userId and plan
@@ -88,6 +88,60 @@ export async function createCheckoutSession(opts: {
     return { error: "Couldn't start checkout. Please try again.", status: 502 };
   }
   return { url: data.url };
+}
+
+/**
+ * One-off Checkout (mode=payment) for a mailbox order: a domain registration
+ * or a batch of inboxes. The price is ad-hoc (price_data) because it depends
+ * on the domain's TLD / the inbox count. `kind=mailbox_order` + `orderId`
+ * ride along as metadata so the webhook can route the completion to the
+ * order instead of the plan logic.
+ */
+export async function createOrderCheckoutSession(opts: {
+  userId: string;
+  orderId: string;
+  description: string;
+  amountUsdCents: number;
+  quantity?: number;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<CheckoutResult> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return { error: "Billing is not configured yet.", status: 501 };
+  if (!Number.isInteger(opts.amountUsdCents) || opts.amountUsdCents < 50) {
+    return { error: "Order amount is below Stripe's minimum.", status: 400 };
+  }
+
+  const params: Record<string, string> = {
+    mode: "payment",
+    "line_items[0][price_data][currency]": "usd",
+    "line_items[0][price_data][unit_amount]": String(opts.amountUsdCents),
+    "line_items[0][price_data][product_data][name]": opts.description,
+    "line_items[0][quantity]": String(opts.quantity ?? 1),
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+    client_reference_id: opts.userId,
+    "metadata[userId]": opts.userId,
+    "metadata[kind]": "mailbox_order",
+    "metadata[orderId]": opts.orderId,
+  };
+
+  const res = await fetchWithTimeout(`${STRIPE_API}/checkout/sessions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: encodeForm(params),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("Stripe order checkout failed", res.status, detail.slice(0, 500));
+    return { error: "Couldn't start checkout. Please try again.", status: 502 };
+  }
+  const data = (await res.json().catch(() => null)) as { url?: string; id?: string } | null;
+  if (!data?.url) return { error: "Couldn't start checkout. Please try again.", status: 502 };
+  return { url: data.url, sessionId: data.id };
 }
 
 /**

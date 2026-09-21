@@ -90,6 +90,12 @@ export const CREDIT_COSTS = {
   // stored memory - no new external data is created - so it is rate-limited
   // instead of credit-metered, matching "CRM reads are free."
   remember: 1,
+  // One cold email leaving an agent mailbox (src/lib/mailbox-operations.ts
+  // sendMail). Priced at the floor: the provider cost is fractions of a cent
+  // (AgentMail plan volume / a Workspace seat already paid for by the inbox
+  // order), and the real limiter is the per-mailbox daily cap, not credits.
+  // Warmup traffic and replies to inbound mail are never metered.
+  mail_send: 1,
 } as const;
 
 export type CreditAction = keyof typeof CREDIT_COSTS;

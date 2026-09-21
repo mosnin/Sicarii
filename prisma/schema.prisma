@@ -103,6 +103,12 @@ model User {
   // that read this account (a workspace row only ever has the latter).
   oauthGrants       OauthGrant[] @relation("OauthGrantSubject")
   oauthTenantGrants OauthGrant[] @relation("OauthGrantAccount")
+  // Agent mailboxes: sending domains + inboxes the agent sends cold outreach
+  // from, warms up, and reads replies into (docs/decisions/0015-agent-mailboxes.md).
+  mailDomains       MailDomain[]
+  mailboxes         Mailbox[]
+  mailMessages      MailMessage[]
+  mailboxOrders     MailboxOrder[]
 
   // Plain (non-unique) index for the webhook's findFirst lookup by secret -
   // see the voiceInboundSecret comment above for why this is not @unique.
@@ -325,6 +331,14 @@ model Contact {
   activities      Activity[]
   breakupDrafts   BreakupDraft[]
   variantSends    VariantSend[]
+  mailMessages    MailMessage[]
+
+  // Set when this person replied "stop" / unsubscribed, or an address hard
+  // bounced. sendEmail refuses to email a contact with this set; it is the
+  // one flag that makes agent outreach safe to run unsupervised.
+  doNotContact       Boolean   @default(false)
+  doNotContactReason String?
+  doNotContactAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1092,4 +1106,295 @@ model OauthToken {
   @@index([familyId])
   @@index([expiresAt])
   @@map("oauth_tokens")
+}
+
+
+// ── Agent mailboxes (docs/decisions/0015-agent-mailboxes.md) ────────────────
+//
+// The agent's own email identities. A MailDomain is a sending domain the
+// account controls (bought through Scalar or brought in), with its DNS posture
+// verified by us (SPF / DKIM / DMARC / MX), never assumed. A Mailbox is one
+// address on a domain that Scalar can SEND from and READ, through one of two
+// providers: AGENTMAIL (API-native inboxes Scalar provisions in seconds) or
+// SMTP (a Google Workspace / Microsoft 365 / any IMAP+SMTP inbox, e.g. one
+// bought from PremiumInboxes, whose password we hold encrypted at rest).
+// Every real send and every inbound message lands in MailMessage, keyed to the
+// contact when the counterparty address matches one, and mirrored into
+// ContactEmail so the existing Conversations card, breakup detection and
+// bandit attribution keep working unchanged.
+
+enum MailboxProvider {
+  AGENTMAIL
+  SMTP
+}
+
+enum MailboxStatus {
+  PROVISIONING // created, waiting on the provider / credentials
+  WARMING // sending warmup traffic only (plus a small cold allowance)
+  ACTIVE // warmed, full cold allowance
+  PAUSED // human or health guard paused it; nothing sends
+  DISABLED // credentials failed / removed
+}
+
+enum MailDomainStatus {
+  PENDING_PURCHASE // order placed, registrar purchase not confirmed
+  PURCHASED // registered (or brought in), DNS not yet verified
+  VERIFIED // SPF + DKIM + DMARC all resolve as expected
+  FAILED // purchase failed or DNS repeatedly wrong
+}
+
+enum DomainRegistrar {
+  GODADDY
+  PORKBUN
+  EXTERNAL // owned elsewhere; we only verify DNS
+}
+
+enum MailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MailMessageStatus {
+  QUEUED
+  SENT
+  FAILED
+  RECEIVED
+}
+
+// What an inbound message IS, decided by the classifier when it lands. Drives
+// the CRM side effects: REPLY advances to REPLIED (and attributes the bandit),
+// BOUNCE / UNSUBSCRIBE set doNotContact, WARMUP never touches the CRM at all.
+enum InboundClass {
+  REPLY
+  AUTO_REPLY
+  OUT_OF_OFFICE
+  BOUNCE
+  UNSUBSCRIBE
+  WARMUP
+  OTHER
+}
+
+enum MailboxOrderKind {
+  DOMAIN
+  INBOXES
+}
+
+enum MailboxOrderStatus {
+  PENDING // created, awaiting payment
+  PAID // Stripe confirmed, fulfilment in progress
+  FULFILLED // domain registered / inboxes attached
+  ACTION_REQUIRED // paid, but the vendor step needs a human (credentials import)
+  FAILED
+  CANCELED
+}
+
+model MailDomain {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  domain    String // "acme-outreach.com", lowercase, no scheme
+  registrar DomainRegistrar  @default(EXTERNAL)
+  status    MailDomainStatus @default(PURCHASED)
+
+  // Registrar bookkeeping (GoDaddy order id, expiry) when we bought it.
+  registrarOrderRef String?
+  purchasedAt       DateTime?
+  expiresAt         DateTime?
+
+  // Last DNS verification. Each flag is the result of a real lookup by
+  // src/lib/mail/dns.ts, never inferred from "we set the record".
+  spfOk            Boolean   @default(false)
+  dkimOk           Boolean   @default(false)
+  dmarcOk          Boolean   @default(false)
+  mxOk             Boolean   @default(false)
+  dnsCheckedAt     DateTime?
+  // The DKIM selector we look for (provider-specific; AgentMail supplies one).
+  dkimSelector     String?
+  // Provider-side id when the domain is registered with AgentMail for
+  // custom-domain inboxes.
+  providerDomainId String?
+
+  // Recommended DNS records for this domain, as returned by the provider or
+  // generated by us, so the UI can show "add these" without re-fetching.
+  dnsRecords Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mailboxes Mailbox[]
+
+  @@unique([userId, domain])
+  @@index([userId, status])
+  @@map("mail_domains")
+}
+
+model Mailbox {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  domainId String?
+  domain   MailDomain? @relation(fields: [domainId], references: [id], onDelete: SetNull)
+
+  address     String // full address, lowercase
+  displayName String? // "Sam at Acme"
+  provider    MailboxProvider
+  status      MailboxStatus   @default(PROVISIONING)
+
+  // AGENTMAIL: the provider's inbox id (we send/read through their API).
+  providerInboxId String?
+
+  // SMTP: connection details. The password/app-password is AES-256-GCM
+  // encrypted with MAILBOX_SECRET_KEY (src/lib/secret-box.ts); the plaintext
+  // is never stored and never returned to a client.
+  smtpHost         String?
+  smtpPort         Int?
+  imapHost         String?
+  imapPort         Int?
+  username         String?
+  secretCiphertext String?
+
+  // Sending policy. dailyCap is the ceiling for COLD sends per UTC day; the
+  // effective cap during warmup is lower (see src/lib/mail/warmup.ts). The
+  // counters reset when sentDate rolls over.
+  dailyCap        Int       @default(30)
+  sentToday       Int       @default(0)
+  warmupSentToday Int       @default(0)
+  sentDate        DateTime? // UTC midnight of the day the counters belong to
+  sentTotal       Int       @default(0) // lifetime outbound (cold + warmup)
+
+  // Warmup: peer mailboxes on Scalar exchange tagged mail and reply to each
+  // other so a new address builds reputation before it does cold outreach.
+  warmupEnabled   Boolean   @default(true)
+  warmupStartedAt DateTime?
+  warmupDay       Int       @default(0) // days of warmup completed
+  warmupSent      Int       @default(0) // lifetime warmup sends
+  warmupReplies   Int       @default(0) // lifetime warmup replies received
+  warmupSpamSaved Int       @default(0) // messages rescued from spam (IMAP)
+
+  // Health. Bounces and complaints are counted from real inbound signals;
+  // healthScore is recomputed by the warmup engine and gates sending.
+  healthScore Int       @default(100)
+  bounces     Int       @default(0)
+  complaints  Int       @default(0)
+  lastError   String?
+  lastErrorAt DateTime?
+
+  // Inbound sync cursor (IMAP UID or provider timestamp) and last sync time.
+  syncCursor   String?
+  lastSyncedAt DateTime?
+
+  // The order that provisioned this mailbox, when bought through Scalar.
+  orderId String?
+  order   MailboxOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages MailMessage[]
+
+  @@unique([userId, address])
+  @@index([userId, status])
+  @@index([status, warmupEnabled])
+  @@map("mailboxes")
+}
+
+// One email that actually moved through a mailbox: an outbound send we made
+// or an inbound message we pulled. This is the raw, provider-faithful record;
+// ContactEmail stays the CRM-facing view (mirrored on every contact-linked
+// message so existing surfaces keep working).
+model MailMessage {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  mailboxId String
+  mailbox   Mailbox @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  // Linked when the counterparty address matches a contact in this account.
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  direction MailDirection
+  status    MailMessageStatus
+
+  // Provider-side ids (AgentMail message id, IMAP UID) and the RFC 5322
+  // headers that make threading honest across providers.
+  providerMessageId String?
+  rfcMessageId      String? // the Message-ID header
+  inReplyTo         String? // In-Reply-To header
+  threadKey         String? // root Message-ID of the conversation
+
+  fromAddr String
+  toAddr   String
+  subject  String?
+  textBody String? @db.Text
+  htmlBody String? @db.Text
+
+  // Inbound only: what the classifier decided and a one-line reason.
+  classification InboundClass?
+  classifierNote String?
+  // Warmup traffic in either direction. Never linked to a contact, never
+  // mirrored into ContactEmail, never counted toward the cold daily cap.
+  isWarmup       Boolean       @default(false)
+
+  // Self-optimizing outreach: the variant used on this send, if any.
+  variantId String?
+
+  // Outbound: the provider error when status is FAILED.
+  error String?
+
+  sentAt     DateTime?
+  receivedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([mailboxId, providerMessageId])
+  @@index([userId, direction, createdAt])
+  @@index([mailboxId, threadKey])
+  @@index([contactId, createdAt])
+  @@index([rfcMessageId])
+  @@map("mail_messages")
+}
+
+// A purchase made through Scalar: a domain (registered via GoDaddy) or a
+// batch of inboxes (PremiumInboxes or AgentMail). Paid through Stripe; the
+// webhook flips PENDING -> PAID and hands fulfilment to Inngest. Where the
+// vendor has no API (PremiumInboxes), the order lands in ACTION_REQUIRED with
+// clear instructions instead of pretending it was automated.
+model MailboxOrder {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  kind   MailboxOrderKind
+  status MailboxOrderStatus @default(PENDING)
+  vendor String // "godaddy" | "premiuminboxes" | "agentmail"
+
+  // DOMAIN: the domain to register. INBOXES: the domain the inboxes live on.
+  domain         String?
+  quantity       Int     @default(1)
+  // What the customer pays (cents) and what we expect to pay the vendor.
+  amountUsdCents Int
+  costUsdCents   Int?
+
+  stripeSessionId      String? @unique
+  stripeSubscriptionId String?
+  vendorOrderRef       String?
+
+  // Human-readable next step / failure reason, shown in the UI.
+  note String?
+  // Order-specific payload: registrant contact for a domain purchase,
+  // requested mailbox usernames for an inbox order.
+  detail Json?
+
+  paidAt      DateTime?
+  fulfilledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  mailboxes Mailbox[]
+
+  @@index([userId, status, createdAt])
+  @@map("mailbox_orders")
 }
