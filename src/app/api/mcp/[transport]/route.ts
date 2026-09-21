@@ -115,6 +115,7 @@ import {
   getMailbox,
   syncMailbox,
 } from "@/lib/mailbox-operations";
+import { COLD_EMAIL_GUIDE, lintColdEmail } from "@/lib/mail/cold-email";
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -558,6 +559,19 @@ const handler = createMcpHandler(
     );
 
     server.tool(
+      "review_cold_email",
+      "Free, instant review of a cold email draft against Scalar's writing rules (length, links, subject pattern, vendor-speak, exclamation marks, one question, merge fields). Returns warnings and a heuristic score; nothing is sent or stored. Call it before send_email on a first touch, and revise until it comes back clean. Pass isReply: true for in-thread replies (links and subject rules relax).",
+      {
+        subject: z.string().max(300),
+        text: z.string().min(1).max(50_000),
+        html: z.string().max(200_000).optional(),
+        isReply: z.boolean().optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (a) => run(async () => ({ ...lintColdEmail(a), guide: COLD_EMAIL_GUIDE })),
+    );
+
+    server.tool(
       "send_email",
       "Send one real email from an agent mailbox. Give contactId (uses the contact's email; the send is mirrored onto their record, they advance to CONTACTED, and variantId from select_variant is attributed exactly like log_outreach) or a raw `to`. Scalar picks the healthiest mailbox with cold headroom unless you pass mailboxId. HARD GUARDS: refuses do-not-contact contacts (bounced / opted out), refuses when every mailbox has used today's cold allowance or is still in its first 14 warmup days (the error says when it opens), pauses on poor health. Costs 1 credit. To answer a reply in-thread use reply_email instead. Write plain text; short, specific, one ask - see the cold-email guidance in the Scalar skill.",
       {
@@ -576,7 +590,7 @@ const handler = createMcpHandler(
 
     server.tool(
       "reply_email",
-      "Reply in-thread to an inbound message (messageId from read_inbox / get_email_thread). Goes out from the mailbox that received it with correct In-Reply-To/References threading. Replies to a human are not capped or metered, but still refuse do-not-contact contacts.",
+      "Reply in-thread. messageId is either an INBOUND message (from read_inbox / get_email_thread): the answer goes out from the mailbox that received it, free and uncapped; or one of YOUR OWN SENT messages (the id send_email returned, or read_inbox with direction OUTBOUND): that is a follow-up in the same thread to the same person, which still counts as cold mail (daily cap, 1 credit) and must add something new. Correct In-Reply-To/References either way. Refuses do-not-contact contacts.",
       {
         messageId: z.string().uuid(),
         text: z.string().min(1).max(50_000),
@@ -596,7 +610,7 @@ const handler = createMcpHandler(
         mailboxId: z.string().uuid().optional(),
         contactId: z.string().uuid().optional(),
         direction: z.enum(["INBOUND", "OUTBOUND"]).optional(),
-        classification: z.enum(["REPLY", "AUTO_REPLY", "OUT_OF_OFFICE", "BOUNCE", "UNSUBSCRIBE", "OTHER"]).optional(),
+        classification: z.enum(["REPLY", "AUTO_REPLY", "OUT_OF_OFFICE", "BOUNCE", "UNSUBSCRIBE", "WARMUP", "OTHER"]).optional(),
         since: z.string().datetime().optional(),
         limit: z.number().int().min(1).max(200).optional(),
       },
@@ -1315,6 +1329,8 @@ THE OPERATING LOOP
 4. Organize. Group not-yet-contacted prospects with build_smart_segment (costs credits when it matches prospects), then create_pipeline to track them through stages. Clean up as you go: update_segment/delete_segment/remove_segment_member and delete_pipeline/remove_pipeline_entry let you rename, retire, or prune segments and pipelines instead of leaving stale ones behind.
 5. Track outreach. This is the memory that makes you reliable. Before writing your first message to a segment (or in general), call select_variant (kind: subject or opener) to get the bandit's current best pick for that pool - it explores automatically while data is thin and converges on the winner as replies come in, so you never need to run your own A/B test. Use the returned text verbatim, then when you email a contact, call save_email_context, then log_outreach (with variantId set to what select_variant returned) to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message the same way (pass variantId on the OUTBOUND message; it advances pipeline state itself and attributes a later reply back to the variant automatically - use list_social_messages to reread a conversation). Check list_variant_stats any time to see reply rates and which variant is winning. If you're not testing variants, log_outreach/log_social_message work exactly the same without variantId. When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). For deals gone fully cold, call draft_breakups to write a grounded breakup email per stalled contact - it only drafts (list_pending_drafts to review); a human approves or dismisses in the app, you never send it yourself. Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping (costs 1 credit per memory actually saved).
 6. Measure and repeat. Use pipeline_metrics and list_variant_stats to see what is working, then loop back to discovery.
+
+SENDING REAL EMAIL FROM AGENT MAILBOXES. If the account has agent mailboxes (list_mailboxes), you can send yourself instead of only logging: send_email (first touch to a contact; costs 1 credit; mirrored onto the contact, advances them to CONTACTED, attributes variantId like log_outreach) and reply_email (answer an inbound message in-thread from the mailbox that received it; free). Read read_inbox (classification REPLY is what needs you; BOUNCE and UNSUBSCRIBE already marked the contact do-not-contact) and get_email_thread before you reply. Capacity is real and enforced: every mailbox warms up for 14 days before any cold mail, then ramps to its dailyCap over six weeks, and send_email refuses when today's cold allowance is spent or health is poor - the error tells you when it reopens, so schedule the rest rather than retrying. Writing rules, in short: under 75 words, plain text, no links in a first touch, one concrete observation about them from the record (never invented), one soft question, no exclamation marks, no vendor-speak; call review_cold_email on every first-touch draft and revise until it is clean (the guide is in its response). Follow-ups are reply_email in the same thread with something new, never "just bumping". When an agent mailbox reply lands, your task webhook receives mail.reply with the messageId. Buying domains and inboxes is a human step on the Mailboxes page; you can check availability with quote_domain and create inboxes on an already-connected domain with create_mailbox.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.
 

@@ -28,6 +28,7 @@ import * as agentmail from "@/lib/agentmail";
 import { imapFetchNew, imapVerify, smtpSend, smtpVerify, guessHosts, type SmtpCredentials } from "@/lib/mail/smtp";
 import { classifyInbound, extractAddress, WARMUP_HEADER, type InboundClassName } from "@/lib/mail/classify";
 import { checkDomainDns, isValidDomain, normalizeDomain } from "@/lib/mail/dns";
+import { lintColdEmail, type ColdEmailLint } from "@/lib/mail/cold-email";
 import {
   configuredRegistrar,
   baselineDnsRecords,
@@ -522,6 +523,9 @@ export interface SendMailResult {
   message: MailMessageView;
   mailbox: { id: string; address: string; coldRemainingToday: number };
   contactId: string | null;
+  /** Heuristic copy review (see src/lib/mail/cold-email.ts). Advisory only:
+   *  the mail has already gone out; this is so the agent learns in-turn. */
+  lint: ColdEmailLint;
 }
 
 /** Pick the mailbox with the most cold headroom that is healthy enough to send. */
@@ -563,12 +567,22 @@ export async function sendMail(userId: string, input: SendMailInput): Promise<Se
   let to = input.to?.trim().toLowerCase() ?? "";
   let replyTo: MailMessage | null = null;
 
+  // Threading target. An INBOUND message makes this a reply to a human (free,
+  // uncapped, from the receiving mailbox). One of OUR OUTBOUND messages makes
+  // it a follow-up: same thread, same recipient, same mailbox, but still cold
+  // mail for capacity and metering purposes since nobody has answered yet.
+  let followUp = false;
   if (input.replyToMessageId) {
     replyTo = await prisma.mailMessage.findUnique({ where: { id: input.replyToMessageId } });
     if (!replyTo || replyTo.userId !== userId) throw new OpError("Message to reply to not found", 404);
-    if (replyTo.direction !== "INBOUND") throw new OpError("Can only reply to an inbound message", 400);
     if (replyTo.isWarmup) throw new OpError("That is warmup traffic, not a conversation", 400);
-    to = replyTo.fromAddr.toLowerCase();
+    if (replyTo.direction === "OUTBOUND") {
+      if (replyTo.status !== "SENT") throw new OpError("Can only follow up on a message that was sent", 400);
+      followUp = true;
+      to = replyTo.toAddr.toLowerCase();
+    } else {
+      to = replyTo.fromAddr.toLowerCase();
+    }
     contactId = replyTo.contactId;
     // Keep the thread's subject unless the caller wrote a real one.
     if (!subject || /^re:?$/i.test(subject)) {
@@ -603,7 +617,7 @@ export async function sendMail(userId: string, input: SendMailInput): Promise<Se
   }
 
   // Pick the mailbox.
-  const isReply = Boolean(replyTo);
+  const isReply = Boolean(replyTo) && !followUp;
   let mailbox: Mailbox | null;
   if (input.mailboxId) mailbox = await ownedMailbox(userId, input.mailboxId);
   else if (replyTo) mailbox = await prisma.mailbox.findUnique({ where: { id: replyTo.mailboxId } });
@@ -733,6 +747,7 @@ export async function sendMail(userId: string, input: SendMailInput): Promise<Se
     message: toMessageView(message),
     mailbox: { id: mailbox.id, address: mailbox.address, coldRemainingToday: remaining },
     contactId,
+    lint: lintColdEmail({ subject, text, html: input.html, isReply: isReply || followUp }),
   };
 }
 

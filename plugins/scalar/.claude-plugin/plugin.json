@@ -3,7 +3,7 @@
   "name": "scalar",
   "displayName": "Scalar",
   "version": "0.1.0",
-  "description": "Scalar, the CRM your agents run. Bundles skills for lead discovery, accurate enrichment, CRM hygiene, intent monitors, and connects Scalar's remote MCP server so your agent can read and write every record.",
+  "description": "Scalar, the CRM your agents run. Bundles skills for lead discovery, accurate enrichment, CRM hygiene, intent monitors, cold outreach from agent mailboxes, and connects Scalar's remote MCP server so your agent can read and write every record.",
   "author": {
     "name": "Scalar",
     "url": "https://www.tryscalar.xyz"
@@ -11,7 +11,7 @@
   "homepage": "https://www.tryscalar.xyz",
   "repository": "https://www.tryscalar.xyz",
   "license": "MIT",
-  "keywords": ["crm", "leads", "enrichment", "mcp", "agents", "scalar"],
+  "keywords": ["crm", "leads", "enrichment", "mcp", "agents", "scalar", "cold-email", "outreach"],
   "mcpServers": {
     "scalar": {
       "type": "http",

@@ -11,6 +11,7 @@ import { mailFetch, relTime, type InboundClass, type MailboxRow, type MessageRow
 
 const CLASS_BADGE: Record<InboundClass, { label: string; variant: "success" | "warning" | "destructive" | "secondary" | "primary" }> = {
   REPLY: { label: "Reply", variant: "success" },
+  AUTO_REPLY: { label: "Auto-reply", variant: "secondary" },
   BOUNCE: { label: "Bounce", variant: "destructive" },
   UNSUBSCRIBE: { label: "Opt-out", variant: "warning" },
   OUT_OF_OFFICE: { label: "Out of office", variant: "secondary" },

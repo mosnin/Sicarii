@@ -37,6 +37,8 @@ import { proposeAutopilotPlan, getAutopilotStatus } from "@/lib/autopilot-operat
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats } from "@/lib/variant-operations";
 import { CREDIT_COSTS } from "@/lib/credits";
+import { listMailboxes, sendMail, listMessages, getThread } from "@/lib/mailbox-operations";
+import { COLD_EMAIL_GUIDE, lintColdEmail } from "@/lib/mail/cold-email";
 
 export const maxDuration = 60;
 
@@ -77,6 +79,19 @@ How you work:
   on the winner as replies come in, no A/B test to set up. Use the text it
   returns, then pass its id as variantId on log_social_message so a later
   reply is attributed back to it. Check list_variant_stats to see reply rates.
+- You can send real email when the operator has agent mailboxes (list_mailboxes
+  shows them, with warmup state and today's remaining cold allowance). send_email
+  sends a first touch to a contact (1 credit, mirrored onto their record);
+  reply_email answers an inbound message in-thread. read_inbox and
+  get_email_thread show what came back, already classified (REPLY is a human).
+  ALWAYS show the operator the exact subject and body and get an explicit yes
+  before send_email; replies to a human need the same confirmation. Run
+  review_cold_email on every first-touch draft first and fix its warnings. Cold
+  email rules: under 75 words, plain text, no links in a first touch, one real
+  observation about them from the record, one soft question, no exclamation
+  marks, no vendor-speak. Mailboxes still warming (first 14 days) or out of
+  allowance will refuse; say when they reopen instead of retrying. Buying
+  domains or inboxes happens on the Mailboxes page, not here.
 - Read/write the CRM with the list/get/create/update tools. Always work from real
   data - call tools rather than guessing.
 - You have long-term memory: call recall to retrieve relevant past context (earlier
@@ -421,6 +436,57 @@ export async function POST(req: Request) {
             segmentId: segmentId ?? null,
           }),
         ),
+    }),
+    list_mailboxes: tool({
+      description:
+        "The operator's agent mailboxes with live sending state: status (WARMING/ACTIVE/PAUSED), warmup day, today's cold allowance and what is left (coldRemainingToday), health score. Zero mailboxes means the operator must add one on the Mailboxes page.",
+      inputSchema: z.object({}),
+      execute: () => exec(() => listMailboxes(userId)),
+    }),
+    review_cold_email: tool({
+      description:
+        "Free review of a cold email draft against Scalar's writing rules. Returns warnings and a heuristic score; sends nothing. Use before send_email on a first touch and revise until clean. isReply relaxes first-touch-only rules.",
+      inputSchema: z.object({
+        subject: z.string().max(300),
+        text: z.string().min(1).max(50_000),
+        isReply: z.boolean().optional(),
+      }),
+      execute: async (a) => ({ ...lintColdEmail(a), guide: COLD_EMAIL_GUIDE }),
+    }),
+    send_email: tool({
+      description:
+        "Send one real email from an agent mailbox to a contact (contactId) or a raw address (to). Scalar picks the healthiest mailbox with cold headroom. Refuses do-not-contact contacts and mailboxes without allowance; the error says when it reopens. Costs 1 credit. ONLY call after the operator has approved the exact subject and body.",
+      inputSchema: z.object({
+        contactId: z.string().uuid().optional(),
+        to: z.string().email().optional(),
+        subject: z.string().min(1).max(300),
+        text: z.string().min(1).max(50_000),
+        variantId: z.string().uuid().optional().describe("id of the OutreachVariant used, from select_variant"),
+      }),
+      execute: (a) => exec(() => sendMail(userId, { ...a, actor: null })),
+    }),
+    reply_email: tool({
+      description:
+        "Reply in-thread. messageId is an INBOUND message (answer to a human: free, uncapped) or one of our own SENT messages (a follow-up in the same thread: counts as cold mail, 1 credit). Only after the operator approves the text.",
+      inputSchema: z.object({ messageId: z.string().uuid(), text: z.string().min(1).max(50_000) }),
+      execute: ({ messageId, text }) => exec(() => sendMail(userId, { replyToMessageId: messageId, subject: "Re:", text, actor: null })),
+    }),
+    read_inbox: tool({
+      description:
+        "Mail that arrived in the agent mailboxes, newest first, with the classifier's verdict (REPLY = a human wrote back; BOUNCE / UNSUBSCRIBE already marked the contact do-not-contact). Filter by classification, contactId, or since (ISO).",
+      inputSchema: z.object({
+        contactId: z.string().uuid().optional(),
+        classification: z.enum(["REPLY", "AUTO_REPLY", "OUT_OF_OFFICE", "BOUNCE", "UNSUBSCRIBE", "OTHER"]).optional(),
+        since: z.string().datetime().optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+      }),
+      execute: (a) =>
+        exec(() => listMessages(userId, { ...a, direction: "INBOUND", since: a.since ? new Date(a.since) : null })),
+    }),
+    get_email_thread: tool({
+      description: "The whole conversation a message belongs to, oldest first. Read before reply_email.",
+      inputSchema: z.object({ messageId: z.string().uuid() }),
+      execute: ({ messageId }) => exec(() => getThread(userId, messageId)),
     }),
     list_variant_stats: tool({
       description:

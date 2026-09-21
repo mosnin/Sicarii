@@ -5,7 +5,7 @@ export type MailboxProvider = "AGENTMAIL" | "SMTP";
 export type MailboxStatus = "PROVISIONING" | "WARMING" | "ACTIVE" | "PAUSED" | "DISABLED";
 export type MailDomainStatus = "PENDING_PURCHASE" | "PURCHASED" | "VERIFIED" | "FAILED";
 export type OrderStatus = "PENDING" | "PAID" | "FULFILLED" | "ACTION_REQUIRED" | "FAILED" | "CANCELED";
-export type InboundClass = "REPLY" | "BOUNCE" | "UNSUBSCRIBE" | "OUT_OF_OFFICE" | "WARMUP" | "OTHER";
+export type InboundClass = "REPLY" | "AUTO_REPLY" | "BOUNCE" | "UNSUBSCRIBE" | "OUT_OF_OFFICE" | "WARMUP" | "OTHER";
 
 export interface MailboxRow {
   id: string;
