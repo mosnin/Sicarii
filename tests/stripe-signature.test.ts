@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createHmac } from "node:crypto";
-import { verifyStripeSignature } from "@/lib/stripe";
+import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
+import { PLAN_USD, type PaidPlanName } from "@/lib/credits";
 
 // The Stripe webhook is a public route; the signature IS the authentication.
 // If verifyStripeSignature is wrong, anyone can forge billing events (grant
@@ -50,5 +51,46 @@ describe("verifyStripeSignature", () => {
     const good = createHmac("sha256", SECRET).update(`${ts}.${body}`).digest("hex");
     const header = `t=${ts},v1=deadbeef,v1=${good}`;
     expect(verifyStripeSignature(body, header, SECRET)).toBe(true);
+  });
+});
+
+// customer.subscription.updated resolves the new plan ONLY via planForPriceId.
+// If team (or any later paid plan) is missing from that map, Stripe starts
+// charging the new price while Scalar keeps the old plan and allotment.
+describe("planForPriceId", () => {
+  const PRICE: Record<PaidPlanName, string> = {
+    starter: "price_starter",
+    pro: "price_pro",
+    business: "price_business",
+    team: "price_team",
+  };
+  const envKeys = (Object.keys(PRICE) as PaidPlanName[]).map(
+    (plan) => `STRIPE_PRICE_${plan.toUpperCase()}`,
+  );
+  const saved: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    for (const key of envKeys) saved[key] = process.env[key];
+    for (const plan of Object.keys(PRICE) as PaidPlanName[]) {
+      process.env[`STRIPE_PRICE_${plan.toUpperCase()}`] = PRICE[plan];
+    }
+  });
+
+  afterEach(() => {
+    for (const key of envKeys) {
+      if (saved[key] === undefined) delete process.env[key];
+      else process.env[key] = saved[key];
+    }
+  });
+
+  it("maps every paid plan price, including team", () => {
+    for (const plan of Object.keys(PLAN_USD) as PaidPlanName[]) {
+      expect(planForPriceId(PRICE[plan])).toBe(plan);
+    }
+  });
+
+  it("returns undefined for an unknown or missing price id", () => {
+    expect(planForPriceId("price_unknown")).toBeUndefined();
+    expect(planForPriceId(undefined)).toBeUndefined();
   });
 });

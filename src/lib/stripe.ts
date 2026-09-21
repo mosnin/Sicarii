@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { fetchWithTimeout } from "@/lib/http";
-import type { PaidPlanName } from "@/lib/credits";
+import { PLAN_USD, type PaidPlanName } from "@/lib/credits";
 
 // Thin Stripe layer over the REST API (no SDK, mirroring the existing
 // fetch-based billing code). Covers exactly what Scalar needs: creating a
@@ -20,10 +20,12 @@ export function priceIdFor(plan: PaidPlanName): string | undefined {
 }
 
 /** Reverse of priceIdFor: map a Stripe Price id back to its paid plan, so a
- *  webhook can tell which plan a subscription switched to. */
+ *  webhook can tell which plan a subscription switched to. Walks every paid
+ *  plan in PLAN_USD (including team) so a portal upgrade cannot silently
+ *  no-op after Stripe has already started charging the new price. */
 export function planForPriceId(priceId: string | undefined): PaidPlanName | undefined {
   if (!priceId) return undefined;
-  for (const plan of ["starter", "pro", "business"] as const) {
+  for (const plan of Object.keys(PLAN_USD) as PaidPlanName[]) {
     if (priceIdFor(plan) === priceId) return plan;
   }
   return undefined;
