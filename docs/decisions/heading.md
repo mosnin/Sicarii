@@ -8,6 +8,11 @@ hardened (audits 2026-06-06 -> 09; PRs #19-#29) - and still **unfelt**. Nothing
 has been observed running end to end, and the product has zero choreographed
 moments. Current Vision score: 6/10 (idea 9, felt experience 4)._
 
+**Parallel cycle shipped: 0015 - Agent mailboxes** (`0015-agent-mailboxes.md`).
+Agents can send for real: `/mailboxes` to buy/connect a domain + inbox,
+warmup ramp, `send_email` over MCP. Owed: `prisma db push`, Stripe mailbox
+and domain prices, GoDaddy / Premium Inboxes keys, one live send.
+
 **The cycle in flight: 0006 - The Four Moments** (`0006-the-four-moments.md`)
 
 | # | Phase | Owner | Status |

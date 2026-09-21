@@ -26,7 +26,7 @@ routing and the four-gate synthesis order live in the imported engine above.
 
 **Scalar - the CRM your agents run.** A structured CRM with a real UI and built-in
 intelligence, operated by AI agents: they discover leads, enrich the database,
-track deals, and run email relationships - reading/writing every record over MCP.
+track deals, and run email relationships from real agent mailboxes - reading/writing every record over MCP.
 For anyone working with AI agents who wants lead intelligence + deal tracking that
 stays consistent. **Moat:** structure + UI + intelligence as one system - vs agent
 frameworks that dump everything into messy `.md` files. **Data:** a single source

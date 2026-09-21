@@ -35,7 +35,15 @@ function encodeForm(params: Record<string, string>): string {
     .join("&");
 }
 
-type CheckoutResult = { url: string } | { error: string; status: number };
+type CheckoutResult = { url: string; id?: string } | { error: string; status: number };
+
+export function mailboxPriceId(): string | undefined {
+  return process.env.STRIPE_PRICE_MAILBOX?.trim() || undefined;
+}
+
+export function domainPriceId(): string | undefined {
+  return process.env.STRIPE_PRICE_DOMAIN?.trim() || undefined;
+}
 
 /**
  * Create a hosted Stripe Checkout session in subscription mode. userId and plan
@@ -82,12 +90,71 @@ export async function createCheckoutSession(opts: {
     return { error: "Couldn't start checkout. Please try again.", status: 502 };
   }
 
-  const data = (await res.json().catch(() => null)) as { url?: string } | null;
+  const data = (await res.json().catch(() => null)) as { url?: string; id?: string } | null;
   if (!data?.url) {
     console.error("Stripe checkout returned no URL", data);
     return { error: "Couldn't start checkout. Please try again.", status: 502 };
   }
-  return { url: data.url };
+  return { url: data.url, id: data.id };
+}
+
+/**
+ * Checkout for mailbox / domain add-ons. Metadata.type is "mailbox" or
+ * "domain" so the webhook can provision instead of applying a plan.
+ */
+export async function createAddonCheckoutSession(opts: {
+  priceId: string;
+  userId: string;
+  mode: "subscription" | "payment";
+  successUrl: string;
+  cancelUrl: string;
+  metadata: Record<string, string>;
+}): Promise<CheckoutResult> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return { error: "Billing is not configured yet.", status: 501 };
+
+  const params: Record<string, string> = {
+    mode: opts.mode,
+    "line_items[0][price]": opts.priceId,
+    "line_items[0][quantity]": "1",
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+    client_reference_id: opts.userId,
+    allow_promotion_codes: "true",
+    "metadata[userId]": opts.userId,
+  };
+  for (const [k, v] of Object.entries(opts.metadata)) {
+    if (!v) continue;
+    params[`metadata[${k}]`] = v;
+    if (opts.mode === "subscription") {
+      params[`subscription_data[metadata][${k}]`] = v;
+    }
+  }
+  if (opts.mode === "subscription") {
+    params["subscription_data[metadata][userId]"] = opts.userId;
+  }
+
+  const res = await fetchWithTimeout(`${STRIPE_API}/checkout/sessions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: encodeForm(params),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("Stripe addon checkout failed", res.status, detail.slice(0, 500));
+    return { error: "Couldn't start checkout. Please try again.", status: 502 };
+  }
+
+  const data = (await res.json().catch(() => null)) as { url?: string; id?: string } | null;
+  if (!data?.url) {
+    console.error("Stripe addon checkout returned no URL", data);
+    return { error: "Couldn't start checkout. Please try again.", status: 502 };
+  }
+  return { url: data.url, id: data.id };
 }
 
 /**

@@ -37,6 +37,7 @@ import { proposeAutopilotPlan, getAutopilotStatus } from "@/lib/autopilot-operat
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { selectVariant, listVariantStats } from "@/lib/variant-operations";
 import { CREDIT_COSTS } from "@/lib/credits";
+import { draftOutreachForUser, listMailboxes, sendOutreachEmail } from "@/lib/mailbox-operations";
 
 export const maxDuration = 60;
 
@@ -71,11 +72,15 @@ How you work:
   tools spend credits, so confirm intent before large runs.
 - Enrich a business with enrich_entity.
 - For deals that have gone cold, draft_breakups writes a grounded "breakup" email per stalled contact for the human to review - it never sends. Use list_pending_drafts to check the queue. You cannot approve or send these yourself.
+- You can send real email when a mailbox is ready. Call list_mailboxes first.
+  If one is ready, draft_outreach then send_email (pass variantId from
+  select_variant). If none are ready, say so and point the operator at
+  /mailboxes instead of pretending you sent.
 - Outreach quietly improves itself: before your first message to a segment (or
   in general), call select_variant to get the bandit's current best subject
   line or opener for that pool - it explores while data is thin and converges
   on the winner as replies come in, no A/B test to set up. Use the text it
-  returns, then pass its id as variantId on log_social_message so a later
+  returns, then pass its id as variantId on send_email or log_social_message so a later
   reply is attributed back to it. Check list_variant_stats to see reply rates.
 - Read/write the CRM with the list/get/create/update tools. Always work from real
   data - call tools rather than guessing.
@@ -429,6 +434,45 @@ export async function POST(req: Request) {
         segmentId: z.string().optional().describe("omit to see every segment (and the general pool)"),
       }),
       execute: ({ segmentId }) => exec(() => listVariantStats(userId, { segmentId: segmentId ?? undefined })),
+    }),
+    list_mailboxes: tool({
+      description:
+        "List agent mailboxes on this workspace: address, warmup day, remaining sends today, ready or not. Call this before send_email.",
+      inputSchema: z.object({}),
+      execute: () => exec(() => listMailboxes(userId)),
+    }),
+    draft_outreach: tool({
+      description:
+        "Draft a short cold email (subject + body) for a named person. Does not send. Pass opener from select_variant when you have one.",
+      inputSchema: z.object({
+        contactName: z.string().min(1).max(200),
+        company: z.string().max(200).optional(),
+        title: z.string().max(200).optional(),
+        opener: z.string().max(400).optional(),
+        senderName: z.string().max(80).optional(),
+      }),
+      execute: (args) => exec(() => draftOutreachForUser(userId, args)),
+    }),
+    send_email: tool({
+      description:
+        "Send a real email to a contact from a ready mailbox. Logs the thread and stamps outreach. Fails honestly if no mailbox is ready or the contact has no email. Costs 2 credits on success.",
+      inputSchema: z.object({
+        contactId: z.string(),
+        subject: z.string().min(1).max(200),
+        body: z.string().min(1).max(20_000),
+        mailboxId: z.string().optional(),
+        variantId: z.string().optional(),
+      }),
+      execute: (args) =>
+        exec(() =>
+          sendOutreachEmail(userId, {
+            contactId: args.contactId,
+            subject: args.subject,
+            body: args.body,
+            mailboxId: args.mailboxId,
+            variantId: args.variantId ?? null,
+          }),
+        ),
     }),
   };
 

@@ -28,9 +28,27 @@ function currentPriceId(obj: StripeObject): string | undefined {
   return typeof id === "string" ? id : undefined;
 }
 
-function metaOf(obj: StripeObject): { userId?: string; plan?: string } {
+function metaOf(obj: StripeObject): {
+  userId?: string;
+  plan?: string;
+  type?: string;
+  localPart?: string;
+  domainId?: string;
+  domainName?: string;
+  displayName?: string;
+} {
   const m = obj.metadata;
-  return m && typeof m === "object" ? (m as { userId?: string; plan?: string }) : {};
+  return m && typeof m === "object"
+    ? (m as {
+        userId?: string;
+        plan?: string;
+        type?: string;
+        localPart?: string;
+        domainId?: string;
+        domainName?: string;
+        displayName?: string;
+      })
+    : {};
 }
 
 export async function POST(req: Request) {
@@ -99,7 +117,30 @@ export async function POST(req: Request) {
 async function applyStripeEvent(type: string, obj: StripeObject, eventId?: string): Promise<void> {
   // Initial purchase: a Checkout completed in subscription mode.
   if (type === "checkout.session.completed") {
-    const { userId, plan } = metaOf(obj);
+    const meta = metaOf(obj);
+    const sessionId = typeof obj.id === "string" ? obj.id : undefined;
+    const subscriptionId = typeof obj.subscription === "string" ? obj.subscription : undefined;
+
+    if (meta.type === "mailbox" && meta.userId && meta.localPart) {
+      const { requestPurchasedMailbox } = await import("@/lib/mailbox-operations");
+      await requestPurchasedMailbox(meta.userId, {
+        localPart: meta.localPart,
+        domainId: meta.domainId,
+        domainName: meta.domainName,
+        displayName: meta.displayName,
+        stripeSessionId: sessionId,
+        stripeSubscriptionId: subscriptionId,
+      });
+      return;
+    }
+
+    if (meta.type === "domain" && meta.userId && meta.domainName) {
+      const { recordPurchasingDomain } = await import("@/lib/mailbox-operations");
+      await recordPurchasingDomain(meta.userId, meta.domainName, sessionId);
+      return;
+    }
+
+    const { userId, plan } = meta;
     if (!userId || !plan || !(plan in PLANS)) {
       console.warn("[stripe] checkout.session.completed missing userId/plan metadata");
       return;

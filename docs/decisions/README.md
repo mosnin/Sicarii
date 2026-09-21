@@ -77,6 +77,8 @@ exponential growth into a plateau.
 | find_socials verification quality | 0008 · Feasible | one live run with a real Tavily key | founder + eng |
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
+| Mailbox schema on prod | 0015 · Deliverable | `pnpm prisma db push` (domains, mailboxes, mailbox_events, contact_emails.mailboxId) | founder |
+| Live mailbox send | 0015 · Feasible | Stripe mailbox/domain prices + one SMTP or Premium Inboxes fulfillment + one `send_email` | founder + eng |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
 
 ## Kills & falsifieds (do not re-open)

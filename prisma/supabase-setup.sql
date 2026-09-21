@@ -517,6 +517,73 @@ ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "workspaceName" TEXT;
 --    the table grows and must be rebuilt). recallMemory() orders by the cosine
 --    operator (embedding <=> query), so the index uses vector_cosine_ops.
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 3d. Agent mailboxes: domains + inboxes + event log. Additive tables only.
+--     mailboxId on contact_emails is nullable so existing AgentMail-saved
+--     rows stay valid. See docs/decisions/0015-agent-mailboxes.md.
+CREATE TABLE IF NOT EXISTS "domains" (
+  "id" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "registrar" TEXT NOT NULL DEFAULT 'external',
+  "status" TEXT NOT NULL DEFAULT 'active',
+  "godaddyDomainId" TEXT,
+  "stripeSessionId" TEXT,
+  "expiresAt" TIMESTAMP(3),
+  "lastError" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "domains_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "domains_userId_name_key" ON "domains" ("userId", "name");
+CREATE INDEX IF NOT EXISTS "domains_userId_status_idx" ON "domains" ("userId", "status");
+
+CREATE TABLE IF NOT EXISTS "mailboxes" (
+  "id" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "domainId" TEXT,
+  "email" TEXT NOT NULL,
+  "displayName" TEXT,
+  "provider" TEXT NOT NULL DEFAULT 'smtp',
+  "status" TEXT NOT NULL DEFAULT 'requested',
+  "warmupStartedAt" TIMESTAMP(3),
+  "warmupDay" INTEGER NOT NULL DEFAULT 0,
+  "dailySendLimit" INTEGER NOT NULL DEFAULT 5,
+  "sentToday" INTEGER NOT NULL DEFAULT 0,
+  "sentTodayOn" TIMESTAMP(3),
+  "stripeSubscriptionId" TEXT,
+  "stripeSessionId" TEXT,
+  "providerInboxId" TEXT,
+  "providerOrderId" TEXT,
+  "smtpCiphertext" TEXT,
+  "smtpLast4" TEXT,
+  "warmupTargets" JSONB,
+  "lastError" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "mailboxes_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "mailboxes_userId_email_key" ON "mailboxes" ("userId", "email");
+CREATE INDEX IF NOT EXISTS "mailboxes_userId_status_idx" ON "mailboxes" ("userId", "status");
+CREATE INDEX IF NOT EXISTS "mailboxes_domainId_idx" ON "mailboxes" ("domainId");
+
+CREATE TABLE IF NOT EXISTS "mailbox_events" (
+  "id" TEXT NOT NULL,
+  "mailboxId" TEXT NOT NULL,
+  "kind" TEXT NOT NULL,
+  "contactId" TEXT,
+  "toAddr" TEXT,
+  "subject" TEXT,
+  "providerId" TEXT,
+  "meta" JSONB,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "mailbox_events_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "mailbox_events_mailboxId_createdAt_idx" ON "mailbox_events" ("mailboxId", "createdAt");
+CREATE INDEX IF NOT EXISTS "mailbox_events_mailboxId_kind_idx" ON "mailbox_events" ("mailboxId", "kind");
+
+ALTER TABLE "contact_emails" ADD COLUMN IF NOT EXISTS "mailboxId" TEXT;
+CREATE INDEX IF NOT EXISTS "contact_emails_mailboxId_idx" ON "contact_emails" ("mailboxId");
+
 CREATE INDEX IF NOT EXISTS "memory_chunks_embedding_hnsw_idx"
   ON "memory_chunks" USING hnsw ("embedding" vector_cosine_ops);
 -- Legacy ivfflat index (kept for older DBs; harmless if both exist). Once the

@@ -39,7 +39,10 @@ agent did what. Only team admins can mint workspace keys.
    `find_socials` (social profiles, verified or returned as candidates),
    `verify_entity` (public registries, free), `detect_tech` (site stack, free).
 4. Organize: `build_smart_segment`, `create_pipeline`, `add_to_pipeline`.
-5. Track: after email, `save_email_context` + `log_outreach`; after a social
+5. Track: `list_mailboxes` then `send_email` when an inbox is ready (that
+   delivers, saves the thread, and stamps outreach). If no mailbox is ready,
+   fall back to `save_email_context` + `log_outreach` and tell the operator.
+   After a social
    DM, `log_social_message` (it advances pipeline state itself); after calls,
    `place_call` / `log_call` / `sync_call`. `list_due_followups` finds who to
    chase. `update_pipeline_entry` moves stages; set `conversationStatus` to

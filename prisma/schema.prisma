@@ -99,6 +99,10 @@ model User {
   // within their approved credit ceiling.
   autopilotPlans    AutopilotPlan[]
   breakupDrafts     BreakupDraft[]
+  // Agent mailboxes: domains + inboxes the agent sends from (Premium Inboxes,
+  // GoDaddy, or BYOK SMTP). See docs/decisions/0015-agent-mailboxes.md.
+  domains           Domain[]
+  mailboxes         Mailbox[]
   // OAuth 2.1 authorization server: grants this human approved, and grants
   // that read this account (a workspace row only ever has the latter).
   oauthGrants       OauthGrant[] @relation("OauthGrantSubject")
@@ -433,6 +437,9 @@ model ContactEmail {
   // AgentMail linkage (nullable until a key is connected)
   agentMailMessageId String?
   agentMailThreadId  String?
+  // Scalar-managed mailbox this message was sent from / delivered to.
+  mailboxId      String?
+  mailbox        Mailbox?       @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
 
   direction      Emaildirection
   fromAddr       String?
@@ -447,6 +454,7 @@ model ContactEmail {
 
   @@index([contactId])
   @@index([agentMailThreadId])
+  @@index([mailboxId])
   @@map("contact_emails")
 }
 
@@ -1092,4 +1100,82 @@ model OauthToken {
   @@index([familyId])
   @@index([expiresAt])
   @@map("oauth_tokens")
+}
+
+// A sending domain the workspace owns or is buying (GoDaddy or already-owned).
+// Mailboxes hang off a domain when the local-part is provisioned on it.
+model Domain {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  registrar       String    @default("external") // godaddy | premium_inboxes | external
+  status          String    @default("active") // checking | available | purchasing | active | failed
+  godaddyDomainId String?
+  stripeSessionId String?
+  expiresAt       DateTime?
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  mailboxes       Mailbox[]
+
+  @@unique([userId, name])
+  @@index([userId, status])
+  @@map("domains")
+}
+
+// An agent mailbox: the identity an agent sends cold outreach from.
+// Purchased through Premium Inboxes (or Stripe-provisioned) or connected via
+// BYOK SMTP / AgentMail. Warmup is a real daily cap that climbs to ready.
+model Mailbox {
+  id                   String    @id @default(uuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId             String?
+  domain               Domain?   @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  email                String
+  displayName          String?
+  provider             String    @default("smtp") // premium_inboxes | smtp | agentmail | bird
+  status               String    @default("requested") // requested | provisioning | warming | ready | paused | failed
+  warmupStartedAt      DateTime?
+  warmupDay            Int       @default(0)
+  dailySendLimit       Int       @default(5)
+  sentToday            Int       @default(0)
+  sentTodayOn          DateTime?
+  stripeSubscriptionId String?
+  stripeSessionId      String?
+  providerInboxId      String?
+  providerOrderId      String?
+  smtpCiphertext       String?   @db.Text
+  smtpLast4            String?
+  warmupTargets        Json?
+  lastError            String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  events               MailboxEvent[]
+  emails               ContactEmail[]
+
+  @@unique([userId, email])
+  @@index([userId, status])
+  @@index([domainId])
+  @@map("mailboxes")
+}
+
+// Append-only mailbox history: warmup sends, outreach, bounces, replies,
+// provision updates. The mailbox row is the live state; this is the audit.
+model MailboxEvent {
+  id         String   @id @default(uuid())
+  mailboxId  String
+  mailbox    Mailbox  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  kind       String // warmup | outreach | bounce | reply | provision | pause | resume | clock
+  contactId  String?
+  toAddr     String?
+  subject    String?
+  providerId String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([mailboxId, createdAt])
+  @@index([mailboxId, kind])
+  @@map("mailbox_events")
 }

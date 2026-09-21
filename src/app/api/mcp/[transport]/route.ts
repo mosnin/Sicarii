@@ -103,6 +103,15 @@ import {
 } from "@/lib/autopilot-operations";
 import { draftBreakups, listPendingDrafts } from "@/lib/breakup-operations";
 import { createVariant, selectVariant, listVariantStats } from "@/lib/variant-operations";
+import {
+  draftOutreachForUser,
+  getMailbox,
+  listMailboxes,
+  pauseMailbox,
+  resumeMailbox,
+  searchDomainsForUser,
+  sendOutreachEmail,
+} from "@/lib/mailbox-operations";
 
 type ToolResult = {
   content: { type: "text"; text: string }[];
@@ -1165,6 +1174,87 @@ const handler = createMcpHandler(
       async ({ segmentId }, extra) =>
         run(() => listVariantStats(userIdFrom(extra), { segmentId: segmentId ?? undefined })),
     );
+
+    /* ---------------------- Agent mailboxes ----------------------- */
+    server.tool(
+      "list_mailboxes",
+      "List the workspace's agent mailboxes: address, provider, warmup day, daily send cap, remaining sends today. Use this before send_email so you know which identity can actually deliver.",
+      {},
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (_args, extra) => run(() => listMailboxes(userIdFrom(extra))),
+    );
+    server.tool(
+      "get_mailbox",
+      "Get one mailbox by id (status, warmup, remaining daily sends).",
+      { mailboxId: z.string() },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ mailboxId }, extra) => run(() => getMailbox(userIdFrom(extra), mailboxId)),
+    );
+    server.tool(
+      "search_domains",
+      "Search GoDaddy for domain availability and suggestions. Needs GODADDY_API_KEY. Use this when the operator wants a new sending domain; purchasing still happens in the app.",
+      { query: z.string().min(1).max(200) },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      async ({ query }, extra) => gated(extra, "search_domains", 20, () => searchDomainsForUser(query)),
+    );
+    server.tool(
+      "draft_outreach",
+      "Draft a short cold email (subject + body) for a contact: one idea, one question, no pitch dump. Does not send. Pass opener from select_variant when you have one.",
+      {
+        contactName: z.string().min(1).max(200),
+        company: z.string().max(200).optional(),
+        title: z.string().max(200).optional(),
+        opener: z.string().max(400).optional(),
+        senderName: z.string().max(80).optional(),
+      },
+      { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async (a, extra) =>
+        run(() =>
+          draftOutreachForUser(userIdFrom(extra), {
+            contactName: a.contactName,
+            company: a.company,
+            title: a.title,
+            opener: a.opener,
+            senderName: a.senderName,
+          }),
+        ),
+    );
+    server.tool(
+      "send_email",
+      "Send a real email to a contact from a Scalar mailbox. Logs the message on the contact, stamps lastContactedAt, and attributes variantId when provided. Fails if no mailbox is ready, the daily cap is hit, or the contact has no email. Costs 2 credits on a successful send. Prefer a ready mailbox; warming inboxes cannot send outreach until day 21.",
+      {
+        contactId: z.string(),
+        subject: z.string().min(1).max(200),
+        body: z.string().min(1).max(20_000),
+        mailboxId: z.string().optional(),
+        variantId: z.string().optional(),
+      },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      async (a, extra) =>
+        gated(extra, "send_email", 30, (userId) =>
+          sendOutreachEmail(userId, {
+            contactId: a.contactId,
+            subject: a.subject,
+            body: a.body,
+            mailboxId: a.mailboxId,
+            variantId: a.variantId ?? null,
+          }),
+        ),
+    );
+    server.tool(
+      "pause_mailbox",
+      "Pause a mailbox so agents cannot send from it until resume_mailbox.",
+      { mailboxId: z.string() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ mailboxId }, extra) => gated(extra, "pause_mailbox", 20, (userId) => pauseMailbox(userId, mailboxId)),
+    );
+    server.tool(
+      "resume_mailbox",
+      "Resume a paused mailbox.",
+      { mailboxId: z.string() },
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      async ({ mailboxId }, extra) => gated(extra, "resume_mailbox", 20, (userId) => resumeMailbox(userId, mailboxId)),
+    );
   },
   {
     serverInfo: { name: "scalar", version: "0.1.0" },
@@ -1175,7 +1265,7 @@ THE OPERATING LOOP
 2. Discover. Add companies with find_companies (research-grade prospecting from a prompt) or maps_leads (local businesses by query plus location). For a broad goal with multiple distinct slices (sub-verticals, geographies, funding stages, hiring signals), use swarm_discover instead: it fans out 2-6 angles in parallel, merges and dedupes across all of them plus the CRM, and tells you which angle found each company - more thorough than one find_companies call, at a clearly stated cost ceiling. All three dedupe against the CRM and add only new entities. Use google_search or search_web only to read raw web results, never to populate the CRM, and never present a search result as a company.
 3. Enrich. For a promising entity with a domain, call enrich_entity (firmographics; idempotent, so re-enriching is free). For a contact missing linkedin / email / phone, call enrich_contact. For their social profiles (LinkedIn, X, Instagram, Facebook), call find_socials: it auto-saves only name+company-verified profiles and returns the rest as candidates for you to review. Enrich what you will act on, not the whole database; every enrichment costs credits.
 4. Organize. Group not-yet-contacted prospects with build_smart_segment (costs credits when it matches prospects), then create_pipeline to track them through stages. Clean up as you go: update_segment/delete_segment/remove_segment_member and delete_pipeline/remove_pipeline_entry let you rename, retire, or prune segments and pipelines instead of leaving stale ones behind.
-5. Track outreach. This is the memory that makes you reliable. Before writing your first message to a segment (or in general), call select_variant (kind: subject or opener) to get the bandit's current best pick for that pool - it explores automatically while data is thin and converges on the winner as replies come in, so you never need to run your own A/B test. Use the returned text verbatim, then when you email a contact, call save_email_context, then log_outreach (with variantId set to what select_variant returned) to stamp when you reached out and advance status; use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message the same way (pass variantId on the OUTBOUND message; it advances pipeline state itself and attributes a later reply back to the variant automatically - use list_social_messages to reread a conversation). Check list_variant_stats any time to see reply rates and which variant is winning. If you're not testing variants, log_outreach/log_social_message work exactly the same without variantId. When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). For deals gone fully cold, call draft_breakups to write a grounded breakup email per stalled contact - it only drafts (list_pending_drafts to review); a human approves or dismisses in the app, you never send it yourself. Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping (costs 1 credit per memory actually saved).
+5. Track outreach. This is the memory that makes you reliable. Call list_mailboxes first: if a mailbox is ready, you can actually send. Before writing your first message to a segment (or in general), call select_variant (kind: subject or opener) to get the bandit's current best pick for that pool - it explores automatically while data is thin and converges on the winner as replies come in, so you never need to run your own A/B test. Use draft_outreach (optionally with that opener) if you want a short cold draft. Then send_email with the contact, subject, body, and variantId - that delivers from the mailbox, saves the thread, and stamps outreach in one call. If no mailbox is ready, fall back to save_email_context + log_outreach and tell the operator to finish /mailboxes. Use list_emails to reread the email history before you write the next one. When you message a lead on LinkedIn, X, Instagram, or Facebook, call log_social_message the same way (pass variantId on the OUTBOUND message; it advances pipeline state itself and attributes a later reply back to the variant automatically - use list_social_messages to reread a conversation). Check list_variant_stats any time to see reply rates and which variant is winning. If you're not testing variants, log_outreach/log_social_message work exactly the same without variantId. When you source a lead FROM a social platform, set source on create_contact so attribution stays honest. Use list_due_followups to find who to chase next (contacts not touched in N days). For deals gone fully cold, call draft_breakups to write a grounded breakup email per stalled contact - it only drafts (list_pending_drafts to review); a human approves or dismisses in the app, you never send it yourself. Move pipeline entries with update_pipeline_entry, and set conversationStatus to CLOSED when a thread is done so you stop following up. Before acting on an enriched field you're unsure about, call get_provenance to see its source, confidence, and staleness. remember any decision or context worth keeping (costs 1 credit per memory actually saved).
 6. Measure and repeat. Use pipeline_metrics and list_variant_stats to see what is working, then loop back to discovery.
 
 ACCURACY IS NON-NEGOTIABLE. Never attach data to the wrong person or company. Enrichment is verified against the contact's name AND their company/domain, so a same-name stranger is never saved; prefer a null over a wrong value. extract_contact_details returns raw site contacts for you to review; save only the ones you can attribute to a real person.

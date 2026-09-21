@@ -90,6 +90,11 @@ export const CREDIT_COSTS = {
   // stored memory - no new external data is created - so it is rate-limited
   // instead of credit-metered, matching "CRM reads are free."
   remember: 1,
+  // Real mailbox send (SMTP / AgentMail / Bird). Delivery uses the user's
+  // own inbox so provider cost is near zero; we still price a floor of 2
+  // credits so a runaway agent cannot spray unbounded mail for free. Warmup
+  // ticks are unmetered (internal).
+  send_email: 2,
 } as const;
 
 export type CreditAction = keyof typeof CREDIT_COSTS;

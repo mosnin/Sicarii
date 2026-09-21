@@ -676,11 +676,16 @@ export interface EmailInput {
   toAddr?: string | null;
   agentMailMessageId?: string | null;
   agentMailThreadId?: string | null;
+  mailboxId?: string | null;
   savedAsContext?: boolean;
   sentAt?: Date | null;
 }
 
-/** Save an email exchange onto a contact (e.g. agent-saved context). */
+/** Save an email exchange onto a contact (e.g. agent-saved context).
+ *  An INBOUND message that finds the contact in CONTACTED advances them to
+ *  REPLIED and attributes the reply to the most recent unreplied variant
+ *  send, the same way saveSocialMessage does. That closes the email-reply
+ *  gap on the outreach bandit. */
 export async function saveEmail(userId: string, input: EmailInput) {
   const contact = await prisma.contact.findUnique({
     where: { id: input.contactId },
@@ -688,7 +693,16 @@ export async function saveEmail(userId: string, input: EmailInput) {
   if (!contact || contact.userId !== userId)
     throw new OpError("Contact not found", 404);
   const { contactId, ...rest } = input;
-  return prisma.contactEmail.create({ data: { contactId, ...rest } });
+  const saved = await prisma.contactEmail.create({ data: { contactId, ...rest } });
+  const becomesReplied = input.direction === "INBOUND" && contact.status === "CONTACTED";
+  if (becomesReplied) {
+    await prisma.contact.update({
+      where: { id: contactId },
+      data: { status: "REPLIED" },
+    });
+    await attributeReply(contactId);
+  }
+  return saved;
 }
 
 /* -------------------------- Social messages ------------------------- */

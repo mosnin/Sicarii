@@ -89,6 +89,10 @@ const mustBeGated = [
   "verify_entity",
   "detect_tech",
   "place_call",
+  "search_domains",
+  "send_email",
+  "pause_mailbox",
+  "resume_mailbox",
 ];
 
 describe("MCP route: write tools are rate-limited", () => {
@@ -127,6 +131,9 @@ const readOnlyTools = [
   "list_contact_calls",
   "list_due_followups",
   "list_activities",
+  "list_mailboxes",
+  "get_mailbox",
+  "draft_outreach",
 ];
 
 describe("MCP route: read-only tools stay ungated", () => {

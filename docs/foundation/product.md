@@ -69,7 +69,8 @@ proof the product is working. (Quality-gated: deduped, named, real.)
 | **Entity** | A company. Enriched (firmographics, tech stack, funding, traffic, news, overview), deduped by domain. | Built |
 | **Contact** | A person, ideally linked to an Entity. Enrich LinkedIn/email/phone per-field. | Built |
 | **Deal** | An opportunity with stage + value, **advanced automatically by the agent** from activity. | Planned (today: status fields on records) |
-| **Email** | Threads via **AgentMail**, surfaced on the contact; agent can save messages as durable context. | Built (basic) |
+| **Email** | Threads on the contact, sent from a Scalar **Mailbox** (Premium Inboxes / SMTP / AgentMail) or saved as context. | Built |
+| **Mailbox** | An agent's sending identity: domain + inbox, warmup, daily cap. Humans buy or connect; agents send. | Built |
 | **Memory** | Token-efficient vector recall over messages + CRM data so the agent stays consistent. | Built |
 
 **Relationship rule:** contacts belong to entities. Unassigned contacts can be
@@ -113,7 +114,7 @@ high-stakes actions (e.g. sending email). Trust by construction, not by lockdown
 - **Intelligence:** Exa, Explorium, Pipe0, Bright Data, Tavily, Linkup; a small
   model (gpt-5-mini) refines noisy search into clean companies.
 - **Scheduling:** Inngest (intent monitors, research schedules).
-- **Email:** AgentMail (per-user key).
+- **Email:** Agent mailboxes (Premium Inboxes + GoDaddy + BYOK SMTP), plus optional AgentMail BYOK for thread sync.
 - **Agent access:** secure MCP server + per-user API keys, shared `crm-operations`
   layer so REST, MCP, and the in-app agent behave identically.
 

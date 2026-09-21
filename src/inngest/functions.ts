@@ -290,4 +290,16 @@ export const runAutopilotPlans = inngest.createFunction(
   }
 );
 
-export const functions = [runIntentMonitors, runResearchSchedules, runAutopilotPlans];
+export const runMailboxWarmup = inngest.createFunction(
+  {
+    id: "run-mailbox-warmup",
+    name: "Run mailbox warmup",
+    triggers: [{ cron: "20 * * * *" }],
+  },
+  async () => {
+    const { runWarmupTick } = await import("@/lib/mailbox-operations");
+    return runWarmupTick();
+  },
+);
+
+export const functions = [runIntentMonitors, runResearchSchedules, runAutopilotPlans, runMailboxWarmup];

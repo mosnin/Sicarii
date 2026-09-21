@@ -32,6 +32,7 @@
 | `decisions/0008-social-channels.md` | Social channels: profiles on contacts, find_socials discovery (accuracy rule intact), ContactSocialMessage + unified Conversations, source attribution | Revisiting social / conversations |
 | `decisions/0009-teams-v1.md` | Teams v1: Clerk Orgs + synthetic workspace accounts, lead sharing (deep copy + dedup-merge), workspace agent keys with attribution, team plan $299/30d | Revisiting teams / workspaces |
 | `decisions/0010-budgeted-autopilot.md` | Budgeted Autopilot: propose a spend plan (draft), human-only approval, atomic per-category budget guard on top of the real credit meter, scheduled execution loop (discovery/enrichment/outreach) over the existing Inngest cron | Revisiting autopilot / scheduled agent budgets |
+| `decisions/0015-agent-mailboxes.md` | Agent mailboxes: domain + inbox identity, Premium Inboxes / GoDaddy / SMTP, warmup, `send_email` | Revisiting outreach / email send |
 
 ## Working knowledge (grows with the product)
 

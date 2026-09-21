@@ -186,6 +186,71 @@ export function runEnvDoctor(env: Env = process.env): DoctorReport {
       ],
     },
     {
+      group: "Mailboxes",
+      checks: [
+        {
+          name: "GoDaddy domains",
+          status: isSet(env, "GODADDY_PAT") || allSet(env, ["GODADDY_API_KEY", "GODADDY_API_SECRET"])
+            ? "pass"
+            : isSet(env, "GODADDY_API_KEY") || isSet(env, "GODADDY_API_SECRET")
+              ? "partial"
+              : "missing",
+          vars: ["GODADDY_API_KEY", "GODADDY_API_SECRET", "GODADDY_PAT"],
+          detail:
+            isSet(env, "GODADDY_PAT") || allSet(env, ["GODADDY_API_KEY", "GODADDY_API_SECRET"])
+              ? "Live domain search is on."
+              : isSet(env, "GODADDY_API_KEY") || isSet(env, "GODADDY_API_SECRET")
+                ? "Partially set - need both GODADDY_API_KEY and GODADDY_API_SECRET, or a GODADDY_PAT."
+                : "Not set (optional). Domain search returns 501; operators can still add a domain they already own.",
+        },
+        allOrNothing(
+          "Premium Inboxes orders",
+          ["PREMIUM_INBOXES_API_KEY", "PREMIUM_INBOXES_API_URL"],
+          env,
+          "Places live inbox orders. Without these, checkout records a pending order for fulfillment.",
+        ),
+        optionalKey(
+          "Premium Inboxes webhook",
+          "PREMIUM_INBOXES_WEBHOOK_SECRET",
+          env,
+          "Verifies /api/webhooks/premium-inboxes when an inbox is provisioned.",
+        ),
+        optionalKey(
+          "Mailbox Stripe price",
+          "STRIPE_PRICE_MAILBOX",
+          env,
+          "Monthly inbox subscription. Without it, Request inbox records an order instead of charging.",
+        ),
+        optionalKey(
+          "Domain Stripe price",
+          "STRIPE_PRICE_DOMAIN",
+          env,
+          "One-time domain checkout. Without it, Buy on /mailboxes returns 501.",
+        ),
+        optionalKey(
+          "Mailbox encryption secret",
+          "MAILBOX_SECRET",
+          env,
+          "AES key for SMTP passwords. Falls back to MCP_OAUTH_SECRET / CLERK_SECRET_KEY.",
+        ),
+        optionalKey("Warmup sink", "WARMUP_SINK_EMAIL", env, "Address warmup ticks send to when a mailbox has no pool."),
+        {
+          name: "Bird email (optional)",
+          status: allSet(env, ["BIRD_API_KEY", "BIRD_WORKSPACE_ID", "BIRD_EMAIL_CHANNEL_ID"])
+            ? "pass"
+            : anySet(env, ["BIRD_API_KEY", "BIRD_WORKSPACE_ID", "BIRD_EMAIL_CHANNEL_ID"])
+              ? "partial"
+              : "missing",
+          vars: ["BIRD_API_KEY", "BIRD_WORKSPACE_ID", "BIRD_EMAIL_CHANNEL_ID"],
+          detail: allSet(env, ["BIRD_API_KEY", "BIRD_WORKSPACE_ID", "BIRD_EMAIL_CHANNEL_ID"])
+            ? "Bird send adapter is on."
+            : anySet(env, ["BIRD_API_KEY", "BIRD_WORKSPACE_ID", "BIRD_EMAIL_CHANNEL_ID"])
+              ? "Partially set - need API key, workspace, and email channel."
+              : "Not set (optional). SMTP remains the default send path.",
+        },
+      ],
+    },
+    {
       group: "Billing",
       checks: [
         (() => {
