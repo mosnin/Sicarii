@@ -79,9 +79,10 @@ export default async function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-base">Billing</CardTitle>
             <CardDescription>
-              Your plan and credit meter. Credits are spent only when an agent
-              pulls real data from the outside world; CRM reads and writes are
-              free, and a miss is never charged.
+              Your plan includes a monthly allowance. Agents can also pay per
+              call or per contact with USDC. Credits are spent only when an
+              agent pulls real data; CRM reads and writes are free, and a miss
+              is never charged.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -112,7 +113,9 @@ export default async function SettingsPage() {
             {billing && !PAID_PLANS.includes(billing.plan) && (
               <div className="mt-4 border-t border-border pt-4">
                 <p className="mb-3 text-sm text-muted-foreground">
-                  Upgrade for a bigger monthly allotment and scheduled monitors.
+                  A plan includes a monthly allowance. Agents can also pay per
+                  call or per contact with USDC, no subscription required.
+                  Upgrade if you want a bigger included run and scheduled monitors.
                 </p>
                 <BillingUpgrade />
               </div>

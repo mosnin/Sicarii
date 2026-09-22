@@ -2,11 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   buildRequirements,
   isX402Configured,
+  isX402PayTo,
   paymentRequiredBody,
   paymentRef,
+  resourceUrl,
   topUpHint,
   x402Network,
 } from "@/lib/x402";
+
+const TREASURY = "0x0000000000000000000000000000000000000001";
 import { PLAN_USD } from "@/lib/credits";
 
 const ORIGINAL = { ...process.env };
@@ -28,13 +32,13 @@ describe("isX402Configured", () => {
   });
 
   it("is on for testnet with just a wallet", () => {
-    process.env.X402_PAY_TO = "0xabc";
+    process.env.X402_PAY_TO = TREASURY;
     process.env.X402_NETWORK = "base-sepolia";
     expect(isX402Configured()).toBe(true);
   });
 
   it("requires CDP credentials on mainnet", () => {
-    process.env.X402_PAY_TO = "0xabc";
+    process.env.X402_PAY_TO = TREASURY;
     process.env.X402_NETWORK = "base"; // mainnet
     expect(isX402Configured()).toBe(false);
     process.env.CDP_API_KEY_ID = "id";
@@ -45,6 +49,19 @@ describe("isX402Configured", () => {
   it("defaults the network to base mainnet", () => {
     expect(x402Network()).toBe("base");
   });
+
+  it("treats an unknown network as base, never an arbitrary chain", () => {
+    process.env.X402_NETWORK = "ethereum";
+    expect(x402Network()).toBe("base");
+  });
+
+  it("ignores a pay-to that is not a 40-hex address", () => {
+    expect(isX402PayTo("0xabc")).toBe(false);
+    expect(isX402PayTo(TREASURY)).toBe(true);
+    process.env.X402_PAY_TO = "0xabc";
+    process.env.X402_NETWORK = "base-sepolia";
+    expect(isX402Configured()).toBe(false);
+  });
 });
 
 describe("topUpHint", () => {
@@ -53,15 +70,16 @@ describe("topUpHint", () => {
   });
 
   it("points at the top-up endpoint when configured", () => {
-    process.env.X402_PAY_TO = "0xabc";
+    process.env.X402_PAY_TO = TREASURY;
     process.env.X402_NETWORK = "base-sepolia";
+    expect(topUpHint()).toContain("/api/x402/pay");
     expect(topUpHint()).toContain("/api/x402/topup");
   });
 });
 
 describe("buildRequirements", () => {
   beforeEach(() => {
-    process.env.X402_PAY_TO = "0xTreasury";
+    process.env.X402_PAY_TO = TREASURY;
     process.env.X402_NETWORK = "base-sepolia";
   });
 
@@ -73,7 +91,7 @@ describe("buildRequirements", () => {
     });
     expect(req.scheme).toBe("exact");
     expect(req.network).toBe("base-sepolia");
-    expect(req.payTo).toBe("0xTreasury");
+    expect(req.payTo).toBe(TREASURY);
     expect(req.maxAmountRequired).toBe("10000000");
     expect(req.asset).toMatch(/^0x/);
     expect(req.resource).toBe("https://app.example/api/x402/topup");
@@ -83,7 +101,7 @@ describe("buildRequirements", () => {
 
 describe("paymentRequiredBody", () => {
   it("wraps requirements in an x402 challenge", () => {
-    process.env.X402_PAY_TO = "0xTreasury";
+    process.env.X402_PAY_TO = TREASURY;
     process.env.X402_NETWORK = "base-sepolia";
     const req = buildRequirements({
       priceUsd: 1,
@@ -108,6 +126,24 @@ describe("paymentRef", () => {
     // payments collide on one idempotency key. Null forces a 400 upstream.
     expect(paymentRef({} as never)).toBeNull();
     expect(paymentRef({ payload: { authorization: {} } } as never)).toBeNull();
+  });
+});
+
+describe("resourceUrl", () => {
+  afterEach(() => {
+    delete process.env.X402_RESOURCE_BASE;
+    delete process.env.NEXT_PUBLIC_APP_URL;
+  });
+
+  it("prefers X402_RESOURCE_BASE over the public app URL", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://app.example";
+    process.env.X402_RESOURCE_BASE = "https://pay.example/";
+    expect(resourceUrl("/api/x402/pay")).toBe("https://pay.example/api/x402/pay");
+  });
+
+  it("rejects a non-http origin and falls back to the live host", () => {
+    process.env.X402_RESOURCE_BASE = "javascript:alert(1)";
+    expect(resourceUrl("/api/x402/pay")).toBe("https://tryscalar.xyz/api/x402/pay");
   });
 });
 

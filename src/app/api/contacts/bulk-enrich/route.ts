@@ -7,6 +7,8 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { exaFindLinkedIn, isExaConfigured } from "@/lib/exa";
 import { findWorkEmail, findMobile, isPipe0Configured } from "@/lib/pipe0";
 import { OpError } from "@/lib/crm-operations";
+import { outOfCreditsError } from "@/lib/credits";
+import { jsonFromOpError } from "@/lib/http-error";
 import { spendCredits, hasCredits, type CreditAction } from "@/lib/credits";
 
 const schema = z.object({ ids: z.array(z.string().uuid()).min(1).max(25) });
@@ -145,10 +147,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (outOfCredits && enriched === 0) {
-      return NextResponse.json(
-        { error: "Out of credits. Upgrade your plan or wait for your monthly reset." },
-        { status: 402 },
-      );
+      return jsonFromOpError(outOfCreditsError("email"));
     }
     return NextResponse.json({ enriched, fieldsFilled, total: contacts.length, outOfCredits });
   } catch (e) {

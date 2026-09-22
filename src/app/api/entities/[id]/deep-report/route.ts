@@ -9,6 +9,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { analyzeSite, firecrawlSearch, isFirecrawlConfigured } from "@/lib/firecrawl";
 import { isMeaningful } from "@/lib/exa";
 import { OpError } from "@/lib/crm-operations";
+import { jsonFromOpError } from "@/lib/http-error";
 import { spendCredits, ensureCredits } from "@/lib/credits";
 
 export const maxDuration = 60;
@@ -185,9 +186,7 @@ For keyDecisionMakers, include only real named people (executives/leaders) with 
     return NextResponse.json({ ok: true, created, report });
   } catch (e) {
     if (e instanceof NextResponse) return e;
-    if (e instanceof OpError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
-    }
+    if (e instanceof OpError) return jsonFromOpError(e);
     console.error("POST /api/entities/[id]/deep-report", e);
     return NextResponse.json({ error: "Deep report failed" }, { status: 502 });
   }

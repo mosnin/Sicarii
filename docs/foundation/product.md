@@ -126,9 +126,10 @@ high-stakes actions (e.g. sending email). Trust by construction, not by lockdown
 
 ## Business model
 
-**Hybrid: seat + usage credits.** A base seat fee plus credits consumed by the
-expensive operations (discovery, enrichment, agent runs) - so price tracks value
-and provider cost.
+**Included allowance plus on-demand.** A plan includes a monthly credit
+allotment. Agents can also pay per call or per contact with USDC over x402, no
+subscription required. Extra usage (or all usage on a free account) is the same
+meter: 1 credit = $0.01, spent only when a paid lookup hits.
 
 ## Enrichment accuracy (non-negotiable)
 

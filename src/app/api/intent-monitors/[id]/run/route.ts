@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { isExaConfigured } from "@/lib/exa";
 import { runIntentMonitorOnce } from "@/lib/radar-run";
 import { OpError } from "@/lib/crm-operations";
+import { jsonFromOpError } from "@/lib/http-error";
 
 export const maxDuration = 60;
 
@@ -26,9 +27,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: true, found: result.found, added: result.added, runId: result.runId });
   } catch (e) {
     if (e instanceof NextResponse) return e;
-    if (e instanceof OpError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
-    }
+    if (e instanceof OpError) return jsonFromOpError(e);
     console.error("POST /api/intent-monitors/[id]/run", e);
     return NextResponse.json({ error: "Run failed" }, { status: 502 });
   }

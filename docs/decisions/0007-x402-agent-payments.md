@@ -70,3 +70,6 @@ CDP facilitator), still 501 until `X402_PAY_TO` + `CDP_API_KEY_*` are set.
 - `src/proxy.ts` - `/api/x402(.*)` is public (self-auth + X-PAYMENT proof).
 - Env: `X402_PAY_TO`, `X402_NETWORK`, `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`.
 - Tests: `tests/x402.test.ts`.
+
+Deepened by **0016**: pay per call or contact (`/api/x402/pay`, MCP `pay_for`).
+A plan is only an included monthly allowance.

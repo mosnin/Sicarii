@@ -84,6 +84,7 @@ const mustBeGated = [
   "maps_leads",
   "extract_contact_details",
   "google_search",
+  "pay_for",
   "buy_credits",
   "buy_plan",
   "verify_entity",

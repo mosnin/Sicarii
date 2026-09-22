@@ -6,7 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { exaIntentSearch } from "@/lib/exa";
 import { extractAndAddToCrm, type CreatedItem } from "@/lib/radar-extract";
-import { spendCredits } from "@/lib/credits";
+import { ensureCredits, spendCredits } from "@/lib/credits";
 
 export interface RunItem { title: string; url: string; summary?: string }
 export type { CreatedItem };
@@ -17,10 +17,9 @@ export async function runIntentMonitorOnce(monitor: {
   query: string;
   autoAdd: boolean;
 }): Promise<{ found: number; added: number; runId: string; created: CreatedItem[] }> {
-  // Each run consumes an Exa search; debit before running. When the user is
-  // out of credits, skip gracefully - the caller (cron or "Run now") logs the
-  // OpError and the monitor simply doesn't fire this cycle.
-  await spendCredits(monitor.userId, "monitor_run", { ref: monitor.id });
+  // Gate before the paid Exa call so an empty meter never incurs provider
+  // cost. Debit only when the lookup returns data (never a miss).
+  await ensureCredits(monitor.userId, "monitor_run");
 
   const results = await exaIntentSearch(monitor.query, {
     numResults: 10,
@@ -46,6 +45,10 @@ export async function runIntentMonitorOnce(monitor: {
     const result = await extractAndAddToCrm(monitor.userId, items);
     added = result.entitiesAdded + result.contactsAdded;
     created = result.created;
+  }
+
+  if (items.length > 0) {
+    await spendCredits(monitor.userId, "monitor_run", { ref: monitor.id });
   }
 
   const run = await prisma.monitorRun.create({

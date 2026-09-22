@@ -23,6 +23,7 @@ type Driver = {
 };
 
 const drivers: Driver[] = [
+  { id: "contacts", label: "Contacts (LinkedIn + email)", unit: "people", cost: 11, max: 400, step: 10, default: 80 },
   { id: "discovery", label: "Discovery runs", unit: "prompts", cost: 12, max: 200, step: 5, default: 40 },
   { id: "emails", label: "Verified emails", unit: "found", cost: 8, max: 600, step: 10, default: 120 },
   { id: "enrich", label: "Company enrichments", unit: "companies", cost: 30, max: 300, step: 5, default: 60 },
@@ -50,7 +51,11 @@ export function UsageEstimator() {
   const recommended = useMemo(() => {
     const fit = plans.find((p) => p.credits >= total);
     if (fit) return { name: fit.name, href: fit.href, note: "covers this every month" };
-    return { name: "Pro plus top-ups", href: "/sign-up?plan=pro", note: "or Business for a team" };
+    return {
+      name: "Pro plus on-demand",
+      href: "/sign-up?plan=pro",
+      note: "included allowance, then pay per call",
+    };
   }, [total]);
 
   const dollars = (total * 0.01).toFixed(0);

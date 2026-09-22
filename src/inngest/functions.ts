@@ -10,7 +10,7 @@ import { runIntentMonitorOnce } from "@/lib/radar-run";
 import { runAutopilotPlanOnce } from "@/lib/autopilot-run";
 import { rolloverAutopilotWindow, cadenceMs } from "@/lib/autopilot-operations";
 import { checkCreationBudget } from "@/lib/creation-guard";
-import { spendCredits } from "@/lib/credits";
+import { ensureCredits, spendCredits } from "@/lib/credits";
 
 type CreatedItem = { id: string; kind: "entity" | "contact"; name?: string | null; domain?: string | null; url?: string | null };
 
@@ -115,9 +115,9 @@ export const runResearchSchedules = inngest.createFunction(
         const useExa = schedule.provider === "exa" && isExaConfigured();
         if (!useLinkup && !useExa) continue;
 
-        // Each run consumes a deep-research call; debit before running. Out of
-        // credits = skip this cycle gracefully (logged by the catch below).
-        await spendCredits(schedule.userId, "deep_research", { ref: schedule.id });
+        // Gate before the paid provider call. Debit only when the lookup
+        // returns data (never a miss).
+        await ensureCredits(schedule.userId, "deep_research");
 
         let answer: string | undefined;
         let sources: { url: string; title?: string; snippet?: string }[] = [];
@@ -145,6 +145,10 @@ export const runResearchSchedules = inngest.createFunction(
           answer,
           ...sources.slice(0, 5).map((s) => [s.title, s.snippet].filter(Boolean).join(": ")),
         ].filter(Boolean).join("\n\n");
+
+        if (answer || sources.length > 0) {
+          await spendCredits(schedule.userId, "deep_research", { ref: schedule.id });
+        }
 
         if (schedule.targetType === "entity" && schedule.targetId) {
           await prisma.entity.updateMany({
