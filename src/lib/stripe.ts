@@ -90,6 +90,75 @@ export async function createCheckoutSession(opts: {
   return { url: data.url };
 }
 
+// Subscriptions that will still generate invoices. Canceled / ended / expired
+// rows are left alone (DELETE on those is unnecessary and can 400).
+const LIVE_SUB_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "paused",
+  "incomplete",
+]);
+
+/**
+ * Cancel every live Stripe subscription for a customer. Called from the Clerk
+ * user.deleted / organization.deleted handlers BEFORE the local User row is
+ * removed, so a deleted account cannot keep getting invoiced.
+ *
+ * Throws when Stripe is unreachable or rejects the cancel: the caller must
+ * fail the webhook so Clerk retries instead of deleting the row and losing
+ * the customer id. A missing STRIPE_SECRET_KEY with a known customer id is
+ * also an error — we must not silently skip billing teardown.
+ */
+export async function cancelSubscriptionsForCustomer(customerId: string): Promise<void> {
+  if (!customerId) return;
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("Cannot cancel Stripe subscriptions: STRIPE_SECRET_KEY is not set");
+  }
+
+  const listUrl =
+    `${STRIPE_API}/subscriptions?` +
+    encodeForm({ customer: customerId, status: "all", limit: "100" });
+
+  const listRes = await fetchWithTimeout(listUrl, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  if (!listRes.ok) {
+    const detail = await listRes.text().catch(() => "");
+    throw new Error(
+      `Stripe list subscriptions failed (${listRes.status}): ${detail.slice(0, 200)}`,
+    );
+  }
+
+  const payload = (await listRes.json().catch(() => null)) as
+    | { data?: Array<{ id?: string; status?: string }> }
+    | null;
+  const subs = (payload?.data ?? []).filter(
+    (s): s is { id: string; status: string } =>
+      typeof s.id === "string" &&
+      typeof s.status === "string" &&
+      LIVE_SUB_STATUSES.has(s.status),
+  );
+
+  for (const sub of subs) {
+    const del = await fetchWithTimeout(
+      `${STRIPE_API}/subscriptions/${encodeURIComponent(sub.id)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${key}` },
+      },
+    );
+    if (!del.ok && del.status !== 404) {
+      const detail = await del.text().catch(() => "");
+      throw new Error(
+        `Stripe cancel ${sub.id} failed (${del.status}): ${detail.slice(0, 200)}`,
+      );
+    }
+  }
+}
+
 /**
  * Verify a Stripe webhook signature (the `Stripe-Signature: t=...,v1=...`
  * header). Reproduces stripe.webhooks.constructEvent: HMAC-SHA256 of
