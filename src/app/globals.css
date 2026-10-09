@@ -1,11 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Scalar tokens, aligned to Twenty's design language (twentyhq/twenty,
+ * packages/twenty-ui/src/theme): a neutral gray scale, hairline borders
+ * instead of shadows, small radii, Inter at 13px, and one blue accent.
+ */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.28rem;
 
   /* Rainbow button colors */
   --color-1: 0 100% 63%;
@@ -14,107 +19,191 @@
   --color-4: 195 100% 63%;
   --color-5: 90 100% 63%;
 
-  /* Scalar - Charcoal & Green Palette */
+  /* Twenty gray scale (light): gray1..gray12 */
+  --gray-1: #ffffff;
+  --gray-2: #fcfcfc;
+  --gray-3: #f9f9f9;
+  --gray-4: #f1f1f1;
+  --gray-5: #ebebeb;
+  --gray-6: #d6d6d6;
+  --gray-7: #cccccc;
+  --gray-8: #b3b3b3;
+  --gray-9: #999999;
+  --gray-10: #838383;
+  --gray-11: #666666;
+  --gray-12: #333333;
+
+  /* Surfaces */
   --background: #ffffff;
-  --foreground: #1C1C1C;
+  --surface: #fcfcfc;          /* app chrome / sidebar (background.secondary) */
+  --surface-2: #f1f1f1;        /* background.tertiary */
+  --surface-3: #ebebeb;        /* background.quaternary */
+  --hover: rgba(0, 0, 0, 0.04);  /* background.transparent.light */
+  --pressed: rgba(0, 0, 0, 0.08);/* background.transparent.medium */
+
+  /* Text */
+  --foreground: #333333;
+  --fg-secondary: #666666;
+  --fg-tertiary: #999999;
+  --fg-light: #b3b3b3;
+
+  /* Borders */
+  --border-strong: #d6d6d6;
+  --border-light: #f1f1f1;
+
   --card: #ffffff;
-  --card-foreground: #1C1C1C;
+  --card-foreground: #333333;
   --popover: #ffffff;
-  --popover-foreground: #1C1C1C;
-  --primary: #5AB0E8;
+  --popover-foreground: #333333;
+  --primary: #3e63dd;
   --primary-foreground: #ffffff;
-  --secondary: #F5F5F5;
-  --secondary-foreground: #1C1C1C;
-  --muted: #F5F5F5;
+  --primary-soft: #edf2fe;     /* accent.tertiary */
+  --primary-soft-strong: #e1e9ff; /* accent4 */
+  --secondary: #f1f1f1;
+  --secondary-foreground: #333333;
+  --muted: #f1f1f1;
   --muted-foreground: #737373;
-  --accent: #E6F3FC;
-  --accent-foreground: #5AB0E8;
-  --destructive: #DC2626;
+  --accent: #f1f1f1;
+  --accent-foreground: #333333;
+  --destructive: #e5484d;
   --destructive-foreground: #ffffff;
-  --border: #E5E5E5;
-  --input: #E5E5E5;
-  --ring: #5AB0E8;
-  --success: #16A34A;
-  --warning: #EAB308;
-  --chart-1: #2E7DB3;
-  --chart-2: #5AB0E8;
-  --chart-3: #94A3B8;
-  --chart-4: #16A34A;
-  --chart-5: #EAB308;
-  --chart-background: oklch(1 0 0);
-  --chart-foreground: oklch(0.145 0.004 285);
-  --chart-foreground-muted: oklch(0.55 0.014 260);
+  --border: #ebebeb;
+  --input: #ebebeb;
+  --ring: #3e63dd;
+  --success: #30a46c;
+  --warning: #f76b15;
+
+  /* Twenty tag palette (text / background) */
+  --tag-blue: #3a5bc7;   --tag-blue-bg: #edf2fe;
+  --tag-green: #218358;  --tag-green-bg: #e6f6eb;
+  --tag-red: #ce2c31;    --tag-red-bg: #feebec;
+  --tag-orange: #cc4e00; --tag-orange-bg: #ffefd6;
+  --tag-purple: #8145b5; --tag-purple-bg: #f7edfe;
+  --tag-gray: #646464;   --tag-gray-bg: #f0f0f0;
+
+  --shadow-light: 0px 2px 4px 0px rgba(0, 0, 0, 0.04), 0px 0px 4px 0px rgba(0, 0, 0, 0.08);
+  --shadow-strong: 2px 4px 16px 0px rgba(0, 0, 0, 0.16), 0px 2px 4px 0px rgba(0, 0, 0, 0.08);
+  --shadow-heavy: 0px 0px 8px 0px rgba(0, 0, 0, 0.16), 0px 8px 64px -16px rgba(0, 0, 0, 0.48), 0px 24px 56px -16px rgba(0, 0, 0, 0.08);
+
+  --chart-1: #3e63dd;
+  --chart-2: #8da4ef;
+  --chart-3: #999999;
+  --chart-4: #30a46c;
+  --chart-5: #f76b15;
+  --chart-background: #ffffff;
+  --chart-foreground: #333333;
+  --chart-foreground-muted: #999999;
   --chart-line-primary: var(--chart-1);
   --chart-line-secondary: var(--chart-2);
-  --chart-crosshair: oklch(0.4 0.1828 274.34);
-  --chart-grid: oklch(0.9 0 0);
+  --chart-crosshair: #b3b3b3;
+  --chart-grid: #f1f1f1;
   --chart-brush-border: var(--chart-grid);
-  --chart-tooltip-background: oklch(0.21 0.006 285 / 0.8);
-  --chart-tooltip-foreground: oklch(0.985 0 0);
-  --chart-tooltip-muted: oklch(0.65 0.01 260);
-  --chart-marker-background: oklch(0.97 0.005 260);
-  --chart-marker-border: oklch(0.85 0.01 260);
-  --chart-marker-foreground: oklch(0.3 0.01 260);
-  --chart-label: oklch(0.45 0.01 260);
-  --chart-scale-01: oklch(0.98 0.003 106);
-  --chart-scale-02: oklch(0.92 0.008 106);
-  --chart-scale-03: oklch(0.82 0.015 106);
-  --chart-scale-04: oklch(0.68 0.02 106);
-  --chart-scale-05: oklch(0.55 0.025 106);
-  --chart-scale-pattern-color: oklch(0.96 0.005 106);
-  --info: var(--color-blue-500);
-  --info-foreground: var(--color-blue-700);
-  --success-foreground: var(--color-emerald-700);
-  --warning-foreground: var(--color-amber-700);
+  --chart-tooltip-background: rgba(0, 0, 0, 0.72);
+  --chart-tooltip-foreground: #ffffff;
+  --chart-tooltip-muted: rgba(255, 255, 255, 0.64);
+  --chart-marker-background: #f9f9f9;
+  --chart-marker-border: #d6d6d6;
+  --chart-marker-foreground: #333333;
+  --chart-label: #999999;
+  --chart-scale-01: #f9f9f9;
+  --chart-scale-02: #e1e9ff;
+  --chart-scale-03: #c1d0ff;
+  --chart-scale-04: #8da4ef;
+  --chart-scale-05: #3e63dd;
+  --chart-scale-pattern-color: #f1f1f1;
+  --info: var(--primary);
+  --info-foreground: #3a5bc7;
+  --success-foreground: #218358;
+  --warning-foreground: #cc4e00;
 }
 
 .dark {
-  --background: #0A0A0A;
-  --foreground: #F5F5F5;
-  --card: #141414;
-  --card-foreground: #F5F5F5;
-  --popover: #141414;
-  --popover-foreground: #F5F5F5;
-  --primary: #5AB0E8;
+  --gray-1: #171717;
+  --gray-2: #1b1b1b;
+  --gray-3: #1d1d1d;
+  --gray-4: #222222;
+  --gray-5: #292929;
+  --gray-6: #333333;
+  --gray-7: #4c4c4c;
+  --gray-8: #666666;
+  --gray-9: #818181;
+  --gray-10: #999999;
+  --gray-11: #b3b3b3;
+  --gray-12: #ebebeb;
+
+  --background: #171717;
+  --surface: #1b1b1b;
+  --surface-2: #1d1d1d;
+  --surface-3: #222222;
+  --hover: rgba(255, 255, 255, 0.06);
+  --pressed: rgba(255, 255, 255, 0.1);
+
+  --foreground: #ebebeb;
+  --fg-secondary: #b3b3b3;
+  --fg-tertiary: #818181;
+  --fg-light: #666666;
+
+  --border-strong: #484848;
+  --border-light: #1d1d1d;
+
+  --card: #171717;
+  --card-foreground: #ebebeb;
+  --popover: #1b1b1b;
+  --popover-foreground: #ebebeb;
+  --primary: #5472e4;
   --primary-foreground: #ffffff;
-  --secondary: #1C1C1C;
-  --secondary-foreground: #F5F5F5;
-  --muted: #1C1C1C;
-  --muted-foreground: #A3A3A3;
-  --accent: #1C1C1C;
-  --accent-foreground: #F5F5F5;
-  --destructive: #DC2626;
+  --primary-soft: #182449;
+  --primary-soft-strong: #1d2e62;
+  --secondary: #222222;
+  --secondary-foreground: #ebebeb;
+  --muted: #222222;
+  --muted-foreground: #8f8f8f;
+  --accent: #222222;
+  --accent-foreground: #ebebeb;
+  --destructive: #e5484d;
   --destructive-foreground: #ffffff;
-  --border: #2A2A2A;
-  --input: #2A2A2A;
-  --ring: #8FCCF2;
-  --success: #16A34A;
-  --warning: #EAB308;
-  --chart-1: #3E96D6;
-  --chart-2: #5AB0E8;
-  --chart-3: #64748B;
-  --chart-4: #22C55E;
-  --chart-5: #FACC15;
-  --chart-background: oklch(0.145 0 0);
-  --chart-foreground: oklch(0.45 0 0);
-  --chart-foreground-muted: oklch(0.65 0.01 260);
-  --chart-crosshair: oklch(0.45 0 0);
-  --chart-grid: oklch(0.25 0 0);
+  --border: #292929;
+  --input: #333333;
+  --ring: #5472e4;
+  --success: #30a46c;
+  --warning: #f76b15;
+
+  --tag-blue: #9eb1ff;   --tag-blue-bg: #182449;
+  --tag-green: #3dd68c;  --tag-green-bg: #132d21;
+  --tag-red: #ff9592;    --tag-red-bg: #3b1219;
+  --tag-orange: #ffa057; --tag-orange-bg: #331e0b;
+  --tag-purple: #d19dff; --tag-purple-bg: #301c3b;
+  --tag-gray: #b4b4b4;   --tag-gray-bg: #2a2a2a;
+
+  --shadow-light: 0px 2px 4px 0px rgba(0, 0, 0, 0.24), 0px 0px 4px 0px rgba(0, 0, 0, 0.48);
+  --shadow-strong: 2px 4px 16px 0px rgba(0, 0, 0, 0.48), 0px 2px 4px 0px rgba(0, 0, 0, 0.32);
+  --shadow-heavy: 0px 0px 8px 0px rgba(0, 0, 0, 0.48), 0px 8px 64px -16px rgba(0, 0, 0, 0.8), 0px 24px 56px -16px rgba(0, 0, 0, 0.32);
+
+  --chart-1: #5472e4;
+  --chart-2: #9eb1ff;
+  --chart-3: #818181;
+  --chart-4: #3dd68c;
+  --chart-5: #ffa057;
+  --chart-background: #171717;
+  --chart-foreground: #ebebeb;
+  --chart-foreground-muted: #818181;
+  --chart-crosshair: #666666;
+  --chart-grid: #222222;
   --chart-brush-border: var(--chart-grid);
-  --chart-marker-background: oklch(0.25 0.01 260);
-  --chart-marker-border: oklch(0.4 0.01 260);
-  --chart-marker-foreground: oklch(0.9 0 0);
-  --chart-label: oklch(0.75 0.01 260);
-  --chart-scale-01: oklch(0.28 0.03 270);
-  --chart-scale-02: oklch(0.38 0.04 270);
-  --chart-scale-03: oklch(0.48 0.05 270);
-  --chart-scale-04: oklch(0.58 0.06 270);
-  --chart-scale-05: oklch(0.68 0.07 270);
-  --chart-scale-pattern-color: oklch(0.145 0 0);
-  --info: var(--color-blue-500);
-  --info-foreground: var(--color-blue-400);
-  --success-foreground: var(--color-emerald-400);
-  --warning-foreground: var(--color-amber-400);
+  --chart-marker-background: #222222;
+  --chart-marker-border: #484848;
+  --chart-marker-foreground: #ebebeb;
+  --chart-label: #999999;
+  --chart-scale-01: #1d1d1d;
+  --chart-scale-02: #182449;
+  --chart-scale-03: #253974;
+  --chart-scale-04: #3a5bc7;
+  --chart-scale-05: #5472e4;
+  --chart-scale-pattern-color: #171717;
+  --info: var(--primary);
+  --info-foreground: #9eb1ff;
+  --success-foreground: #3dd68c;
+  --warning-foreground: #ffa057;
 }
 
 @theme inline {
@@ -140,25 +229,61 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
 
-  --color-charcoal: #1C1C1C;
-  --color-charcoal-light: #2A2A2A;
-  --color-charcoal-dark: #0A0A0A;
+  /* Twenty-aligned extras */
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-hover: var(--hover);
+  --color-pressed: var(--pressed);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-tertiary: var(--fg-tertiary);
+  --color-fg-light: var(--fg-light);
+  --color-border-strong: var(--border-strong);
+  --color-border-light: var(--border-light);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-strong: var(--primary-soft-strong);
+  --color-tag-blue: var(--tag-blue);
+  --color-tag-blue-bg: var(--tag-blue-bg);
+  --color-tag-green: var(--tag-green);
+  --color-tag-green-bg: var(--tag-green-bg);
+  --color-tag-red: var(--tag-red);
+  --color-tag-red-bg: var(--tag-red-bg);
+  --color-tag-orange: var(--tag-orange);
+  --color-tag-orange-bg: var(--tag-orange-bg);
+  --color-tag-purple: var(--tag-purple);
+  --color-tag-purple-bg: var(--tag-purple-bg);
+  --color-tag-gray: var(--tag-gray);
+  --color-tag-gray-bg: var(--tag-gray-bg);
+
+  /* Twenty elevation: hairlines first, shadows only for floating layers. */
+  --shadow-xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.04);
+  --shadow: var(--shadow-light);
+  --shadow-md: var(--shadow-light);
+  --shadow-lg: var(--shadow-strong);
+  --shadow-xl: var(--shadow-strong);
+  --shadow-2xl: var(--shadow-heavy);
+
+  /* Legacy charcoal names now resolve to the Twenty gray surfaces. */
+  --color-charcoal: var(--surface-3);
+  --color-charcoal-light: var(--surface-2);
+  --color-charcoal-dark: var(--surface);
 
   /* Brand green (canonical). Legacy `orange` tokens are repointed to green so
      existing text-orange/bg-orange utilities render on-brand; rename to
      `brand` over time (tracked as a debt). */
-  --color-brand: #5AB0E8;
-  --color-brand-light: #8FCCF2;
-  --color-brand-dark: #3A8FCC;
-  --color-brand-glow: rgba(90, 176, 232, 0.4);
-  --color-orange: #8FCCF2;
-  --color-orange-light: #BFE2F8;
-  --color-orange-dark: #5AB0E8;
-  --color-orange-glow: rgba(90, 176, 232, 0.4);
+  --color-brand: var(--primary);
+  --color-brand-light: #8da4ef;
+  --color-brand-dark: #3451b2;
+  --color-brand-glow: rgba(62, 99, 221, 0.25);
+  --color-orange: var(--primary);
+  --color-orange-light: #8da4ef;
+  --color-orange-dark: #3451b2;
+  --color-orange-glow: rgba(62, 99, 221, 0.25);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --font-brand: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-brand: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   /* Manifesto page (/manifesto) typefaces */
   --font-manrope: "Manrope", sans-serif;
   --font-italiana: "Italiana", serif;
@@ -278,8 +403,8 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(90, 176, 232, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(90, 176, 232, 0.6); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(62, 99, 221, 0.24); }
+  50% { box-shadow: 0 0 0 4px rgba(62, 99, 221, 0.12); }
 }
 
 @keyframes rainbow {
@@ -309,33 +434,93 @@ body {
   }
 }
 
-/* Scalar brand type - Space Grotesk, a clean geometric grotesk. Used for
-   headings and the wordmark in the app shell. Pairs with Inter body copy and
-   the ASCII signature in the dock. */
+/* Type follows Twenty: Inter everywhere, headings in semibold with a hair
+   of negative tracking. `.font-brand` is kept as the heading hook. */
 h1,
 .font-brand {
   font-family: var(--font-brand);
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
-/* Utility classes */
+/* Accent word: Twenty has no gradients, so the accent word is plain blue. */
 .text-gradient-orange {
-  background: linear-gradient(135deg, #5AB0E8, #8FCCF2, #BFE2F8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary);
 }
 
 .glow-button {
   position: relative;
-  background: linear-gradient(135deg, #5AB0E8, #3A8FCC);
-  box-shadow: 0 0 20px rgba(90, 176, 232, 0.4);
-  transition: all 0.3s ease;
+  background: var(--primary);
+  border: 1px solid color-mix(in oklab, var(--primary) 80%, black);
+  transition: background 0.1s ease;
 }
 
 .glow-button:hover {
-  box-shadow: 0 0 30px rgba(90, 176, 232, 0.6);
-  transform: translateY(-1px);
+  background: color-mix(in oklab, var(--primary) 90%, black);
+}
+
+/* ── App scale (signed-in product + auth) ─────────────────────────────────
+   Twenty runs at a 13px body. Any page that mounts `.app-shell` re-tunes the
+   Tailwind type ramp so existing utilities land on Twenty's sizes; `:has`
+   reaches portalled menus and dialogs too. Spacing is untouched. */
+:root:has(.app-shell) {
+  --text-xs: 0.6875rem;   /* 11px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.875rem;  /* 14px */
+  --text-lg: 1rem;        /* 16px */
+  --text-xl: 1.125rem;    /* 18px */
+  --text-2xl: 1.25rem;    /* 20px */
+  --text-3xl: 1.5rem;     /* 24px */
+  --text-4xl: 1.75rem;    /* 28px */
+  --text-5xl: 2rem;       /* 32px */
+  --text-6xl: 2.25rem;    /* 36px */
+  --tracking-widest: 0.04em;
+}
+:root:has(.app-shell) body {
+  background: var(--surface);
+  font-size: 0.8125rem;
+}
+.app-shell ::selection {
+  background: var(--primary-soft-strong);
+}
+
+/* Twenty-style section label: small, medium weight, tertiary gray. */
+.twenty-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--fg-tertiary);
+  letter-spacing: 0.01em;
+}
+
+/* Hairline grid table, the Twenty record table. */
+.twenty-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+}
+.twenty-table th {
+  height: 32px;
+  padding: 0 8px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--fg-tertiary);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+.twenty-table td {
+  height: 32px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.twenty-table th:last-child,
+.twenty-table td:last-child {
+  border-right: 0;
+}
+.twenty-table tbody tr:hover td {
+  background: var(--surface);
 }
 
 /* Phase tracker connector line */
@@ -354,7 +539,7 @@ h1,
 }
 
 .phase-connector.completed::after {
-  background: linear-gradient(90deg, #5AB0E8, #8FCCF2);
+  background: var(--primary);
 }
 
 @media (prefers-reduced-motion: reduce) {

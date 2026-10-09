@@ -9,55 +9,55 @@ import type { ReactNode } from "react";
 // swap them per resolved theme - otherwise the Clerk widget keeps dark text on
 // the light theme (the login page bug).
 const elements = {
-  card: "bg-card border border-border shadow-2xl rounded-2xl",
-  headerTitle: "font-brand text-foreground",
+  card: "bg-card border border-border shadow-lg rounded-[8px]",
+  headerTitle: "font-semibold text-foreground",
   headerSubtitle: "text-muted-foreground",
   socialButtonsBlockButton:
-    "border border-border bg-transparent hover:bg-muted text-foreground rounded-full",
+    "border border-border bg-transparent hover:bg-hover text-foreground rounded-[4px]",
   socialButtonsBlockButtonText: "text-foreground",
   dividerLine: "bg-border",
   dividerText: "text-muted-foreground",
   formFieldLabel: "text-muted-foreground",
-  formFieldInput: "border border-border text-foreground rounded-xl focus:border-primary",
+  formFieldInput: "border border-border text-foreground rounded-[4px] focus:border-primary",
   formButtonPrimary:
-    "bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-sm normal-case font-medium",
+    "bg-primary hover:bg-primary/90 text-primary-foreground rounded-[4px] shadow-none normal-case font-medium",
   footerActionText: "text-muted-foreground",
   footerActionLink: "text-primary hover:text-primary/80 font-medium",
   formFieldAction: "text-primary hover:text-primary/80",
   identityPreviewEditButton: "text-primary",
-  userButtonPopoverCard: "bg-card border border-border rounded-2xl",
-  userButtonPopoverActionButton: "hover:bg-muted text-foreground",
+  userButtonPopoverCard: "bg-card border border-border rounded-[8px]",
+  userButtonPopoverActionButton: "hover:bg-hover text-foreground",
   userButtonPopoverActionButtonText: "text-foreground",
-  badge: "bg-primary/10 text-primary",
-  avatarBox: "rounded-lg",
+  badge: "bg-tag-blue-bg text-tag-blue",
+  avatarBox: "rounded-[4px]",
 };
 
 const baseVars = {
-  colorPrimary: "#5AB0E8",
-  colorDanger: "#DC2626",
-  colorSuccess: "#16A34A",
-  colorWarning: "#EAB308",
-  borderRadius: "0.75rem",
+  colorPrimary: "#3E63DD",
+  colorDanger: "#E5484D",
+  colorSuccess: "#30A46C",
+  colorWarning: "#F76B15",
+  borderRadius: "0.25rem",
   fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-  fontSize: "0.95rem",
+  fontSize: "0.8125rem",
 };
 
 const lightVars = {
   colorBackground: "#ffffff",
-  colorText: "#1C1C1C",
-  colorTextSecondary: "#737373",
+  colorText: "#333333",
+  colorTextSecondary: "#666666",
   colorInputBackground: "#ffffff",
-  colorInputText: "#1C1C1C",
-  colorNeutral: "#1C1C1C",
+  colorInputText: "#333333",
+  colorNeutral: "#333333",
 };
 
 const darkVars = {
-  colorBackground: "#141414",
-  colorText: "#F5F5F5",
-  colorTextSecondary: "#A3A3A3",
-  colorInputBackground: "#1C1C1C",
-  colorInputText: "#F5F5F5",
-  colorNeutral: "#F5F5F5",
+  colorBackground: "#1B1B1B",
+  colorText: "#EBEBEB",
+  colorTextSecondary: "#B3B3B3",
+  colorInputBackground: "#171717",
+  colorInputText: "#EBEBEB",
+  colorNeutral: "#EBEBEB",
 };
 
 function ClerkThemed({ children }: { children: ReactNode }) {

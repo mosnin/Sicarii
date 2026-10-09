@@ -204,8 +204,8 @@ export function Citation(props: CitationProps) {
     >
       <div
         className={cn(
-          "group @container relative isolate flex w-full min-w-0 flex-col overflow-hidden rounded-xl",
-          "border-border bg-card border text-sm shadow-xs",
+          "group @container relative isolate flex w-full min-w-0 flex-col overflow-hidden rounded-[8px]",
+          "border-border bg-card border text-sm",
           "transition-colors duration-150",
           sanitizedHref && [
             "cursor-pointer",

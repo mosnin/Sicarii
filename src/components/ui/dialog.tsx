@@ -50,7 +50,7 @@ export const DialogTrigger = (
 export const dialogOverlayVariants = tv({
   base: [
     "fixed inset-0 z-50",
-    "bg-black/32 backdrop-blur-xs",
+    "bg-black/30",
     "duration-200",
     "peer peer-data-[slot=dialog-overlay]:hidden",
     "data-[state=open]:fade-in-0 data-[state=open]:animate-in",
@@ -109,7 +109,7 @@ export const dialogContentVariants = tv({
     "flex flex-col overflow-hidden",
     "bg-popover",
     "text-popover-foreground",
-    "rounded-2xl border shadow-lg/5",
+    "rounded-[8px] border shadow-2xl",
     "outline-none",
     "translate-y-[calc(-1.25rem*var(--nested-layer-count))]",
     "transition-[scale,opacity,translate] duration-200 ease-in-out will-change-transform",
@@ -325,7 +325,7 @@ export const DialogFooter = (props: React.ComponentProps<typeof ark.div>) => {
         "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
         "sm:rounded-b-[calc(var(--radius-2xl)-1px)]",
         "px-(--space) py-4",
-        "bg-muted/48",
+        "bg-surface",
         "border-t",
         className
       )}

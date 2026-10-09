@@ -33,11 +33,11 @@ export default function GlobalError({
         <button
           onClick={() => reset()}
           style={{
-            borderRadius: "9999px",
+            borderRadius: "4px",
             border: "none",
-            background: "#5AB0E8",
+            background: "#3E63DD",
             color: "#ffffff",
-            padding: "0.625rem 1.5rem",
+            padding: "0.5rem 1rem",
             fontWeight: 600,
             cursor: "pointer",
           }}

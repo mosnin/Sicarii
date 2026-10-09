@@ -31,7 +31,7 @@ export function SpotlightCard({
       ref={ref}
       onMouseMove={onMouseMove}
       className={cn(
-        "group relative overflow-hidden rounded-3xl border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-border/80 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20",
+        "group relative overflow-hidden rounded-[8px] border border-border bg-card transition-colors duration-150 hover:border-border-strong",
         className
       )}
     >
@@ -41,7 +41,7 @@ export function SpotlightCard({
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
           background:
-            "radial-gradient(360px circle at var(--x) var(--y), rgba(90,176,232,0.12), transparent 60%)",
+            "radial-gradient(360px circle at var(--x) var(--y), color-mix(in oklab, var(--primary) 6%, transparent), transparent 60%)",
         }}
       />
       {/* Top hairline */}
