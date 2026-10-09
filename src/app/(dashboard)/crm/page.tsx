@@ -34,8 +34,8 @@ export default async function CrmPage({
   if (!user) {
     return (
       <div className="space-y-2">
-        <h1 className="font-brand text-2xl sm:text-3xl text-foreground">CRM</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-semibold text-foreground">CRM</h1>
+        <p className="text-sm text-muted-foreground">
           Your account is being set up. Refresh in a moment.
         </p>
       </div>
@@ -48,25 +48,25 @@ export default async function CrmPage({
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <FloatIn delay={0} className="flex flex-wrap items-center justify-between gap-4">
+      <FloatIn delay={0} className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-brand text-2xl sm:text-3xl text-foreground">CRM</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-semibold text-foreground">CRM</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Your context engine - businesses and the people inside them, owned and
             enriched.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
             <Link href="/discover">
               Discover
             </Link>
           </Button>
-          <Button variant="glow" asChild>
+          <Button asChild>
             <Link href={tab === "entities" ? "/crm/entity/new" : "/crm/new"}>
-              <Plus className="mr-1 h-4 w-4" />
+              <Plus className="h-4 w-4" strokeWidth={1.6} />
               {tab === "entities" ? "Add entity" : "Add contact"}
             </Link>
           </Button>
@@ -75,20 +75,20 @@ export default async function CrmPage({
       </FloatIn>
 
       {/* Tabs */}
-      <FloatIn delay={0.06}>
+      <FloatIn delay={0.04}>
         <div className="flex gap-1 border-b border-border">
           <TabLink href="/crm?tab=contacts" active={tab === "contacts"}>
             Contacts
-            <span className="text-muted-foreground">{contactCount}</span>
+            <span className="text-muted-foreground/60 tabular-nums">{contactCount}</span>
           </TabLink>
           <TabLink href="/crm?tab=entities" active={tab === "entities"}>
             Entities
-            <span className="text-muted-foreground">{entityCount}</span>
+            <span className="text-muted-foreground/60 tabular-nums">{entityCount}</span>
           </TabLink>
         </div>
       </FloatIn>
 
-      <FloatIn delay={0.1}>
+      <FloatIn delay={0.06}>
         {tab === "contacts" ? (
           <ContactsList userId={user.id} page={page} />
         ) : (
@@ -152,7 +152,7 @@ function TabLink({
     <Link
       href={href}
       className={cn(
-        "-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm transition-colors",
+        "-mb-px flex h-9 items-center gap-1.5 border-b-2 px-2 text-sm transition-colors",
         active
           ? "border-primary text-foreground font-medium"
           : "border-transparent text-muted-foreground hover:text-foreground"
@@ -183,12 +183,12 @@ async function ContactsList({ userId, page }: { userId: string; page: number }) 
           description="Tell Scalar who you sell to and it discovers real people into your CRM, verified and deduped. Or add one by hand."
           action={
             <div className="flex flex-col items-center gap-2 sm:flex-row">
-              <Button variant="glow" asChild>
+              <Button asChild>
                 <Link href="/discover">Discover people</Link>
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/crm/new">
-                  <Plus className="mr-1 h-4 w-4" />
+                  <Plus className="h-4 w-4" strokeWidth={1.6} />
                   Add manually
                 </Link>
               </Button>
@@ -234,12 +234,12 @@ async function EntitiesList({ userId, page }: { userId: string; page: number }) 
           description="Describe your ideal customer and Scalar discovers matching businesses with full profiles, straight into your pipeline. Or add one by hand."
           action={
             <div className="flex flex-col items-center gap-2 sm:flex-row">
-              <Button variant="glow" asChild>
+              <Button asChild>
                 <Link href="/discover">Discover companies</Link>
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/crm/entity/new">
-                  <Plus className="mr-1 h-4 w-4" />
+                  <Plus className="h-4 w-4" strokeWidth={1.6} />
                   Add manually
                 </Link>
               </Button>

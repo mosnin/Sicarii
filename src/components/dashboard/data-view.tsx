@@ -68,9 +68,9 @@ function renderValue(value: unknown): React.ReactNode {
     const allScalar = value.every((v) => v === null || typeof v !== "object");
     if (allScalar) {
       return (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {value.map((v, i) => (
-            <span key={i} className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs">
+            <span key={i} className="inline-flex h-5 items-center rounded-[4px] bg-muted px-1.5 text-xs text-foreground">
               {String(v)}
             </span>
           ))}
@@ -80,7 +80,7 @@ function renderValue(value: unknown): React.ReactNode {
     return (
       <div className="space-y-2">
         {value.map((v, i) => (
-          <div key={i} className="rounded-lg border border-border/60 bg-muted/30 p-3">
+          <div key={i} className="rounded-[8px] border border-border p-2.5">
             {renderValue(v)}
           </div>
         ))}
@@ -94,10 +94,10 @@ function renderValue(value: unknown): React.ReactNode {
     );
     if (entries.length === 0) return <span className="text-muted-foreground">-</span>;
     return (
-      <div className="space-y-2">
+      <div className="space-y-1">
         {entries.map(([k, v]) => (
-          <div key={k} className="grid grid-cols-[minmax(0,9rem)_1fr] gap-3 text-sm">
-            <span className="text-xs text-muted-foreground pt-0.5">{humanizeKey(k)}</span>
+          <div key={k} className="grid min-h-6 grid-cols-[minmax(0,7rem)_1fr] items-start gap-2 text-sm">
+            <span className="truncate text-muted-foreground">{humanizeKey(k)}</span>
             <div className="min-w-0">{renderValue(v)}</div>
           </div>
         ))}

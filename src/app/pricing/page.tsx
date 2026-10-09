@@ -111,7 +111,7 @@ const creditCosts: { action: string; credits: string }[] = [
 
 function PriceTag({ plan }: { plan: Plan }) {
   if (plan.price === 0) {
-    return <span className="font-brand text-5xl text-foreground">$0</span>;
+    return <span className="font-semibold tracking-tight text-5xl text-foreground">$0</span>;
   }
   const list = plan.price * 2;
   return (
@@ -120,7 +120,7 @@ function PriceTag({ plan }: { plan: Plan }) {
         <span className="text-sm text-muted-foreground line-through">${list}</span>
       )}
       <div className="flex items-baseline gap-1">
-        <span className="font-brand text-5xl text-foreground">${plan.price}</span>
+        <span className="font-semibold tracking-tight text-5xl text-foreground">${plan.price}</span>
         <span className="text-sm text-muted-foreground">/mo</span>
       </div>
     </div>
@@ -139,7 +139,7 @@ export default function PricingPage() {
             {SALE && (
               <Badge variant="primary" className="mb-4">Launch sale: 50% off</Badge>
             )}
-            <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            <h1 className="font-semibold tracking-tight text-4xl text-foreground sm:text-5xl lg:text-6xl">
               Pricing that scales with{" "}
               <span className="text-gradient-orange">your pipeline</span>
             </h1>
@@ -165,15 +165,15 @@ export default function PricingPage() {
               {plans.map((plan, index) => (
                 <motion.div
                   key={plan.name}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 8 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: index * 0.08 }}
+                  transition={{ duration: 0.25, delay: index * 0.08 }}
                 >
                   <Card
                     className={cn(
-                      "relative flex h-full flex-col",
-                      plan.popular && "border-primary shadow-lg shadow-[0_8px_40px_-8px_rgba(90,176,232,0.35)]",
+                      "relative flex h-full flex-col rounded-[8px] border-border",
+                      plan.popular && "border-primary",
                     )}
                   >
                     {plan.popular && (
@@ -185,7 +185,7 @@ export default function PricingPage() {
                       </>
                     )}
                     <CardHeader className="text-center">
-                      <CardTitle className="font-brand text-xl">{plan.name}</CardTitle>
+                      <CardTitle className="text-xl font-semibold">{plan.name}</CardTitle>
                       <div className="mt-4">
                         <PriceTag plan={plan} />
                       </div>
@@ -202,7 +202,7 @@ export default function PricingPage() {
                         ))}
                       </ul>
                       <Button
-                        variant={plan.popular ? "glow" : "outline"}
+                        variant={plan.popular ? "default" : "outline"}
                         className="mt-8 w-full"
                         asChild
                       >
@@ -218,9 +218,9 @@ export default function PricingPage() {
             </div>
 
             {/* Enterprise strip */}
-            <div className="mt-6 rounded-3xl border border-border bg-card p-6 text-center sm:flex sm:items-center sm:justify-between sm:text-left">
+            <div className="mt-6 rounded-[8px] border border-border bg-background p-6 text-center sm:flex sm:items-center sm:justify-between sm:text-left">
               <div>
-                <p className="font-brand text-lg text-foreground">Enterprise</p>
+                <p className="text-lg font-semibold text-foreground">Enterprise</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Bring your own provider keys (cost pass-through, cheaper
                   credits), volume pricing, SSO, and an SLA.
@@ -237,8 +237,8 @@ export default function PricingPage() {
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">How credits work</p>
-              <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
+              <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">How credits work</p>
+              <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl">
                 You only pay for the <span className="text-gradient-orange">heavy lifting</span>
               </h2>
               <p className="mt-4 text-muted-foreground">
@@ -246,17 +246,17 @@ export default function PricingPage() {
                 credits only when an agent pulls real data from the outside world.
               </p>
             </div>
-            <div className="mt-10 overflow-hidden rounded-3xl border border-border bg-card">
+            <div className="mt-10 overflow-hidden rounded-[8px] border border-border bg-background">
               {creditCosts.map((row, i) => (
                 <div
                   key={row.action}
                   className={cn(
-                    "flex items-center justify-between px-6 py-3.5 text-sm",
-                    i !== 0 && "border-t border-border/70",
+                    "flex h-10 items-center justify-between px-4 text-sm",
+                    i !== 0 && "border-t border-border",
                   )}
                 >
                   <span className="text-foreground">{row.action}</span>
-                  <span className="font-brand text-primary">
+                  <span className="font-medium tabular-nums text-primary">
                     {row.credits} {row.credits === "1" ? "credit" : "credits"}
                   </span>
                 </div>
@@ -273,8 +273,8 @@ export default function PricingPage() {
         <section className="pb-24 sm:pb-28">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">Estimate</p>
-              <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
+              <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Estimate</p>
+              <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl">
                 Size it to <span className="text-gradient-orange">your month</span>
               </h2>
               <p className="mt-4 text-muted-foreground">

@@ -23,7 +23,7 @@ export type NeedsData = {
 
 export type WorklistItem = { count: number; title: string; body: string; href: string; urgent?: boolean };
 
-const EASE = [0.16, 1, 0.3, 1] as const;
+const EASE = "easeOut" as const;
 
 // Pure worklist builder: the ranked, non-empty items and their total. Ranked
 // most-urgent first (a reply waiting beats a cold company). Exported for tests.
@@ -42,65 +42,59 @@ export function NeedsYou({ needs }: { needs: NeedsData }) {
   const { items, total } = worklistItems(needs);
 
   return (
-    <div className="relative h-full overflow-hidden rounded-3xl bg-card shadow-[0_2px_12px_-2px_rgba(0,0,0,0.07),0_1px_4px_-1px_rgba(0,0,0,0.05)]">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{ background: "radial-gradient(ellipse 60% 80% at 0% 0%, rgba(90,176,232,0.08) 0%, transparent 65%)" }}
-      />
-      <div className="relative z-10 p-6 sm:p-8">
-        <div className="flex items-baseline justify-between">
-          <p className="font-brand text-xs uppercase tracking-[0.3em] text-primary">Needs you</p>
-          {total > 0 && (
-            <span className="text-xs text-muted-foreground">{total} {total === 1 ? "thing" : "things"}</span>
-          )}
-        </div>
-
-        {items.length === 0 ? (
-          <div className="mt-6 flex items-center gap-3">
-            <span className="relative flex h-2.5 w-2.5">
-              {!reduce && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />}
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-            </span>
-            <div>
-              <h3 className="font-brand text-xl text-foreground">You&apos;re all caught up.</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Your agent is still watching. Check back after your next radar run.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-5 space-y-2.5">
-            {items.map((item, i) => (
-              <motion.div
-                key={item.title}
-                initial={reduce ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, ease: EASE, delay: 0.05 * i }}
-              >
-                <Link
-                  href={item.href}
-                  className="group flex items-center gap-4 rounded-2xl border border-transparent bg-background/50 p-3.5 transition-colors hover:border-primary/30 hover:bg-accent/40"
-                >
-                  <span
-                    className={
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-brand text-lg tabular-nums " +
-                      (item.urgent ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary")
-                    }
-                  >
-                    {item.count}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground">
-                      {item.count} {item.title}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">{item.body}</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              </motion.div>
-            ))}
-          </div>
+    <section className="h-full rounded-[8px] border border-border bg-background">
+      <header className="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
+        <h2 className="text-sm font-medium text-foreground">Needs you</h2>
+        {total > 0 && (
+          <span className="text-sm tabular-nums text-fg-tertiary">{total} {total === 1 ? "thing" : "things"}</span>
         )}
-      </div>
-    </div>
+      </header>
+
+      {items.length === 0 ? (
+        <div className="flex items-start gap-2.5 px-3 py-4">
+          <span className="relative mt-1.5 flex h-2 w-2 shrink-0">
+            {!reduce && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-40" />}
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+          </span>
+          <div>
+            <h3 className="text-sm font-medium text-foreground">You&apos;re all caught up.</h3>
+            <p className="mt-0.5 text-sm text-fg-tertiary">Your agent is still watching. Check back after your next radar run.</p>
+          </div>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border">
+          {items.map((item, i) => (
+            <motion.li
+              key={item.title}
+              initial={reduce ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: EASE, delay: 0.03 * i }}
+            >
+              <Link
+                href={item.href}
+                className="group flex h-10 items-center gap-3 px-3 text-sm transition-colors hover:bg-surface"
+              >
+                <span
+                  className={
+                    "inline-flex h-5 min-w-7 shrink-0 items-center justify-center rounded-[4px] px-1.5 text-xs font-medium tabular-nums " +
+                    (item.urgent ? "bg-tag-blue-bg text-tag-blue" : "bg-surface-2 text-fg-secondary")
+                  }
+                >
+                  {item.count}
+                </span>
+                <span className="shrink-0 font-medium text-foreground">
+                  {item.count} {item.title}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-fg-tertiary">{item.body}</span>
+                <ArrowRight
+                  className="h-4 w-4 shrink-0 text-fg-tertiary opacity-0 transition-opacity group-hover:opacity-100"
+                  strokeWidth={1.6}
+                />
+              </Link>
+            </motion.li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

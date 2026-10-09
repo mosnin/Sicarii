@@ -18,10 +18,10 @@ export function WebhookUrl({ url }: { url: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
+    <div className="flex h-8 items-center gap-2 rounded-[4px] border border-border bg-muted/40 pl-2.5 pr-0.5">
       <code className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">{url}</code>
-      <Button variant="ghost" size="sm" onClick={copy} aria-label="Copy webhook URL">
-        {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+      <Button variant="ghost" size="icon-xs" onClick={copy} aria-label="Copy webhook URL">
+        {copied ? <Check className="h-4 w-4 text-success" strokeWidth={1.6} /> : <Copy className="h-4 w-4" strokeWidth={1.6} />}
       </Button>
     </div>
   );

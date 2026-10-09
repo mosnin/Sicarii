@@ -19,15 +19,15 @@ import { CountUp } from "@/components/ui/count-up";
 import { cn } from "@/lib/utils";
 import type { PulseData } from "@/lib/pulse";
 
-const EASE = [0.16, 1, 0.3, 1] as const;
+const EASE = "easeOut" as const;
 
 function Stat({ value, label, delay }: { value: number; label: string; delay: number }) {
   return (
     <div className="flex items-baseline gap-1.5">
-      <span className="font-brand text-2xl tabular-nums text-foreground sm:text-3xl">
+      <span className="text-xl font-semibold tabular-nums text-foreground">
         <CountUp value={value} duration={1.1 + delay * 0.2} />
       </span>
-      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm text-fg-tertiary">{label}</span>
     </div>
   );
 }
@@ -46,40 +46,34 @@ export function PulseMoment({ pulse }: { pulse: PulseData }) {
     <AnimatePresence initial={false}>
       {open && (
         <motion.div
-          initial={reduce ? false : { opacity: 0, height: 0, y: -8 }}
+          initial={reduce ? false : { opacity: 0, height: 0, y: -4 }}
           animate={{ opacity: 1, height: "auto", y: 0 }}
-          exit={reduce ? { opacity: 0 } : { opacity: 0, height: 0, y: -8, transition: { duration: 0.4, ease: EASE } }}
-          transition={{ duration: 0.6, ease: EASE }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, height: 0, y: -4, transition: { duration: 0.2, ease: EASE } }}
+          transition={{ duration: 0.25, ease: EASE }}
           className="overflow-hidden"
         >
-          <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.04] p-4 sm:p-5">
-            {/* soft blue wash */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0"
-              style={{ background: "radial-gradient(ellipse 60% 100% at 100% 0%, rgba(90,176,232,0.10) 0%, transparent 70%)" }}
-            />
-            <div className="relative flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="rounded-[8px] border border-border bg-background px-3 py-2">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <div className="flex items-center gap-2.5">
-                <span className="relative flex h-2.5 w-2.5">
-                  {!reduce && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />}
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
+                <span className="relative flex h-2 w-2">
+                  {!reduce && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-40" />}
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                 </span>
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-primary">
+                <span className="text-sm font-medium text-foreground">
                   While you were away
                 </span>
               </div>
 
               <motion.div
-                className="flex flex-wrap items-center gap-x-6 gap-y-1"
+                className="flex flex-wrap items-center gap-x-5 gap-y-1"
                 initial="hidden"
                 animate="show"
-                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12, delayChildren: 0.15 } } }}
+                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } } }}
               >
                 {stats.map((s, i) => (
                   <motion.div
                     key={s.label}
-                    variants={{ hidden: reduce ? {} : { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE } } }}
+                    variants={{ hidden: reduce ? {} : { opacity: 0, y: 4 }, show: { opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE } } }}
                   >
                     <Stat value={s.value} label={s.label} delay={i} />
                   </motion.div>
@@ -90,11 +84,14 @@ export function PulseMoment({ pulse }: { pulse: PulseData }) {
                 <motion.div
                   initial={reduce ? false : { opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6, duration: 0.5 }}
+                  transition={{ delay: 0.2, duration: 0.2 }}
                   className="ml-auto flex items-center gap-2 text-sm"
                 >
-                  <span className="text-muted-foreground">Latest:</span>
-                  <Link href="/crm?tab=entities" className="font-medium text-foreground hover:text-primary hover:underline">
+                  <span className="text-fg-tertiary">Latest:</span>
+                  <Link
+                    href="/crm?tab=entities"
+                    className="inline-flex h-5 items-center rounded-[4px] bg-surface-2 px-1.5 font-medium text-foreground transition-colors hover:bg-surface-3"
+                  >
                     {pulse.best.name}
                   </Link>
                 </motion.div>
@@ -105,11 +102,11 @@ export function PulseMoment({ pulse }: { pulse: PulseData }) {
                 onClick={() => setOpen(false)}
                 aria-label="Dismiss"
                 className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground",
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] text-fg-tertiary transition-colors hover:bg-hover hover:text-foreground",
                   pulse.best ? "" : "ml-auto",
                 )}
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" strokeWidth={1.6} />
               </button>
             </div>
           </div>

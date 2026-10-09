@@ -16,15 +16,15 @@ export default async function AutopilotPage() {
   const plans = user ? await listAutopilotPlans(user.id) : [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <FloatIn>
-        <div className="relative overflow-hidden rounded-3xl border border-border bg-card">
+        <div className="relative overflow-hidden rounded-[8px] border border-border bg-card">
           <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12] dark:opacity-30" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_0%,rgba(90,176,232,0.10),transparent_60%)]" />
-          <div className="relative z-10 px-6 py-9 sm:px-10 sm:py-12">
-            <p className="font-brand text-xs uppercase tracking-[0.25em] text-primary/80">Scalar // Autopilot</p>
-            <h1 className="font-brand mt-2 text-3xl text-foreground sm:text-4xl">Autopilot</h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+          <div className="relative z-10 px-4 py-6 sm:px-6 sm:py-8">
+            <p className="text-xs font-medium text-primary/80">Scalar // Autopilot</p>
+            <h1 className="mt-1 text-2xl font-semibold text-foreground">Autopilot</h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Scalar proposes a spend budget up front, split across discovery,
               enrichment, and outreach. Approve it once and it runs unsupervised
               on a schedule, hard-stopping cleanly at the cap instead of
@@ -35,8 +35,8 @@ export default async function AutopilotPage() {
       </FloatIn>
 
       {plans.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
-          <p className="font-brand text-base">No autopilot plans yet</p>
+        <div className="rounded-[8px] border border-dashed border-border p-8 text-center">
+          <p className="text-sm font-medium text-foreground">No autopilot plans yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Ask Scalar to propose a weekly budget for discovery and enrichment,
             then approve it here.
@@ -46,7 +46,7 @@ export default async function AutopilotPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {plans.map((p, i) => (
             <AutopilotPlanCard key={p.id} plan={p} delay={i * 0.05} />
           ))}

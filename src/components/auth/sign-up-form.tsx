@@ -17,11 +17,11 @@ export function SignUpForm() {
   const [agreed, setAgreed] = useState(false);
 
   return (
-    <div className="w-full min-w-0 overflow-hidden rounded-3xl border border-border bg-card/80 p-4 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-8 dark:shadow-black/40">
+    <div className="w-full min-w-0 overflow-hidden rounded-[8px] border border-border bg-card p-4 sm:p-6">
       <div
         className={cn(
-          "transition-all duration-300",
-          !agreed && "select-none opacity-40 blur-[1.5px]"
+          "transition-opacity duration-200",
+          !agreed && "select-none opacity-40"
         )}
         inert={!agreed}
       >
@@ -32,21 +32,21 @@ export function SignUpForm() {
         />
       </div>
 
-      <div className="mt-6">
+      <div className="mt-5">
         {!agreed && (
-          <p className="mb-4 text-center text-xs text-muted-foreground">
+          <p className="mb-3 text-center text-xs text-muted-foreground">
             Agree to the terms below to create your account.
           </p>
         )}
 
-        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-background/50 p-4 text-left transition-colors hover:border-orange/40">
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-[8px] border border-border bg-card p-3 text-left transition-colors hover:border-primary/30">
           <span
             className={cn(
-              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
-              agreed ? "border-orange bg-orange text-white" : "border-border bg-background"
+              "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
+              agreed ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
             )}
           >
-            {agreed && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+            {agreed && <Check className="h-3 w-3" strokeWidth={3} />}
           </span>
           <input
             type="checkbox"
@@ -56,11 +56,11 @@ export function SignUpForm() {
           />
           <span className="text-sm leading-relaxed text-muted-foreground">
             I agree to Scalar&apos;s{" "}
-            <Link href="/terms" className="text-orange hover:text-orange-dark">
+            <Link href="/terms" className="text-primary hover:underline">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="text-orange hover:text-orange-dark">
+            <Link href="/privacy" className="text-primary hover:underline">
               Privacy Policy
             </Link>
             .

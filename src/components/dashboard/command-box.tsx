@@ -76,13 +76,16 @@ export function CommandBox({ className }: { className?: string }) {
           submit(value);
         }}
         className={cn(
-          "group relative flex items-center gap-2 rounded-2xl border bg-card px-3 py-2 transition-all duration-300",
-          "border-border shadow-[0_2px_16px_-4px_rgba(90,176,232,0.18)]",
-          "focus-within:border-primary/50 focus-within:shadow-[0_6px_28px_-6px_rgba(90,176,232,0.35)]",
+          "group relative flex h-10 items-center gap-2 rounded-[8px] border border-border bg-background pl-2.5 pr-1 transition-[border-color,box-shadow] duration-100",
+          "focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/15",
         )}
       >
-        <span className="pl-1.5 text-primary">
-          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+        <span className="text-fg-tertiary">
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.6} />
+          ) : (
+            <Sparkles className="h-4 w-4" strokeWidth={1.6} />
+          )}
         </span>
 
         <div className="relative flex-1">
@@ -92,20 +95,20 @@ export function CommandBox({ className }: { className?: string }) {
             onChange={(e) => setValue(e.target.value)}
             disabled={loading}
             aria-label="Tell Scalar what to find"
-            className="w-full bg-transparent py-2 text-base text-foreground outline-none placeholder:text-transparent sm:text-lg"
+            className="w-full bg-transparent py-1.5 text-sm text-foreground outline-none placeholder:text-transparent"
           />
           {/* Animated placeholder: only when empty + idle */}
           {!value && !loading && (
-            <div className="pointer-events-none absolute inset-0 flex items-center overflow-hidden">
-              <span className="mr-1.5 text-muted-foreground">Try</span>
+            <div className="pointer-events-none absolute inset-0 flex items-center overflow-hidden text-sm">
+              <span className="mr-1 text-fg-light">Try</span>
               <AnimatePresence mode="wait">
                 <motion.span
                   key={exampleIdx}
-                  initial={reduce ? false : { y: 14, opacity: 0 }}
+                  initial={reduce ? false : { y: 6, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  exit={reduce ? { opacity: 0 } : { y: -14, opacity: 0 }}
-                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                  className="truncate text-muted-foreground"
+                  exit={reduce ? { opacity: 0 } : { y: -6, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="truncate text-fg-light"
                 >
                   {EXAMPLES[exampleIdx]}
                 </motion.span>
@@ -119,17 +122,17 @@ export function CommandBox({ className }: { className?: string }) {
           disabled={!value.trim() || loading}
           aria-label="Run"
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all",
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] transition-colors",
             value.trim() && !loading
-              ? "bg-primary text-primary-foreground hover:scale-105"
-              : "bg-muted text-muted-foreground",
+              ? "bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary)_90%,black)]"
+              : "bg-surface-2 text-fg-light",
           )}
         >
-          <ArrowRight className="h-5 w-5" />
+          <ArrowRight className="h-4 w-4" strokeWidth={1.6} />
         </button>
       </form>
 
-      <div className="mt-2 flex min-h-[1.25rem] items-center gap-2 pl-1 text-xs text-muted-foreground">
+      <div className="mt-1.5 flex min-h-[1.25rem] items-center gap-2 text-xs text-fg-tertiary">
         {error ? (
           <span className="text-destructive">{error}</span>
         ) : loading ? (

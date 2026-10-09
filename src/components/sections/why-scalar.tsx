@@ -35,8 +35,8 @@ export function WhyScalarSection() {
     <section id="why" className="relative scroll-mt-24 bg-background py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary">Why Scalar</p>
-          <h2 className="font-brand mt-3 flex flex-wrap items-baseline justify-center gap-x-2 text-3xl text-foreground sm:text-4xl lg:text-5xl">
+          <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Why Scalar</p>
+          <h2 className="font-semibold tracking-tight mt-3 flex flex-wrap items-baseline justify-center gap-x-2 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             <span>Scalar owns</span>
             <TextFlip
               as={motion.span}
@@ -58,15 +58,15 @@ export function WhyScalarSection() {
           {pillars.map((pillar, index) => (
             <motion.div
               key={pillar.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.45, delay: index * 0.08, ease: easeOut }}
+              transition={{ duration: 0.25, delay: index * 0.08, ease: easeOut }}
               className="h-full"
             >
               <SpotlightCard className="h-full p-6">
-                <span className="font-brand text-3xl text-primary tabular-nums">{pillar.n}</span>
-                <h3 className="font-brand mt-3 text-xl text-foreground">{pillar.title}</h3>
+                <span className="text-2xl font-semibold tabular-nums text-primary">{pillar.n}</span>
+                <h3 className="mt-3 text-xl font-medium text-foreground">{pillar.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{pillar.body}</p>
               </SpotlightCard>
             </motion.div>

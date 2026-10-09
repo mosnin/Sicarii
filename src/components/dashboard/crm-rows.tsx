@@ -73,12 +73,12 @@ const STATUS_RANK: Record<string, number> = {
 function FitChip({ score }: { score?: number }) {
   if (score == null) return null;
   const tone =
-    score >= 70 ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"
-    : score >= 40 ? "border-primary/30 bg-primary/10 text-primary"
-    : "border-border bg-muted text-muted-foreground";
+    score >= 70 ? "bg-green-500/10 text-green-600 dark:text-green-400"
+    : score >= 40 ? "bg-primary/10 text-primary"
+    : "bg-muted text-muted-foreground";
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums", tone)}>
-      <Target className="h-3 w-3" />
+    <span className={cn("inline-flex h-5 shrink-0 items-center gap-1 rounded-[4px] px-1.5 text-xs font-medium tabular-nums", tone)}>
+      <Target className="h-3 w-3" strokeWidth={1.6} />
       {score}
     </span>
   );
@@ -95,12 +95,29 @@ function RowCheckbox({ checked, onToggle, label }: { checked: boolean; onToggle:
       aria-label={label}
       onClick={onToggle}
       className={cn(
-        "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
-        checked ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/50"
+        "flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border transition-colors",
+        checked ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background hover:border-primary"
       )}
     >
-      {checked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+      {checked && <Check className="h-3 w-3" strokeWidth={3} />}
     </button>
+  );
+}
+
+/* -------- record table layout -------- */
+
+// One cell in the record grid: hairline right border, 8px gutter.
+const CELL = "flex h-full min-w-0 items-center gap-2 border-r border-border px-2 last:border-r-0";
+
+type Column = { label: string; className: string };
+
+// Small company/person chip used inside table cells (Twenty record chip).
+function RecordChip({ label, shape }: { label: string; shape: "circle" | "square" }) {
+  return (
+    <span className="inline-flex h-5 max-w-full items-center gap-1 rounded-[4px] bg-muted px-1 text-sm text-foreground">
+      <CrmAvatar label={label} shape={shape} size={14} />
+      <span className="truncate">{label}</span>
+    </span>
   );
 }
 
@@ -121,6 +138,7 @@ function CrmBrowser<T extends { id: string }>({
   hrefFor,
   renderRow,
   searchPlaceholder,
+  columns,
 }: {
   items: T[];
   kind: "contact" | "entity";
@@ -132,6 +150,7 @@ function CrmBrowser<T extends { id: string }>({
   hrefFor: (i: T) => string;
   renderRow: (i: T, score?: number) => React.ReactNode;
   searchPlaceholder: string;
+  columns: Column[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -267,44 +286,45 @@ function CrmBrowser<T extends { id: string }>({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative flex-1 sm:max-w-md">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.6} />
           <Input
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(0); if (smart) setSmart(null); }}
             onKeyDown={(e) => { if (e.key === "Enter") runSmart(); }}
             placeholder={searchPlaceholder}
-            className="pl-9 pr-9"
+            className="pl-8 pr-8"
           />
           {smartLoading ? (
-            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+            <Loader2 className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" strokeWidth={1.6} />
           ) : query ? (
             <button
               type="button"
               aria-label="Clear search"
               onClick={() => { setQuery(""); setPage(0); setSmart(null); }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-[4px] text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" strokeWidth={1.6} />
             </button>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:ml-auto">
           <div className="relative">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setFilterOpen((o) => !o)}
+              className={cn(filterOpen && "bg-muted text-foreground")}
             >
               Filter
               {(smart || fitActive || sortId !== sortOptions[0].id) && (
-                <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
               )}
-              <ChevronDown className={cn("ml-1 h-3.5 w-3.5 transition-transform", filterOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", filterOpen && "rotate-180")} strokeWidth={1.6} />
             </Button>
 
             <AnimatePresence>
@@ -314,16 +334,16 @@ function CrmBrowser<T extends { id: string }>({
                     type="button"
                     aria-hidden
                     onClick={() => setFilterOpen(false)}
-                    className="fixed inset-0 z-40 cursor-default bg-background/40 backdrop-blur-sm"
+                    className="fixed inset-0 z-40 cursor-default bg-transparent"
                   />
                   <motion.div
-                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                    transition={{ duration: 0.16 }}
-                    className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-border bg-card p-2 shadow-xl"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 z-50 mt-1 w-60 overflow-hidden rounded-[8px] border border-border bg-background p-1 shadow-lg"
                   >
-                    <p className="px-2 pb-1 pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Sort by</p>
+                    <p className="text-xs font-medium text-muted-foreground px-2 pb-1 pt-1.5">Sort by</p>
                     {sortOptions.map((o) => {
                       const active = !smart && !fitActive && sortId === o.id;
                       return (
@@ -332,22 +352,22 @@ function CrmBrowser<T extends { id: string }>({
                           type="button"
                           onClick={() => { setSmart(null); setFitActive(false); setSortId(o.id); setPage(0); setFilterOpen(false); }}
                           className={cn(
-                            "flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted",
+                            "flex h-8 w-full items-center justify-between rounded-[4px] px-2 text-left text-sm transition-colors hover:bg-muted",
                             active ? "text-foreground" : "text-muted-foreground"
                           )}
                         >
                           {o.label}
-                          {active && <Check className="h-3.5 w-3.5 text-primary" />}
+                          {active && <Check className="h-3.5 w-3.5 text-primary" strokeWidth={1.6} />}
                         </button>
                       );
                     })}
 
-                    <div className="my-1.5 h-px bg-border" />
+                    <div className="-mx-1 my-1 h-px bg-border" />
                     <button
                       type="button"
                       onClick={runFit}
                       disabled={fitLoading}
-                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                      className="flex h-8 w-full items-center justify-between rounded-[4px] px-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
                     >
                       <span>Score fit vs product</span>
                       {fitLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : fitActive ? <span className="text-xs font-medium text-primary">On</span> : null}
@@ -359,37 +379,38 @@ function CrmBrowser<T extends { id: string }>({
           </div>
 
           {!selectMode ? (
-            <Button variant="ghost" size="sm" onClick={() => setSelectMode(true)} className="text-muted-foreground">
+            <Button variant="ghost" size="sm" onClick={() => setSelectMode(true)}>
               Select
             </Button>
           ) : (
-            <Button variant="ghost" size="sm" onClick={exitSelect}>Cancel</Button>
+            <Button variant="ghost" size="sm" onClick={exitSelect} className="bg-muted text-foreground">Cancel</Button>
           )}
         </div>
       </div>
 
-      {smartErr && <p className="px-1 text-xs text-destructive">{smartErr}</p>}
+      {smartErr && <p className="text-xs text-destructive">{smartErr}</p>}
 
       {/* Select-mode action bar */}
       <AnimatePresence>
         {selectMode && (
           <motion.div
-            initial={{ opacity: 0, y: -6 }}
+            initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2"
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="flex h-10 items-center justify-between gap-3 rounded-[8px] border border-border bg-muted/30 px-3"
           >
-            <button type="button" onClick={toggleAll} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+            <button type="button" onClick={toggleAll} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
               <RowCheckbox checked={allSelected} onToggle={toggleAll} label="Select all" />
               {selected.size > 0 ? `${selected.size} selected` : "Select all"}
             </button>
             {selected.size > 0 && (
-              <div className="flex items-center gap-2">
-                <Button variant="glow" size="sm" onClick={() => { setResultText(null); setModalState("confirm"); setModalOpen(true); }}>
+              <div className="flex items-center gap-1.5">
+                <Button size="sm" onClick={() => { setResultText(null); setModalState("confirm"); setModalOpen(true); }}>
                   Enrich {selected.size}
                 </Button>
                 <Button variant="destructive" size="sm" onClick={remove} disabled={deleting}>
-                  {deleting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Delete {selected.size}
                 </Button>
               </div>
@@ -398,44 +419,58 @@ function CrmBrowser<T extends { id: string }>({
         )}
       </AnimatePresence>
 
-      {/* Rows */}
+      {/* Record table */}
       {pageItems.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
-          <p className="font-brand text-base text-foreground">No matches</p>
+        <div className="rounded-[8px] border border-border px-6 py-10 text-center">
+          <p className="text-sm font-medium text-foreground">No matches</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {query ? `Nothing matches "${query}".` : "Nothing here yet."}
           </p>
         </div>
       ) : (
-        <div className="space-y-2.5">
-          {pageItems.map((item, i) => (
-            <RowCard
-              key={item.id}
-              href={hrefFor(item)}
-              selectMode={selectMode}
-              selected={selected.has(item.id)}
-              onToggle={() => toggle(item.id)}
-              delay={Math.min(i * 0.03, 0.3)}
-            >
-              {renderRow(item, scores?.[item.id])}
-            </RowCard>
-          ))}
+        <div className="overflow-hidden rounded-[8px] border border-border bg-background">
+          <div className="flex h-8 items-stretch border-b border-border text-sm font-medium text-muted-foreground">
+            {selectMode && (
+              <div className="flex w-10 shrink-0 items-center justify-center border-r border-border">
+                <RowCheckbox checked={allSelected} onToggle={toggleAll} label="Select all" />
+              </div>
+            )}
+            <div className="flex min-w-0 flex-1 items-stretch">
+              {columns.map((c) => (
+                <div key={c.label} className={cn(CELL, "whitespace-nowrap", c.className)}>{c.label}</div>
+              ))}
+            </div>
+          </div>
+          <div className="divide-y divide-border">
+            {pageItems.map((item, i) => (
+              <RowCard
+                key={item.id}
+                href={hrefFor(item)}
+                selectMode={selectMode}
+                selected={selected.has(item.id)}
+                onToggle={() => toggle(item.id)}
+                delay={Math.min(i * 0.015, 0.15)}
+              >
+                {renderRow(item, scores?.[item.id])}
+              </RowCard>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Pagination */}
       {sorted.length > PAGE_SIZE && (
-        <div className="flex items-center justify-between px-1 pt-1">
-          <span className="text-xs text-muted-foreground">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground tabular-nums">
             {safePage * PAGE_SIZE + 1}-{Math.min(sorted.length, (safePage + 1) * PAGE_SIZE)} of {sorted.length}
           </span>
-          <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage === 0} onClick={() => setPage(safePage - 1)} aria-label="Previous page">
-              <ChevronLeft className="h-4 w-4" />
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon-sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)} aria-label="Previous page">
+              <ChevronLeft className="h-4 w-4" strokeWidth={1.6} />
             </Button>
-            <span className="px-1 text-xs text-muted-foreground tabular-nums">{safePage + 1} / {pageCount}</span>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)} aria-label="Next page">
-              <ChevronRight className="h-4 w-4" />
+            <span className="px-1.5 text-sm text-muted-foreground tabular-nums">{safePage + 1} / {pageCount}</span>
+            <Button variant="outline" size="icon-sm" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)} aria-label="Next page">
+              <ChevronRight className="h-4 w-4" strokeWidth={1.6} />
             </Button>
           </div>
         </div>
@@ -461,23 +496,44 @@ function RowCard({
 }) {
   return (
     <FloatIn delay={delay}>
-      <div className="group flex items-center gap-3">
-        {selectMode && <RowCheckbox checked={selected} onToggle={onToggle} label="Select row" />}
-        <Link
-          href={href}
-          className={cn(
-            "flex flex-1 items-center justify-between gap-4 rounded-2xl bg-card px-5 py-4",
-            "shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08),0_1px_3px_-1px_rgba(0,0,0,0.06)]",
-            "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_-4px_rgba(0,0,0,0.12),0_2px_6px_-2px_rgba(90,176,232,0.12)]",
-            selected && "ring-2 ring-primary/40"
-          )}
-        >
+      <div
+        className={cn(
+          "group flex h-10 items-stretch transition-colors",
+          selected ? "bg-primary/10" : "hover:bg-muted/40"
+        )}
+      >
+        {selectMode && (
+          <div className="flex w-10 shrink-0 items-center justify-center border-r border-border">
+            <RowCheckbox checked={selected} onToggle={onToggle} label="Select row" />
+          </div>
+        )}
+        <Link href={href} className="flex min-w-0 flex-1 items-stretch text-sm text-foreground">
           {children}
         </Link>
       </div>
     </FloatIn>
   );
 }
+
+/* -------- column sets (header + cells share widths) -------- */
+
+const CONTACT_COLS = {
+  name: "flex-1 min-w-[160px]",
+  company: "hidden w-44 shrink-0 md:flex",
+  email: "hidden w-56 shrink-0 lg:flex",
+  title: "hidden w-44 shrink-0 xl:flex",
+  status: "hidden w-28 shrink-0 sm:flex",
+  updated: "w-24 shrink-0 justify-end",
+};
+
+const ENTITY_COLS = {
+  name: "flex-1 min-w-[160px]",
+  industry: "hidden w-44 shrink-0 md:flex",
+  domain: "hidden w-48 shrink-0 lg:flex",
+  contacts: "hidden w-24 shrink-0 justify-end xl:flex",
+  status: "hidden w-28 shrink-0 sm:flex",
+  updated: "w-24 shrink-0 justify-end",
+};
 
 /* ================= Contacts ================= */
 
@@ -500,22 +556,36 @@ export function ContactRows({ contacts }: { contacts: CrmContact[] }) {
       searchText={(c) => [c.name, c.email, c.title, c.entity?.name, statusLabel(c.status)].filter(Boolean).join(" ")}
       sortOptions={sortOptions}
       hrefFor={(c) => `/crm/${c.id}`}
+      columns={[
+        { label: "Name", className: CONTACT_COLS.name },
+        { label: "Company", className: CONTACT_COLS.company },
+        { label: "Email", className: CONTACT_COLS.email },
+        { label: "Job title", className: CONTACT_COLS.title },
+        { label: "Status", className: CONTACT_COLS.status },
+        { label: "Updated", className: CONTACT_COLS.updated },
+      ]}
       renderRow={(c, score) => (
         <>
-          <CrmAvatar src={c.imageUrl} label={c.name || c.email} shape="circle" size={40} />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate font-medium text-foreground">{c.name || c.email || "Unnamed contact"}</span>
-              <Badge variant={statusColor(c.status) as Parameters<typeof Badge>[0]["variant"]}>{statusLabel(c.status)}</Badge>
-              <FitChip score={score} />
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              {c.entity?.name && <span className="truncate">{c.entity.name}</span>}
-              {c.email && <span className="truncate max-w-[200px]">{c.email}</span>}
-              {c.title && <span className="truncate">{c.title}</span>}
-            </div>
+          <div className={cn(CELL, CONTACT_COLS.name)}>
+            <CrmAvatar src={c.imageUrl} label={c.name || c.email} shape="circle" size={20} />
+            <span className="truncate font-medium text-foreground">{c.name || c.email || "Unnamed contact"}</span>
+            <FitChip score={score} />
           </div>
-          <span className="shrink-0 text-xs text-muted-foreground">{new Date(c.updatedAt).toLocaleDateString()}</span>
+          <div className={cn(CELL, CONTACT_COLS.company)}>
+            {c.entity?.name && <RecordChip label={c.entity.name} shape="square" />}
+          </div>
+          <div className={cn(CELL, CONTACT_COLS.email)}>
+            {c.email && <span className="truncate text-muted-foreground">{c.email}</span>}
+          </div>
+          <div className={cn(CELL, CONTACT_COLS.title)}>
+            {c.title && <span className="truncate text-muted-foreground">{c.title}</span>}
+          </div>
+          <div className={cn(CELL, CONTACT_COLS.status)}>
+            <Badge variant={statusColor(c.status) as Parameters<typeof Badge>[0]["variant"]}>{statusLabel(c.status)}</Badge>
+          </div>
+          <div className={cn(CELL, CONTACT_COLS.updated)}>
+            <span className="text-muted-foreground tabular-nums">{new Date(c.updatedAt).toLocaleDateString()}</span>
+          </div>
         </>
       )}
     />
@@ -545,22 +615,36 @@ export function EntityRows({ entities }: { entities: CrmEntity[] }) {
       searchText={(e) => [e.name, e.industry, e.domain, statusLabel(e.status)].filter(Boolean).join(" ")}
       sortOptions={sortOptions}
       hrefFor={(e) => `/crm/entity/${e.id}`}
+      columns={[
+        { label: "Name", className: ENTITY_COLS.name },
+        { label: "Industry", className: ENTITY_COLS.industry },
+        { label: "Domain", className: ENTITY_COLS.domain },
+        { label: "Contacts", className: ENTITY_COLS.contacts },
+        { label: "Status", className: ENTITY_COLS.status },
+        { label: "Updated", className: ENTITY_COLS.updated },
+      ]}
       renderRow={(e, score) => (
         <>
-          <CrmAvatar src={e.logoUrl} label={e.name} shape="square" size={40} />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate font-medium text-foreground">{e.name}</span>
-              <Badge variant={statusColor(e.status) as Parameters<typeof Badge>[0]["variant"]}>{statusLabel(e.status)}</Badge>
-              <FitChip score={score} />
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              {e.industry && <span className="truncate">{e.industry}</span>}
-              {e.domain && <span className="truncate">{e.domain}</span>}
-              <span>{e._count.contacts} contact{e._count.contacts === 1 ? "" : "s"}</span>
-            </div>
+          <div className={cn(CELL, ENTITY_COLS.name)}>
+            <CrmAvatar src={e.logoUrl} label={e.name} shape="square" size={20} />
+            <span className="truncate font-medium text-foreground">{e.name}</span>
+            <FitChip score={score} />
           </div>
-          <span className="shrink-0 text-xs text-muted-foreground">{new Date(e.updatedAt).toLocaleDateString()}</span>
+          <div className={cn(CELL, ENTITY_COLS.industry)}>
+            {e.industry && <span className="truncate text-muted-foreground">{e.industry}</span>}
+          </div>
+          <div className={cn(CELL, ENTITY_COLS.domain)}>
+            {e.domain && <span className="truncate text-muted-foreground">{e.domain}</span>}
+          </div>
+          <div className={cn(CELL, ENTITY_COLS.contacts)}>
+            <span className="text-muted-foreground tabular-nums">{e._count.contacts} contact{e._count.contacts === 1 ? "" : "s"}</span>
+          </div>
+          <div className={cn(CELL, ENTITY_COLS.status)}>
+            <Badge variant={statusColor(e.status) as Parameters<typeof Badge>[0]["variant"]}>{statusLabel(e.status)}</Badge>
+          </div>
+          <div className={cn(CELL, ENTITY_COLS.updated)}>
+            <span className="text-muted-foreground tabular-nums">{new Date(e.updatedAt).toLocaleDateString()}</span>
+          </div>
         </>
       )}
     />

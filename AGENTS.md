@@ -37,8 +37,8 @@ list rows - never as decorative chips above headings or beside stats.
 ## Design system
 
 Before building or restyling any UI, read `DESIGN.md` - the durable spec for the
-Scalar aesthetic (Twenty-aligned: neutral gray + blue-accent tokens, Inter
-13px app type, panel/table/tag patterns, the dashboard shell, the marketing ASCII field,
+Scalar aesthetic (baby-blue + white tokens on Twenty-style structure, Inter
+13px app type, panel/table/tag patterns, the dashboard shell, the ASCII field,
 motion/easing, mobile rules). Keep new work consistent with it; if you change a
 token or pattern, update `DESIGN.md` too.
 

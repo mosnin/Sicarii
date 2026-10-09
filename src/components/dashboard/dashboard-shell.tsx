@@ -2,7 +2,7 @@
 
 /**
  * DashboardShell - the signed-in app frame, laid out the way Twenty lays out
- * its CRM: a persistent gray navigation drawer on the left and the page in a
+ * its CRM, in Scalar's colors and with its ASCII signature: a persistent gray navigation drawer on the left and the page in a
  * white, hairline-bordered panel with a slim top bar.
  *
  * - Desktop (>= lg): the drawer is open by default and can be collapsed; the
@@ -32,6 +32,7 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
+import { AsciiField } from "@/components/dashboard/ascii-field";
 import {
   Home,
   Radar,
@@ -257,12 +258,14 @@ function Sidebar({
 
   return (
     <nav
-      className="flex h-full flex-col gap-3 px-2 pb-2 pt-3"
+      className="relative flex h-full flex-col gap-3 px-2 pb-2 pt-3"
       style={{ width: SIDEBAR_WIDTH }}
       aria-label="Primary sidebar"
     >
+      {/* The ASCII signature, a whisper behind the drawer. */}
+      <AsciiField className="pointer-events-none absolute inset-0 -z-0 h-full w-full opacity-[0.14] dark:opacity-30" />
       {/* ── Workspace header ── */}
-      <div className="group/ws flex h-7 items-center justify-between gap-1 pl-1">
+      <div className="group/ws relative flex h-7 items-center justify-between gap-1 pl-1">
         <Link
           href="/dashboard"
           className="flex min-w-0 items-center gap-2 rounded-[4px] px-0.5 py-0.5 transition-colors hover:bg-hover"
@@ -284,7 +287,7 @@ function Sidebar({
 
       {/* Personal vs team context: switching orgs re-scopes every page to the
           shared workspace CRM. */}
-      <div className="px-0.5">
+      <div className="relative px-0.5">
         <OrganizationSwitcher
           afterSelectOrganizationUrl="/dashboard"
           afterSelectPersonalUrl="/dashboard"
@@ -299,7 +302,7 @@ function Sidebar({
       </div>
 
       {/* ── Nav sections ── */}
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+      <div className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
         {NAV_SECTIONS.map((section) => (
           <div key={section.key} className="flex flex-col gap-px">
             {section.label && (
@@ -313,7 +316,7 @@ function Sidebar({
       </div>
 
       {/* ── Footer ── */}
-      <div className="flex flex-col gap-px">
+      <div className="relative flex flex-col gap-px">
         <button
           type="button"
           onClick={onOpenLaunchpad}

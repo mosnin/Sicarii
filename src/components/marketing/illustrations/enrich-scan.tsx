@@ -102,7 +102,7 @@ export function EnrichScan() {
               <div className="h-2 w-2/3 rounded-xs bg-muted" />
             </div>
 
-            <div className="ps-scan pointer-events-none absolute inset-x-0 h-8 bg-[linear-gradient(to_bottom,transparent,rgba(62, 99, 221,0.22),transparent)]" />
+            <div className="ps-scan pointer-events-none absolute inset-x-0 h-8 bg-[linear-gradient(to_bottom,transparent,rgba(90,176,232,0.22),transparent)]" />
           </div>
         </div>
 

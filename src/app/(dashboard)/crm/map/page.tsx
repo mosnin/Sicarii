@@ -71,52 +71,56 @@ export default function EntityMapPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <Link href="/crm?tab=entities" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to CRM
+        <Link href="/crm?tab=entities" className="inline-flex h-7 items-center gap-1 rounded-[4px] px-1.5 -ml-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" strokeWidth={1.6} /> Back to CRM
         </Link>
         {status && <span className="text-xs text-muted-foreground">{status}</span>}
       </div>
 
       <FloatIn>
-        <div className="relative h-[55vh] overflow-hidden rounded-3xl border border-border shadow-sm">
+        <div className="relative h-[55vh] overflow-hidden rounded-[8px] border border-border">
           <EntityMap entities={entities} onViewport={setViewport} />
         </div>
       </FloatIn>
 
       {/* Find entities here */}
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={1.6} />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") findHere(); }}
           placeholder="Find entities here, describe who you want, then Enter…"
-          className="pl-9 pr-28"
+          className="h-9 pl-8 pr-28"
         />
-        <Button size="sm" onClick={findHere} disabled={finding || !query.trim()} className="absolute right-1.5 top-1/2 -translate-y-1/2">
-          {finding ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Find here
+        <Button size="sm" onClick={findHere} disabled={finding || !query.trim()} className="absolute right-1 top-1/2 -translate-y-1/2">
+          {finding ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Find here
         </Button>
       </div>
 
       {/* Viewport list */}
       <div>
-        <p className="mb-2 text-sm text-muted-foreground">
+        <p className="mb-2 text-xs font-medium text-muted-foreground">
           {visible.length} {visible.length === 1 ? "company" : "companies"} in view
         </p>
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          {visible.map((e) => (
-            <Link key={e.id} href={`/crm/entity/${e.id}`}
-              className="rounded-2xl border border-border bg-card px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30">
-              <p className="font-medium text-foreground">{e.name}</p>
-              <p className="text-sm text-muted-foreground">{[e.industry, e.location].filter(Boolean).join(" · ") || e.domain}</p>
-            </Link>
-          ))}
-        </div>
+        {visible.length > 0 && (
+          <ul className="divide-y divide-border overflow-hidden rounded-[8px] border border-border bg-card">
+            {visible.map((e) => (
+              <li key={e.id}>
+                <Link href={`/crm/entity/${e.id}`}
+                  className="flex h-10 items-center gap-3 px-3 text-sm transition-colors hover:bg-muted/40">
+                  <span className="min-w-0 truncate font-medium text-foreground">{e.name}</span>
+                  <span className="ml-auto min-w-0 truncate text-muted-foreground">{[e.industry, e.location].filter(Boolean).join(" · ") || e.domain}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
         {entities.length === 0 && !status && (
-          <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
-            <p className="font-brand text-base">No mapped companies yet</p>
+          <div className="rounded-[8px] border border-dashed border-border px-6 py-10 text-center">
+            <p className="text-sm font-medium text-foreground">No mapped companies yet</p>
             <p className="mt-1 text-sm text-muted-foreground">Entities with an address appear here once geocoded, or use Find here to add some.</p>
           </div>
         )}

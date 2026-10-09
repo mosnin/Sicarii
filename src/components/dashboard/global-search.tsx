@@ -80,29 +80,29 @@ export function GlobalSearch() {
         }}
         onFocus={() => setOpen(true)}
         placeholder="Search contacts & companies…"
-        className="w-full rounded-full border border-border bg-background/60 px-5 py-3 text-sm text-foreground shadow-sm outline-none ring-2 ring-transparent backdrop-blur-md transition-shadow placeholder:text-muted-foreground focus:ring-primary/25"
+        className="h-8 w-full rounded-[4px] border border-input bg-background px-2.5 text-sm text-foreground placeholder:text-fg-light focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
       />
 
       <AnimatePresence>
         {showPanel && (
           <motion.div
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border bg-card/95 shadow-xl backdrop-blur-xl"
+            exit={{ opacity: 0, y: 2 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[8px] border border-border bg-background shadow-lg"
           >
             {loading && !hasResults ? (
-              <p className="px-4 py-3 text-sm text-muted-foreground">Searching…</p>
+              <p className="px-3 py-2.5 text-sm text-fg-tertiary">Searching…</p>
             ) : !hasResults ? (
-              <p className="px-4 py-3 text-sm text-muted-foreground">
+              <p className="px-3 py-2.5 text-sm text-fg-tertiary">
                 No matches for &ldquo;{q.trim()}&rdquo;
               </p>
             ) : (
               <div className="max-h-80 overflow-y-auto py-1">
                 {entities.length > 0 && (
-                  <div className="px-2 py-1">
-                    <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <div className="px-1 py-1">
+                    <p className="twenty-label px-2 pb-1 pt-1.5">
                       Companies
                     </p>
                     {entities.map((e) => (
@@ -110,10 +110,10 @@ export function GlobalSearch() {
                         key={e.id}
                         type="button"
                         onClick={() => go(`/crm/entity/${e.id}`)}
-                        className="flex w-full flex-col rounded-xl px-3 py-2 text-left transition-colors hover:bg-muted"
+                        className="flex w-full flex-col rounded-[4px] px-2 py-1.5 text-left transition-colors hover:bg-hover"
                       >
                         <span className="text-sm font-medium text-foreground">{e.name}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-fg-tertiary">
                           {[e.industry, e.domain].filter(Boolean).join(" · ") || "Company"}
                         </span>
                       </button>
@@ -121,8 +121,8 @@ export function GlobalSearch() {
                   </div>
                 )}
                 {contacts.length > 0 && (
-                  <div className="px-2 py-1">
-                    <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <div className="px-1 py-1">
+                    <p className="twenty-label px-2 pb-1 pt-1.5">
                       Contacts
                     </p>
                     {contacts.map((c) => (
@@ -130,12 +130,12 @@ export function GlobalSearch() {
                         key={c.id}
                         type="button"
                         onClick={() => go(`/crm/${c.id}`)}
-                        className="flex w-full flex-col rounded-xl px-3 py-2 text-left transition-colors hover:bg-muted"
+                        className="flex w-full flex-col rounded-[4px] px-2 py-1.5 text-left transition-colors hover:bg-hover"
                       >
                         <span className="text-sm font-medium text-foreground">
                           {c.name || c.email || "Contact"}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-fg-tertiary">
                           {[c.company, c.email].filter(Boolean).join(" · ") || "Contact"}
                         </span>
                       </button>

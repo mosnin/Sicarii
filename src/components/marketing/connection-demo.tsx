@@ -140,8 +140,8 @@ export function ConnectionDemo() {
   return (
     <div ref={rootRef} className="mx-auto grid w-full max-w-5xl gap-4 lg:grid-cols-2">
       {/* Config card with client tabs */}
-      <div className="overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-xl shadow-black/[0.04] dark:border-white/10 dark:shadow-black/40">
-        <div className="flex items-center gap-1 border-b border-border p-2 dark:border-white/10">
+      <div className="overflow-hidden rounded-[12px] border border-border bg-card">
+        <div className="flex items-center gap-1 border-b border-border p-2">
           {clients.map((c, i) => (
             <button
               key={c.id}
@@ -149,8 +149,8 @@ export function ConnectionDemo() {
               onClick={() => setClient(i)}
               aria-pressed={i === client}
               className={
-                "rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors " +
-                (i === client ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")
+                "rounded-[4px] px-3 py-1.5 text-xs font-medium transition-colors " +
+                (i === client ? "bg-pressed text-foreground" : "text-fg-secondary hover:bg-hover hover:text-foreground")
               }
             >
               {c.label}
@@ -159,7 +159,7 @@ export function ConnectionDemo() {
           <button
             type="button"
             onClick={copy}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-foreground"
           >
             {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
             {copied ? "Copied" : "Copy"}
@@ -180,13 +180,13 @@ export function ConnectionDemo() {
       </div>
 
       {/* Live handshake + tools */}
-      <div className="flex flex-col overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-xl shadow-black/[0.04] dark:border-white/10 dark:shadow-black/40">
-        <div className="flex items-center justify-between border-b border-border px-4 py-2.5 dark:border-white/10">
+      <div className="flex flex-col overflow-hidden rounded-[12px] border border-border bg-card">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <span className="font-mono text-[11px] text-muted-foreground">scalar / mcp</span>
           <button
             type="button"
             onClick={run}
-            className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="rounded-[4px] border border-border bg-background px-2.5 py-1 text-[11px] font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-foreground"
           >
             Replay
           </button>
@@ -222,8 +222,8 @@ export function ConnectionDemo() {
             <motion.div
               initial={reduce ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: EASE }}
-              className="grid grid-cols-2 gap-1.5 border-t border-border p-4 sm:grid-cols-3 dark:border-white/10"
+              transition={{ duration: 0.25, ease: EASE }}
+              className="grid grid-cols-2 gap-1.5 border-t border-border p-4 sm:grid-cols-3"
             >
               {tools.map((t, i) => (
                 <motion.span
@@ -231,7 +231,7 @@ export function ConnectionDemo() {
                   initial={reduce ? false : { opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.25, delay: i * 0.03, ease: EASE }}
-                  className="truncate rounded-lg border border-border bg-background/60 px-2.5 py-1.5 font-mono text-[11px] text-foreground/75 dark:border-white/10 dark:bg-white/[0.03]"
+                  className="truncate rounded-[4px] border border-border bg-background px-2.5 py-1.5 font-mono text-[11px] text-foreground/75"
                 >
                   {t}
                 </motion.span>

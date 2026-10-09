@@ -40,7 +40,7 @@ export function RecordPipeline({
       const tl = gsap.timeline({ repeat: -1, repeatDelay: 1.2 });
 
       tl.to(firstBoxRef.current, {
-        boxShadow: "0px 0px 5px 2px rgba(62, 99, 221, 1)",
+        boxShadow: "0px 0px 5px 2px rgba(90, 176, 232, 1)",
         duration: 1.5,
         delay: 0.2,
       });
@@ -114,7 +114,7 @@ export function RecordPipeline({
         "end",
       );
       tl.to(secondBoxRef.current, {
-        boxShadow: "0px 0px 5px 2px rgba(62, 99, 221, 1)",
+        boxShadow: "0px 0px 5px 2px rgba(90, 176, 232, 1)",
         duration: 1.5,
       });
     });
@@ -263,7 +263,7 @@ const GlowingBox = ({ icon, boxRef }: GlowingBoxProps) => {
   return (
     <div
       ref={boxRef}
-      style={{ boxShadow: "0px 0px 5px 2px rgba(62, 99, 221, 0)" }}
+      style={{ boxShadow: "0px 0px 5px 2px rgba(90, 176, 232, 0)" }}
       className={cn(
         "flex h-16 w-16 items-center justify-center rounded-md p-2",
         "border border-border",

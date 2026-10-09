@@ -28,30 +28,30 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="bg-muted/30 px-4 pb-6 sm:px-6 dark:bg-charcoal-dark">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-border bg-card dark:bg-white/[0.02]">
+    <footer className="bg-surface px-4 pb-6 sm:px-6">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-[12px] border border-border bg-background">
         <div className="px-6 py-12 sm:px-8 lg:px-12">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             {/* Brand */}
             <div className="col-span-2 space-y-4 md:col-span-1">
               <Link href="/" className="flex items-center gap-2">
-                <LogoMark className="h-7 w-7" />
-                <span className="font-brand text-lg font-bold text-foreground">Scalar</span>
+                <LogoMark className="h-6 w-6" />
+                <span className="text-base font-semibold text-foreground">Scalar</span>
               </Link>
-              <p className="max-w-xs text-sm text-muted-foreground">
+              <p className="max-w-xs text-sm text-fg-secondary">
                 The CRM your agents run. Discover leads, enrich your database, and
                 run email relationships - on data that never leaves your system.
               </p>
             </div>
 
             <div>
-              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Product</h4>
+              <h4 className="mb-4 text-xs font-medium text-fg-tertiary">Product</h4>
               <ul className="space-y-2.5">
                 {footerLinks.product.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-sm text-fg-secondary transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -61,13 +61,13 @@ export function Footer() {
             </div>
 
             <div>
-              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Company</h4>
+              <h4 className="mb-4 text-xs font-medium text-fg-tertiary">Company</h4>
               <ul className="space-y-2.5">
                 {footerLinks.company.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-sm text-fg-secondary transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -77,13 +77,13 @@ export function Footer() {
             </div>
 
             <div>
-              <h4 className="mb-4 text-xs uppercase tracking-[0.2em] text-orange/80">Legal</h4>
+              <h4 className="mb-4 text-xs font-medium text-fg-tertiary">Legal</h4>
               <ul className="space-y-2.5">
                 {footerLinks.legal.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-sm text-fg-secondary transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -95,10 +95,10 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col items-center gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-between sm:px-8 lg:px-12">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-fg-tertiary">
             &copy; {new Date().getFullYear()} Scalar. All rights reserved.
           </p>
-          <p className="text-xs text-muted-foreground">tryscalar.xyz</p>
+          <p className="text-xs text-fg-tertiary">tryscalar.xyz</p>
         </div>
       </div>
     </footer>

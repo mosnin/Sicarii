@@ -28,15 +28,15 @@ const elements = {
   userButtonPopoverCard: "bg-card border border-border rounded-[8px]",
   userButtonPopoverActionButton: "hover:bg-hover text-foreground",
   userButtonPopoverActionButtonText: "text-foreground",
-  badge: "bg-tag-blue-bg text-tag-blue",
+  badge: "bg-primary/10 text-primary",
   avatarBox: "rounded-[4px]",
 };
 
 const baseVars = {
-  colorPrimary: "#3E63DD",
-  colorDanger: "#E5484D",
-  colorSuccess: "#30A46C",
-  colorWarning: "#F76B15",
+  colorPrimary: "#5AB0E8",
+  colorDanger: "#DC2626",
+  colorSuccess: "#16A34A",
+  colorWarning: "#EAB308",
   borderRadius: "0.25rem",
   fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
   fontSize: "0.8125rem",
@@ -44,20 +44,20 @@ const baseVars = {
 
 const lightVars = {
   colorBackground: "#ffffff",
-  colorText: "#333333",
-  colorTextSecondary: "#666666",
+  colorText: "#1C1C1C",
+  colorTextSecondary: "#737373",
   colorInputBackground: "#ffffff",
-  colorInputText: "#333333",
-  colorNeutral: "#333333",
+  colorInputText: "#1C1C1C",
+  colorNeutral: "#1C1C1C",
 };
 
 const darkVars = {
-  colorBackground: "#1B1B1B",
-  colorText: "#EBEBEB",
-  colorTextSecondary: "#B3B3B3",
-  colorInputBackground: "#171717",
-  colorInputText: "#EBEBEB",
-  colorNeutral: "#EBEBEB",
+  colorBackground: "#141414",
+  colorText: "#F5F5F5",
+  colorTextSecondary: "#A3A3A3",
+  colorInputBackground: "#1C1C1C",
+  colorInputText: "#F5F5F5",
+  colorNeutral: "#F5F5F5",
 };
 
 function ClerkThemed({ children }: { children: ReactNode }) {

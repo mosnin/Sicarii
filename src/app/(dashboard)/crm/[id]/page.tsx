@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Inbox,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FloatIn } from "@/components/ui/float-in";
@@ -142,35 +141,35 @@ export default async function ContactDetailPage({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <FloatIn delay={0}>
         <Link
           href="/crm"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex h-7 items-center gap-1 rounded-[4px] px-1.5 -ml-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" strokeWidth={1.6} />
           Back to CRM
         </Link>
       </FloatIn>
 
-      <FloatIn delay={0.06}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <CrmAvatar src={contact.imageUrl} label={contact.name || contact.email} shape="circle" size={44} className="mt-0.5" />
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="font-brand text-2xl sm:text-3xl text-foreground">
+      <FloatIn delay={0.03}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <CrmAvatar src={contact.imageUrl} label={contact.name || contact.email} shape="circle" size={40} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate text-xl font-semibold text-foreground">
                   {contact.name || contact.email || "Unnamed contact"}
                 </h1>
                 <Badge variant={statusBadgeVariant(contact.status)}>
                   {statusLabel(contact.status)}
                 </Badge>
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 {contact.entity && (
                   <Link
                     href={`/crm/entity/${contact.entity.id}`}
-                    className="text-primary underline-offset-4 hover:underline"
+                    className="inline-flex h-5 items-center rounded-[4px] bg-muted px-1.5 text-foreground hover:bg-muted/80"
                   >
                     {contact.entity.name}
                   </Link>
@@ -191,23 +190,20 @@ export default async function ContactDetailPage({
 
       {/* Visible Trust: one headline rolling up all field provenance. */}
       {Object.keys(provenance).length > 0 && (
-        <FloatIn delay={0.09}>
+        <FloatIn delay={0.05}>
           <VerifiedStrip provenance={provenance} />
         </FloatIn>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         {/* Details */}
-        <FloatIn delay={0.1} className="lg:col-span-1 space-y-6">
+        <FloatIn delay={0.06} className="lg:col-span-1 space-y-4">
           <EnrichmentStatusCard
             tier={contactTier(contact)}
             action={<ContactEnrichAll contactId={contact.id} missing={missing} />}
           />
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <Panel title="Details">
+            <div className="space-y-0.5">
               {fields.map((f) => (
                 <FieldWithProvenance
                   key={f.label}
@@ -217,11 +213,13 @@ export default async function ContactDetailPage({
                   meta={f.provenanceField ? provenance[f.provenanceField] : undefined}
                 />
               ))}
-              {fields.every((f) => !f.value && !f.provenanceField) && (
-                <p className="text-sm text-muted-foreground">
-                  No details yet. Enrich this contact to fill them in.
-                </p>
-              )}
+            </div>
+            {fields.every((f) => !f.value && !f.provenanceField) && (
+              <p className="text-sm text-muted-foreground">
+                No details yet. Enrich this contact to fill them in.
+              </p>
+            )}
+            <div className="mt-3 space-y-3">
               <ContactEnrich contactId={contact.id} missing={missing} />
               <SocialsEditor
                 contactId={contact.id}
@@ -234,7 +232,7 @@ export default async function ContactDetailPage({
               />
               {!contact.entity && <MatchEntity contactId={contact.id} />}
               {contact.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-2">
+                <div className="flex flex-wrap gap-1">
                   {contact.tags.map((t) => (
                     <Badge key={t} variant="secondary">
                       {t}
@@ -243,118 +241,117 @@ export default async function ContactDetailPage({
                 </div>
               )}
               {contact.notes && (
-                <div className="pt-3 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-1">Notes</p>
-                  <p className="whitespace-pre-wrap text-sm">{contact.notes}</p>
+                <div className="border-t border-border pt-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Notes</p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{contact.notes}</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </Panel>
         </FloatIn>
 
         {/* Email - AgentMail threads + saved context */}
-        <FloatIn delay={0.14} className="lg:col-span-2 space-y-6">
+        <FloatIn delay={0.08} className="lg:col-span-2 space-y-4">
           <ContactAgentMail contactId={contact.id} />
           <ContactAgentPhone contactId={contact.id} />
 
           {/* Activity trail + QuickNote morph surface */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Activity</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <QuickNote contactId={contact.id} />
-              {activities.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No activity yet. Notes you or your agent log will show up here.
-                </p>
-              ) : (
-                <div className="divide-y divide-border">
-                  {activities.map((a) => (
-                    <div key={a.id} className="py-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          {a.kind}
-                          {a.channel ? ` · ${a.channel}` : ""}
-                          {a.actorLabel ? ` · ${a.actorLabel}` : ""}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(a.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
-                        {a.body}
-                      </p>
+          <Panel title="Activity">
+            <QuickNote contactId={contact.id} />
+            {activities.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                No activity yet. Notes you or your agent log will show up here.
+              </p>
+            ) : (
+              <div className="mt-3 divide-y divide-border rounded-[8px] border border-border">
+                {activities.map((a) => (
+                  <div key={a.id} className="px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {a.kind}
+                        {a.channel ? ` · ${a.channel}` : ""}
+                        {a.actorLabel ? ` · ${a.actorLabel}` : ""}
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {new Date(a.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+                      {a.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Conversations</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <LogSocialMessage contactId={contact.id} />
-              {conversations.length === 0 ? (
-                <EmptyState
-                  icon={Inbox}
-                  title="No conversations yet"
-                  description="Email threads (via AgentMail) and social messages your agent or you log will appear here as one history, labeled by channel."
-                />
-              ) : (
-                <div className="space-y-4">
-                  {conversations.map((m) => (
-                    <div
-                      key={m.id}
-                      className="rounded-xl border border-border bg-card/50 p-4"
-                    >
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{m.channelLabel}</Badge>
-                          <Badge
-                            variant={
-                              m.direction === "OUTBOUND" ? "orange" : "secondary"
-                            }
-                          >
-                            {m.direction === "OUTBOUND" ? "Sent" : "Received"}
-                          </Badge>
-                          {m.savedAsContext && (
-                            <Badge variant="success">Saved as context</Badge>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(m.at).toLocaleString()}
-                        </span>
-                      </div>
-                      {m.subject && (
-                        <p className="font-medium">{m.subject}</p>
-                      )}
-                      {m.body && (
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                          {m.body}
-                        </p>
-                      )}
-                      {m.threadRef && (
-                        <a
-                          href={m.threadRef.startsWith("https://") ? m.threadRef : undefined}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+          <Panel title="Conversations">
+            <LogSocialMessage contactId={contact.id} />
+            {conversations.length === 0 ? (
+              <EmptyState
+                icon={Inbox}
+                title="No conversations yet"
+                description="Email threads (via AgentMail) and social messages your agent or you log will appear here as one history, labeled by channel."
+              />
+            ) : (
+              <div className="mt-3 divide-y divide-border rounded-[8px] border border-border">
+                {conversations.map((m) => (
+                  <div key={m.id} className="px-3 py-2.5">
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1">
+                        <Badge variant="secondary">{m.channelLabel}</Badge>
+                        <Badge
+                          variant={
+                            m.direction === "OUTBOUND" ? "primary" : "secondary"
+                          }
                         >
-                          {m.threadRef.startsWith("https://") ? "Open thread" : m.threadRef}
-                        </a>
-                      )}
+                          {m.direction === "OUTBOUND" ? "Sent" : "Received"}
+                        </Badge>
+                        {m.savedAsContext && (
+                          <Badge variant="success">Saved as context</Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {new Date(m.at).toLocaleString()}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    {m.subject && (
+                      <p className="text-sm font-medium text-foreground">{m.subject}</p>
+                    )}
+                    {m.body && (
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                        {m.body}
+                      </p>
+                    )}
+                    {m.threadRef && (
+                      <a
+                        href={m.threadRef.startsWith("https://") ? m.threadRef : undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+                      >
+                        {m.threadRef.startsWith("https://") ? "Open thread" : m.threadRef}
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
         </FloatIn>
       </div>
     </div>
+  );
+}
+
+// Twenty show-page panel: hairline border, 40px header row, padded body.
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-[8px] border border-border bg-background">
+      <header className="flex h-10 items-center border-b border-border px-3">
+        <h2 className="text-sm font-medium text-foreground">{title}</h2>
+      </header>
+      <div className="p-3">{children}</div>
+    </section>
   );
 }

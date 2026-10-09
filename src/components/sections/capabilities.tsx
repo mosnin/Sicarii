@@ -55,8 +55,8 @@ const panelContainer = {
   show: { transition: { staggerChildren: 0.08, delayChildren: 0.08 } },
 };
 const panelItem = {
-  hidden: { opacity: 0, y: 12, filter: "blur(4px)" },
-  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE } },
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: EASE } },
 };
 
 function PanelFrame({ children, reduce }: { children: React.ReactNode; reduce: boolean | null }) {
@@ -81,7 +81,7 @@ function DiscoverPanel({ reduce }: { reduce: boolean | null }) {
   ];
   return (
     <PanelFrame reduce={reduce}>
-      <motion.div variants={panelItem} className="flex items-center gap-2 rounded-xl border border-border bg-background/60 px-3 py-2.5 font-mono text-xs text-foreground/80 dark:border-white/10 dark:bg-white/[0.03]">
+      <motion.div variants={panelItem} className="flex items-center gap-2 rounded-[4px] border border-border bg-background px-3 py-2.5 font-mono text-xs text-foreground/80">
         <span className="text-muted-foreground">search</span>
         Series B fintech in New York
       </motion.div>
@@ -93,11 +93,11 @@ function DiscoverPanel({ reduce }: { reduce: boolean | null }) {
           <motion.div
             key={f.name}
             variants={panelItem}
-            className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5 dark:border-white/10"
+            className="flex items-center justify-between rounded-[4px] border border-border bg-card px-3 py-2.5"
           >
             <div className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              <span className="font-brand text-sm text-foreground">{f.name}</span>
+              <span className="text-sm font-medium text-foreground">{f.name}</span>
             </div>
             <span className="font-mono text-[11px] text-muted-foreground">{f.domain}</span>
           </motion.div>
@@ -117,13 +117,13 @@ function EnrichPanel({ reduce }: { reduce: boolean | null }) {
   ];
   return (
     <PanelFrame reduce={reduce}>
-      <motion.div variants={panelItem} className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5 dark:border-white/10">
-        <span className="font-brand text-sm text-foreground">Northwind Pay</span>
-        <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">Enriched</span>
+      <motion.div variants={panelItem} className="flex items-center justify-between rounded-[4px] border border-border bg-card px-3 py-2.5">
+        <span className="text-sm font-medium text-foreground">Northwind Pay</span>
+        <span className="rounded-[4px] bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">Enriched</span>
       </motion.div>
       <div className="space-y-1">
         {fields.map((f) => (
-          <motion.div key={f.k} variants={panelItem} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-muted/50 dark:hover:bg-white/[0.03]">
+          <motion.div key={f.k} variants={panelItem} className="flex items-center justify-between gap-3 rounded-[4px] px-3 py-2 hover:bg-hover">
             <span className="w-20 shrink-0 text-xs text-muted-foreground">{f.k}</span>
             <span className="flex-1 truncate text-sm text-foreground">{f.v}</span>
             <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">via {f.src}</span>
@@ -144,9 +144,9 @@ function IntentPanel({ reduce }: { reduce: boolean | null }) {
   return (
     <PanelFrame reduce={reduce}>
       {signals.map((s) => (
-        <motion.div key={s.name} variants={panelItem} className="rounded-xl border border-border bg-card px-3 py-3 dark:border-white/10">
+        <motion.div key={s.name} variants={panelItem} className="rounded-[4px] border border-border bg-card px-3 py-3">
           <div className="flex items-center justify-between">
-            <span className="font-brand text-sm text-foreground">{s.name}</span>
+            <span className="text-sm font-medium text-foreground">{s.name}</span>
             <span className="text-[11px] text-muted-foreground">{s.label}</span>
           </div>
           <div className="mt-2 flex items-center gap-2">
@@ -155,10 +155,10 @@ function IntentPanel({ reduce }: { reduce: boolean | null }) {
                 className={`h-full rounded-full ${s.tone}`}
                 initial={reduce ? false : { width: 0 }}
                 animate={{ width: `${s.score}%` }}
-                transition={{ duration: 0.9, ease: EASE, delay: 0.1 }}
+                transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
               />
             </div>
-            <span className="w-6 text-right font-brand text-xs tabular-nums text-foreground">{s.score}</span>
+            <span className="w-6 text-right text-xs font-medium tabular-nums text-foreground">{s.score}</span>
           </div>
         </motion.div>
       ))}
@@ -175,7 +175,7 @@ function ConnectPanel({ reduce }: { reduce: boolean | null }) {
   const tools = ["list_entities", "create_contact", "enrich_entity", "search_intent", "add_note", "export_csv"];
   return (
     <PanelFrame reduce={reduce}>
-      <div className="space-y-1 rounded-xl border border-border bg-background/60 p-3 font-mono text-xs dark:border-white/10 dark:bg-white/[0.03]">
+      <div className="space-y-1 rounded-[4px] border border-border bg-background p-3 font-mono text-xs">
         {lines.map((l) => (
           <motion.p key={l.t} variants={panelItem} className={l.muted ? "text-muted-foreground" : "text-foreground"}>
             <span className="text-primary">{"> "}</span>
@@ -192,7 +192,7 @@ function ConnectPanel({ reduce }: { reduce: boolean | null }) {
       </motion.p>
       <div className="grid grid-cols-2 gap-1.5">
         {tools.map((t) => (
-          <motion.span key={t} variants={panelItem} className="rounded-lg border border-border bg-card px-2.5 py-1.5 font-mono text-[11px] text-foreground/75 dark:border-white/10">
+          <motion.span key={t} variants={panelItem} className="rounded-[4px] border border-border bg-card px-2.5 py-1.5 font-mono text-[11px] text-foreground/75">
             {t}
           </motion.span>
         ))}
@@ -240,12 +240,12 @@ export function CapabilitiesSection() {
   return (
     <section
       id="capabilities"
-      className="relative scroll-mt-24 bg-muted/30 py-24 dark:bg-background sm:py-32"
+      className="relative scroll-mt-24 bg-surface py-24 sm:py-32"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary">Capabilities</p>
-          <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
+          <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Capabilities</p>
+          <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             What your agent <span className="text-gradient-orange">actually does</span>
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -255,13 +255,13 @@ export function CapabilitiesSection() {
         </div>
 
         <div
-          className="mt-14 overflow-hidden rounded-[2rem] border border-border bg-card shadow-xl shadow-black/[0.04] dark:border-white/10 dark:shadow-black/40"
+          className="mt-14 overflow-hidden rounded-[12px] border border-border bg-background"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
           <div className="grid lg:grid-cols-[minmax(0,300px)_1fr]">
             {/* Segmented control */}
-            <div className="flex gap-2 overflow-x-auto border-b border-border p-4 lg:flex-col lg:gap-1.5 lg:overflow-visible lg:border-b-0 lg:border-r dark:border-white/10">
+            <div className="flex gap-2 overflow-x-auto border-b border-border p-4 lg:flex-col lg:gap-1.5 lg:overflow-visible lg:border-b-0 lg:border-r">
               {caps.map((c, i) => {
                 const on = i === active;
                 return (
@@ -271,11 +271,11 @@ export function CapabilitiesSection() {
                     onClick={() => select(i)}
                     aria-pressed={on}
                     className={
-                      "group relative shrink-0 rounded-2xl px-4 py-3 text-left transition-colors lg:shrink " +
-                      (on ? "bg-primary/10" : "hover:bg-muted/60 dark:hover:bg-white/[0.03]")
+                      "group relative shrink-0 rounded-[4px] px-3 py-2.5 text-left transition-colors lg:shrink " +
+                      (on ? "bg-pressed" : "hover:bg-hover")
                     }
                   >
-                    <span className={"font-brand text-sm " + (on ? "text-primary" : "text-foreground")}>
+                    <span className={"text-sm font-medium " + (on ? "text-primary" : "text-foreground")}>
                       {c.label}
                     </span>
                     {/* auto-advance progress, desktop only */}
@@ -298,17 +298,17 @@ export function CapabilitiesSection() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={`copy-${cap.id}`}
-                  initial={reduce ? false : { opacity: 0, y: 10 }}
+                  initial={reduce ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={reduce ? undefined : { opacity: 0, y: -8 }}
                   transition={{ duration: 0.3, ease: EASE }}
                 >
-                  <h3 className="font-brand text-xl text-foreground sm:text-2xl">{cap.title}</h3>
+                  <h3 className="text-xl font-medium text-foreground sm:text-2xl">{cap.title}</h3>
                   <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{cap.body}</p>
                 </motion.div>
               </AnimatePresence>
 
-              <div className="relative min-h-[300px] rounded-2xl border border-border bg-muted/30 p-3 dark:border-white/10 dark:bg-white/[0.02]">
+              <div className="relative min-h-[300px] rounded-[8px] border border-border bg-surface p-3">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={`panel-${cap.id}`}

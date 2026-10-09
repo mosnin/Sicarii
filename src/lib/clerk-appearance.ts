@@ -1,5 +1,5 @@
 // Shared Clerk appearance so the hosted sign-in / sign-up components match
-// Scalar's Twenty-aligned neutral system instead of Clerk's stock theme. Colors are
+// Scalar's baby-blue system on Twenty-style geometry instead of Clerk's stock theme. Colors are
 // wired to our CSS variables so the forms follow light/dark automatically; the
 // surrounding card frame is supplied by the auth pages, so Clerk's own card is
 // stripped to transparent. Typed via the SignIn component's own prop so we stay
@@ -11,14 +11,14 @@ type ClerkAppearance = NonNullable<ComponentProps<typeof SignIn>["appearance"]>;
 
 export const clerkAppearance: ClerkAppearance = {
   variables: {
-    colorPrimary: "#3E63DD",
+    colorPrimary: "#5AB0E8",
     colorText: "var(--foreground)",
     colorTextSecondary: "var(--muted-foreground)",
     colorBackground: "var(--card)",
     colorInputBackground: "var(--background)",
     colorInputText: "var(--foreground)",
-    colorDanger: "#E5484D",
-    colorSuccess: "#30A46C",
+    colorDanger: "#DC2626",
+    colorSuccess: "#16A34A",
     borderRadius: "0.25rem",
     fontFamily: "var(--font-sans)",
     fontFamilyButtons: "var(--font-sans)",

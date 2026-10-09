@@ -59,10 +59,10 @@ const ExportFlowScene = () => {
       <motion.div
         animate={{
           boxShadow: [
-            "0 0 7px 1px rgba(62, 99, 221, 0)",
-            "0 0 7px 1px rgba(62, 99, 221, 1)",
-            "0 0 7px 1px rgba(62, 99, 221, 1)",
-            "0 0 7px 1px rgba(62, 99, 221, 0)",
+            "0 0 7px 1px rgba(90, 176, 232, 0)",
+            "0 0 7px 1px rgba(90, 176, 232, 1)",
+            "0 0 7px 1px rgba(90, 176, 232, 1)",
+            "0 0 7px 1px rgba(90, 176, 232, 0)",
           ],
         }}
         transition={{

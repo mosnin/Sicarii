@@ -51,7 +51,7 @@ export function ContactActions({
         value={status}
         disabled={busy}
         onChange={(e) => updateStatus(e.target.value)}
-        className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        className="h-8 rounded-[4px] border border-input bg-background px-2.5 text-sm text-foreground hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15 disabled:opacity-50"
       >
         {CONTACT_STATUSES.map((s) => (
           <option key={s} value={s}>
@@ -66,7 +66,7 @@ export function ContactActions({
         disabled={busy}
         aria-label="Delete contact"
       >
-        <Trash2 className="h-4 w-4" />
+        <Trash2 className="h-4 w-4" strokeWidth={1.6} />
       </Button>
     </div>
   );

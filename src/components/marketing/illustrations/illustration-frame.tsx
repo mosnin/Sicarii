@@ -50,7 +50,7 @@ export function IllustrationFrame({
       >
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(62, 99, 221,0.10),transparent_60%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.10),transparent_60%)]"
         />
 
         <div aria-hidden="true" className="relative z-10 px-2 pt-8 sm:px-6 sm:pt-10">

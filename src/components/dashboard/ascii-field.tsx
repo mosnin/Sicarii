@@ -11,10 +11,10 @@ import { useEffect, useRef } from "react";
  * (used on the marketing site); otherwise it uses the baby-blue brand tone.
  */
 const GRADIENT_STOPS: [number, number, number][] = [
-  [62, 99, 221], // accent blue  #3E63DD
-  [84, 114, 228], // blue        #5472E4
-  [141, 164, 239], // soft blue  #8DA4EF
-  [153, 153, 153], // gray       #999999
+  [90, 176, 232], // baby blue   #5AB0E8
+  [91, 141, 239], // blue        #5B8DEF
+  [124, 119, 240], // indigo     #7C77F0
+  [167, 139, 250], // purple     #A78BFA
 ];
 
 function lerpStop(t: number): [number, number, number] {
@@ -92,7 +92,7 @@ export function AsciiField({
             ctx.fillStyle = `rgba(${r},${g},${b},${a.toFixed(3)})`;
           } else {
             ctx.fillStyle =
-              v > 0.86 ? `rgba(141,164,239,${a.toFixed(3)})` : `rgba(62,99,221,${a.toFixed(3)})`;
+              v > 0.86 ? `rgba(143,204,242,${a.toFixed(3)})` : `rgba(90,176,232,${a.toFixed(3)})`;
           }
           ctx.fillText(ch, x * cw, y * cell);
         }

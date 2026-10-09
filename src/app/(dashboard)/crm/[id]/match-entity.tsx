@@ -29,18 +29,18 @@ export function MatchEntity({ contactId }: { contactId: string }) {
   }
 
   return (
-    <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4">
+    <div className="rounded-[8px] border border-dashed border-input p-3">
       <p className="text-sm font-medium text-foreground">Not linked to a company</p>
       <p className="mt-0.5 text-sm text-muted-foreground">
         Find where this person works and link them - we&apos;ll create the company if it&apos;s new.
       </p>
-      <Button size="sm" className="mt-3" onClick={match} disabled={busy}>
+      <Button size="sm" variant="outline" className="mt-2.5" onClick={match} disabled={busy}>
         {busy ? (
-          <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="mr-1.5 inline-flex">
-            <RefreshCw className="h-3.5 w-3.5" />
+          <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="inline-flex">
+            <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.6} />
           </motion.span>
         ) : (
-          <Building2 className="mr-1.5 h-3.5 w-3.5" />
+          <Building2 className="h-3.5 w-3.5" strokeWidth={1.6} />
         )}
         {busy ? "Matching…" : "Match to company"}
       </Button>

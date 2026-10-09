@@ -31,8 +31,8 @@ export function CompoundingSection() {
     <section className="bg-background py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary">The compounding</p>
-          <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
+          <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">The compounding</p>
+          <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             Every run makes the next one sharper
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -41,14 +41,14 @@ export function CompoundingSection() {
           </p>
         </div>
 
-        <div className="relative mx-auto mt-12 max-w-4xl rounded-2xl border border-border bg-card/40 p-4 sm:p-6">
+        <div className="relative mx-auto mt-12 max-w-4xl rounded-[12px] border border-border bg-card/40 p-4 sm:p-6">
           <Border2 />
           <div className="flex items-baseline justify-between gap-4 px-2">
-            <p className="font-brand text-sm text-foreground">CRM records, 30 days</p>
-            <p className="text-xs text-muted-foreground">Illustrative view</p>
+            <p className="text-sm font-medium text-foreground">CRM records, 30 days</p>
+            <p className="text-xs text-fg-tertiary">Illustrative view</p>
           </div>
 
-          <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
+          <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-[8px] border border-border bg-border sm:grid-cols-4">
             {[
               { label: "Companies", value: "312" },
               { label: "Contacts", value: "1,148" },
@@ -56,8 +56,8 @@ export function CompoundingSection() {
               { label: "Radar signals", value: "87" },
             ].map((m) => (
               <Metric key={m.label} className="bg-card px-4 py-3">
-                <MetricLabel className="text-xs text-muted-foreground">{m.label}</MetricLabel>
-                <MetricValue className="font-brand text-xl tabular-nums text-foreground">
+                <MetricLabel className="text-xs font-medium text-fg-tertiary">{m.label}</MetricLabel>
+                <MetricValue className="text-xl font-semibold tabular-nums text-foreground">
                   {m.value}
                 </MetricValue>
               </Metric>

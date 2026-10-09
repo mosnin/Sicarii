@@ -4,7 +4,7 @@
  * LogSocialMessage - inline form to record a social media message (DM, comment,
  * connection note) on the contact, keeping social conversations tracked next to
  * email. Collapsed to a single button until needed; lives in the Conversations
- * card's CardContent (not the header) so the expanded form never has to
+ * card's body (not the header) so the expanded form never has to
  * squeeze into a title row.
  */
 
@@ -22,7 +22,7 @@ const CHANNELS = [
 ] as const;
 
 const selectClass =
-  "flex h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "flex h-8 w-full rounded-[4px] border border-input bg-background px-2.5 text-sm text-foreground hover:border-primary/40 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15";
 
 export function LogSocialMessage({ contactId }: { contactId: string }) {
   const router = useRouter();
@@ -72,10 +72,10 @@ export function LogSocialMessage({ contactId }: { contactId: string }) {
   return (
     <form
       onSubmit={submit}
-      className="space-y-3 rounded-xl border border-border bg-card/50 p-4"
+      className="space-y-3 rounded-[8px] border border-border bg-muted/30 p-3"
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <label htmlFor="social-channel" className="text-xs font-medium text-muted-foreground">
             Channel
           </label>
@@ -87,7 +87,7 @@ export function LogSocialMessage({ contactId }: { contactId: string }) {
             ))}
           </select>
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <label htmlFor="social-direction" className="text-xs font-medium text-muted-foreground">
             Direction
           </label>
@@ -97,7 +97,7 @@ export function LogSocialMessage({ contactId }: { contactId: string }) {
           </select>
         </div>
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         <label htmlFor="social-body" className="text-xs font-medium text-muted-foreground">
           Message
         </label>

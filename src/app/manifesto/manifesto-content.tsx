@@ -13,8 +13,8 @@ const container = {
   show: { transition: { staggerChildren: 0.14, delayChildren: 0.1 } },
 };
 const line = {
-  hidden: { opacity: 0, y: 20, filter: "blur(6px)" },
-  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.7, ease: easeOut } },
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: easeOut } },
 };
 
 // The Scalar manifesto: an on-brand editorial statement of why the product
@@ -51,14 +51,14 @@ export function ManifestoContent() {
 
         <motion.p
           variants={line}
-          className="mt-10 text-xs uppercase tracking-[0.3em] text-primary"
+          className="mt-10 text-xs font-medium uppercase tracking-wide text-fg-tertiary"
         >
           Manifesto
         </motion.p>
 
         <motion.h1
           variants={line}
-          className="font-brand mt-5 text-4xl leading-[1.08] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
+          className="font-semibold tracking-tight mt-5 text-4xl leading-[1.08] text-foreground sm:text-5xl lg:text-6xl"
         >
           The work should{" "}
           <span className="text-gradient-orange">remember itself</span>.
@@ -78,7 +78,7 @@ export function ManifestoContent() {
 
         <motion.p
           variants={line}
-          className="font-brand mt-14 text-2xl text-foreground sm:text-3xl"
+          className="font-semibold tracking-tight mt-14 text-2xl text-foreground sm:text-3xl"
         >
           This is Scalar.
         </motion.p>
@@ -86,14 +86,14 @@ export function ManifestoContent() {
         <motion.div variants={line} className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
           <Link
             href="/sign-up"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+            className="inline-flex h-10 items-center gap-2 rounded-[8px] bg-primary px-5 text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Get started
-            <ArrowRight className="h-5 w-5" />
+            <ArrowRight className="h-4 w-4" strokeWidth={1.6} />
           </Link>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-base font-medium text-muted-foreground backdrop-blur-md transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-border bg-background px-5 text-base font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-foreground"
           >
             Back to home
           </Link>

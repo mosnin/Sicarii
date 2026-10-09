@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import Image from "next/image";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 
 // Scalar taglines - one picked at random each mount.
@@ -13,7 +14,7 @@ const TAGLINES = [
   "Quiet leverage, working for you.",
 ];
 
-const easeOut = [0.16, 1, 0.3, 1] as const;
+const easeOut = "easeOut" as const;
 
 const SEEN_KEY = "scalar_preloader_seen";
 
@@ -41,142 +42,78 @@ export function DashboardPreloader({ name }: { name: string }) {
   // Pick a random tagline once - lazy initializer avoids impure render calls.
   const [tagline] = useState<string>(() => TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
 
-  const words = tagline.split(" ");
-
   return (
     <AnimatePresence>
       {show && (
         <motion.div
           key="preloader"
-          className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-background dark:bg-charcoal-dark"
+          className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-background"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, filter: "blur(14px)", scale: 1.04 }}
-          transition={{ duration: 0.5, ease: easeOut }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: easeOut }}
         >
-          {/* ASCII field - more visible: opacity-25 in light, opacity-20 in dark */}
+          {/* Brand ASCII field, toned down behind the calm loader */}
           <AsciiField
-            className="absolute inset-0 h-full w-full opacity-25"
+            className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12] dark:opacity-[0.2]"
             cell={14}
           />
-
-          {/* Soft baby-blue radial glow centred behind the content */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse 55% 45% at 50% 48%, rgba(90,176,232,0.18) 0%, transparent 65%)",
+                "radial-gradient(ellipse 40% 35% at 50% 50%, var(--background) 0%, transparent 100%)",
             }}
           />
 
-          {/* Full-screen shimmer sweep - moves diagonally across the whole overlay once */}
-          {!reduce && (
+          <div className="relative z-10 flex flex-col items-center px-6 text-center">
+            {/* Small logo */}
             <motion.div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 z-[1]"
-              initial={{ x: "-120%", skewX: -12 }}
-              animate={{ x: "120%" }}
-              transition={{
-                duration: 1.1,
-                ease: "easeInOut",
-                delay: 0.7 + words.length * 0.07,
-              }}
-              style={{
-                background:
-                  "linear-gradient(105deg, transparent 25%, rgba(90,176,232,0.12) 45%, rgba(143,204,242,0.18) 52%, rgba(90,176,232,0.10) 58%, transparent 75%)",
-                mixBlendMode: "screen",
-                width: "60%",
-                left: 0,
-              }}
-            />
-          )}
-
-          {/* Content */}
-          <div className="relative z-10 px-6 text-center">
-            {/* Eyebrow greeting */}
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
+              initial={reduce ? false : { opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: easeOut, delay: 0.1 }}
-              className="text-xs uppercase tracking-[0.35em] text-primary/80"
+              transition={{ duration: 0.2, ease: easeOut }}
+            >
+              <Image
+                src="/icon-512.png"
+                alt=""
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-[8px] border border-border"
+                priority
+              />
+            </motion.div>
+
+            {/* Greeting */}
+            <motion.p
+              initial={reduce ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: easeOut, delay: 0.1 }}
+              className="mt-4 text-base font-medium text-foreground"
             >
               Good to see you{name ? `, ${name}` : ""}
             </motion.p>
 
-            {/* Tagline - word-by-word blur→clear stagger */}
-            <motion.h1
-              className="font-brand relative mt-4 max-w-3xl text-3xl text-foreground sm:text-5xl lg:text-6xl"
-              initial="hidden"
-              animate="show"
-              variants={{
-                hidden: {},
-                show: {
-                  transition: {
-                    staggerChildren: reduce ? 0 : 0.07,
-                    delayChildren: reduce ? 0 : 0.25,
-                  },
-                },
-              }}
+            {/* Tagline */}
+            <motion.p
+              initial={reduce ? false : { opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: easeOut, delay: 0.2 }}
+              className="mt-1 text-sm text-fg-tertiary"
             >
-              {words.map((w, i) => (
-                <motion.span
-                  key={i}
-                  className="mr-[0.25em] inline-block"
-                  variants={{
-                    hidden: {
-                      opacity: 0,
-                      y: "0.4em",
-                      filter: "blur(10px)",
-                    },
-                    show: {
-                      opacity: 1,
-                      y: 0,
-                      filter: "blur(0px)",
-                      transition: { duration: 0.55, ease: easeOut },
-                    },
-                  }}
-                >
-                  {w}
-                </motion.span>
-              ))}
+              {tagline}
+            </motion.p>
 
-              {/* Shimmer sweep that crosses the tagline itself once */}
-              {!reduce && (
-                <motion.span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0"
-                  initial={{ x: "-110%" }}
-                  animate={{ x: "110%" }}
-                  transition={{
-                    duration: 0.75,
-                    ease: "easeInOut",
-                    delay: 0.6 + words.length * 0.07,
-                  }}
-                  style={{
-                    background:
-                      "linear-gradient(105deg, transparent 30%, rgba(90,176,232,0.38) 50%, rgba(143,204,242,0.30) 55%, transparent 70%)",
-                    mixBlendMode: "screen",
-                  }}
-                />
-              )}
-            </motion.h1>
-
-            {/* Thin progress bar that sweeps scaleX 0→1 */}
+            {/* Thin progress bar that sweeps scaleX 0 to 1 */}
             <motion.div
-              className="mx-auto mt-8 h-px w-40 origin-left overflow-hidden"
-              style={{ background: "rgba(90,176,232,0.18)" }}
+              className="mt-5 h-0.5 w-32 overflow-hidden rounded-full bg-surface-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.35 }}
+              transition={{ delay: 0.2 }}
             >
               <motion.div
-                className="h-full w-full"
-                style={{
-                  background:
-                    "linear-gradient(90deg, rgba(90,176,232,0.6) 0%, rgba(143,204,242,1) 60%, rgba(90,176,232,0.6) 100%)",
-                  originX: 0,
-                }}
+                className="h-full w-full rounded-full bg-primary"
+                style={{ originX: 0 }}
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{

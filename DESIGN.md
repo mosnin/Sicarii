@@ -6,10 +6,12 @@ pattern here, change it everywhere it's used, and update this file.
 
 > Companion to `AGENTS.md`. The icon rule there is part of this system.
 > **Aesthetic reference: Twenty** (github.com/twentyhq/twenty, `packages/twenty-ui/src/theme`).
-> Scalar adopted Twenty's design language in Card 0015: neutral grays, hairline
-> borders over shadows, small radii, Inter at a 13px body, one blue accent.
-> The earlier baby-blue (`#5AB0E8`) and orange/charcoal systems are retired; do
-> not reintroduce them.
+> Scalar takes Twenty's *structure and finish* (navigation drawer + bordered page
+> panel, hairline borders over shadows, 4/8px radii, 13px app body, record
+> tables, tags) but keeps **its own colors (baby blue `#5AB0E8` + white /
+> charcoal), Space Grotesk headings, and the ASCII signature** (founder call,
+> 2026-10-09). The Home dashboard keeps its bento layout. Do not reintroduce
+> orange/charcoal as the brand, and do not swap in Twenty's gray/blue palette.
 
 ---
 
@@ -22,41 +24,42 @@ Never "vibe-coded": no glows, gradients, hover lifts, or decorative icons.
 
 ---
 
-## 2. Color - neutral grays, one blue accent
+## 2. Color - baby blue is the only accent
 
-Tokens live in `src/app/globals.css` (`:root` light / `.dark` dark, exposed via
-`@theme`). Values are Twenty's (Radix-based) scales.
+Tokens live in `src/app/globals.css` (`:root` light / `.dark` dark, exposed via `@theme`).
 
 | Token (Tailwind) | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `bg-background` | `#ffffff` | `#171717` | Work surface (page panel, cards) |
-| `bg-surface` | `#fcfcfc` | `#1b1b1b` | App chrome: drawer, outer frame, table hover |
-| `bg-surface-2` / `-3` | `#f1f1f1` / `#ebebeb` | `#1d1d1d` / `#222` | Gray fills, record chips |
-| `bg-hover` / `bg-pressed` | 4% / 8% black | 6% / 10% white | Hover / selected rows, tabs, nav |
-| `text-foreground` | `#333333` | `#ebebeb` | Primary text |
-| `text-fg-secondary` / `-tertiary` / `-light` | `#666` / `#999` / `#b3b3b3` | `#b3b3b3` / `#818181` / `#666` | Secondary text, labels, placeholders |
-| `border-border` / `-strong` / `-light` | `#ebebeb` / `#d6d6d6` / `#f1f1f1` | `#292929` / `#484848` / `#1d1d1d` | Hairlines |
-| **`primary`** | **`#3e63dd`** | **`#5472e4`** | The accent: primary button, links, focus |
-| `bg-primary-soft` | `#edf2fe` | `#182449` | Accent tint |
-| `tag-{blue,green,red,orange,purple,gray}` (+ `-bg`) | Radix 11 / 3 | Radix dark 11 / 3 | Status tags (`Badge`) |
-| `destructive` / `success` / `warning` | `#e5484d` / `#30a46c` / `#f76b15` | same | Status only |
+| `bg-background` | `#ffffff` | `#0A0A0A` | Work surface (page panel) |
+| `bg-card` / `bg-popover` | `#ffffff` | `#141414` | Panels, menus |
+| `bg-surface` | `#FAFAFA` | `#111111` | App chrome: drawer, outer frame, row hover |
+| `bg-surface-2` / `-3` | `#F5F5F5` / `#EBEBEB` | `#1C1C1C` / `#2A2A2A` | Gray fills, record chips |
+| `bg-hover` / `bg-pressed` | 4% / 7% charcoal | 5% / 9% white | Hover / selected rows, tabs, nav |
+| `text-foreground` | `#1C1C1C` | `#F5F5F5` | Primary text |
+| `text-fg-secondary` / `-tertiary` / `-light` | `#525252` / `#737373` / `#A3A3A3` | `#D4D4D4` / `#A3A3A3` / `#737373` | Secondary text, labels, placeholders |
+| `border-border` / `-strong` / `-light` | `#E5E5E5` / `#D4D4D4` / `#F0F0F0` | `#2A2A2A` / `#3A3A3A` / `#1C1C1C` | Hairlines |
+| **`primary`** | **`#5AB0E8`** | **`#5AB0E8`** | The accent |
+| `accent` / `bg-primary-soft` | `#E6F3FC` | `#1C1C1C` / `#0F2A3D` | Tints |
+| `tag-{blue,green,red,orange,purple,gray}` (+ `-bg`) | | | Status tags (`Badge`) |
+| `destructive` / `success` / `warning` | `#DC2626` / `#16A34A` / `#EAB308` | same | Status only |
 
 Rules:
-- **Blue is the only accent.** Everything else is gray. Status color comes from
-  the tag palette via `Badge`.
-- **Hairlines over shadows.** In-page surfaces get `border border-border`, never a
-  shadow. Shadows (`shadow-lg` = Twenty "strong", `shadow-2xl` = "superHeavy")
-  are only for floating layers: menus, popovers, modals, toasts, the island.
-- Legacy aliases still compile: `orange` / `brand` utilities resolve to the blue
-  accent; `charcoal*` resolve to the gray surfaces. Prefer the real tokens in new code.
+- **Baby blue is the only accent.** Everything else is neutral; status color comes
+  from the tag palette via `Badge`. The sanctioned multi-hue is the ASCII gradient (section 5).
+- **Hairlines over shadows** (Twenty). In-page surfaces get `border border-border`;
+  shadows (`shadow-lg`, `shadow-2xl`) only on floating layers: menus, popovers,
+  modals, toasts, the island. The brand CTA (`variant="glow"`) keeps a soft glow.
+- Legacy aliases: `orange` / `brand` utilities = baby blue (`orange` `#8FCCF2`,
+  `orange-dark` `#5AB0E8`); `charcoal*` = `#1C1C1C` / `#2A2A2A` / `#0A0A0A`.
 - Both light AND dark must read. Default (unprefixed) = light.
 
 ---
 
 ## 3. Type
 
-- **Inter everywhere** (loaded in `globals.css`), **DM Mono** for `font-mono`.
-  `.font-brand` is kept as a heading hook and now means Inter semibold.
+- **Headings / wordmark / big numerals:** `.font-brand` = Space Grotesk. Body:
+  Inter. Mono: DM Mono. All loaded in `globals.css`.
+- **Accent word:** `.text-gradient-orange` (baby-blue gradient, bg-clip-text).
 - **App scale:** any page that mounts `.app-shell` (dashboard shell, auth, OAuth
   consent) re-tunes the Tailwind ramp to Twenty's 13px body via `:root:has(.app-shell)`:
   `text-xs` 11 · `text-sm` 13 · `text-base` 14 · `text-lg` 16 · `text-xl` 18 ·
@@ -121,10 +124,13 @@ bordered panel. `CountUp` (`ui/count-up.tsx`) still tweens the number.
 
 ## 5. The ASCII signature
 
-`AsciiField` (`src/components/dashboard/ascii-field.tsx`) survives only on the
-**marketing** site (hero / CTA), at low opacity, repainted in the accent blue
-ramp. It is not used inside the signed-in app or auth: Twenty's product chrome
-is flat. Static ASCII illustrations: box-drawing/geometric glyphs only, never emoji.
+`AsciiField` (`src/components/dashboard/ascii-field.tsx`) is the brand's soul:
+the animated canvas field, background texture only (ramp `" .·:-=+*≡#%@"`,
+~30fps, one static frame under reduced motion). `gradient` paints the blue to
+purple palette (`#5AB0E8 → #5B8DEF → #7C77F0 → #A78BFA`). Used behind: the
+navigation drawer (whisper, `opacity-[0.14]`), the Home bento hero, preloader,
+welcome, auth, and the marketing hero/CTA. Light mode needs higher opacity than
+feels intuitive. Static ASCII art: box-drawing/geometric glyphs only, never emoji.
 
 ## 6. Motion (quick and quiet)
 
@@ -202,9 +208,10 @@ MCP-client logos) is the only social-proof band until then.
 - **Horizontal lock:** `html`/`body { overflow-x: clip }`.
 
 ### Dashboard shell - `src/components/dashboard/dashboard-shell.tsx`
-Twenty's frame. Root `div.app-shell` on `bg-surface`.
+Twenty's frame in Scalar's colors. Root `div.app-shell` on `bg-surface`.
 
-- **Navigation drawer (desktop, `lg`+):** 220px, no border, on the gray chrome.
+- **Navigation drawer (desktop, `lg`+):** 220px, no border, on the gray chrome, with a
+  faint `AsciiField` behind it.
   Header: logo tile + "Scalar" + a collapse button revealed on hover; the Clerk
   `OrganizationSwitcher` below it. Sections with `twenty-label` headings
   ("Workspace", "Agent"); rows are `h-7 rounded-[4px] px-1.5 text-sm`, 16px icons

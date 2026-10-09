@@ -2,7 +2,7 @@
 
 // The client component for /welcome. Handles the ICP input form, the SSE
 // stream from /api/welcome, and the live table that fills row by row.
-// No decorative icons. Baby-blue + white brand. Calm typography.
+// No decorative icons. Calm, hairline-bordered panels and typography.
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -171,17 +171,17 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
   const skip = () => router.push("/dashboard");
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16 sm:py-24">
+    <div className="mx-auto max-w-3xl py-2 sm:py-6">
       {/* Header */}
       <FloatIn>
-        <div className="mb-12 text-center">
-          <p className="mb-3 text-xs uppercase tracking-[0.3em] text-primary">
+        <div className="mb-5">
+          <p className="twenty-label mb-1">
             Welcome to Scalar
           </p>
-          <h1 className="font-brand text-4xl text-foreground sm:text-5xl">
+          <h1 className="text-2xl font-semibold text-foreground">
             {firstName ? `Hello, ${firstName}.` : "Hello."}
           </h1>
-          <p className="mt-4 text-base text-muted-foreground sm:text-lg">
+          <p className="mt-1 text-sm text-fg-tertiary">
             Tell Scalar who you sell to. In one sentence, it will build your CRM live.
           </p>
         </div>
@@ -190,18 +190,21 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
       {/* ICP input - shown when idle or running */}
       <AnimatePresence mode="wait">
         {phase !== "done" && (
-          <motion.div key="input" {...(reduce ? {} : { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 }, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } })}>
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-              <label
-                htmlFor="icp-input"
-                className="mb-3 block text-sm font-medium text-foreground"
-              >
-                Describe who you sell to
-              </label>
+          <motion.div key="input" {...(reduce ? {} : { initial: { opacity: 0, y: 4 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -4 }, transition: { duration: 0.2, ease: "easeOut" } })}>
+            <section className="rounded-[8px] border border-border bg-background">
+              <header className="flex h-10 items-center border-b border-border px-3">
+                <label
+                  htmlFor="icp-input"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Describe who you sell to
+                </label>
+              </header>
+              <div className="p-3">
               <textarea
                 id="icp-input"
                 rows={3}
-                className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                className="w-full resize-none rounded-[4px] border border-input bg-background px-2.5 py-2 text-sm text-foreground placeholder:text-fg-light focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15 disabled:opacity-50"
                 placeholder="e.g. Series A SaaS startups with 20-100 employees in the US that use Salesforce"
                 value={icp}
                 onChange={(e) => setIcp(e.target.value)}
@@ -211,38 +214,38 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
               />
 
               {/* One-tap examples to remove the blank-page friction */}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="self-center text-xs text-muted-foreground">Try:</span>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className="self-center text-sm text-fg-tertiary">Try:</span>
                 {EXAMPLES.map((ex) => (
                   <button
                     key={ex.label}
                     type="button"
                     onClick={() => setIcp(ex.value)}
                     disabled={phase === "running"}
-                    className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:opacity-50"
+                    className="h-7 rounded-[4px] border border-border bg-background px-2 text-sm text-fg-secondary transition-colors hover:bg-hover hover:text-foreground disabled:opacity-50"
                   >
                     {ex.label}
                   </button>
                 ))}
               </div>
 
-              <div className="mt-4 flex items-center justify-between gap-4">
+              <div className="mt-3 flex items-center justify-between gap-4">
                 <button
                   type="button"
                   onClick={skip}
-                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  className="text-sm text-fg-tertiary underline-offset-2 hover:text-foreground hover:underline"
                 >
                   Skip for now
                 </button>
                 <Button
                   onClick={handleSubmit}
                   disabled={!icp.trim() || phase === "running"}
-                  size="lg"
                 >
                   {phase === "running" ? "Building your CRM..." : "Build my CRM"}
                 </Button>
               </div>
-            </div>
+              </div>
+            </section>
           </motion.div>
         )}
       </AnimatePresence>
@@ -252,14 +255,14 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
         {statusLine && (
           <motion.p
             key={statusLine}
-            className="mt-6 text-center text-sm text-muted-foreground"
+            className="mt-4 text-sm text-fg-tertiary"
             {...(reduce
               ? {}
               : {
                   initial: { opacity: 0 },
                   animate: { opacity: 1 },
                   exit: { opacity: 0 },
-                  transition: { duration: 0.3 },
+                  transition: { duration: 0.15 },
                 })}
           >
             {statusLine}
@@ -269,32 +272,24 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
 
       {/* Sample data notice */}
       {hasSamples && companies.length > 0 && (
-        <p className="mt-3 text-center text-xs text-muted-foreground">
+        <p className="mt-1 text-xs text-fg-tertiary">
           Sample data shown. Configure EXA_API_KEY to discover real companies.
         </p>
       )}
 
       {/* Live table */}
       {companies.length > 0 && (
-        <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <table className="w-full text-sm">
+        <div className="mt-4 overflow-x-auto rounded-[8px] border border-border bg-background">
+          <table className="twenty-table">
             <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Company
-                </th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground sm:table-cell">
-                  Industry
-                </th>
-                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground md:table-cell">
-                  Location
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Status
-                </th>
+              <tr>
+                <th>Company</th>
+                <th className="hidden sm:table-cell">Industry</th>
+                <th className="hidden md:table-cell">Location</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               <AnimatePresence initial={false}>
                 {companies.map((company) => (
                   <CompanyRow key={company.id} company={company} reduce={!!reduce} />
@@ -308,62 +303,60 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
       {/* Done - end card */}
       {phase === "done" && summary !== null && (
         <motion.div
-          className="mt-10 rounded-2xl border border-border bg-card p-8 text-center shadow-sm"
+          className="mt-4 rounded-[8px] border border-border bg-background"
           {...(reduce
             ? {}
             : {
-                initial: { opacity: 0, y: 16 },
+                initial: { opacity: 0, y: 4 },
                 animate: { opacity: 1, y: 0 },
-                transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+                transition: { duration: 0.2, ease: "easeOut" },
               })}
         >
-          <p className="mb-1 text-xs uppercase tracking-[0.3em] text-primary">
-            Ready
-          </p>
-          <h2 className="font-brand text-3xl text-foreground">
-            Your CRM is already{" "}
-            <span className="text-gradient-orange">working</span>.
-          </h2>
+          <header className="flex h-10 items-center justify-between border-b border-border px-3">
+            <h2 className="text-sm font-medium text-foreground">
+              Your CRM is already{" "}
+              <span className="text-primary">working</span>.
+            </h2>
+            <span className="twenty-label">Ready</span>
+          </header>
+          <div className="p-3">
           {summary.total > 0 && (
-            <div className="mt-6 flex flex-wrap items-baseline justify-center gap-x-8 gap-y-3">
-              <div className="flex items-baseline gap-2">
-                <span className="font-brand text-4xl tabular-nums text-foreground">
-                  <CountUp value={summary.total} duration={1.2} />
-                </span>
-                <span className="text-sm text-muted-foreground">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="rounded-[8px] border border-border px-3 py-2.5">
+                <p className="twenty-label">
                   compan{summary.total === 1 ? "y" : "ies"}
+                </p>
+                <span className="mt-1 block text-xl font-semibold tabular-nums text-foreground">
+                  <CountUp value={summary.total} duration={0.8} />
                 </span>
               </div>
               {summary.enriched > 0 && (
-                <div className="flex items-baseline gap-2">
-                  <span className="font-brand text-4xl tabular-nums text-primary">
-                    <CountUp value={summary.enriched} duration={1.5} />
+                <div className="rounded-[8px] border border-border px-3 py-2.5">
+                  <p className="twenty-label">enriched</p>
+                  <span className="mt-1 block text-xl font-semibold tabular-nums text-foreground">
+                    <CountUp value={summary.enriched} duration={0.9} />
                   </span>
-                  <span className="text-sm text-muted-foreground">enriched</span>
                 </div>
               )}
               {summary.hasNews > 0 && (
-                <div className="flex items-baseline gap-2">
-                  <span className="font-brand text-4xl tabular-nums text-foreground">
-                    <CountUp value={summary.hasNews} duration={1.7} />
+                <div className="rounded-[8px] border border-border px-3 py-2.5">
+                  <p className="twenty-label">with news</p>
+                  <span className="mt-1 block text-xl font-semibold tabular-nums text-foreground">
+                    <CountUp value={summary.hasNews} duration={1} />
                   </span>
-                  <span className="text-sm text-muted-foreground">with news</span>
                 </div>
               )}
             </div>
           )}
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Button size="lg" onClick={goToDashboard}>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button onClick={goToDashboard}>
               See your CRM
             </Button>
-            <Link
-              href="/integrations"
-              className="inline-flex h-11 items-center justify-center rounded-full border border-border px-6 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
-            >
-              Connect your agent
-            </Link>
+            <Button variant="outline" asChild>
+              <Link href="/integrations">Connect your agent</Link>
+            </Button>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p className="mt-3 text-sm text-fg-tertiary">
             {radarSeeded ? (
               <>
                 Your agent will keep scanning for matches every week, so there&apos;s
@@ -377,6 +370,7 @@ export function WelcomeClient({ firstName }: { firstName?: string }) {
               <>Next: connect an agent over MCP and it keeps your database growing.</>
             )}
           </p>
+          </div>
         </motion.div>
       )}
     </div>
@@ -403,11 +397,11 @@ function CompanyRow({
   };
 
   const statusColor: Record<WelcomeCompanyRow["status"], string> = {
-    found: "text-muted-foreground",
-    enriching: "text-primary animate-pulse",
-    enriched: "text-foreground",
-    news: "text-primary font-medium",
-    sample: "text-muted-foreground italic",
+    found: "bg-tag-gray-bg text-tag-gray",
+    enriching: "bg-tag-blue-bg text-tag-blue animate-pulse",
+    enriched: "bg-tag-green-bg text-tag-green",
+    news: "bg-tag-purple-bg text-tag-purple",
+    sample: "bg-tag-gray-bg text-tag-gray italic",
   };
 
   return (
@@ -416,34 +410,36 @@ function CompanyRow({
       {...(reduce
         ? {}
         : {
-            initial: { opacity: 0, y: 8 },
+            initial: { opacity: 0, y: 4 },
             animate: { opacity: 1, y: 0 },
-            transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
+            transition: { duration: 0.2, ease: "easeOut" },
           })}
-      className="align-top transition-colors hover:bg-muted/30"
+      className="align-top"
     >
-      <td className="px-4 py-3">
+      <td className="py-1.5">
         <div className="font-medium text-foreground">{company.name}</div>
         {company.domain && (
-          <div className="mt-0.5 text-xs text-muted-foreground">{company.domain}</div>
+          <div className="mt-0.5 text-xs text-fg-tertiary">{company.domain}</div>
         )}
         {company.newsHeadline && (
-          <div className="mt-1 text-xs text-primary">{company.newsHeadline}</div>
+          <div className="mt-0.5 text-xs text-primary">{company.newsHeadline}</div>
         )}
         {company.description && !company.newsHeadline && (
-          <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+          <div className="mt-0.5 line-clamp-2 text-xs text-fg-tertiary">
             {company.description}
           </div>
         )}
       </td>
-      <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
+      <td className="hidden py-1.5 text-fg-secondary sm:table-cell">
         {company.industry ?? "-"}
       </td>
-      <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+      <td className="hidden py-1.5 text-fg-secondary md:table-cell">
         {company.location ?? "-"}
       </td>
-      <td className={`px-4 py-3 text-xs ${statusColor[company.status]}`}>
-        {statusLabel[company.status]}
+      <td className="py-1.5">
+        <span className={`inline-flex h-5 items-center whitespace-nowrap rounded-[4px] px-1.5 text-xs font-medium ${statusColor[company.status]}`}>
+          {statusLabel[company.status]}
+        </span>
       </td>
     </motion.tr>
   );

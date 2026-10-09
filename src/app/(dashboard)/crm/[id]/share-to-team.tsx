@@ -55,7 +55,7 @@ export function ShareToTeam({ contactId, teams }: { contactId: string; teams: Te
           Share to team
         </Button>
       ) : (
-        <div className="space-y-2 rounded-xl border border-border bg-card/50 p-3">
+        <div className="max-w-xs space-y-2 rounded-[8px] border border-border bg-background p-3">
           <p className="text-xs text-muted-foreground">
             Copies this contact (and its company, enrichment, and history) into
             the team CRM. Your personal record stays yours.
@@ -65,11 +65,11 @@ export function ShareToTeam({ contactId, teams }: { contactId: string; teams: Te
               type="checkbox"
               checked={includeMessages}
               onChange={(e) => setIncludeMessages(e.target.checked)}
-              className="h-4 w-4 rounded border-input"
+              className="h-4 w-4 rounded-[3px] border-input accent-primary"
             />
             Include emails, calls, and social messages
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {teams.map((t) => (
               <Button
                 key={t.workspaceId}

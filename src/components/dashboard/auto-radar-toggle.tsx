@@ -35,7 +35,7 @@ export function AutoRadarToggle({ initialOn }: { initialOn: boolean }) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
         <p className="text-sm font-medium text-foreground">Weekly ICP radar</p>
         <p className="mt-0.5 text-sm text-muted-foreground">
@@ -51,17 +51,17 @@ export function AutoRadarToggle({ initialOn }: { initialOn: boolean }) {
         onClick={toggle}
         disabled={saving}
         className={cn(
-          "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/20",
           on ? "bg-primary" : "bg-muted-foreground/30",
           saving && "opacity-70",
         )}
       >
         <motion.span
           layout
-          transition={{ type: "spring", stiffness: 500, damping: 34 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className={cn(
-            "inline-block h-5 w-5 rounded-full bg-white shadow-sm",
-            on ? "ml-[22px]" : "ml-0.5",
+            "inline-block h-3 w-3 rounded-full bg-white",
+            on ? "ml-[14px]" : "ml-0.5",
           )}
         />
       </button>

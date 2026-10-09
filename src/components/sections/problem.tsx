@@ -40,8 +40,8 @@ export function ProblemSection() {
       />
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary">The problem</p>
-          <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
+          <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">The problem</p>
+          <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             Agents are brilliant at doing.{" "}
             <span className="text-gradient-orange">Terrible at remembering.</span>
           </h2>
@@ -54,13 +54,13 @@ export function ProblemSection() {
 
         <div className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-2">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 8 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, ease: easeOut }}
+            transition={{ duration: 0.25, ease: easeOut }}
           >
             <SpotlightCard className="h-full p-7">
-              <p className="font-brand text-sm uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">
                 Without a real CRM
               </p>
               <ul className="mt-5 space-y-3">
@@ -75,13 +75,13 @@ export function ProblemSection() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 8 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1, ease: easeOut }}
+            transition={{ duration: 0.25, delay: 0.1, ease: easeOut }}
           >
             <SpotlightCard className="h-full p-7">
-              <p className="font-brand text-sm uppercase tracking-[0.2em] text-primary">
+              <p className="text-xs font-medium uppercase tracking-wide text-primary">
                 With Scalar
               </p>
               <ul className="mt-5 space-y-3">

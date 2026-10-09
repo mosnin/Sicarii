@@ -36,8 +36,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { FloatIn } from "@/components/ui/float-in";
-import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { DiscoverWorking } from "@/components/dashboard/discover-working";
 import { cn } from "@/lib/utils";
 
@@ -601,9 +601,9 @@ const INITIAL: State = {
 // ─── motion ───────────────────────────────────────────────────────────────────
 
 const slideVariants = {
-  initial: (dir: number) => ({ opacity: 0, y: dir * 14 }),
+  initial: (dir: number) => ({ opacity: 0, y: dir * 6 }),
   animate: { opacity: 1, y: 0 },
-  exit: (dir: number) => ({ opacity: 0, y: dir * -10 }),
+  exit: (dir: number) => ({ opacity: 0, y: dir * -4 }),
 };
 
 // ─── recent results ───────────────────────────────────────────────────────────
@@ -639,13 +639,13 @@ function RecentResults() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="space-y-3"
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="space-y-2"
     >
-      <h2 className="font-brand text-base text-foreground">Recently added</h2>
-      <div className="divide-y divide-border rounded-2xl border border-border bg-card overflow-hidden">
+      <h2 className="text-sm font-medium text-foreground">Recently added</h2>
+      <div className="divide-y divide-border overflow-hidden rounded-[8px] border border-border bg-background">
         {items.map((item) => {
           const label = item.name ?? item.company ?? item.domain ?? item.email ?? "Unnamed";
           const sub = item.kind === "contact"
@@ -655,26 +655,24 @@ function RecentResults() {
           return (
             <motion.div
               key={item.id}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-              className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/40 transition-colors"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="flex min-h-10 items-center justify-between gap-3 px-3 py-1.5 transition-colors hover:bg-muted/40"
             >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{item.kind}</span>
-                  {(item.source === "intent-monitor" || item.source === "exa-webhook") && (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">intent</span>
-                  )}
-                  {item.source === "research-schedule" && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">research</span>
-                  )}
-                </div>
-                <p className="font-brand truncate text-sm text-foreground">{label}</p>
-                {sub && <p className="text-xs text-muted-foreground truncate">{sub}</p>}
+              <div className="flex min-w-0 items-center gap-2">
+                <Badge variant="secondary" className="shrink-0">{item.kind}</Badge>
+                {(item.source === "intent-monitor" || item.source === "exa-webhook") && (
+                  <Badge variant="primary" className="shrink-0">intent</Badge>
+                )}
+                {item.source === "research-schedule" && (
+                  <Badge variant="secondary" className="shrink-0">research</Badge>
+                )}
+                <p className="truncate text-sm font-medium text-foreground">{label}</p>
+                {sub && <p className="truncate text-sm text-muted-foreground">{sub}</p>}
               </div>
-              <Link href={href} className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                <ExternalLink className="h-3.5 w-3.5" />
+              <Link href={href} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                <ExternalLink className="h-4 w-4" strokeWidth={1.6} />
               </Link>
             </motion.div>
           );
@@ -716,44 +714,44 @@ function ScheduleMonitorPanel({ query, toolId, onClose }: { query: string; toolI
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: SPRING }}
-      className="rounded-2xl border border-primary/20 bg-primary/5 p-5"
+      transition={{ duration: 0.2, ease: SPRING }}
+      className="rounded-[8px] border border-primary/20 bg-primary/5"
     >
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <p className="font-brand text-sm text-foreground flex items-center gap-1.5">
-            <CalendarClock className="h-4 w-4 text-primary" />
-            {isIntent ? "Schedule intent monitor" : "Schedule research"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {isIntent
-              ? "Exa will run this search on a schedule and add new results to your CRM automatically."
-              : "Linkup will run deep research on a schedule and update your CRM."}
-          </p>
-        </div>
-        <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
-          <X className="h-4 w-4" />
+      <div className="flex h-10 items-center justify-between gap-3 border-b border-primary/15 px-3">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+          <CalendarClock className="h-4 w-4 text-primary" strokeWidth={1.6} />
+          {isIntent ? "Schedule intent monitor" : "Schedule research"}
+        </p>
+        <button type="button" onClick={onClose} className="flex h-6 w-6 items-center justify-center rounded-[4px] text-muted-foreground hover:bg-muted hover:text-foreground">
+          <X className="h-4 w-4" strokeWidth={1.6} />
         </button>
       </div>
 
+      <div className="p-3">
+      <p className="mb-3 text-sm text-muted-foreground">
+        {isIntent
+          ? "Exa will run this search on a schedule and add new results to your CRM automatically."
+          : "Linkup will run deep research on a schedule and update your CRM."}
+      </p>
+
       {done ? (
-        <p className="text-sm text-primary flex items-center gap-1.5">
-          <Check className="h-4 w-4" /> Scheduled - results will appear in your CRM automatically.
+        <p className="flex items-center gap-1.5 text-sm text-primary">
+          <Check className="h-4 w-4" strokeWidth={1.6} /> Scheduled - results will appear in your CRM automatically.
         </p>
       ) : (
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Monitor name (optional)</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Monitor name (optional)</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={query.slice(0, 50)} />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Frequency</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Frequency</label>
             <select
               value={frequency}
               onChange={(e) => setFrequency(e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-8 w-full rounded-[4px] border border-input bg-background px-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -765,6 +763,7 @@ function ScheduleMonitorPanel({ query, toolId, onClose }: { query: string; toolI
           </Button>
         </div>
       )}
+      </div>
     </motion.div>
   );
 }
@@ -821,15 +820,15 @@ function CrmPicker({
     .slice(0, 50);
 
   return (
-    <div className="mb-4">
+    <div className="mb-3">
       <button
         type="button"
         onClick={toggle}
-        className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+        className="inline-flex h-7 items-center gap-1.5 rounded-[4px] border border-border bg-background px-2 text-sm text-foreground transition-colors hover:bg-muted"
       >
-        <Building2 className="h-3.5 w-3.5" />
+        <Building2 className="h-4 w-4 text-primary" strokeWidth={1.6} />
         {type === "entity" ? "Select a company from your CRM" : "Select a contact from your CRM"}
-        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} strokeWidth={1.6} />
       </button>
 
       <AnimatePresence>
@@ -841,18 +840,18 @@ function CrmPicker({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="mt-2 rounded-xl border border-border bg-card p-2">
+            <div className="mt-2 rounded-[8px] border border-border bg-background p-1">
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={`Search ${type === "entity" ? "companies" : "contacts"}…`}
-                className="mb-2"
+                className="mb-1"
               />
               <div className="max-h-56 overflow-y-auto">
                 {loading ? (
-                  <p className="px-2 py-3 text-sm text-muted-foreground">Loading…</p>
+                  <p className="px-2 py-2 text-sm text-muted-foreground">Loading…</p>
                 ) : filtered.length === 0 ? (
-                  <p className="px-2 py-3 text-sm text-muted-foreground">
+                  <p className="px-2 py-2 text-sm text-muted-foreground">
                     {items.length === 0 ? `No ${type === "entity" ? "companies" : "contacts"} yet.` : "No matches."}
                   </p>
                 ) : (
@@ -861,10 +860,10 @@ function CrmPicker({
                       key={it.id}
                       type="button"
                       onClick={() => { onPick(it); setOpen(false); }}
-                      className="flex w-full flex-col items-start rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted"
+                      className="flex min-h-8 w-full items-center gap-2 rounded-[4px] px-2 py-1 text-left transition-colors hover:bg-muted"
                     >
-                      <span className="text-sm text-foreground">{label(it)}</span>
-                      {sub(it) && <span className="text-xs text-muted-foreground">{sub(it)}</span>}
+                      <span className="truncate text-sm text-foreground">{label(it)}</span>
+                      {sub(it) && <span className="truncate text-sm text-muted-foreground">{sub(it)}</span>}
                     </button>
                   ))
                 )}
@@ -994,24 +993,24 @@ export default function DiscoverPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* Header */}
       <FloatIn>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="font-brand text-2xl sm:text-3xl">Discover</h1>
-            <p className="text-muted-foreground mt-0.5 text-sm">
+            <h1 className="text-2xl font-semibold text-foreground">Discover</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
               Pull real company &amp; contact data, then drop it straight into your CRM.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setView("tools")}
                 className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                  view === "tools" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  "inline-flex h-7 items-center rounded-[4px] border border-border px-2 text-sm transition-colors",
+                  view === "tools" ? "bg-muted text-foreground" : "bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 Tools
@@ -1020,17 +1019,17 @@ export default function DiscoverPage() {
                 type="button"
                 onClick={() => setView("swarm")}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                  view === "swarm" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  "inline-flex h-7 items-center gap-1 rounded-[4px] border border-border px-2 text-sm transition-colors",
+                  view === "swarm" ? "bg-muted text-foreground" : "bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                <Network className="h-3 w-3" />
+                <Network className="h-4 w-4" strokeWidth={1.6} />
                 Swarm
               </button>
             </div>
-            <Button variant="outline" asChild>
+            <Button variant="outline" size="sm" asChild>
               <Link href="/crm/new">
-                <Plus className="mr-1 h-4 w-4" />
+                <Plus className="mr-1 h-4 w-4" strokeWidth={1.6} />
                 Add manually
               </Link>
             </Button>
@@ -1051,43 +1050,38 @@ export default function DiscoverPage() {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.32, ease: SPRING }}
-            className="space-y-10"
+            transition={{ duration: 0.2, ease: SPRING }}
+            className="space-y-5"
           >
             {CATEGORIES.map((cat, ci) => (
-              <FloatIn key={cat.id} delay={ci * 0.04}>
-                <div className="space-y-4">
-                  <h2 className="font-brand text-base text-muted-foreground uppercase tracking-wide text-xs">
-                    {cat.label}
-                  </h2>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {cat.tools.map((t, i) => (
-                      <FloatIn key={t.id} delay={ci * 0.04 + i * 0.05}>
+              <FloatIn key={cat.id} delay={ci * 0.03}>
+                <section className="rounded-[8px] border border-border bg-background">
+                  <header className="flex h-10 items-center border-b border-border px-3">
+                    <h2 className="text-sm font-medium text-foreground">{cat.label}</h2>
+                    <span className="ml-1.5 text-sm text-muted-foreground/60">{cat.tools.length}</span>
+                  </header>
+                  <ul className="divide-y divide-border">
+                    {cat.tools.map((t) => (
+                      <li key={t.id}>
                         <button
                           type="button"
                           onClick={() => dispatch({ type: "OPEN_TOOL", tool: t })}
-                          className="block w-full text-left"
+                          className="group flex min-h-10 w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/40"
                         >
-                          <SpotlightCard className="h-full p-5">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <t.icon className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                              {t.badge && (
-                                <span className="text-[10px] font-medium rounded-full bg-primary/10 text-primary px-2 py-0.5 shrink-0">
-                                  {t.badge}
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="font-brand text-sm">{t.title}</h3>
-                            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{t.body}</p>
-                            <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
-                              Run tool
-                            </span>
-                          </SpotlightCard>
+                          <t.icon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.6} />
+                          <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
+                            <h3 className="shrink-0 text-sm font-medium text-foreground sm:w-48">{t.title}</h3>
+                            <p className="truncate text-sm text-muted-foreground">{t.body}</p>
+                          </div>
+                          {t.badge && <Badge variant="primary" className="shrink-0">{t.badge}</Badge>}
+                          <span className="hidden shrink-0 text-sm text-primary sm:inline">
+                            Run tool
+                          </span>
                         </button>
-                      </FloatIn>
+                      </li>
                     ))}
-                  </div>
-                </div>
+                  </ul>
+                </section>
               </FloatIn>
             ))}
 
@@ -1104,32 +1098,25 @@ export default function DiscoverPage() {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.32, ease: SPRING }}
-            className="space-y-4"
+            transition={{ duration: 0.2, ease: SPRING }}
+            className="space-y-3"
           >
             <button
               type="button"
               onClick={() => dispatch({ type: "BACK" })}
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+              className="inline-flex h-7 items-center gap-1 rounded-[4px] px-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <ArrowLeft className="h-4 w-4" /> All tools
+              <ArrowLeft className="h-4 w-4" strokeWidth={1.6} /> All tools
             </button>
 
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-              <div className="mb-5 flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <active.icon className="h-4 w-4 text-muted-foreground" />
-                    <h2 className="font-brand text-lg">{active.title}</h2>
-                    {active.badge && (
-                      <span className="text-[10px] font-medium rounded-full bg-primary/10 text-primary px-2 py-0.5">
-                        {active.badge}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground text-sm">{active.body}</p>
-                </div>
+            <div className="rounded-[8px] border border-border bg-background transition-colors focus-within:border-primary">
+              <div className="flex h-10 items-center gap-2 border-b border-border px-3">
+                <active.icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
+                <h2 className="text-sm font-medium text-foreground">{active.title}</h2>
+                {active.badge && <Badge variant="primary">{active.badge}</Badge>}
               </div>
+              <div className="p-3">
+              <p className="mb-3 text-sm text-muted-foreground">{active.body}</p>
 
               {pickType && (
                 <CrmPicker
@@ -1148,15 +1135,15 @@ export default function DiscoverPage() {
                     key={f.key}
                     className={cn(active.fields.length === 1 && "sm:col-span-2")}
                   >
-                    <label className="text-muted-foreground mb-1 block text-xs font-medium">
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
                       {f.label}
-                      {f.optional && <span className="ml-1 opacity-50">optional</span>}
+                      {f.optional && <span className="ml-1 text-muted-foreground/60">optional</span>}
                     </label>
                     {f.type === "select" ? (
                       <select
                         value={values[f.key] || f.options?.[0]?.value || ""}
                         onChange={(e) => dispatch({ type: "SET_VALUE", key: f.key, value: e.target.value })}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="h-8 w-full rounded-[4px] border border-input bg-background px-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
                       >
                         {f.options?.map((o) => (
                           <option key={o.value} value={o.value}>{o.label}</option>
@@ -1173,21 +1160,22 @@ export default function DiscoverPage() {
                 ))}
               </div>
 
-              <div className="mt-4 flex items-center gap-3">
-                <Button onClick={run}>Run tool</Button>
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <Button size="sm" onClick={run}>Run tool</Button>
+              </div>
               </div>
             </div>
 
             <AnimatePresence>
               {error && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm"
+                  transition={{ duration: 0.2 }}
+                  className="flex items-start gap-2 rounded-[8px] border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm"
                 >
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" strokeWidth={1.6} />
                   <span className="text-foreground">{error}</span>
                 </motion.div>
               )}
@@ -1204,7 +1192,7 @@ export default function DiscoverPage() {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.32, ease: SPRING }}
+            transition={{ duration: 0.2, ease: SPRING }}
           >
             <DiscoverWorking />
           </motion.div>
@@ -1219,29 +1207,25 @@ export default function DiscoverPage() {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.32, ease: SPRING }}
-            className="space-y-4"
+            transition={{ duration: 0.2, ease: SPRING }}
+            className="space-y-3"
           >
             <button
               type="button"
               onClick={() => dispatch({ type: "BACK" })}
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+              className="inline-flex h-7 items-center gap-1 rounded-[4px] px-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <ArrowLeft className="h-4 w-4" /> All tools
+              <ArrowLeft className="h-4 w-4" strokeWidth={1.6} /> All tools
             </button>
-            <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
-              <motion.div
-                className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10"
-                animate={reduce ? {} : { scale: [1, 1.08, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <Clock className="h-5 w-5 text-primary" />
-              </motion.div>
-              <p className="font-brand text-lg text-foreground">Processing</p>
-              <p className="text-muted-foreground mt-1 text-sm">
+            <div className="rounded-[8px] border border-border bg-background p-6 text-center">
+              <p className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <Clock className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
+                Processing
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Your request is queued. Results will appear in your CRM automatically once ready.
               </p>
-              <Button variant="outline" className="mt-5 rounded-full" onClick={() => dispatch({ type: "OPEN_TOOL", tool: active })}>
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => dispatch({ type: "OPEN_TOOL", tool: active })}>
                 Run another
               </Button>
             </div>
@@ -1257,32 +1241,32 @@ export default function DiscoverPage() {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.32, ease: SPRING }}
-            className="space-y-4"
+            transition={{ duration: 0.2, ease: SPRING }}
+            className="space-y-3"
           >
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => dispatch({ type: "OPEN_TOOL", tool: active })}
-                className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+                className="inline-flex h-7 items-center gap-1 rounded-[4px] px-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <ArrowLeft className="h-4 w-4" /> Back to tool
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.6} /> Back to tool
               </button>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
                 {canSchedule && !showSchedule && (
                   <button
                     type="button"
                     onClick={() => setShowSchedule(true)}
-                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+                    className="inline-flex h-7 items-center gap-1.5 rounded-[4px] border border-border bg-background px-2 text-sm text-foreground transition-colors hover:bg-muted"
                   >
-                    <CalendarClock className="h-3.5 w-3.5" />
+                    <CalendarClock className="h-4 w-4 text-primary" strokeWidth={1.6} />
                     Schedule recurring
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => dispatch({ type: "BACK" })}
-                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+                  className="inline-flex h-7 items-center gap-1 rounded-[4px] px-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   All tools
                 </button>
@@ -1304,10 +1288,10 @@ export default function DiscoverPage() {
             {rawText && (
               <div className="space-y-2">
                 {records && records.length > 0 && (
-                  <p className="text-muted-foreground text-sm font-medium">Research answer</p>
+                  <p className="text-xs font-medium text-muted-foreground">Research answer</p>
                 )}
-                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{rawText}</p>
+                <div className="rounded-[8px] border border-border bg-background p-3">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{rawText}</p>
                 </div>
               </div>
             )}
@@ -1453,25 +1437,26 @@ function SwarmPanel() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: SPRING }}
-      className="space-y-6"
+      transition={{ duration: 0.2, ease: SPRING }}
+      className="space-y-5"
     >
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div className="mb-4 flex items-center gap-2">
-          <Network className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-brand text-lg">Swarm discovery</h2>
+      <div className="rounded-[8px] border border-border bg-background transition-colors focus-within:border-primary">
+        <div className="flex h-10 items-center gap-2 border-b border-border px-3">
+          <Network className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
+          <h2 className="text-sm font-medium text-foreground">Swarm discovery</h2>
         </div>
-        <p className="text-muted-foreground text-sm">
+        <div className="p-3">
+        <p className="text-sm text-muted-foreground">
           Describe a broad goal. Scalar splits it into distinct search angles, runs them in
           parallel and blind to each other, then merges and dedupes everything against your
           CRM - one ranked, attributed result instead of one search&apos;s blind spots.
         </p>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-3 space-y-3">
           <div>
-            <label className="text-muted-foreground mb-1 block text-xs font-medium">Goal</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Goal</label>
             <Input
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
@@ -1481,14 +1466,14 @@ function SwarmPanel() {
 
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="text-muted-foreground mb-1 block text-xs font-medium">Angles</label>
-              <div className="flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Angles</label>
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setMode("auto")}
                   className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                    mode === "auto" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    "inline-flex h-8 items-center rounded-[4px] border border-border px-2 text-sm transition-colors",
+                    mode === "auto" ? "bg-muted text-foreground" : "bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   )}
                 >
                   Auto-derive
@@ -1497,8 +1482,8 @@ function SwarmPanel() {
                   type="button"
                   onClick={() => setMode("custom")}
                   className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                    mode === "custom" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    "inline-flex h-8 items-center rounded-[4px] border border-border px-2 text-sm transition-colors",
+                    mode === "custom" ? "bg-muted text-foreground" : "bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   )}
                 >
                   My own
@@ -1508,11 +1493,11 @@ function SwarmPanel() {
 
             {mode === "auto" && (
               <div>
-                <label className="text-muted-foreground mb-1 block text-xs font-medium">How many (2-6)</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">How many (2-6)</label>
                 <select
                   value={anglesN}
                   onChange={(e) => setAnglesN(Number(e.target.value))}
-                  className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="h-8 rounded-[4px] border border-input bg-background px-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
                 >
                   {[2, 3, 4, 5, 6].map((n) => (
                     <option key={n} value={n}>{n}</option>
@@ -1522,11 +1507,11 @@ function SwarmPanel() {
             )}
 
             <div>
-              <label className="text-muted-foreground mb-1 block text-xs font-medium">Per angle</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Per angle</label>
               <select
                 value={count}
                 onChange={(e) => setCount(Number(e.target.value))}
-                className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="h-8 rounded-[4px] border border-input bg-background px-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
               >
                 {[5, 10, 15, 20].map((n) => (
                   <option key={n} value={n}>{n}</option>
@@ -1537,7 +1522,7 @@ function SwarmPanel() {
 
           {mode === "custom" && (
             <div>
-              <label className="text-muted-foreground mb-1 block text-xs font-medium">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 Angles, one per line (up to 6)
               </label>
               <textarea
@@ -1545,67 +1530,70 @@ function SwarmPanel() {
                 onChange={(e) => setCustomAngles(e.target.value)}
                 placeholder={"Series A devtools startups in NYC\nSeries A devtools startups hiring platform engineers\nOpen-core infra companies with recent funding"}
                 rows={3}
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full rounded-[4px] border border-input bg-background px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
               />
             </div>
           )}
 
-          <p className="text-muted-foreground text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+          <p className="min-w-0 flex-1 text-xs text-muted-foreground">
             Cost: gated up front for the worst case (angle count x {mode === "auto" ? anglesN : (customAngles.split("\n").filter((l) => l.trim()).length || 1)} x 12 credits), but only charged per angle that actually returns companies - an empty angle is free.
           </p>
 
-          <Button onClick={run} disabled={running || !goal.trim()}>
+          <Button size="sm" onClick={run} disabled={running || !goal.trim()}>
             {running ? "Running swarm…" : "Run swarm"}
           </Button>
+          </div>
         </div>
 
         <AnimatePresence>
           {error && (
             <motion.div
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm"
+              transition={{ duration: 0.2 }}
+              className="mt-3 flex items-start gap-2 rounded-[8px] border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm"
             >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" strokeWidth={1.6} />
               <span className="text-foreground">{error}</span>
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </div>
 
       {running && <DiscoverWorking />}
 
       {result && !running && (
         <div className="space-y-2">
-          <p className="text-muted-foreground text-sm font-medium">Latest run</p>
+          <h3 className="text-sm font-medium text-foreground">Latest run</h3>
           <SwarmResultView result={result} />
         </div>
       )}
 
       {historyLoaded && history.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="font-brand text-base text-muted-foreground uppercase tracking-wide text-xs">
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-foreground">
             Recent swarms
           </h3>
-          <div className="space-y-2">
+          <div className="divide-y divide-border overflow-hidden rounded-[8px] border border-border bg-background">
             {history.map((h) => {
               const isOpen = expandedId === h.id;
               return (
-                <div key={h.id} className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                <div key={h.id}>
                   <button
                     type="button"
                     onClick={() => setExpandedId(isOpen ? null : (h.id ?? null))}
-                    className="flex w-full items-center justify-between gap-4 px-5 py-3 text-left hover:bg-muted/40 transition-colors"
+                    className="flex min-h-10 w-full items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-muted/40"
                   >
-                    <div className="min-w-0">
-                      <p className="font-brand truncate text-sm text-foreground">{h.goal}</p>
-                      <p className="text-muted-foreground mt-0.5 text-xs">
+                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", !isOpen && "-rotate-90")} strokeWidth={1.6} />
+                    <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-3">
+                      <p className="min-w-0 truncate text-sm font-medium text-foreground sm:flex-1">{h.goal}</p>
+                      <p className="shrink-0 text-xs tabular-nums text-muted-foreground">
                         {h.angles.length} angle{h.angles.length === 1 ? "" : "s"} · {h.added} added · {h.skipped} duplicate{h.skipped === 1 ? "" : "s"} · {h.creditsSpent} credits
                       </p>
                     </div>
-                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
                   </button>
                   <AnimatePresence>
                     {isOpen && (
@@ -1614,9 +1602,9 @@ function SwarmPanel() {
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="overflow-hidden border-t border-border"
+                        className="overflow-hidden border-t border-border bg-muted/20"
                       >
-                        <div className="p-5">
+                        <div className="p-3">
                           <SwarmResultView result={h} />
                         </div>
                       </motion.div>
@@ -1642,62 +1630,78 @@ function SwarmResultView({ result }: { result: SwarmSummary }) {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 overflow-hidden rounded-[8px] border border-border bg-background sm:grid-cols-5">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-muted/30 p-3 text-center">
-            <p className="font-brand text-lg text-foreground">{s.value}</p>
-            <p className="text-muted-foreground text-[10px] uppercase tracking-wide">{s.label}</p>
+          <div key={s.label} className="border-b border-r border-border px-3 py-2 last:border-r-0 sm:border-b-0">
+            <p className="text-xs font-medium text-muted-foreground">{s.label}</p>
+            <p className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">{s.value}</p>
           </div>
         ))}
       </div>
 
       {result.perAngle.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Per angle</p>
-          <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
-            {result.perAngle.map((a, i) => (
-              <div key={i} className="flex items-center justify-between gap-4 px-3 py-2 text-sm">
-                <span className="min-w-0 truncate text-foreground">{a.angle}</span>
-                <span className="text-muted-foreground shrink-0 text-xs">
-                  {a.found} found{a.credited ? " · 12 credits" : " · free (no hits)"}
-                </span>
-              </div>
-            ))}
+          <p className="text-xs font-medium text-muted-foreground">Per angle</p>
+          <div className="overflow-x-auto rounded-[8px] border border-border bg-background">
+            <table className="twenty-table">
+              <thead>
+                <tr><th>Angle</th><th>Result</th></tr>
+              </thead>
+              <tbody>
+                {result.perAngle.map((a, i) => (
+                  <tr key={i}>
+                    <td className="max-w-0 w-full truncate text-foreground">{a.angle}</td>
+                    <td className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                      {a.found} found{a.credited ? " · 12 credits" : " · free (no hits)"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {result.companies.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Companies</p>
-          <div className="space-y-2">
-            {result.companies.map((c, i) => (
-              <div key={i} className="flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-foreground">{c.companyName}</p>
-                  {c.domain && <p className="text-muted-foreground truncate text-xs">{c.domain}</p>}
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {c.angles.map((a, j) => (
-                      <span key={j} className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] text-primary">
-                        {a}
+          <p className="text-xs font-medium text-muted-foreground">Companies</p>
+          <div className="overflow-x-auto rounded-[8px] border border-border bg-background">
+            <table className="twenty-table">
+              <thead>
+                <tr><th>Company</th><th>Domain</th><th>Angles</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                {result.companies.map((c, i) => (
+                  <tr key={i}>
+                    <td className="whitespace-nowrap">
+                      <span className="inline-flex h-5 max-w-[16rem] items-center rounded-[4px] bg-muted px-1.5 text-sm text-foreground">
+                        <span className="truncate">{c.companyName}</span>
                       </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="shrink-0">
-                  {c.status === "added" && c.entityId ? (
-                    <Link href={`/crm/entity/${c.entityId}`} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs text-primary hover:underline">
-                      <Check className="h-3 w-3 text-green-500" /> Added
-                    </Link>
-                  ) : (
-                    <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
-                      Already in CRM
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+                    </td>
+                    <td className="whitespace-nowrap text-muted-foreground">{c.domain ?? ""}</td>
+                    <td className="py-1">
+                      <div className="flex flex-wrap gap-1">
+                        {c.angles.map((a, j) => (
+                          <Badge key={j} variant="primary" className="max-w-[14rem]">
+                            <span className="truncate">{a}</span>
+                          </Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap">
+                      {c.status === "added" && c.entityId ? (
+                        <Link href={`/crm/entity/${c.entityId}`} className="hover:opacity-80">
+                          <Badge variant="success"><Check className="h-3 w-3" strokeWidth={1.6} /> Added</Badge>
+                        </Link>
+                      ) : (
+                        <Badge variant="secondary">Already in CRM</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -1730,7 +1734,7 @@ function DataView({ value }: { value: unknown }) {
       return (
         <div className="flex flex-wrap gap-1.5">
           {value.map((v, i) => (
-            <span key={i} className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs">
+            <span key={i} className="inline-flex h-5 items-center rounded-[4px] bg-muted px-1.5 text-xs text-foreground">
               {String(v)}
             </span>
           ))}
@@ -1740,7 +1744,7 @@ function DataView({ value }: { value: unknown }) {
     return (
       <div className="space-y-2">
         {value.map((v, i) => (
-          <div key={i} className="rounded-lg border border-border/60 bg-muted/30 p-3">
+          <div key={i} className="rounded-[4px] border border-border p-2">
             <DataView value={v} />
           </div>
         ))}
@@ -1756,8 +1760,8 @@ function DataView({ value }: { value: unknown }) {
     return (
       <div className="space-y-2">
         {entries.map(([k, v]) => (
-          <div key={k} className="grid grid-cols-[minmax(0,9rem)_1fr] gap-3 text-sm">
-            <span className="text-xs text-muted-foreground pt-0.5">{humanize(k)}</span>
+          <div key={k} className="grid min-h-6 grid-cols-[minmax(0,9rem)_1fr] items-start gap-2 text-sm">
+            <span className="truncate text-sm text-muted-foreground">{humanize(k)}</span>
             <div className="min-w-0">
               <DataView value={v} />
             </div>
@@ -1800,16 +1804,16 @@ function EnrichmentResult({ env }: { env: Record<string, unknown> }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{subject.label}</p>
-          <p className="font-brand truncate text-base">{domain ?? "Result"}</p>
+    <section className="rounded-[8px] border border-border bg-background">
+      <header className="flex min-h-10 items-center justify-between gap-3 border-b border-border px-3 py-1.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-medium text-foreground">{domain ?? "Result"}</p>
+          {subject.label && <Badge variant="secondary">{subject.label}</Badge>}
         </div>
         {domain && (
           state === "done" ? (
             <Button size="sm" variant="outline" disabled>
-              <Check className="mr-1 h-3.5 w-3.5 text-green-500" />
+              <Check className="mr-1 h-4 w-4 text-primary" strokeWidth={1.6} />
               {msg}
             </Button>
           ) : (
@@ -1817,27 +1821,27 @@ function EnrichmentResult({ env }: { env: Record<string, unknown> }) {
               {state === "saving" ? (
                 <>
                   <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="mr-1 inline-flex">
-                    <RefreshCw className="h-3.5 w-3.5" />
+                    <RefreshCw className="h-4 w-4" strokeWidth={1.6} />
                   </motion.span>
                   Saving…
                 </>
               ) : (
                 <>
-                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  <Plus className="mr-1 h-4 w-4" strokeWidth={1.6} />
                   Add &amp; enrich entity
                 </>
               )}
             </Button>
           )
         )}
-      </div>
+      </header>
 
-      <div className="mt-4 max-h-[28rem] overflow-auto rounded-xl border border-border bg-muted/30 p-4">
+      <div className="max-h-[28rem] overflow-auto p-3">
         <DataView value={cleanForView(data)} />
       </div>
 
-      {msg && state === "error" && <p className="mt-2 text-xs text-destructive">{msg}</p>}
-    </div>
+      {msg && state === "error" && <p className="border-t border-border px-3 py-2 text-xs text-destructive">{msg}</p>}
+    </section>
   );
 }
 
@@ -1932,37 +1936,37 @@ function EntityFinderResults({ companies }: { companies: Record<string, unknown>
 
   if (list.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-10 text-center">
-        <p className="font-brand text-lg">No companies found</p>
-        <p className="text-muted-foreground mt-1 text-sm">Try a more specific description.</p>
+      <div className="rounded-[8px] border border-dashed border-border p-8 text-center">
+        <p className="text-sm font-medium text-foreground">No companies found</p>
+        <p className="mt-1 text-sm text-muted-foreground">Try a more specific description.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-muted-foreground text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm tabular-nums text-muted-foreground">
           {list.length} found · {newCount} new
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {bulkMsg && <span className="text-xs text-muted-foreground">{bulkMsg}</span>}
           <Button size="sm" onClick={addAll} disabled={bulk === "saving" || addableIdx.length === 0}>
             {bulk === "saving" ? (
               <>
                 <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="mr-1 inline-flex">
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw className="h-4 w-4" strokeWidth={1.6} />
                 </motion.span>
                 Adding…
               </>
             ) : bulk === "done" && addableIdx.length === 0 ? (
               <>
-                <Check className="mr-1 h-3.5 w-3.5 text-green-500" />
+                <Check className="mr-1 h-4 w-4" strokeWidth={1.6} />
                 All added
               </>
             ) : (
               <>
-                <Plus className="mr-1 h-3.5 w-3.5" />
+                <Plus className="mr-1 h-4 w-4" strokeWidth={1.6} />
                 Add all ({addableIdx.length})
               </>
             )}
@@ -1970,67 +1974,80 @@ function EntityFinderResults({ companies }: { companies: Record<string, unknown>
         </div>
       </div>
 
-      {list.map((c, i) => {
-        const state = c.inCrm ? "incrm" : added[i] ?? "idle";
-        return (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: SPRING, delay: Math.min(i * 0.04, 0.4) }}
-            className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/30"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  {c.website ? (
-                    <a href={c.website} target="_blank" rel="noopener noreferrer" className="font-brand truncate text-base hover:text-primary">
-                      {c.companyName}
-                    </a>
-                  ) : (
-                    <p className="font-brand truncate text-base">{c.companyName}</p>
-                  )}
-                </div>
-                <p className="text-muted-foreground mt-0.5 truncate text-sm">
-                  {[c.industry, c.address].filter(Boolean).join(" · ") || c.domain}
-                </p>
-                {c.description && (
-                  <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed line-clamp-3">{c.description}</p>
-                )}
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {c.domain && <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">{c.domain}</span>}
-                  {c.phone && <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">{c.phone}</span>}
-                  {c.keyDecisionMakers?.slice(0, 3).map((d, j) => (
-                    <span key={j} className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs text-primary">
-                      {d.name}{d.title ? ` · ${d.title}` : ""}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="shrink-0">
-                {state === "incrm" ? (
-                  <Button size="sm" variant="outline" disabled>In CRM</Button>
-                ) : state === "added" ? (
-                  <Button size="sm" variant="outline" disabled>
-                    <Check className="mr-1 h-3.5 w-3.5 text-green-500" />Added
-                  </Button>
-                ) : (
-                  <Button size="sm" onClick={() => addOne(i)} disabled={state === "saving"}>
-                    {state === "saving" ? (
-                      <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="inline-flex">
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      </motion.span>
+      <div className="overflow-x-auto rounded-[8px] border border-border bg-background">
+        <table className="twenty-table">
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Domain</th>
+              <th>Industry / location</th>
+              <th>Decision makers</th>
+              <th>Phone</th>
+              <th>Description</th>
+              <th className="text-right">CRM</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((c, i) => {
+              const state = c.inCrm ? "incrm" : added[i] ?? "idle";
+              return (
+                <motion.tr
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.2) }}
+                >
+                  <td className="whitespace-nowrap">
+                    {c.website ? (
+                      <a href={c.website} target="_blank" rel="noopener noreferrer" className="inline-flex h-5 max-w-[14rem] items-center rounded-[4px] bg-muted px-1.5 text-sm font-medium text-foreground hover:text-primary">
+                        <span className="truncate">{c.companyName}</span>
+                      </a>
                     ) : (
-                      <><Plus className="mr-1 h-3.5 w-3.5" />Add</>
+                      <span className="inline-flex h-5 max-w-[14rem] items-center rounded-[4px] bg-muted px-1.5 text-sm font-medium text-foreground">
+                        <span className="truncate">{c.companyName}</span>
+                      </span>
                     )}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        );
-      })}
+                  </td>
+                  <td className="whitespace-nowrap text-muted-foreground">{c.domain ?? ""}</td>
+                  <td className="max-w-[14rem] truncate whitespace-nowrap text-muted-foreground">
+                    {[c.industry, c.address].filter(Boolean).join(" · ")}
+                  </td>
+                  <td className="py-1">
+                    <div className="flex flex-wrap gap-1">
+                      {c.keyDecisionMakers?.slice(0, 3).map((d, j) => (
+                        <Badge key={j} variant="primary" className="max-w-[14rem]">
+                          <span className="truncate">{d.name}{d.title ? ` · ${d.title}` : ""}</span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap tabular-nums text-muted-foreground">{c.phone ?? ""}</td>
+                  <td className="max-w-[18rem] truncate whitespace-nowrap text-muted-foreground" title={c.description}>
+                    {c.description ?? ""}
+                  </td>
+                  <td className="whitespace-nowrap text-right">
+                    {state === "incrm" ? (
+                      <Badge variant="secondary">In CRM</Badge>
+                    ) : state === "added" ? (
+                      <Badge variant="success"><Check className="h-3 w-3" strokeWidth={1.6} />Added</Badge>
+                    ) : (
+                      <Button size="sm" variant="outline" className="h-6" onClick={() => addOne(i)} disabled={state === "saving"}>
+                        {state === "saving" ? (
+                          <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="inline-flex">
+                            <RefreshCw className="h-4 w-4" strokeWidth={1.6} />
+                          </motion.span>
+                        ) : (
+                          <><Plus className="mr-1 h-4 w-4" strokeWidth={1.6} />Add</>
+                        )}
+                      </Button>
+                    )}
+                  </td>
+                </motion.tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -2049,13 +2066,13 @@ function Results({
   if (records.length === 0) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="rounded-2xl border border-border bg-card p-10 text-center"
+        transition={{ duration: 0.2 }}
+        className="rounded-[8px] border border-dashed border-border p-8 text-center"
       >
-        <p className="font-brand text-lg">No results</p>
-        <p className="text-muted-foreground mt-1 text-sm">
+        <p className="text-sm font-medium text-foreground">No results</p>
+        <p className="mt-1 text-sm text-muted-foreground">
           {sourceTool} didn&apos;t return anything for that input.
         </p>
       </motion.div>
@@ -2063,20 +2080,22 @@ function Results({
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-muted-foreground text-sm">
+    <div className="space-y-2">
+      <p className="text-sm tabular-nums text-muted-foreground">
         {records.length} result{records.length === 1 ? "" : "s"}
       </p>
-      {records.map((rec, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: i * 0.06 }}
-        >
-          <ResultCard rec={rec} saveAs={saveAs} />
-        </motion.div>
-      ))}
+      <ul className="divide-y divide-border overflow-hidden rounded-[8px] border border-border bg-background">
+        {records.map((rec, i) => (
+          <motion.li
+            key={i}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1], delay: Math.min(i * 0.02, 0.2) }}
+          >
+            <ResultCard rec={rec} saveAs={saveAs} />
+          </motion.li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -2100,37 +2119,38 @@ function ResultCard({ rec, saveAs }: { rec: Record<string, unknown>; saveAs: Sav
   const isLink = saveAs === "link" || saveAs === "raw";
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
-      <div className="flex items-start justify-between gap-4">
+    <div className="px-3 py-2 transition-colors hover:bg-muted/30">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             {x.website && (
               <a
                 href={x.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-brand truncate text-base hover:text-primary transition-colors"
+                className="truncate text-sm font-medium text-foreground transition-colors hover:text-primary"
               >
                 {heading}
               </a>
             )}
             {!x.website && (
-              <p className="font-brand truncate text-base">{heading}</p>
+              <p className="truncate text-sm font-medium text-foreground">{heading}</p>
             )}
             {x.website && (
               <a href={x.website} target="_blank" rel="noopener noreferrer" className="shrink-0 text-muted-foreground hover:text-foreground">
-                <ExternalLink className="h-3.5 w-3.5" />
+                <ExternalLink className="h-4 w-4" strokeWidth={1.6} />
               </a>
             )}
+            {sub && <p className="hidden min-w-0 truncate text-sm text-muted-foreground sm:block">{sub}</p>}
           </div>
-          {sub && <p className="text-muted-foreground mt-0.5 truncate text-sm">{sub}</p>}
+          {sub && <p className="mt-0.5 truncate text-sm text-muted-foreground sm:hidden">{sub}</p>}
           {x.snippet && (
-            <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed line-clamp-3">{x.snippet}</p>
+            <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{x.snippet}</p>
           )}
           {chips.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-1.5 flex flex-wrap gap-1">
               {chips.map((c, i) => (
-                <span key={i} className="text-muted-foreground inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs">
+                <span key={i} className="inline-flex h-5 items-center rounded-[4px] bg-muted px-1.5 text-xs text-foreground">
                   {c.label}
                 </span>
               ))}
@@ -2141,12 +2161,12 @@ function ResultCard({ rec, saveAs }: { rec: Record<string, unknown>; saveAs: Sav
         {!isLink && <CrmAction rec={rec} extracted={x} saveAs={saveAs} />}
       </div>
 
-      <details className="group mt-4">
-        <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center gap-1 text-xs select-none">
-          <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
+      <details className="group mt-1.5">
+        <summary className="flex cursor-pointer select-none list-none items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <ChevronDown className="h-3 w-3 -rotate-90 transition-transform group-open:rotate-0" strokeWidth={1.6} />
           View raw data
         </summary>
-        <pre className="mt-2 max-h-64 overflow-auto rounded-xl border border-border bg-muted/50 p-3 text-xs">
+        <pre className="mt-1.5 max-h-64 overflow-auto rounded-[4px] border border-border bg-muted/40 p-2 font-mono text-xs">
           {JSON.stringify(rec, null, 2)}
         </pre>
       </details>
@@ -2186,7 +2206,7 @@ function CrmAction({ rec, extracted, saveAs }: { rec: Record<string, unknown>; e
   const ms = matchRef.current;
   if (ms.status === "loading") {
     return (
-      <div className="flex h-8 w-24 shrink-0 items-center justify-center">
+      <div className="flex h-7 w-24 shrink-0 items-center justify-center">
         <span className="flex gap-1">
           {[0, 1, 2].map((i) => (
             <motion.span key={i} className="block h-1 w-1 rounded-full bg-muted-foreground"
@@ -2271,31 +2291,31 @@ function AddAction({
   const isSaving = actionState === "saving";
 
   return (
-    <div className="flex shrink-0 flex-col items-end gap-1.5">
+    <div className="flex shrink-0 flex-col items-end gap-1">
       <AnimatePresence mode="wait">
         {actionState === "done-added" && (
-          <motion.div key="done-added" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25, ease: SPRING }}>
-            <Button size="sm" variant="outline" disabled><Check className="mr-1 h-3.5 w-3.5 text-green-500" />Added</Button>
+          <motion.div key="done-added" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, ease: SPRING }}>
+            <Badge variant="success"><Check className="h-3 w-3" strokeWidth={1.6} />Added</Badge>
           </motion.div>
         )}
         {actionState === "done-updated" && (
-          <motion.div key="done-updated" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25, ease: SPRING }} className="flex flex-col items-end gap-1">
-            <Button size="sm" variant="outline" disabled><Check className="mr-1 h-3.5 w-3.5 text-green-500" />Updated</Button>
-            {addedFields.length > 0 && <p className="text-muted-foreground max-w-[140px] text-right text-xs leading-tight">added {addedFields.join(", ")}</p>}
+          <motion.div key="done-updated" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, ease: SPRING }} className="flex flex-col items-end gap-1">
+            <Badge variant="success"><Check className="h-3 w-3" strokeWidth={1.6} />Updated</Badge>
+            {addedFields.length > 0 && <p className="max-w-[140px] text-right text-xs leading-tight text-muted-foreground">added {addedFields.join(", ")}</p>}
           </motion.div>
         )}
         {!isDone && (
-          <motion.div key="action" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex flex-col items-end gap-1.5">
-            {isUpdate && actionState === "idle" && <p className="text-muted-foreground max-w-[140px] text-right text-xs leading-tight">Already in CRM</p>}
-            <Button size="sm" variant={isUpdate ? "outline" : "default"} onClick={handleAction} disabled={isSaving}
-              className={cn(isSaving && "opacity-70", isUpdate && "border-primary/40 text-primary hover:bg-primary/10")}
+          <motion.div key="action" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex items-center gap-2">
+            {isUpdate && actionState === "idle" && <Badge variant="secondary">Already in CRM</Badge>}
+            <Button size="sm" variant="outline" onClick={handleAction} disabled={isSaving}
+              className={cn(isSaving && "opacity-70", isUpdate && "text-primary")}
             >
               {isSaving ? (
-                <><motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="mr-1 inline-flex"><RefreshCw className="h-3.5 w-3.5" /></motion.span>Saving…</>
+                <><motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="mr-1 inline-flex"><RefreshCw className="h-4 w-4" strokeWidth={1.6} /></motion.span>Saving…</>
               ) : isUpdate ? (
-                <><RefreshCw className="mr-1 h-3.5 w-3.5" />Update</>
+                <><RefreshCw className="mr-1 h-4 w-4" strokeWidth={1.6} />Update</>
               ) : (
-                <><Plus className="mr-1 h-3.5 w-3.5" />Add to CRM</>
+                <><Plus className="mr-1 h-4 w-4" strokeWidth={1.6} />Add to CRM</>
               )}
             </Button>
           </motion.div>

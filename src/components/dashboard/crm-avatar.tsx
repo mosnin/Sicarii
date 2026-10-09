@@ -19,7 +19,7 @@ export function CrmAvatar({
   className?: string;
 }) {
   const [err, setErr] = useState(false);
-  const radius = shape === "circle" ? "rounded-full" : "rounded-lg";
+  const radius = shape === "circle" ? "rounded-full" : "rounded-[4px]";
   const initial = (label?.trim()?.[0] ?? "?").toUpperCase();
   const dims = { width: size, height: size };
 
@@ -39,9 +39,9 @@ export function CrmAvatar({
   return (
     <div
       aria-hidden="true"
-      style={dims}
+      style={{ ...dims, fontSize: Math.max(9, Math.round(size * 0.42)) }}
       className={cn(
-        "flex shrink-0 items-center justify-center border border-border bg-primary/10 font-brand text-sm text-primary",
+        "flex shrink-0 items-center justify-center bg-primary/10 font-medium leading-none text-primary",
         radius,
         className
       )}

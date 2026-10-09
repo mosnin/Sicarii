@@ -50,15 +50,15 @@ export function ContactEnrichAll({ contactId, missing }: { contactId: string; mi
 
   return (
     <div>
-      <Button size="sm" variant="glow" onClick={enrichAll} disabled={running} className="w-full">
+      <Button size="sm" onClick={enrichAll} disabled={running} className="w-full">
         {running ? (
-          <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="mr-1.5 inline-flex">
-            <RefreshCw className="h-4 w-4" />
+          <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="inline-flex">
+            <RefreshCw className="h-4 w-4" strokeWidth={1.6} />
           </motion.span>
         ) : complete ? (
-          <Check className="mr-1.5 h-4 w-4" />
+          <Check className="h-4 w-4" strokeWidth={1.6} />
         ) : (
-          <Sparkles className="mr-1.5 h-4 w-4" />
+          <Sparkles className="h-4 w-4" strokeWidth={1.6} />
         )}
         {running ? "Enriching…" : complete ? "Re-enrich" : `Enrich (${missing.length} to find)`}
       </Button>
@@ -112,19 +112,19 @@ export function ContactEnrich({
 
   return (
     <div className="border-t border-border pt-3">
-      <p className="text-xs text-muted-foreground mb-2">Enrich</p>
-      <div className="flex flex-wrap gap-2">
+      <p className="text-xs font-medium text-muted-foreground mb-1.5">Enrich</p>
+      <div className="flex flex-wrap gap-1.5">
         {missing.map((f) => {
           const { label, icon: Icon } = META[f];
           const isBusy = busy[f];
           return (
             <Button key={f} variant="outline" size="sm" onClick={() => run(f)} disabled={isBusy}>
               {isBusy ? (
-                <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="mr-1 inline-flex">
-                  <RefreshCw className="h-3.5 w-3.5" />
+                <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="inline-flex">
+                  <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.6} />
                 </motion.span>
               ) : (
-                <Icon className="mr-1 h-3.5 w-3.5" />
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.6} />
               )}
               {label}
             </Button>

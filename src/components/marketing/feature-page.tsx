@@ -9,7 +9,7 @@ import { AsciiField } from "@/components/dashboard/ascii-field";
 
 // A shared template for the in-depth feature pages reached from the mega menu.
 // Same visual language as the landing page (ASCII signature hero, baby-blue
-// accents, font-brand headings), driven entirely by data so each page stays a
+// accents, semibold Inter headings), driven entirely by data so each page stays a
 // thin content file. No decorative icon badges; the only icon is the functional
 // arrow inside the CTAs.
 
@@ -32,7 +32,7 @@ export type FeaturePageProps = {
   /**
    * The proof, shown immediately under the hero: one illustration that lets a
    * visitor see the promise land before they read a single block. One per
-   * page — a second one competes with it and both get scrolled past.
+   * page - a second one competes with it and both get scrolled past.
    */
   illustration?: React.ReactNode;
   /** Optional extra content rendered after the steps, before the CTA. */
@@ -66,13 +66,13 @@ export function FeaturePage({
           />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
           <motion.div
-            initial={{ opacity: 0, y: 18, filter: "blur(6px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.7, ease: EASE }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: EASE }}
             className="relative z-10 mx-auto max-w-4xl px-4 text-center"
           >
-            <p className="text-xs uppercase tracking-[0.3em] text-primary">{eyebrow}</p>
-            <h1 className="font-brand mt-4 text-4xl leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">{eyebrow}</p>
+            <h1 className="font-semibold tracking-tight mt-4 text-4xl leading-[1.05] text-foreground sm:text-5xl lg:text-6xl">
               {title} <span className="text-gradient-orange">{accent}</span>
               {titleTail ? ` ${titleTail}` : ""}
             </h1>
@@ -80,14 +80,14 @@ export function FeaturePage({
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/sign-up"
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+                className="inline-flex h-10 items-center gap-2 rounded-[8px] bg-primary px-5 text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Get started
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/#capabilities"
-                className="rounded-full border border-border px-7 py-3 text-base font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+                className="inline-flex h-10 items-center rounded-[8px] border border-border bg-background px-5 text-base font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-foreground"
               >
                 See all capabilities
               </Link>
@@ -103,9 +103,9 @@ export function FeaturePage({
             {blocks.map((b) => (
               <div
                 key={b.title}
-                className="rounded-3xl border border-border bg-card p-6 transition-shadow hover:shadow-lg hover:shadow-black/[0.05] sm:p-8"
+                className="rounded-[8px] border border-border bg-background p-6 transition-colors hover:border-border-strong sm:p-8"
               >
-                <h3 className="font-brand text-xl text-foreground">{b.title}</h3>
+                <h3 className="text-xl font-medium text-foreground">{b.title}</h3>
                 <p className="mt-3 leading-relaxed text-muted-foreground">{b.body}</p>
               </div>
             ))}
@@ -119,11 +119,11 @@ export function FeaturePage({
               <ol className="space-y-8">
                 {steps.map((s, i) => (
                   <li key={s.title} className="flex gap-5">
-                    <span className="font-brand text-2xl tabular-nums text-primary">
+                    <span className="text-2xl font-semibold tabular-nums text-primary">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <div>
-                      <h4 className="font-brand text-lg text-foreground">{s.title}</h4>
+                      <h4 className="text-lg font-medium text-foreground">{s.title}</h4>
                       <p className="mt-1.5 leading-relaxed text-muted-foreground">{s.body}</p>
                     </div>
                   </li>
@@ -138,15 +138,15 @@ export function FeaturePage({
         {/* CTA */}
         <section className="py-20 sm:py-28">
           <div className="mx-auto max-w-3xl px-4 text-center">
-            <h2 className="font-brand text-3xl tracking-tight text-foreground sm:text-4xl">
+            <h2 className="font-semibold tracking-tight text-3xl text-foreground sm:text-4xl">
               {ctaTitle}
             </h2>
             <Link
               href="/sign-up"
-              className="mt-7 inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+              className="mt-7 inline-flex h-10 items-center gap-2 rounded-[8px] bg-primary px-5 text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Get started
-              <ArrowRight className="h-5 w-5" />
+              <ArrowRight className="h-4 w-4" strokeWidth={1.6} />
             </Link>
           </div>
         </section>

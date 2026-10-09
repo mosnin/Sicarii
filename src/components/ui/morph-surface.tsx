@@ -325,17 +325,16 @@ export function MorphSurface({
         }}
         className={cn(
           "absolute left-0 top-0 flex flex-col items-center z-10 overflow-hidden",
-          "bg-card dark:bg-muted",
-          "shadow-[0px_1px_1px_0px_rgba(0,_0,_0,_0.05),_0px_1px_1px_0px_rgba(255,_252,_240,_0.5)_inset,_0px_0px_0px_1px_hsla(0,_0%,_100%,_0.1)_inset,_0px_0px_1px_0px_rgba(28,_27,_26,_0.5)]",
-          "dark:shadow-[0px_1px_0px_0px_hsla(0,_0%,_0%,_0.02)_inset,_0px_0px_0px_1px_hsla(0,_0%,_0%,_0.02)_inset,_0px_0px_0px_1px_rgba(255,_255,_255,_0.25)]",
+          "border border-border bg-card",
+          showFeedback && "shadow-lg",
           !showFeedback &&
-            "cursor-pointer hover:brightness-105 transition-[filter] duration-200"
+            "cursor-pointer hover:bg-muted/40 transition-colors duration-150"
         )}
         initial={false}
         animate={{
           width: showFeedback ? hookExpandedWidth : collapsedWidth,
           height: showFeedback ? hookExpandedHeight : hookCollapsedHeight,
-          borderRadius: showFeedback ? 14 : 20,
+          borderRadius: showFeedback ? 8 : 4,
         }}
         transition={
           springConfig || {
@@ -425,10 +424,10 @@ function MorphSurfaceDock() {
     <button
       type="button"
       className={cn(
-        "m-[-8px] flex justify-end rounded-full p-2 flex-1 gap-1",
+        "m-[-8px] flex justify-end rounded-[4px] p-2 flex-1 gap-1 text-sm",
         "text-muted-foreground hover:text-foreground",
-        "transition-colors duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "transition-colors duration-150",
+        "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/20",
         triggerClassName
       )}
       onClick={handleTriggerClick}
@@ -458,7 +457,7 @@ function MorphSurfaceDock() {
       <div className="flex items-center justify-center gap-6 px-3">
         <div className="flex items-center gap-2 w-fit">
           {indicatorElement}
-          <div className="font-brand text-sm text-foreground">{surfaceTitle}</div>
+          <div className="text-sm font-medium text-foreground">{surfaceTitle}</div>
         </div>
         {triggerElement}
       </div>
@@ -536,7 +535,7 @@ const MorphSurfaceFeedback = React.forwardRef<
           className={cn(
             "mt-1 flex items-center justify-center gap-1 text-sm -translate-y-[3px]",
             "text-muted-foreground right-4 text-center bg-transparent select-none",
-            "rounded-xl cursor-pointer pr-1",
+            "rounded-[4px] cursor-pointer pr-1",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           )}
         >
@@ -549,8 +548,8 @@ const MorphSurfaceFeedback = React.forwardRef<
         placeholder={placeholder}
         name="message"
         className={cn(
-          "resize-none w-full h-full scroll-py-2 text-base outline-none p-4",
-          "bg-muted dark:bg-accent rounded-b-lg rounded-t-xs",
+          "resize-none w-full h-full scroll-py-2 text-sm outline-none p-3",
+          "bg-muted/50 rounded-[4px]",
           "caret-primary",
           "placeholder:text-muted-foreground",
           "focus-visible:ring-1 focus-visible:ring-ring/20 focus-visible:ring-offset-0"
@@ -653,7 +652,7 @@ function Kbd({
   return (
     <kbd
       className={cn(
-        "w-6 h-6 bg-muted text-muted-foreground rounded flex items-center justify-center font-sans px-[6px] text-xs border",
+        "h-5 min-w-5 bg-muted text-muted-foreground rounded-[4px] flex items-center justify-center font-sans px-[5px] text-xs border border-border",
         className
       )}
     >

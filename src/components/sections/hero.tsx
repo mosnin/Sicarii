@@ -12,11 +12,11 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 const container = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+  show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } },
 };
 const item = {
-  hidden: { opacity: 0, y: 18, filter: "blur(6px)" },
-  show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.6, ease: EASE } },
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: EASE } },
 };
 
 export function HeroSection() {
@@ -49,13 +49,13 @@ export function HeroSection() {
         animate="show"
         className="relative z-10 flex max-w-3xl flex-col items-center gap-6 text-center"
       >
-        <motion.p variants={item} className="text-xs uppercase tracking-[0.3em] text-primary">
+        <motion.p variants={item} className="text-sm font-medium text-fg-tertiary">
           The CRM your agents run
         </motion.p>
 
         <motion.h1
           variants={item}
-          className="font-brand text-4xl leading-[1.05] tracking-tight text-foreground sm:text-6xl"
+          className="text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl"
         >
           <span className="block">
             <RotatingWord words={["Lead", "Company", "People", "Intent"]} className="text-gradient-orange" />
@@ -63,7 +63,7 @@ export function HeroSection() {
           <span className="block">intelligence at agent speed</span>
         </motion.h1>
 
-        <motion.p variants={item} className="max-w-2xl text-lg text-muted-foreground sm:text-xl">
+        <motion.p variants={item} className="max-w-2xl text-lg text-fg-secondary sm:text-xl">
           Point your agent at a name, a domain, or a prompt. It finds the right
           companies and people, surfaces who is in-market, and enriches every
           record. It all lands structured, deduped, and yours.
@@ -72,14 +72,14 @@ export function HeroSection() {
         <motion.div variants={item} className="mt-1 flex flex-col items-center gap-4 sm:flex-row">
           <Link
             href="/sign-up"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+            className="inline-flex h-10 items-center gap-2 rounded-[8px] bg-primary px-5 text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Get started
-            <ArrowRight className="h-5 w-5" />
+            <ArrowRight className="h-4 w-4" strokeWidth={1.6} />
           </Link>
           <Link
             href="/#how-it-works"
-            className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-base font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-border bg-background px-5 text-base font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-foreground"
           >
             See how it works
           </Link>
@@ -88,9 +88,9 @@ export function HeroSection() {
 
       {/* The live, interactive product demo: the CRM building itself. */}
       <motion.div
-        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40, filter: "blur(8px)" }}
-        animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)" }}
-        transition={{ duration: 0.9, delay: 0.35, ease: EASE }}
+        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
+        animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.2, ease: EASE }}
         className="relative z-10 mt-14 w-full"
       >
         <LiveDemo />

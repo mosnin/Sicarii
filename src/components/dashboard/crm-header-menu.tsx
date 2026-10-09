@@ -52,52 +52,52 @@ export function CrmHeaderMenu() {
         type="button"
         aria-label="More"
         onClick={() => setOpen((o) => !o)}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="flex h-8 w-8 items-center justify-center rounded-[4px] border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
-        <MoreVertical className="h-4 w-4" />
+        <MoreVertical className="h-4 w-4" strokeWidth={1.6} />
       </button>
       <AnimatePresence>
         {open && (
           <>
             <button type="button" aria-hidden onClick={() => setOpen(false)} className="fixed inset-0 z-40 cursor-default" />
             <motion.div
-              initial={{ opacity: 0, y: -6, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.98 }}
-              transition={{ duration: 0.16 }}
-              className="absolute right-0 z-50 mt-1.5 w-56 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-xl"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 z-50 mt-1 w-56 overflow-hidden rounded-[8px] border border-border bg-background p-1 shadow-lg"
             >
               <Link
                 href="/crm/map"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+                className="flex items-center gap-2 h-8 rounded-[4px] px-2 text-sm text-foreground transition-colors hover:bg-muted"
               >
-                <Map className="h-4 w-4 text-muted-foreground" />
+                <Map className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
                 Map view
               </Link>
               <button
                 type="button"
                 onClick={() => exportCsv("/api/contacts/export")}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                className="flex w-full items-center gap-2 h-8 rounded-[4px] px-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
               >
-                <Download className="h-4 w-4 text-muted-foreground" />
+                <Download className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
                 Export contacts (CSV)
               </button>
               <button
                 type="button"
                 onClick={() => exportCsv("/api/entities/export")}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                className="flex w-full items-center gap-2 h-8 rounded-[4px] px-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
               >
-                <Download className="h-4 w-4 text-muted-foreground" />
+                <Download className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
                 Export companies (CSV)
               </button>
               <button
                 type="button"
                 onClick={cleanup}
                 disabled={busy}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-60"
+                className="flex w-full items-center gap-2 h-8 rounded-[4px] px-2 text-left text-sm text-destructive transition-colors hover:bg-muted disabled:opacity-60"
               >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" strokeWidth={1.6} />}
                 Clean up imported junk
               </button>
             </motion.div>

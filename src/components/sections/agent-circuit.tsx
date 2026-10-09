@@ -83,8 +83,8 @@ export function AgentCircuitSection() {
     <section className="relative bg-background py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary">The system</p>
-          <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
+          <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">The system</p>
+          <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             One circuit from prompt to relationship
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -93,7 +93,7 @@ export function AgentCircuitSection() {
           </p>
         </div>
 
-        <div className="relative mx-auto mt-12 w-full max-w-4xl rounded-2xl border border-border bg-card/40 p-3 sm:p-6">
+        <div className="relative mx-auto mt-12 w-full max-w-4xl rounded-[12px] border border-border bg-card/40 p-3 sm:p-6">
           <Border2 />
           <AgentCircuit className="w-full overflow-hidden" />
         </div>

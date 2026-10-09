@@ -41,10 +41,10 @@ function selfUrl(params: SearchParams): string {
 function AuthorizeError({ title, detail }: { title: string; detail: string }) {
   return (
     <Shell>
-      <p className="text-xs uppercase tracking-[0.3em] text-primary">Authorization</p>
-      <h1 className="font-brand mt-3 text-2xl text-foreground">{title}</h1>
-      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{detail}</p>
-      <p className="mt-6 text-sm text-muted-foreground">
+      <p className="twenty-label">Authorization</p>
+      <h1 className="mt-1 text-xl font-semibold text-foreground">{title}</h1>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{detail}</p>
+      <p className="mt-4 text-sm text-muted-foreground">
         Nothing was shared. Close this window and start the connection again from the app that sent
         you here.
       </p>
@@ -54,12 +54,17 @@ function AuthorizeError({ title, detail }: { title: string; detail: string }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
-      <Link href="/" className="mb-8 flex items-center gap-2">
-        <LogoMark className="h-8 w-8" />
-        <span className="font-brand text-xl font-bold text-foreground">Scalar</span>
-      </Link>
-      <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-sm sm:p-8">{children}</div>
+    <div className="app-shell flex min-h-screen flex-col items-center justify-center bg-muted/40 px-4 py-16">
+      <div className="flex w-full max-w-sm flex-col items-center">
+        <Link
+          href="/"
+          aria-label="Scalar"
+          className="mb-6 flex h-10 w-10 items-center justify-center rounded-[8px] border border-border bg-card"
+        >
+          <LogoMark className="h-6 w-6" />
+        </Link>
+        <div className="w-full rounded-[8px] border border-border bg-card p-5">{children}</div>
+      </div>
     </div>
   );
 }
@@ -166,27 +171,24 @@ export default async function AuthorizePage({
 
   return (
     <Shell>
-      <p className="text-xs uppercase tracking-[0.3em] text-primary">Authorize</p>
-      <h1 className="font-brand mt-3 text-2xl leading-snug text-foreground">
+      <p className="twenty-label">Authorize</p>
+      <h1 className="mt-1 text-xl font-semibold leading-snug text-foreground">
         {client.name} wants access to your Scalar data
       </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-1 text-sm text-muted-foreground">
         Signed in as {actor.email || actor.firstName || "your Scalar account"}.
       </p>
 
-      <form action="/oauth/authorize/decide" method="post" className="mt-6 space-y-6">
+      <form action="/oauth/authorize/decide" method="post" className="mt-5 space-y-5">
         <input type="hidden" name="ticket" value={ticket} />
 
         <div>
           <p className="text-sm font-medium text-foreground">It will be able to</p>
-          <ul className="mt-3 space-y-3">
+          <ul className="mt-2 divide-y divide-border rounded-[8px] border border-border">
             {scopes.map((scope) => (
-              <li key={scope} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
-                <span className="mt-2 h-px w-4 shrink-0 bg-primary/60" />
-                <span>
-                  {SCOPE_DESCRIPTIONS[scope] ?? scope}
-                  <span className="ml-2 font-mono text-xs text-muted-foreground/70">{scope}</span>
-                </span>
+              <li key={scope} className="flex items-start justify-between gap-3 px-3 py-2 text-sm leading-relaxed text-foreground">
+                <span>{SCOPE_DESCRIPTIONS[scope] ?? scope}</span>
+                <span className="mt-0.5 shrink-0 font-mono text-xs text-muted-foreground">{scope}</span>
               </li>
             ))}
           </ul>
@@ -197,11 +199,11 @@ export default async function AuthorizePage({
             {accounts.length > 1 ? "Which account are you sharing?" : "Account"}
           </p>
           {accounts.length > 1 ? (
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 divide-y divide-border rounded-[8px] border border-border">
               {accounts.map((account, index) => (
                 <label
                   key={account.id}
-                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-border px-3 py-2.5 text-sm transition-colors hover:bg-accent"
+                  className="flex cursor-pointer items-start gap-2.5 px-3 py-2 text-sm transition-colors hover:bg-accent"
                 >
                   <input
                     type="radio"
@@ -219,7 +221,7 @@ export default async function AuthorizePage({
               ))}
             </div>
           ) : (
-            <div className="mt-3 rounded-xl border border-border px-3 py-2.5 text-sm">
+            <div className="mt-2 rounded-[8px] border border-border px-3 py-2 text-sm">
               <input type="hidden" name="accountId" value={accounts[0].id} />
               <span className="block text-foreground">{accounts[0].label}</span>
               <span className="block text-xs text-muted-foreground">{accounts[0].kind}</span>
@@ -232,7 +234,7 @@ export default async function AuthorizePage({
           any other account.
         </p>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Button type="submit" name="decision" value="approve" className="flex-1">
             Approve
           </Button>
