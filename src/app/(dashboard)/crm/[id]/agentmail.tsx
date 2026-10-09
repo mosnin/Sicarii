@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Mail, KeyRound } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 type Thread = {
@@ -36,30 +35,30 @@ export function ContactAgentMail({ contactId }: { contactId: string }) {
   }, [contactId]);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Mail className="h-4 w-4 text-muted-foreground" />
+    <section className="rounded-[8px] border border-border bg-background">
+      <header className="flex h-10 items-center justify-between border-b border-border px-3">
+        <h2 className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+          <Mail className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
           Email
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+        </h2>
+      </header>
+      <div className="p-3">
         {loading ? (
           <div className="space-y-2">
             {[0, 1].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/50" />
+              <div key={i} className="h-10 animate-pulse rounded-[4px] bg-muted" />
             ))}
           </div>
         ) : !data?.connected ? (
-          // ── Not connected ──
-          <div className="rounded-xl border border-dashed border-border bg-muted/30 p-6 text-center">
-            <p className="font-brand text-sm text-foreground">AgentMail not connected</p>
+          // Not connected
+          <div className="rounded-[8px] border border-dashed border-input px-4 py-6 text-center">
+            <p className="text-sm font-medium text-foreground">AgentMail not connected</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Add your AgentMail API key to see email threads with this contact here.
             </p>
-            <Button asChild size="sm" className="mt-4">
+            <Button asChild size="sm" variant="outline" className="mt-3">
               <Link href="/settings">
-                <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+                <KeyRound className="h-3.5 w-3.5" strokeWidth={1.6} />
                 Add API key in settings
               </Link>
             </Button>
@@ -71,11 +70,11 @@ export function ContactAgentMail({ contactId }: { contactId: string }) {
             {data.note ?? "No email threads with this contact yet."}
           </p>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="-my-1 divide-y divide-border">
             {data.threads!.map((t) => (
-              <div key={t.id} className="flex items-start justify-between gap-3 py-3">
+              <div key={t.id} className="flex items-start justify-between gap-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="font-medium text-sm truncate">{t.subject}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{t.subject}</p>
                   {t.preview && (
                     <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">{t.preview}</p>
                   )}
@@ -88,7 +87,7 @@ export function ContactAgentMail({ contactId }: { contactId: string }) {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

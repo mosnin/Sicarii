@@ -90,11 +90,11 @@ function MegaPanel({ group }: { group: NavGroup }) {
   return (
     <motion.div
       key={group.label}
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6, filter: "blur(4px)" }}
-      animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)" }}
-      exit={reduce ? { opacity: 0 } : { opacity: 0, y: 4, filter: "blur(4px)" }}
-      transition={{ duration: 0.22, ease: EASE }}
-      className="grid grid-cols-[1.2fr_1fr] gap-2 p-2.5"
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 4 }}
+      animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, y: 2 }}
+      transition={{ duration: 0.15, ease: EASE }}
+      className="grid grid-cols-[1.2fr_1fr] gap-2 p-2"
     >
       {/* Links column */}
       <div className="grid grid-cols-1 gap-0.5">
@@ -102,13 +102,13 @@ function MegaPanel({ group }: { group: NavGroup }) {
           <Link
             key={link.label}
             href={link.href}
-            className="group/link rounded-2xl px-3.5 py-3 transition-colors hover:bg-muted/70 dark:hover:bg-white/[0.04]"
+            className="group/link rounded-[4px] px-3 py-2.5 transition-colors hover:bg-hover"
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">{link.label}</p>
-              <ArrowRight className="h-3.5 w-3.5 -translate-x-1 text-primary opacity-0 transition-all duration-300 group-hover/link:translate-x-0 group-hover/link:opacity-100" />
+              <p className="text-sm font-medium text-foreground">{link.label}</p>
+              <ArrowRight className="h-3.5 w-3.5 -translate-x-1 text-fg-tertiary opacity-0 transition-all duration-150 group-hover/link:translate-x-0 group-hover/link:opacity-100" />
             </div>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{link.description}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-fg-tertiary">{link.description}</p>
           </Link>
         ))}
       </div>
@@ -116,18 +116,18 @@ function MegaPanel({ group }: { group: NavGroup }) {
       {/* Featured cell */}
       <Link
         href={group.featured.href}
-        className="group/feat relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-muted/40 p-4 transition-colors hover:bg-muted/70 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
+        className="group/feat relative flex flex-col justify-between overflow-hidden rounded-[8px] border border-border bg-surface p-4 transition-colors hover:border-border-strong"
       >
         <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.18] dark:opacity-30" cell={12} speed={0.07} gradient />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_0%,rgba(90,176,232,0.16),transparent_60%)]" />
         <div className="relative">
-          <p className="text-[0.65rem] uppercase tracking-[0.25em] text-primary">{group.featured.eyebrow}</p>
-          <p className="mt-2 font-brand text-lg leading-tight text-foreground">{group.featured.title}</p>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{group.featured.body}</p>
+          <p className="text-xs font-medium text-primary">{group.featured.eyebrow}</p>
+          <p className="mt-2 text-base font-semibold leading-tight text-foreground">{group.featured.title}</p>
+          <p className="mt-2 text-xs leading-relaxed text-fg-secondary">{group.featured.body}</p>
         </div>
         <div className="relative mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
           {group.featured.cta}
-          <ArrowRight className="h-3.5 w-3.5 text-primary transition-transform duration-300 group-hover/feat:translate-x-0.5" />
+          <ArrowRight className="h-3.5 w-3.5 text-primary transition-transform duration-150 group-hover/feat:translate-x-0.5" />
         </div>
       </Link>
     </motion.div>
@@ -154,7 +154,7 @@ export function Header() {
     setMobileOpen(false);
   }
 
-  // Pill tightens and lifts once you leave the very top of the page.
+  // Bar gains a solid surface and hairline once you leave the very top of the page.
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
@@ -200,19 +200,17 @@ export function Header() {
             paddingTop: scrolled ? 0 : 2,
             paddingBottom: scrolled ? 0 : 2,
           }}
-          transition={{ duration: 0.3, ease: EASE }}
+          transition={{ duration: 0.2, ease: EASE }}
           className={cn(
-            "rounded-full border backdrop-blur-2xl transition-shadow duration-300",
-            scrolled
-              ? "border-border bg-background/90 shadow-xl shadow-black/[0.06] ring-1 ring-inset ring-border/50 dark:border-white/10 dark:bg-charcoal/85 dark:shadow-black/40 dark:ring-white/5"
-              : "border-border/70 bg-background/70 shadow-lg shadow-black/[0.03] ring-1 ring-inset ring-border/30 dark:border-white/[0.07] dark:bg-charcoal/65 dark:ring-white/5",
+            "rounded-[8px] border backdrop-blur-md transition-colors duration-200",
+            scrolled ? "border-border bg-background/95" : "border-border-light bg-background/80",
           )}
         >
-          <div className="flex h-14 items-center justify-between pl-4 pr-3 sm:pl-5">
+          <div className="flex h-12 items-center justify-between pl-3 pr-2 sm:pl-4">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2" aria-label="Scalar home">
-              <LogoMark className="h-7 w-7" priority />
-              <span className="hidden font-brand text-base font-bold text-foreground sm:inline">Scalar</span>
+              <LogoMark className="h-6 w-6" priority />
+              <span className="hidden text-base font-semibold text-foreground sm:inline">Scalar</span>
             </Link>
 
             {/* Desktop nav */}
@@ -232,12 +230,12 @@ export function Header() {
                     aria-expanded={isOpen}
                     aria-haspopup="true"
                     className={cn(
-                      "flex cursor-pointer items-center gap-1 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-                      isOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
+                      "flex h-8 cursor-pointer items-center gap-1 rounded-[4px] px-3 text-sm font-medium transition-colors",
+                      isOpen ? "bg-hover text-foreground" : "text-fg-secondary hover:text-foreground",
                     )}
                   >
                     {group.label}
-                    <ChevronDown className={cn("h-3 w-3 transition-transform duration-300", isOpen && "rotate-180")} />
+                    <ChevronDown className={cn("h-3 w-3 text-fg-tertiary transition-transform duration-150", isOpen && "rotate-180")} />
                   </button>
                 );
               })}
@@ -246,7 +244,7 @@ export function Header() {
                   key={link.href}
                   href={link.href}
                   onMouseEnter={() => setActive(null)}
-                  className="rounded-full px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="flex h-8 items-center rounded-[4px] px-3 text-sm font-medium text-fg-secondary transition-colors hover:text-foreground"
                 >
                   {link.label}
                 </Link>
@@ -261,13 +259,13 @@ export function Header() {
                   <>
                     <Link
                       href="/sign-in"
-                      className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      className="flex h-8 items-center rounded-[4px] px-3 text-sm font-medium text-fg-secondary transition-colors hover:text-foreground"
                     >
                       Sign in
                     </Link>
                     <Link
                       href="/sign-up"
-                      className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+                      className="flex h-8 items-center rounded-[4px] bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                     >
                       Get started
                     </Link>
@@ -276,7 +274,7 @@ export function Header() {
                   <>
                     <Link
                       href="/dashboard"
-                      className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      className="flex h-8 items-center rounded-[4px] px-3 text-sm font-medium text-fg-secondary transition-colors hover:text-foreground"
                     >
                       Dashboard
                     </Link>
@@ -289,10 +287,10 @@ export function Header() {
               <button
                 type="button"
                 aria-label="Open menu"
-                className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted lg:hidden"
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-[4px] text-foreground transition-colors hover:bg-hover lg:hidden"
                 onClick={() => setMobileOpen(true)}
               >
-                <Menu size={20} />
+                <Menu size={18} strokeWidth={1.6} />
               </button>
             </div>
           </div>
@@ -302,11 +300,11 @@ export function Header() {
         <AnimatePresence>
           {activeGroup && (
             <motion.div
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.985 }}
-              animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.99 }}
-              transition={{ duration: 0.26, ease: EASE }}
-              className="absolute left-1/2 top-[calc(100%+0.6rem)] hidden w-[min(92vw,720px)] -translate-x-1/2 overflow-hidden rounded-[1.75rem] border border-border bg-background/95 shadow-2xl shadow-black/10 ring-1 ring-inset ring-border/50 backdrop-blur-2xl lg:block dark:border-white/10 dark:bg-charcoal/95 dark:shadow-black/50 dark:ring-white/5"
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 4 }}
+              animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0, y: 2 }}
+              transition={{ duration: 0.18, ease: EASE }}
+              className="absolute left-1/2 top-[calc(100%+0.5rem)] hidden w-[min(92vw,720px)] -translate-x-1/2 overflow-hidden rounded-[8px] border border-border bg-background shadow-lg lg:block"
               onMouseEnter={cancelClose}
             >
               <AnimatePresence mode="wait">
@@ -325,40 +323,40 @@ export function Header() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.2 }}
           >
-            <div className="absolute inset-0 bg-background/97 backdrop-blur-xl dark:bg-charcoal-dark/95" />
+            <div className="absolute inset-0 bg-background/97 backdrop-blur-xl" />
             <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12] dark:opacity-30" cell={14} speed={0.09} gradient />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_15%,rgba(90,176,232,0.18),transparent_60%)]" />
 
             <motion.div
               className="relative flex h-full flex-col overflow-y-auto"
-              initial={{ opacity: 0, y: 18 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 12 }}
-              transition={{ duration: 0.45, ease: EASE }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.22, ease: EASE }}
             >
               <div className="flex items-center justify-between px-5 pt-6">
                 <Link href="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
-                  <LogoMark className="h-7 w-7" />
-                  <span className="font-brand font-bold text-foreground">Scalar</span>
+                  <LogoMark className="h-6 w-6" />
+                  <span className="font-semibold text-foreground">Scalar</span>
                 </Link>
                 <div className="flex items-center gap-2">
                   <ThemeToggle />
                   <button
                     type="button"
                     aria-label="Close menu"
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-muted text-foreground transition-colors hover:bg-muted/80 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/10"
+                    className="flex h-10 w-10 items-center justify-center rounded-[4px] border border-border bg-background text-foreground transition-colors hover:bg-hover"
                     onClick={() => setMobileOpen(false)}
                   >
-                    <X size={20} />
+                    <X size={18} strokeWidth={1.6} />
                   </button>
                 </div>
               </div>
 
               <motion.nav
                 className="flex-1 space-y-8 px-5 py-9"
-                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04, delayChildren: 0.1 } } }}
+                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.03, delayChildren: 0.05 } } }}
                 initial="hidden"
                 animate="show"
               >
@@ -366,10 +364,10 @@ export function Header() {
                   <div key={group.label}>
                     <motion.p
                       variants={{
-                        hidden: { opacity: 0, y: 14, filter: "blur(6px)" },
-                        show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE } },
+                        hidden: { opacity: 0, y: 6 },
+                        show: { opacity: 1, y: 0, transition: { duration: 0.22, ease: EASE } },
                       }}
-                      className="text-xs uppercase tracking-[0.3em] text-primary/80"
+                      className="text-xs font-medium text-fg-tertiary"
                     >
                       {group.label}
                     </motion.p>
@@ -378,14 +376,14 @@ export function Header() {
                         <motion.div
                           key={link.label}
                           variants={{
-                            hidden: { opacity: 0, y: 14, filter: "blur(6px)" },
-                            show: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE } },
+                            hidden: { opacity: 0, y: 6 },
+                            show: { opacity: 1, y: 0, transition: { duration: 0.22, ease: EASE } },
                           }}
                         >
                           <Link
                             href={link.href}
                             onClick={() => setMobileOpen(false)}
-                            className="block font-brand text-3xl leading-tight text-foreground/90 transition-colors hover:text-primary"
+                            className="block text-2xl font-medium leading-tight text-foreground transition-colors hover:text-primary"
                           >
                             {link.label}
                           </Link>
@@ -402,7 +400,7 @@ export function Header() {
                     <Link
                       href="/sign-up"
                       onClick={() => setMobileOpen(false)}
-                      className="flex h-12 w-full items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
+                      className="flex h-11 w-full items-center justify-center gap-1.5 rounded-[8px] bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                     >
                       Get started
                       <ArrowRight className="h-4 w-4" />
@@ -410,7 +408,7 @@ export function Header() {
                     <Link
                       href="/sign-in"
                       onClick={() => setMobileOpen(false)}
-                      className="flex h-12 w-full items-center justify-center rounded-full border border-border text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      className="flex h-11 w-full items-center justify-center rounded-[8px] border border-border text-sm font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-foreground"
                     >
                       Sign in
                     </Link>
@@ -419,7 +417,7 @@ export function Header() {
                   <Link
                     href="/dashboard"
                     onClick={() => setMobileOpen(false)}
-                    className="flex h-12 w-full items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
+                    className="flex h-11 w-full items-center justify-center rounded-[8px] bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     Dashboard
                   </Link>

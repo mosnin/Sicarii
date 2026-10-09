@@ -4,16 +4,16 @@ import { motion, useReducedMotion } from "motion/react";
 import { ScalarAvatar } from "./scalar-avatar";
 
 /**
- * Animated "Scalar is thinking…" indicator shown while status === "submitted"
+ * Animated "Scalar is thinking..." indicator shown while status === "submitted"
  * (before first tokens arrive). Three bouncing dots.
  */
 export function ThinkingIndicator() {
   const reduce = useReducedMotion();
 
   return (
-    <div className="flex items-start gap-3 py-1">
+    <div className="flex items-start gap-2 py-1">
       <ScalarAvatar active />
-      <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm border border-border bg-card px-4 py-3">
+      <div className="flex items-center gap-1 h-8 rounded-[8px] border border-border bg-background px-3">
         {[0, 1, 2].map((i) => (
           <motion.span
             key={i}
@@ -22,7 +22,7 @@ export function ThinkingIndicator() {
               reduce
                 ? {}
                 : {
-                    y: ["0%", "-50%", "0%"],
+                    y: [0, -2, 0],
                     opacity: [0.4, 1, 0.4],
                   }
             }

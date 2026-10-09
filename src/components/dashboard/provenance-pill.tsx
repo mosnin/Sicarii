@@ -68,8 +68,8 @@ export function ProvenancePill({
   return (
     <span
       className={cn(
-        "block text-[11px] text-muted-foreground/70 leading-tight select-none",
-        meta.stale && "text-warning/70",
+        "block text-xs text-muted-foreground/60 leading-tight select-none",
+        meta.stale && "text-warning",
         className,
       )}
     >
@@ -99,8 +99,9 @@ export function FieldWithProvenance({
   if (!value && !meta) return null;
 
   return (
-    <div className="text-sm">
-      <p className="text-xs text-muted-foreground">{label}</p>
+    <div className="flex min-h-8 items-start gap-2 py-1.5 text-sm">
+      <p className="w-28 shrink-0 text-muted-foreground">{label}</p>
+      <div className="min-w-0 flex-1">
       {value ? (
         href ? (
           <a
@@ -112,12 +113,13 @@ export function FieldWithProvenance({
             {value}
           </a>
         ) : (
-          <p className="break-words">{value}</p>
+          <p className="break-words text-foreground">{value}</p>
         )
       ) : (
-        <p className="text-muted-foreground/60 italic">Not found</p>
+        <p className="text-muted-foreground/60">Not found</p>
       )}
       {meta && <ProvenancePill meta={meta} className="mt-0.5" />}
+      </div>
     </div>
   );
 }

@@ -43,30 +43,23 @@ export function ProductContextEditor({ initial }: { initial: string }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="relative overflow-hidden rounded-2xl bg-card p-5 shadow-sm sm:p-6"
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-[8px] border border-border bg-card"
     >
-      {/* subtle animated accent sweep */}
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute -inset-x-10 -top-24 h-40 bg-[radial-gradient(ellipse_at_center,rgba(90,176,232,0.18),transparent_70%)]"
-        animate={{ opacity: [0.4, 0.8, 0.4] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <div className="relative">
-        <div className="mb-3">
-          <p className="text-sm font-semibold text-foreground">Your product context</p>
-        </div>
+      <header className="flex h-10 items-center border-b border-border px-3">
+        <h2 className="text-sm font-medium text-foreground">Your product context</h2>
+      </header>
+      <div className="p-3">
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={PLACEHOLDER}
           rows={14}
-          className="w-full resize-y rounded-xl bg-muted/40 p-4 text-sm leading-relaxed text-foreground shadow-inner outline-none ring-2 ring-transparent transition-shadow placeholder:text-muted-foreground/70 focus:ring-primary/25"
+          className="w-full resize-y rounded-[4px] border border-input bg-background px-2.5 py-2 text-sm leading-relaxed text-foreground transition-[border-color,box-shadow] placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
         />
-        <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             Scalar reads this before every action - saved to your workspace.
           </p>
@@ -75,12 +68,13 @@ export function ProductContextEditor({ initial }: { initial: string }) {
               {status === "done" && (
                 <motion.span
                   key="done"
-                  initial={{ opacity: 0, x: 6 }}
+                  initial={{ opacity: 0, x: 4 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0 }}
-                  className="flex items-center gap-1 text-xs font-medium text-primary"
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-1 text-xs font-medium text-success"
                 >
-                  <Check className="h-3.5 w-3.5" /> Saved
+                  <Check className="h-4 w-4" strokeWidth={1.6} /> Saved
                 </motion.span>
               )}
               {status === "error" && (
@@ -97,7 +91,7 @@ export function ProductContextEditor({ initial }: { initial: string }) {
             </AnimatePresence>
             <Button onClick={save} disabled={!dirty || status === "saving"} size="sm">
               {status === "saving" && (
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.6} />
               )}
               {status === "saving" ? "Saving…" : "Save context"}
             </Button>

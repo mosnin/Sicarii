@@ -3,27 +3,21 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  // Twenty tag: a flat 4px chip, 20px tall, medium weight, tinted by meaning.
+  "inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-[4px] border border-transparent px-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-[3px] focus:ring-primary/20",
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground shadow",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow",
-        outline: "text-foreground",
-        success:
-          "border-transparent bg-success/10 text-success",
-        warning:
-          "border-transparent bg-warning/10 text-warning",
-        primary:
-          "border-transparent bg-primary/10 text-primary",
-        // Legacy alias, kept pointing at the primary tokens so older call sites
-        // still render the brand baby blue. Prefer variant="primary" in new code.
-        orange:
-          "border-transparent bg-primary/10 text-primary",
+        default: "bg-tag-blue-bg text-tag-blue",
+        secondary: "bg-tag-gray-bg text-tag-gray",
+        destructive: "bg-tag-red-bg text-tag-red",
+        outline: "border-border text-fg-secondary",
+        success: "bg-tag-green-bg text-tag-green",
+        warning: "bg-tag-orange-bg text-tag-orange",
+        primary: "bg-tag-blue-bg text-tag-blue",
+        // Legacy alias, kept pointing at the accent tag so older call sites
+        // still render. Prefer variant="primary" in new code.
+        orange: "bg-tag-blue-bg text-tag-blue",
       },
     },
     defaultVariants: {

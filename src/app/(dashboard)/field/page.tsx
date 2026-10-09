@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Loader2, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { FloatIn } from "@/components/ui/float-in";
 import { AsciiField } from "@/components/dashboard/ascii-field";
 import { cn } from "@/lib/utils";
@@ -20,39 +21,55 @@ const stageLabel: Record<Stage, string> = {
   REPLYING: "Replying", WON: "Won", LOST: "Lost",
 };
 
+// Twenty kanban: each stage header is a tag-colored chip.
+const stageTag: Record<Stage, string> = {
+  NEW: "bg-muted text-muted-foreground",
+  ENRICHED: "bg-tag-blue-bg text-tag-blue",
+  PROSPECTING: "bg-tag-purple-bg text-tag-purple",
+  ENGAGING: "bg-tag-orange-bg text-tag-orange",
+  REPLYING: "bg-tag-blue-bg text-tag-blue",
+  WON: "bg-tag-green-bg text-tag-green",
+  LOST: "bg-tag-red-bg text-tag-red",
+};
+
+const rawSelect =
+  "h-8 rounded-[4px] border border-input bg-background px-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15";
+
 export default function FieldPage() {
   const [tab, setTab] = useState<Tab>("segments");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <FloatIn>
-        <div className="relative overflow-hidden rounded-3xl border border-border bg-card">
+        <div className="relative overflow-hidden rounded-[8px] border border-border bg-card">
           <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12] dark:opacity-30" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_0%,rgba(90,176,232,0.10),transparent_60%)]" />
-          <div className="relative z-10 px-6 py-9 sm:px-10 sm:py-12">
-            <p className="font-brand text-xs uppercase tracking-[0.25em] text-primary/80">Scalar // Field</p>
-            <h1 className="font-brand mt-2 text-3xl text-foreground sm:text-4xl">Field</h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+          <div className="relative z-10 px-4 py-6 sm:px-6 sm:py-8">
+            <p className="text-xs font-medium text-primary/80">Scalar // Field</p>
+            <h1 className="mt-1 text-2xl font-semibold text-foreground">Field</h1>
+            <p className="mt-1 max-w-xl text-sm text-muted-foreground">
               Build customer segments from a prompt, then run them as agentic
               pipelines. Your agents work the deals; you watch them move.
             </p>
-            {/* Toggle */}
-            <div className="mt-5 inline-flex rounded-full border border-border bg-background/70 p-1 backdrop-blur">
-              {(["segments", "pipelines"] as Tab[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTab(t)}
-                  className={cn(
-                    "rounded-full px-4 py-1.5 text-sm font-medium capitalize transition-colors",
-                    tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
           </div>
+        </div>
+        {/* Toggle */}
+        <div className="mt-4 flex gap-1 border-b border-border">
+          {(["segments", "pipelines"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={cn(
+                "-mb-px flex h-9 items-center border-b-2 px-2 text-sm capitalize transition-colors",
+                tab === t
+                  ? "border-foreground font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t}
+            </button>
+          ))}
         </div>
       </FloatIn>
 
@@ -134,40 +151,40 @@ function SegmentsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => setMode(mode === "prompt" ? "none" : "prompt")} variant={mode === "prompt" ? "glow" : "default"}>
+        <Button size="sm" onClick={() => setMode(mode === "prompt" ? "none" : "prompt")} variant={mode === "prompt" ? "secondary" : "default"}>
           Auto create
         </Button>
         <Button size="sm" variant="outline" onClick={() => setMode(mode === "manual" ? "none" : "manual")}>
           Manual
         </Button>
-        {msg && <span className="text-xs text-muted-foreground">{msg}</span>}
+        {msg && <span className="text-sm text-muted-foreground">{msg}</span>}
       </div>
 
       <AnimatePresence>
         {mode === "prompt" && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
+            <div className="space-y-3 rounded-[8px] border border-border bg-card p-3">
               <p className="text-sm text-muted-foreground">
                 Describe who you want. Scalar matches your closest <span className="text-foreground">not-yet-worked</span> prospects.
               </p>
               <textarea
                 value={goal} onChange={(e) => setGoal(e.target.value)} rows={3}
                 placeholder="e.g. Series A fintech founders in NYC who'd want automated lead intelligence"
-                className="w-full resize-y rounded-2xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full resize-y rounded-[4px] border border-input bg-background px-2.5 py-2 text-sm placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
               />
               <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground">How many</label>
+                <label className="text-sm text-muted-foreground">How many</label>
                 <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-20" />
                 <Button size="sm" onClick={build} disabled={busy || !goal.trim()}>
-                  {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Build segment
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.6} /> : null} Build segment
                 </Button>
               </div>
             </div>
           </motion.div>
         )}
         {mode === "manual" && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="flex gap-2 rounded-2xl border border-border bg-card p-4">
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
+            <div className="flex gap-2 rounded-[8px] border border-border bg-card p-3">
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Segment name" />
               <Button size="sm" onClick={createManual} disabled={busy || !name.trim()}>Create</Button>
             </div>
@@ -181,12 +198,12 @@ function SegmentsPanel() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter segments…"
-            className="h-9 max-w-xs flex-1"
+            className="h-8 max-w-xs flex-1"
           />
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as "recent" | "name" | "size")}
-            className="h-9 rounded-full border border-border bg-background px-3 text-sm text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className={rawSelect}
           >
             <option value="recent">Newest</option>
             <option value="name">Name (A-Z)</option>
@@ -196,34 +213,52 @@ function SegmentsPanel() {
       )}
 
       {loading ? null : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
-          <p className="font-brand text-base">No segments yet</p>
+        <div className="rounded-[8px] border border-dashed border-border p-8 text-center">
+          <p className="text-sm font-medium text-foreground">No segments yet</p>
           <p className="mt-1 text-sm text-muted-foreground">Build one from a prompt to target your best prospects.</p>
         </div>
       ) : visible.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
+        <div className="rounded-[8px] border border-dashed border-border p-6 text-center">
           <p className="text-sm text-muted-foreground">No segments match &ldquo;{filter}&rdquo;.</p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {visible.map((s) => (
-            <div key={s.id} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-brand truncate text-base">{s.name}</p>
-                  <p className="text-sm text-muted-foreground">{s._count.members} prospect{s._count.members === 1 ? "" : "s"}</p>
-                </div>
-                {s.source === "prompt" && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">AI-built</span>}
-              </div>
-              {s.goal && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{s.goal}</p>}
-              <div className="mt-3 flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => startPipeline(s)}>Start pipeline</Button>
-                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => remove(s.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto rounded-[8px] border border-border bg-card">
+          <table className="twenty-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Prospects</th>
+                <th>Goal</th>
+                <th className="w-40" />
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((s) => (
+                <tr key={s.id}>
+                  <td>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium text-foreground">{s.name}</span>
+                      {s.source === "prompt" && <Badge variant="primary">AI-built</Badge>}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap tabular-nums text-muted-foreground">
+                    {s._count.members} prospect{s._count.members === 1 ? "" : "s"}
+                  </td>
+                  <td className="max-w-xs">
+                    {s.goal && <p className="truncate text-muted-foreground">{s.goal}</p>}
+                  </td>
+                  <td>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button size="sm" variant="outline" onClick={() => startPipeline(s)}>Start pipeline</Button>
+                      <Button size="icon-sm" variant="ghost" className="hover:text-destructive" onClick={() => remove(s.id)}>
+                        <Trash2 className="h-4 w-4" strokeWidth={1.6} />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -273,37 +308,33 @@ function VariantStatsPanel({ segments }: { segments: Segment[] }) {
   }
 
   return (
-    <div className="space-y-3 pt-2">
-      <p className="font-brand text-xs uppercase tracking-[0.25em] text-muted-foreground">
-        Self-optimizing outreach
-      </p>
+    <div className="space-y-2 pt-2">
+      <p className="twenty-label">Self-optimizing outreach</p>
       <div className="grid gap-3 sm:grid-cols-2">
         {[...groups.entries()].map(([key, vs]) => (
-          <div key={key} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <p className="font-brand truncate text-sm">{segName(vs[0].segmentId)}</p>
-            <div className="mt-3 space-y-2">
+          <section key={key} className="rounded-[8px] border border-border bg-card">
+            <header className="flex h-10 items-center border-b border-border px-3">
+              <h3 className="truncate text-sm font-medium text-foreground">{segName(vs[0].segmentId)}</h3>
+            </header>
+            <ul className="divide-y divide-border">
               {vs.map((v) => (
-                <div key={v.id} className="flex items-start justify-between gap-3 rounded-xl bg-background/50 p-2.5">
+                <li key={v.id} className="flex items-start justify-between gap-3 px-3 py-2">
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-medium text-foreground">{v.text}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <p className="truncate text-sm text-foreground">{v.text}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {v.kind === "SUBJECT" ? "Subject" : "Opener"} &middot; {v.sends} sent &middot; {v.replies} replied
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    <span className="text-xs font-medium tabular-nums text-foreground">
+                    <span className="text-sm font-medium tabular-nums text-foreground">
                       {Math.round(v.replyRate * 100)}%
                     </span>
-                    {v.winning && (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                        Winning
-                      </span>
-                    )}
+                    {v.winning && <Badge variant="success">Winning</Badge>}
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </section>
         ))}
       </div>
     </div>
@@ -355,18 +386,18 @@ function PipelinesPanel() {
 
   return (
     <div className="space-y-4">
-      <Button size="sm" onClick={() => setOpen((o) => !o)} variant={open ? "glow" : "default"}>New pipeline</Button>
+      <Button size="sm" onClick={() => setOpen((o) => !o)} variant={open ? "secondary" : "default"}>New pipeline</Button>
 
       <AnimatePresence>
         {open && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
+            <div className="space-y-3 rounded-[8px] border border-border bg-card p-3">
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Pipeline name" />
               <Input value={objective} onChange={(e) => setObjective(e.target.value)} placeholder="Objective, e.g. book 10 demos with fintech founders" />
               <div>
-                <label className="mb-1 block text-xs text-muted-foreground">Assign a segment to work</label>
+                <label className="mb-1 block text-sm text-muted-foreground">Assign a segment to work</label>
                 <select value={segmentId} onChange={(e) => setSegmentId(e.target.value)}
-                  className="w-full rounded-full border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                  className={cn(rawSelect, "w-full")}>
                   <option value="">Select a segment…</option>
                   {segments.map((s) => <option key={s.id} value={s.id}>{s.name} ({s._count.members})</option>)}
                 </select>
@@ -374,7 +405,7 @@ function PipelinesPanel() {
               </div>
               {err && <p className="text-xs text-destructive">{err}</p>}
               <Button size="sm" onClick={create} disabled={creating || !name.trim() || !segmentId}>
-                {creating ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Create pipeline
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.6} /> : null} Create pipeline
               </Button>
             </div>
           </motion.div>
@@ -382,21 +413,23 @@ function PipelinesPanel() {
       </AnimatePresence>
 
       {loading ? null : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center">
-          <p className="font-brand text-base">No pipelines yet</p>
+        <div className="rounded-[8px] border border-dashed border-border p-8 text-center">
+          <p className="text-sm font-medium text-foreground">No pipelines yet</p>
           <p className="mt-1 text-sm text-muted-foreground">Create one and assign a segment to start working the deals.</p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="divide-y divide-border rounded-[8px] border border-border bg-card">
           {items.map((p) => (
-            <button key={p.id} type="button" onClick={() => setSelected(p.id)}
-              className="rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30">
-              <p className="font-brand text-base">{p.name}</p>
-              {p.goal && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{p.goal}</p>}
-              <p className="mt-1 text-sm text-muted-foreground">{p._count.entries} in pipeline</p>
-            </button>
+            <li key={p.id}>
+              <button type="button" onClick={() => setSelected(p.id)}
+                className="flex min-h-10 w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-accent">
+                <span className="shrink-0 font-medium text-foreground">{p.name}</span>
+                {p.goal && <span className="min-w-0 flex-1 truncate text-muted-foreground">{p.goal}</span>}
+                <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">{p._count.entries} in pipeline</span>
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
@@ -449,19 +482,19 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
 
   return (
     <div className="space-y-4">
-      <button type="button" onClick={onBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> All pipelines
+      <button type="button" onClick={onBack} className="inline-flex h-7 items-center gap-1.5 rounded-[4px] px-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" strokeWidth={1.6} /> All pipelines
       </button>
       <div>
-        <h2 className="font-brand text-xl">{name}</h2>
-        {goal && <p className="mt-0.5 text-sm text-muted-foreground">Objective: {goal}</p>}
+        <h2 className="text-xl font-semibold text-foreground">{name}</h2>
+        {goal && <p className="mt-1 text-sm text-muted-foreground">Objective: {goal}</p>}
       </div>
 
       {loading ? null : entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">No one in this pipeline yet. It is seeded from the assigned segment on creation.</p>
       ) : (
         // Kanban: a column per stage. Snap-scrolls horizontally with a thin bar.
-        <div className="thin-scroll flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 pr-4">
+        <div className="thin-scroll flex snap-x snap-mandatory gap-2 overflow-x-auto pb-3 pr-4">
           {STAGES.map((stage) => {
             const col = entries.filter((e) => e.stage === stage);
             return (
@@ -471,15 +504,15 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
                 onDragLeave={() => setOverStage((s) => (s === stage ? null : s))}
                 onDrop={() => drop(stage)}
                 className={cn(
-                  "flex w-72 shrink-0 snap-start flex-col rounded-2xl border bg-muted/30 p-2 transition-colors",
-                  overStage === stage ? "border-primary/50 bg-primary/5" : "border-border"
+                  "flex w-64 shrink-0 snap-start flex-col rounded-[8px] border p-1.5 transition-colors",
+                  overStage === stage ? "border-primary/40 bg-primary/5" : "border-transparent bg-muted/40"
                 )}
               >
-                <div className="flex items-center justify-between px-2 py-1.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{stageLabel[stage]}</span>
-                  <span className="rounded-full bg-card px-2 py-0.5 text-[11px] text-muted-foreground">{col.length}</span>
+                <div className="flex h-8 items-center gap-1.5 px-1">
+                  <span className={cn("inline-flex h-5 items-center rounded-[4px] px-1.5 text-sm font-medium", stageTag[stage])}>{stageLabel[stage]}</span>
+                  <span className="text-sm tabular-nums text-muted-foreground">{col.length}</span>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {col.map((e) => (
                     <div
                       key={e.id}
@@ -487,26 +520,26 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
                       onDragStart={() => setDragId(e.id)}
                       onDragEnd={() => { setDragId(null); setOverStage(null); }}
                       className={cn(
-                        "cursor-grab rounded-xl border border-border bg-card p-3 shadow-sm active:cursor-grabbing",
+                        "cursor-grab rounded-[4px] border border-border bg-background p-2 text-sm transition-colors hover:border-primary/30 active:cursor-grabbing",
                         dragId === e.id && "opacity-50"
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{e.contact.name || e.contact.email || "Unnamed"}</p>
+                          <p className="truncate text-sm font-medium text-foreground">{e.contact.name || e.contact.email || "Unnamed"}</p>
                           <p className="truncate text-xs text-muted-foreground">{[e.contact.title, e.contact.company].filter(Boolean).join(" · ")}</p>
                         </div>
                         <DealScore value={e.dealScore} onChange={(v) => patch(e.id, { dealScore: v })} />
                       </div>
                       <select value={e.conversationStatus} onChange={(ev) => patch(e.id, { conversationStatus: ev.target.value })}
-                        className="mt-2 w-full rounded-full border border-border bg-background px-3 py-1 text-xs">
+                        className="mt-2 h-7 w-full rounded-[4px] border border-border bg-background px-2 text-xs text-muted-foreground focus:border-primary focus:outline-none">
                         {CONVO.map((c) => <option key={c} value={c}>{c.replace("_", " ").toLowerCase()}</option>)}
                       </select>
-                      <div className="mt-2 flex items-center justify-between">
+                      <div className="mt-1.5 flex items-center justify-between">
                         <button type="button" onClick={() => move(e, -1)} disabled={STAGES.indexOf(e.stage) === 0}
-                          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-30">‹ Back</button>
+                          className="h-6 rounded-[4px] px-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-30">‹ Back</button>
                         <button type="button" onClick={() => move(e, 1)} disabled={STAGES.indexOf(e.stage) === STAGES.length - 1}
-                          className="rounded-md px-2 py-1 text-xs text-primary hover:bg-muted disabled:opacity-30">Advance ›</button>
+                          className="h-6 rounded-[4px] px-1.5 text-xs text-primary transition-colors hover:bg-accent disabled:opacity-30">Advance ›</button>
                       </div>
                     </div>
                   ))}
@@ -521,16 +554,16 @@ function PipelineBoard({ id, onBack }: { id: string; onBack: () => void }) {
 }
 
 function DealScore({ value, onChange }: { value: number | null; onChange: (v: number) => void }) {
-  const tone = value == null ? "border-border bg-muted text-muted-foreground"
-    : value >= 70 ? "border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400"
-    : value >= 40 ? "border-primary/30 bg-primary/10 text-primary"
-    : "border-border bg-muted text-muted-foreground";
+  const tone = value == null ? "bg-muted text-muted-foreground"
+    : value >= 70 ? "bg-tag-green-bg text-tag-green"
+    : value >= 40 ? "bg-tag-blue-bg text-tag-blue"
+    : "bg-muted text-muted-foreground";
   return (
     <input
       type="number" min={0} max={100} value={value ?? ""} placeholder="--"
       onChange={(e) => onChange(Math.max(0, Math.min(100, Number(e.target.value))))}
       title="Deal score 0-100"
-      className={cn("h-9 w-14 shrink-0 rounded-full border text-center text-sm font-medium tabular-nums focus:outline-none", tone)}
+      className={cn("h-6 w-11 shrink-0 rounded-[4px] border border-transparent text-center text-xs font-medium tabular-nums focus:border-primary focus:outline-none", tone)}
     />
   );
 }

@@ -23,10 +23,10 @@ export function FloatIn({ children, delay = 0, className }: FloatInProps) {
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.5,
+        duration: 0.25,
         ease: [0.16, 1, 0.3, 1],
         delay,
       }}

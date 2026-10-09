@@ -65,7 +65,7 @@ const DynamicIslandSizePresets: Record<SizePresets, Preset> = {
   [SIZE_PRESETS.RESET]: {
     width: 150,
     aspectRatio: 1,
-    borderRadius: 20,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.EMPTY]: {
     width: 0,
@@ -75,63 +75,63 @@ const DynamicIslandSizePresets: Record<SizePresets, Preset> = {
   [SIZE_PRESETS.DEFAULT]: {
     width: 150,
     aspectRatio: 44 / 150,
-    borderRadius: 46,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.MINIMAL_LEADING]: {
     width: 52.33,
     aspectRatio: 44 / 52.33,
-    borderRadius: 22,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.MINIMAL_TRAILING]: {
     width: 52.33,
     aspectRatio: 44 / 52.33,
-    borderRadius: 22,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.COMPACT]: {
-    width: 235,
-    aspectRatio: 44 / 235,
-    borderRadius: 46,
+    width: 200,
+    aspectRatio: 32 / 200,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.COMPACT_LONG]: {
     width: 300,
     aspectRatio: 44 / 235,
-    borderRadius: 46,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.COMPACT_MEDIUM]: {
     width: 351,
     aspectRatio: 64 / 371,
-    borderRadius: 44,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.LONG]: {
-    width: 371,
-    aspectRatio: 84 / 371,
-    borderRadius: 42,
+    width: 320,
+    aspectRatio: 56 / 320,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.MEDIUM]: {
     width: 371,
     aspectRatio: 210 / 371,
-    borderRadius: 22,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.LARGE]: {
     width: 371,
     aspectRatio: 84 / 371,
-    borderRadius: 42,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.TALL]: {
     width: 371,
     aspectRatio: 210 / 371,
-    borderRadius: 42,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.ULTRA]: {
     width: 630,
     aspectRatio: 630 / 800,
-    borderRadius: 42,
+    borderRadius: 8,
   },
   [SIZE_PRESETS.MASSIVE]: {
     width: 891,
     height: 1900,
     aspectRatio: 891 / 891,
-    borderRadius: 42,
+    borderRadius: 8,
   },
 }
 
@@ -387,7 +387,7 @@ const DynamicIslandContent = ({
     <motion.div
       id={id}
       className={cn(
-        "mx-auto h-0 w-0 items-center justify-center border border-foreground/10 bg-foreground text-center text-background shadow-sm transition duration-300 ease-in-out hover:shadow-md dark:border-background/10",
+        "mx-auto h-0 w-0 items-center justify-center overflow-hidden rounded-[8px] border border-border bg-background text-center text-[13px] text-foreground shadow-lg",
         className,
       )}
       animate={{
@@ -395,13 +395,8 @@ const DynamicIslandContent = ({
         height: dimensions.height,
         borderRadius: currentSize.borderRadius,
         transition: {
-          type: "spring",
-          stiffness,
-          damping,
-        },
-        clipPath: `none`,
-        transitionEnd: {
-          clipPath: `url(#squircle-${state.size})`,
+          duration: 0.2,
+          ease: "easeOut",
         },
       }}
       style={{ willChange }}
@@ -426,21 +421,18 @@ const DynamicContainer = ({ className, children }: DynamicContainerProps) => {
 
   const initialState = {
     opacity: size === previousSize ? 1 : 0,
-    scale: size === previousSize ? 1 : 0.9,
-    y: size === previousSize ? 0 : 5,
+    y: size === previousSize ? 0 : 2,
   }
 
   const animateState = {
     opacity: 1,
-    scale: 1,
     y: 0,
   }
 
   const transition = {
-    type: "spring" as const,
-    stiffness,
-    damping,
-    duration: isSizeChanged ? 0.5 : 0.8,
+    duration: isSizeChanged ? 0.15 : 0.2,
+    ease: "easeOut" as const,
+    delay: isSizeChanged ? 0.05 : 0,
   }
 
   return (
@@ -448,7 +440,7 @@ const DynamicContainer = ({ className, children }: DynamicContainerProps) => {
       initial={initialState}
       animate={animateState}
       transition={transition}
-      exit={{ opacity: 0, filter: "blur(10px)", scale: 0.95, y: 20 }}
+      exit={{ opacity: 0, transition: { duration: 0.1 } }}
       style={{ willChange }}
       className={className}
     >
@@ -482,7 +474,7 @@ const DynamicDiv = ({ className, children }: DynamicChildrenProps) => {
           damping,
         },
       }}
-      exit={{ opacity: 0, filter: "blur(10px)", scale: 0 }}
+      exit={{ opacity: 0 }}
       style={{ willChange }}
       className={className}
     >

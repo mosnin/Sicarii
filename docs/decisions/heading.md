@@ -3,6 +3,35 @@
 > The one thing to push right now. Surfaced first by the Ratchet hook each
 > session. Keep it to a glance; update it on every RECORD. (Volatile - the *aim*.)
 
+## THE GOAL (founder, 2026-10-09) - supersedes the cycle below
+
+Founder call, in order of the founder's message. This replaces the previous
+"no new surfaces, providers, or tools" hard rule.
+
+1. **Full UI revamp, Apple-level polish, Twenty aesthetic only.** Twenty's
+   structure, density and finish (drawer + bordered page panel, hairlines,
+   4/8px radii, 13px app body, tables, tags) - but **Scalar's own colors
+   (baby blue `#5AB0E8` + white/charcoal), fonts, and the ASCII signature stay**.
+   **The Home dashboard keeps its original bento layout**, finished in the
+   Twenty style. Keep all functionality.
+2. **Cold email: learn from Mautic** (github.com/mautic/mautic, GPL-3.0): port
+   the useful cold-email logic as our own TypeScript (segments, campaign
+   decision trees, DNC/suppression, bounce/complaint handling, tracking).
+3. **Warmbly parity** (github.com/warmbly/warmbly, Apache-2.0): bring in
+   everything from Warmbly that Scalar lacks (campaigns, unified inbox,
+   warmup pool, deliverability, automations, integrations, realtime...), with
+   Apache attribution. Start from the unmerged mailbox branches
+   (`cursor/agent-mailboxes-*`, `cursor/scalar-outreach-mailboxes-7f5d`).
+4. **Cloudflare as the backend.** Scope pending a founder call (see below).
+5. **LinkedIn outreach** modelled on Linki (github.com/moaljumaa/linki).
+   Linki's "Sustainable Use License" forbids offering it as a hosted service,
+   which is what Scalar is, so its code cannot be copied in; the feature is
+   built clean-room unless the author grants a license. Founder call pending.
+
+Status: 1 shipped in code on `claude/dazzling-gates-83GU4` (Card 0016); founder observation owed. 2-5 not started; 4 and 5 wait on founder calls.
+
+---
+
 **Binding constraint right now:** _The product is correct, honest, billable, and
 hardened (audits 2026-06-06 -> 09; PRs #19-#29) - and still **unfelt**. Nothing
 has been observed running end to end, and the product has zero choreographed

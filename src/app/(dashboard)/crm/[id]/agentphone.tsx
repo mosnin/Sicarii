@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Phone, KeyRound } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 type Call = {
@@ -55,29 +54,29 @@ export function ContactAgentPhone({ contactId }: { contactId: string }) {
   }, [contactId]);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Phone className="h-4 w-4 text-muted-foreground" />
+    <section className="rounded-[8px] border border-border bg-background">
+      <header className="flex h-10 items-center justify-between border-b border-border px-3">
+        <h2 className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+          <Phone className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
           Calls
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+        </h2>
+      </header>
+      <div className="p-3">
         {loading ? (
           <div className="space-y-2">
             {[0, 1].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/50" />
+              <div key={i} className="h-10 animate-pulse rounded-[4px] bg-muted" />
             ))}
           </div>
         ) : !data?.connected ? (
-          <div className="rounded-xl border border-dashed border-border bg-muted/30 p-6 text-center">
-            <p className="font-brand text-sm text-foreground">AgentPhone not connected</p>
+          <div className="rounded-[8px] border border-dashed border-input px-4 py-6 text-center">
+            <p className="text-sm font-medium text-foreground">AgentPhone not connected</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Add your AgentPhone API key so agents can call this contact and log every call here.
             </p>
-            <Button asChild size="sm" className="mt-4">
+            <Button asChild size="sm" variant="outline" className="mt-3">
               <Link href="/settings">
-                <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+                <KeyRound className="h-3.5 w-3.5" strokeWidth={1.6} />
                 Add API key in settings
               </Link>
             </Button>
@@ -87,12 +86,12 @@ export function ContactAgentPhone({ contactId }: { contactId: string }) {
         ) : (data.calls?.length ?? 0) === 0 ? (
           <p className="text-sm text-muted-foreground">No calls with this contact yet.</p>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="-my-1 divide-y divide-border">
             {data.calls!.map((c) => (
-              <div key={c.id} className="py-3">
+              <div key={c.id} className="py-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium">
+                    <span className="font-medium text-foreground">
                       {c.direction === "OUTBOUND" ? "Outbound" : "Inbound"}
                     </span>
                     <span className="text-muted-foreground">
@@ -124,7 +123,7 @@ export function ContactAgentPhone({ contactId }: { contactId: string }) {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

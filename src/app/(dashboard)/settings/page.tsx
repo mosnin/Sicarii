@@ -1,10 +1,3 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { headers } from "next/headers";
 import { FloatIn } from "@/components/ui/float-in";
 import { ApiKeysManager } from "./api-keys";
@@ -22,6 +15,46 @@ export const dynamic = "force-dynamic";
 
 const PAID_PLANS = ["starter", "pro", "business"];
 
+/** Twenty settings section: a heading and a muted description over a bordered
+ *  panel. Purely presentational. */
+function SettingsSection({
+  title,
+  description,
+  children,
+  flush = false,
+}: {
+  title: string;
+  description: React.ReactNode;
+  children: React.ReactNode;
+  flush?: boolean;
+}) {
+  return (
+    <section>
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      <div
+        className={
+          flush
+            ? "mt-3 rounded-[8px] border border-border bg-card"
+            : "mt-3 rounded-[8px] border border-border bg-card p-3"
+        }
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** One label/value row inside a settings panel. */
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-10 items-center gap-2 px-3 text-sm">
+      <span className="w-36 shrink-0 text-muted-foreground">{label}</span>
+      <span className="min-w-0 truncate text-foreground">{children}</span>
+    </div>
+  );
+}
+
 export default async function SettingsPage() {
   const user = await getDbUser();
   const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
@@ -38,189 +71,130 @@ export default async function SettingsPage() {
   const voiceWebhookBase = `${proto}://${host}/api/webhooks/agentphone`;
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-3xl space-y-8 pb-12">
       {/* Header */}
       <FloatIn delay={0}>
-        <h1 className="font-brand text-2xl sm:text-3xl text-foreground">
-          Settings
-        </h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Your account, agent access, and connections.
         </p>
       </FloatIn>
 
-      {/* Account card */}
-      <FloatIn delay={0.08}>
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-base">Account</CardTitle>
-            <CardDescription>Your profile information from Clerk.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y divide-border">
-              <div className="flex items-center justify-between py-3 text-sm">
-                <span className="text-muted-foreground">Name</span>
-                <span className="font-medium">
-                  {user?.firstName} {user?.lastName}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-3 text-sm">
-                <span className="text-muted-foreground">Email</span>
-                <span className="font-medium">{user?.email}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Account */}
+      <FloatIn delay={0.04}>
+        <SettingsSection title="Account" description="Your profile information from Clerk." flush>
+          <div className="divide-y divide-border">
+            <FieldRow label="Name">
+              {user?.firstName} {user?.lastName}
+            </FieldRow>
+            <FieldRow label="Email">{user?.email}</FieldRow>
+          </div>
+        </SettingsSection>
       </FloatIn>
 
       {/* Billing */}
-      <FloatIn delay={0.11}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Billing</CardTitle>
-            <CardDescription>
-              Your plan and credit meter. Credits are spent only when an agent
-              pulls real data from the outside world; CRM reads and writes are
-              free, and a miss is never charged.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y divide-border">
-              <div className="flex items-center justify-between py-3 text-sm">
-                <span className="text-muted-foreground">Plan</span>
-                <span className="font-medium">{planLabel ?? "Free"}</span>
-              </div>
-              <div className="flex items-center justify-between py-3 text-sm">
-                <span className="text-muted-foreground">Credits remaining</span>
-                <span className="font-medium text-primary">
-                  {billing ? billing.creditsRemaining.toLocaleString() : "0"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-3 text-sm">
-                <span className="text-muted-foreground">Resets</span>
-                <span className="font-medium">
-                  {billing?.creditsResetAt
-                    ? new Date(billing.creditsResetAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
-                    : "On your first metered action"}
-                </span>
-              </div>
+      <FloatIn delay={0.06}>
+        <SettingsSection
+          title="Billing"
+          description="Your plan and credit meter. Credits are spent only when an agent pulls real data from the outside world; CRM reads and writes are free, and a miss is never charged."
+          flush
+        >
+          <div className="divide-y divide-border">
+            <FieldRow label="Plan">{planLabel ?? "Free"}</FieldRow>
+            <FieldRow label="Credits remaining">
+              <span className="font-medium tabular-nums text-primary">
+                {billing ? billing.creditsRemaining.toLocaleString() : "0"}
+              </span>
+            </FieldRow>
+            <FieldRow label="Resets">
+              {billing?.creditsResetAt
+                ? new Date(billing.creditsResetAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "On your first metered action"}
+            </FieldRow>
+          </div>
+          {billing && !PAID_PLANS.includes(billing.plan) && (
+            <div className="border-t border-border p-3">
+              <p className="mb-3 text-sm text-muted-foreground">
+                Upgrade for a bigger monthly allotment and scheduled monitors.
+              </p>
+              <BillingUpgrade />
             </div>
-            {billing && !PAID_PLANS.includes(billing.plan) && (
-              <div className="mt-4 border-t border-border pt-4">
-                <p className="mb-3 text-sm text-muted-foreground">
-                  Upgrade for a bigger monthly allotment and scheduled monitors.
-                </p>
-                <BillingUpgrade />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </SettingsSection>
       </FloatIn>
 
       {/* Automation preferences */}
-      <FloatIn delay={0.13}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Automation</CardTitle>
-            <CardDescription>What your agent does on its own while you&apos;re away.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AutoRadarToggle initialOn={user?.autoRadar ?? true} />
-          </CardContent>
-        </Card>
+      <FloatIn delay={0.08}>
+        <SettingsSection
+          title="Automation"
+          description={<>What your agent does on its own while you&apos;re away.</>}
+        >
+          <AutoRadarToggle initialOn={user?.autoRadar ?? true} />
+        </SettingsSection>
       </FloatIn>
 
       {/* API keys */}
-      <FloatIn delay={0.14}>
+      <FloatIn delay={0.1}>
         <ApiKeysManager />
       </FloatIn>
 
       {/* MCP connector */}
-      <FloatIn delay={0.17}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Connect your agent (MCP)</CardTitle>
-            <CardDescription>
-              Add Scalar as a remote MCP connector in Claude or any MCP client.
-              Use this URL. It authorizes over OAuth (you sign in to approve), or
-              your agent can pass an API key above as a Bearer token.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <WebhookUrl url={mcpUrl} />
-          </CardContent>
-        </Card>
+      <FloatIn delay={0.12}>
+        <SettingsSection
+          title="Connect your agent (MCP)"
+          description="Add Scalar as a remote MCP connector in Claude or any MCP client. Use this URL. It authorizes over OAuth (you sign in to approve), or your agent can pass an API key above as a Bearer token."
+        >
+          <WebhookUrl url={mcpUrl} />
+        </SettingsSection>
       </FloatIn>
 
       {/* AgentMail */}
-      <FloatIn delay={0.2}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">AgentMail</CardTitle>
-            <CardDescription>
-              Connect your AgentMail account to send and sync email onto contacts.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AgentMailKeyForm initialLast4={agentMailLast4} />
-          </CardContent>
-        </Card>
+      <FloatIn delay={0.14}>
+        <SettingsSection
+          title="AgentMail"
+          description="Connect your AgentMail account to send and sync email onto contacts."
+        >
+          <AgentMailKeyForm initialLast4={agentMailLast4} />
+        </SettingsSection>
       </FloatIn>
 
       {/* AgentPhone */}
-      <FloatIn delay={0.23}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">AgentPhone</CardTitle>
-            <CardDescription>
-              Connect your AgentPhone account so agents can call leads and track every call on the contact.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AgentPhoneKeyForm initialLast4={agentPhoneLast4} />
-          </CardContent>
-        </Card>
+      <FloatIn delay={0.16}>
+        <SettingsSection
+          title="AgentPhone"
+          description="Connect your AgentPhone account so agents can call leads and track every call on the contact."
+        >
+          <AgentPhoneKeyForm initialLast4={agentPhoneLast4} />
+        </SettingsSection>
       </FloatIn>
 
       {/* Voice-native CRM - call your AgentPhone number and ask out loud */}
-      <FloatIn delay={0.245}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Voice</CardTitle>
-            <CardDescription>
-              Call in and ask Scalar what needs your attention. Requires AgentPhone.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <VoiceSettingsForm
-              initialEnabled={user?.voiceEnabled ?? false}
-              connected={Boolean(user?.agentPhoneApiKey)}
-              initialSecret={user?.voiceInboundSecret ?? null}
-              webhookBase={voiceWebhookBase}
-            />
-          </CardContent>
-        </Card>
+      <FloatIn delay={0.18}>
+        <SettingsSection
+          title="Voice"
+          description="Call in and ask Scalar what needs your attention. Requires AgentPhone."
+        >
+          <VoiceSettingsForm
+            initialEnabled={user?.voiceEnabled ?? false}
+            connected={Boolean(user?.agentPhoneApiKey)}
+            initialSecret={user?.voiceInboundSecret ?? null}
+            webhookBase={voiceWebhookBase}
+          />
+        </SettingsSection>
       </FloatIn>
 
       {/* Outbound webhook - notify your agent when a scheduled task completes */}
-      <FloatIn delay={0.26}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Agent notifications webhook</CardTitle>
-            <CardDescription>
-              When a scheduled task finishes (intent monitor or background
-              research), Scalar POSTs the new results to this URL so your agent
-              (e.g. openclaw or Hermes) can wake up and act on them.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TaskWebhookForm initialUrl={user?.taskWebhookUrl ?? null} />
-          </CardContent>
-        </Card>
+      <FloatIn delay={0.2}>
+        <SettingsSection
+          title="Agent notifications webhook"
+          description="When a scheduled task finishes (intent monitor or background research), Scalar POSTs the new results to this URL so your agent (e.g. openclaw or Hermes) can wake up and act on them."
+        >
+          <TaskWebhookForm initialUrl={user?.taskWebhookUrl ?? null} />
+        </SettingsSection>
       </FloatIn>
     </div>
   );

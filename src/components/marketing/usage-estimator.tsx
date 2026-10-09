@@ -56,7 +56,7 @@ export function UsageEstimator() {
   const dollars = (total * 0.01).toFixed(0);
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-4 rounded-[1.75rem] border border-border bg-card p-6 shadow-xl shadow-black/[0.04] sm:p-8 lg:grid-cols-[1fr_minmax(0,260px)] dark:border-white/10 dark:shadow-black/40">
+    <div className="mx-auto grid max-w-4xl gap-4 rounded-[12px] border border-border bg-background p-6 sm:p-8 lg:grid-cols-[1fr_minmax(0,260px)]">
       {/* Sliders */}
       <div className="space-y-6">
         {drivers.map((d) => (
@@ -65,7 +65,7 @@ export function UsageEstimator() {
               <label htmlFor={`est-${d.id}`} className="text-sm font-medium text-foreground">
                 {d.label}
               </label>
-              <span className="font-brand text-sm tabular-nums text-foreground">
+              <span className="text-sm font-medium tabular-nums text-foreground">
                 {vals[d.id].toLocaleString()}{" "}
                 <span className="text-xs font-normal text-muted-foreground">{d.unit} / mo</span>
               </span>
@@ -87,27 +87,27 @@ export function UsageEstimator() {
       </div>
 
       {/* Live total + recommendation */}
-      <div className="flex flex-col justify-center rounded-2xl border border-border bg-muted/40 p-6 text-center dark:border-white/10 dark:bg-white/[0.02]">
-        <p className="text-xs uppercase tracking-[0.25em] text-primary">Estimated</p>
+      <div className="flex flex-col justify-center rounded-[8px] border border-border bg-surface p-6 text-center">
+        <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Estimated</p>
         <motion.p
           key={total}
           initial={{ opacity: 0.5, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
-          className="mt-2 font-brand text-4xl tabular-nums text-foreground"
+          className="mt-2 font-semibold tracking-tight text-4xl tabular-nums text-foreground"
         >
           {total.toLocaleString()}
         </motion.p>
         <p className="text-sm text-muted-foreground">credits / month</p>
         <p className="mt-1 text-xs text-muted-foreground">about ${dollars} in usage</p>
 
-        <div className="mt-5 border-t border-border pt-5 dark:border-white/10">
+        <div className="mt-5 border-t border-border pt-5">
           <p className="text-sm text-foreground">
-            <span className="font-brand text-primary">{recommended.name}</span> {recommended.note}
+            <span className="font-medium text-primary">{recommended.name}</span> {recommended.note}
           </p>
           <Link
             href={recommended.href}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5"
+            className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-[4px] bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Get started
             <ArrowRight className="h-4 w-4" />

@@ -78,11 +78,11 @@ export default function FAQPage() {
       <main className="flex-1 pt-16">
         {/* Hero */}
         <section className="relative py-24 sm:py-32 overflow-hidden">
-          <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
+          <div className="absolute inset-0 bg-surface" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
             <Badge variant="primary" className="mb-4">FAQ</Badge>
-            <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            <h1 className="font-semibold tracking-tight text-4xl text-foreground sm:text-5xl lg:text-6xl">
               Frequently asked{" "}
               <span className="text-gradient-orange">questions</span>
             </h1>
@@ -99,17 +99,17 @@ export default function FAQPage() {
             <div className="space-y-12">
               {faqCategories.map((category) => (
                 <div key={category.category}>
-                  <h2 className="font-brand text-xl text-foreground mb-4">{category.category}</h2>
+                  <h2 className="mb-4 text-xl font-semibold text-foreground">{category.category}</h2>
                   <Accordion.Root type="single" collapsible className="space-y-2">
                     {category.questions.map((item, i) => (
                       <Accordion.Item
                         key={i}
                         value={`${category.category}-${i}`}
-                        className="rounded-xl border border-border overflow-hidden"
+                        className="overflow-hidden rounded-[8px] border border-border bg-background"
                       >
-                        <Accordion.Trigger className="flex w-full items-center justify-between p-4 text-left text-sm font-medium hover:bg-muted/50 transition-colors cursor-pointer group [&[data-state=open]>svg]:rotate-180">
+                        <Accordion.Trigger className="flex w-full items-center justify-between p-4 text-left text-sm font-medium hover:bg-hover transition-colors cursor-pointer group [&[data-state=open]>svg]:rotate-180">
                           {item.q}
-                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150" />
                         </Accordion.Trigger>
                         <Accordion.Content className="overflow-hidden data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp">
                           <div className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed">
@@ -126,13 +126,13 @@ export default function FAQPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-16 sm:py-20 bg-muted/30 dark:bg-charcoal-dark/30">
+        <section className="py-16 sm:py-20 bg-surface">
           <div className="mx-auto max-w-3xl px-4 text-center">
-            <h2 className="font-brand text-2xl text-foreground">Still have questions?</h2>
+            <h2 className="text-2xl font-semibold text-foreground">Still have questions?</h2>
             <p className="mt-3 text-muted-foreground">
               We&apos;re here to help. Reach out and we&apos;ll get back to you within 24 hours.
             </p>
-            <Button variant="glow" size="lg" className="mt-6" asChild>
+            <Button size="lg" className="mt-6" asChild>
               <Link href="/contact">
                 Contact Us <ArrowRight className="ml-1 h-4 w-4" />
               </Link>

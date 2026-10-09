@@ -91,9 +91,9 @@ function fmtMoney(v: string | number | undefined): string | undefined {
 
 function Tile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-3 py-2.5">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-brand text-lg tabular-nums text-foreground">{value}</p>
+    <div className="min-w-0 rounded-[8px] border border-border bg-card px-3 py-2">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-0.5 truncate text-xl font-semibold tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
@@ -135,9 +135,9 @@ function TechStack({ value }: { value: unknown }) {
   const list = [...names].filter((n) => n.length <= 40).slice(0, 80);
   if (list.length < 2) return <FallbackView value={value} />;
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1">
       {list.map((t) => (
-        <span key={t} className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-foreground">
+        <span key={t} className="inline-flex h-5 items-center rounded-[4px] bg-muted px-1.5 text-xs text-foreground">
           {t}
         </span>
       ))}
@@ -161,13 +161,13 @@ function Funding({ value }: { value: unknown }) {
     <div className="space-y-3">
       {tiles.length > 0 && <StatTiles tiles={tiles} />}
       {rounds && rounds.length > 0 && (
-        <div className="divide-y divide-border rounded-xl border border-border">
+        <div className="divide-y divide-border rounded-[8px] border border-border">
           {rounds.slice(0, 8).map((r, i) => {
             const stage = deepFind(r, [/round_type|stage|series|type|name/i]);
             const amount = fmtMoney(deepFind(r, [/amount|raised|value|money/i]));
             const date = deepFind(r, [/date|announced|closed_on|year/i]);
             return (
-              <div key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+              <div key={i} className="flex min-h-10 items-center justify-between gap-3 px-3 py-2 text-sm">
                 <span className="font-medium text-foreground">{stage != null ? String(stage) : `Round ${i + 1}`}</span>
                 <span className="flex items-center gap-3 text-muted-foreground">
                   {amount && <span className="tabular-nums text-foreground">{amount}</span>}
@@ -213,7 +213,7 @@ function News({ value }: { value: unknown }) {
   if (articles.every((a) => a.title == null)) return <FallbackView value={value} />;
 
   return (
-    <div className="space-y-2">
+    <div className="divide-y divide-border overflow-hidden rounded-[8px] border border-border">
       {articles.map((a, i) => {
         const title = a.title != null ? String(a.title) : "Untitled";
         const href = a.url != null ? String(a.url) : undefined;
@@ -221,7 +221,7 @@ function News({ value }: { value: unknown }) {
           <>
             <p className="text-sm font-medium text-foreground line-clamp-2">{title}</p>
             {a.summary != null && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{String(a.summary)}</p>}
-            <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
               {a.source != null && <span>{String(a.source)}</span>}
               {a.date != null && <span>· {String(a.date)}</span>}
             </div>
@@ -233,12 +233,12 @@ function News({ value }: { value: unknown }) {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="block rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-accent/40"
+            className="block px-3 py-2.5 transition-colors hover:bg-muted/40"
           >
             {inner}
           </a>
         ) : (
-          <div key={i} className="rounded-xl border border-border bg-card p-3">
+          <div key={i} className="px-3 py-2.5">
             {inner}
           </div>
         );
@@ -249,7 +249,7 @@ function News({ value }: { value: unknown }) {
 
 function FallbackView({ value }: { value: unknown }) {
   return (
-    <div className="max-h-96 overflow-auto rounded-xl border border-border bg-muted/30 p-4">
+    <div className="max-h-96 overflow-auto rounded-[8px] border border-border bg-muted/30 p-3">
       <DataView value={cleanForView(value)} />
     </div>
   );

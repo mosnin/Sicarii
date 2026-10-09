@@ -164,22 +164,22 @@ export function LiveDemo() {
       {/* soft brand glow under the window */}
       <div className="pointer-events-none absolute -inset-x-6 -bottom-10 top-16 bg-[radial-gradient(ellipse_at_50%_50%,rgba(90,176,232,0.22),transparent_70%)] blur-2xl" />
 
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-2xl shadow-black/10 dark:border-white/10 dark:shadow-black/50">
+      <div className="relative overflow-hidden rounded-[12px] border border-border bg-card">
         {/* window chrome */}
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3 dark:border-white/10">
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <div className="flex gap-1.5">
             <span className="h-3 w-3 rounded-full bg-muted-foreground/25" />
             <span className="h-3 w-3 rounded-full bg-muted-foreground/25" />
             <span className="h-3 w-3 rounded-full bg-muted-foreground/25" />
           </div>
-          <div className="mx-auto flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-1 text-[11px] text-muted-foreground dark:border-white/10">
+          <div className="mx-auto flex items-center gap-2 rounded-[4px] border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
             app.tryscalar.xyz / crm
           </div>
         </div>
 
         {/* agent prompt bar with the typing prompt + live status */}
-        <div className="relative overflow-hidden border-b border-border bg-muted/40 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
+        <div className="relative overflow-hidden border-b border-border bg-surface px-4 py-3">
           <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.08] dark:opacity-[0.10]" cell={12} speed={0.06} gradient />
           <div className="relative z-10 flex items-center gap-2.5">
             <span className="flex h-2 w-2 shrink-0 items-center justify-center">
@@ -217,7 +217,7 @@ export function LiveDemo() {
 
         {/* table */}
         <div className="px-2 py-2 sm:px-3 sm:py-3">
-          <div className="grid grid-cols-12 gap-3 px-3 py-2 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+          <div className="grid grid-cols-12 gap-3 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
             <div className="col-span-6 sm:col-span-5">Company</div>
             <div className="col-span-2 hidden sm:block">Signal</div>
             <div className="col-span-4 hidden sm:block">Enrichment</div>
@@ -231,17 +231,17 @@ export function LiveDemo() {
                 <motion.div
                   key={`${build.label}-${row.company}`}
                   layout
-                  initial={reduce ? false : { opacity: 0, y: 10, filter: "blur(4px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  initial={reduce ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   exit={reduce ? undefined : { opacity: 0, y: -6 }}
-                  transition={{ duration: 0.4, ease: EASE }}
-                  className="grid grid-cols-12 items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-muted/50 dark:hover:bg-white/[0.03]"
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="grid grid-cols-12 items-center gap-3 rounded-[4px] px-3 py-3 transition-colors hover:bg-hover"
                 >
                   {/* company + domain */}
                   <div className="col-span-6 sm:col-span-5">
                     <div className="flex items-center gap-2">
                       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${intentDot[row.intent]}`} />
-                      <span className="font-brand text-sm text-foreground">{row.company}</span>
+                      <span className="text-sm font-medium text-foreground">{row.company}</span>
                     </div>
                     <p className="mt-0.5 truncate pl-3.5 text-xs text-muted-foreground">{row.domain}</p>
                   </div>
@@ -253,7 +253,7 @@ export function LiveDemo() {
                         <motion.span
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          transition={{ duration: 0.4 }}
+                          transition={{ duration: 0.25 }}
                           className="text-xs text-muted-foreground"
                         >
                           {intentLabel[row.intent]}
@@ -272,7 +272,7 @@ export function LiveDemo() {
                             initial={reduce ? false : { opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.3, delay: ci * 0.06, ease: EASE }}
-                            className="rounded-md border border-border bg-background/60 px-2 py-0.5 text-[11px] text-foreground/70 dark:border-white/10 dark:bg-white/[0.03]"
+                            className="rounded-[4px] border border-border bg-background px-2 py-0.5 text-[11px] text-foreground/70"
                           >
                             {chip}
                           </motion.span>
@@ -287,10 +287,10 @@ export function LiveDemo() {
                         className="h-full rounded-full bg-primary"
                         initial={reduce ? false : { width: 0 }}
                         animate={{ width: enriched ? `${row.fit}%` : 0 }}
-                        transition={{ duration: 0.7, ease: EASE }}
+                        transition={{ duration: 0.25, ease: EASE }}
                       />
                     </div>
-                    <span className="w-6 text-right font-brand text-xs tabular-nums text-foreground">
+                    <span className="w-6 text-right text-xs font-medium tabular-nums text-foreground">
                       {enriched ? row.fit : ""}
                     </span>
                   </div>
@@ -312,8 +312,8 @@ export function LiveDemo() {
             aria-pressed={i === activeIdx}
             className={
               i === activeIdx
-                ? "rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors"
-                : "rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+                ? "rounded-[4px] border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors"
+                : "rounded-[4px] border border-border bg-background px-3 py-1.5 text-xs font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-foreground"
             }
           >
             {b.label}

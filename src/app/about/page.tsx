@@ -47,11 +47,11 @@ export default function AboutPage() {
       <main className="flex-1 pt-16">
         {/* Hero */}
         <section className="relative py-24 sm:py-32 overflow-hidden">
-          <div className="absolute inset-0 bg-muted/40 dark:bg-charcoal-dark" />
+          <div className="absolute inset-0 bg-surface" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
             <Badge variant="primary" className="mb-4">About</Badge>
-            <h1 className="font-brand text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            <h1 className="font-semibold tracking-tight text-4xl text-foreground sm:text-5xl lg:text-6xl">
               The CRM your{" "}
               <span className="text-gradient-orange">agents run</span>
             </h1>
@@ -69,15 +69,15 @@ export default function AboutPage() {
               {story.map((section, index) => (
                 <motion.div
                   key={section.eyebrow}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 8 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.05, ease: easeOut }}
+                  transition={{ duration: 0.25, delay: index * 0.05, ease: easeOut }}
                 >
-                  <p className="text-xs uppercase tracking-[0.25em] text-primary">
+                  <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">
                     {section.eyebrow}
                   </p>
-                  <h2 className="font-brand mt-3 text-2xl text-foreground sm:text-3xl">
+                  <h2 className="font-semibold tracking-tight mt-3 text-2xl text-foreground sm:text-3xl">
                     {section.title}
                   </h2>
                   {section.body.map((paragraph) => (
@@ -92,20 +92,20 @@ export default function AboutPage() {
         </section>
 
         {/* The principle */}
-        <section className="py-20 sm:py-28 bg-muted/30 dark:bg-charcoal-dark/30">
+        <section className="py-20 sm:py-28 bg-surface">
           <div className="mx-auto max-w-3xl px-4">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, ease: easeOut }}
-              className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 sm:p-12 text-center"
+              transition={{ duration: 0.25, ease: easeOut }}
+              className="relative overflow-hidden rounded-[12px] border border-border bg-background p-8 sm:p-12 text-center"
             >
               <LogoMark className="mx-auto h-10 w-10" />
-              <p className="mt-6 text-xs uppercase tracking-[0.25em] text-primary">
+              <p className="mt-6 text-xs font-medium uppercase tracking-wide text-fg-tertiary">
                 The principle
               </p>
-              <h2 className="font-brand mt-3 text-2xl text-foreground sm:text-3xl">
+              <h2 className="font-semibold tracking-tight mt-3 text-2xl text-foreground sm:text-3xl">
                 A wrong answer is worse than{" "}
                 <span className="text-gradient-orange">no answer</span>
               </h2>
@@ -128,7 +128,7 @@ export default function AboutPage() {
         {/* CTA */}
         <section className="py-24 sm:py-32">
           <div className="mx-auto max-w-3xl px-4 text-center">
-            <h2 className="font-brand text-3xl text-foreground sm:text-4xl">
+            <h2 className="font-semibold tracking-tight text-3xl text-foreground sm:text-4xl">
               Connect your agent. It just works.
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
@@ -136,9 +136,9 @@ export default function AboutPage() {
               watch your CRM fill itself.
             </p>
             <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-              <Button variant="glow" size="lg" asChild>
+              <Button size="lg" asChild>
                 <Link href="/sign-up">
-                  Get Started <ArrowRight className="ml-1 h-5 w-5" />
+                  Get Started <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild>

@@ -108,17 +108,17 @@ export function VoiceSettingsForm({
           onClick={toggle}
           disabled={saving || !connected}
           className={cn(
-            "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            enabled ? "bg-primary" : "bg-muted-foreground/30",
+            "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/20",
+            enabled ? "bg-primary" : "bg-muted",
             (saving || !connected) && "opacity-50",
           )}
         >
           <motion.span
             layout
-            transition={{ type: "spring", stiffness: 500, damping: 34 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
             className={cn(
-              "inline-block h-5 w-5 rounded-full bg-white shadow-sm",
-              enabled ? "ml-[22px]" : "ml-0.5",
+              "inline-block h-3 w-3 rounded-full bg-white",
+              enabled ? "ml-[14px]" : "ml-0.5",
             )}
           />
         </button>
@@ -133,9 +133,10 @@ export function VoiceSettingsForm({
       <AnimatePresence>
         {enabled && url && (
           <motion.div
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
             className="space-y-2"
           >
             <p className="text-xs text-muted-foreground">
@@ -144,13 +145,13 @@ export function VoiceSettingsForm({
               this link can hear your CRM read back over the phone, so treat
               it like a password and rotate it if it ever leaks.
             </p>
-            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
+            <div className="flex h-8 items-center gap-1 rounded-[4px] border border-border bg-muted/40 pl-2.5 pr-0.5">
               <code className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">{url}</code>
-              <Button variant="ghost" size="sm" onClick={copy} aria-label="Copy voice webhook URL">
-                {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+              <Button variant="ghost" size="icon-xs" onClick={copy} aria-label="Copy voice webhook URL">
+                {copied ? <Check className="h-4 w-4 text-success" strokeWidth={1.6} /> : <Copy className="h-4 w-4" strokeWidth={1.6} />}
               </Button>
-              <Button variant="ghost" size="sm" onClick={rotate} disabled={rotating} aria-label="Generate a new link">
-                {rotating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              <Button variant="ghost" size="icon-xs" onClick={rotate} disabled={rotating} aria-label="Generate a new link">
+                {rotating ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.6} /> : <RefreshCw className="h-4 w-4" strokeWidth={1.6} />}
               </Button>
             </div>
           </motion.div>

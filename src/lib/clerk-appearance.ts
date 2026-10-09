@@ -1,5 +1,5 @@
 // Shared Clerk appearance so the hosted sign-in / sign-up components match
-// Scalar's baby-blue + white system instead of Clerk's stock theme. Colors are
+// Scalar's baby-blue system on Twenty-style geometry instead of Clerk's stock theme. Colors are
 // wired to our CSS variables so the forms follow light/dark automatically; the
 // surrounding card frame is supplied by the auth pages, so Clerk's own card is
 // stripped to transparent. Typed via the SignIn component's own prop so we stay
@@ -19,7 +19,7 @@ export const clerkAppearance: ClerkAppearance = {
     colorInputText: "var(--foreground)",
     colorDanger: "#DC2626",
     colorSuccess: "#16A34A",
-    borderRadius: "0.75rem",
+    borderRadius: "0.25rem",
     fontFamily: "var(--font-sans)",
     fontFamilyButtons: "var(--font-sans)",
   },
@@ -30,22 +30,22 @@ export const clerkAppearance: ClerkAppearance = {
     cardBox: "w-full min-w-0 shadow-none border-0",
     card: "w-full min-w-0 bg-transparent p-0 shadow-none",
     header: "mb-2",
-    headerTitle: "font-brand text-2xl text-foreground",
-    headerSubtitle: "text-muted-foreground",
+    headerTitle: "text-xl font-semibold text-foreground",
+    headerSubtitle: "text-fg-tertiary",
     socialButtonsBlockButton:
-      "border border-border bg-background/60 text-foreground transition-colors hover:bg-accent",
+      "rounded-[4px] border border-border bg-background text-foreground transition-colors hover:bg-hover",
     socialButtonsBlockButtonText: "font-medium",
     dividerLine: "bg-border",
     dividerText: "text-muted-foreground",
     formFieldLabel: "text-foreground",
-    formFieldInput: "bg-background border-border focus:border-orange",
+    formFieldInput: "rounded-[4px] bg-background border-border focus:border-primary",
     formButtonPrimary:
-      "glow-button text-white font-semibold normal-case shadow-none hover:shadow-none",
+      "rounded-[4px] bg-primary text-primary-foreground font-medium normal-case shadow-none hover:bg-primary/90 hover:shadow-none",
     footer: "bg-transparent",
     footerActionText: "text-muted-foreground",
-    footerActionLink: "text-orange hover:text-orange-dark font-medium",
-    identityPreviewEditButton: "text-orange hover:text-orange-dark",
-    formResendCodeLink: "text-orange hover:text-orange-dark",
+    footerActionLink: "text-primary hover:text-primary/80 font-medium",
+    identityPreviewEditButton: "text-primary hover:text-primary/80",
+    formResendCodeLink: "text-primary hover:text-primary/80",
     logoBox: "hidden",
   },
 };

@@ -129,7 +129,7 @@ export function SocialsEditor({
         <form onSubmit={save} className="space-y-2">
           {FIELDS.map((f) => (
             <div key={f.name} className="space-y-1">
-              <label htmlFor={`social-${f.name}`} className="text-xs text-muted-foreground">
+              <label htmlFor={`social-${f.name}`} className="text-xs font-medium text-muted-foreground">
                 {f.label}
               </label>
               <Input
@@ -137,11 +137,11 @@ export function SocialsEditor({
                 name={f.name}
                 defaultValue={current[f.name] ?? ""}
                 placeholder={f.placeholder}
-                className="h-8 text-sm"
+                
               />
             </div>
           ))}
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-1.5 pt-1">
             <Button type="submit" size="sm" disabled={busy}>
               {busy ? "Saving..." : "Save socials"}
             </Button>
@@ -151,7 +151,7 @@ export function SocialsEditor({
           </div>
         </form>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
             Edit socials
           </Button>
@@ -167,12 +167,12 @@ export function SocialsEditor({
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">{find.message}</p>
           {candidates.length > 0 && (
-            <div className="space-y-2">
+            <div className="divide-y divide-border rounded-[8px] border border-border">
               {candidates.map((c) => (
-                <div key={c.url} className="rounded-lg border border-border bg-card/50 p-2.5">
+                <div key={c.url} className="p-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <p className="text-xs font-medium text-muted-foreground">
                         {FIELDS.find((f) => f.name === c.field)?.label ?? c.field}
                       </p>
                       <a
@@ -193,10 +193,12 @@ export function SocialsEditor({
                   )}
                 </div>
               ))}
-              <p className="text-xs text-muted-foreground">
-                Unverified: confirm it is this exact person before saving.
-              </p>
             </div>
+          )}
+          {candidates.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Unverified: confirm it is this exact person before saving.
+            </p>
           )}
         </div>
       )}

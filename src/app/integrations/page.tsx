@@ -63,8 +63,8 @@ export default function IntegrationsPage() {
           />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
-            <p className="text-xs uppercase tracking-[0.3em] text-primary">Integrations</p>
-            <h1 className="font-brand mt-4 text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Integrations</p>
+            <h1 className="font-semibold tracking-tight mt-4 text-4xl text-foreground sm:text-5xl lg:text-6xl">
               Bring your <span className="text-gradient-orange">own agent</span>
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">
@@ -75,14 +75,14 @@ export default function IntegrationsPage() {
             <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
               <Link
                 href="/sign-up"
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40"
+                className="inline-flex h-10 items-center gap-2 rounded-[8px] bg-primary px-5 text-base font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Get started
-                <ArrowRight className="h-5 w-5" />
+                <ArrowRight className="h-4 w-4" strokeWidth={1.6} />
               </Link>
               <Link
                 href="/security"
-                className="inline-flex items-center gap-2 rounded-full border border-border px-8 py-3.5 text-base font-medium text-muted-foreground backdrop-blur-md transition-colors hover:border-foreground/30 hover:text-foreground"
+                className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-border bg-background px-5 text-base font-medium text-fg-secondary transition-colors hover:bg-hover hover:text-foreground"
               >
                 How your data stays yours
               </Link>
@@ -94,8 +94,8 @@ export default function IntegrationsPage() {
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">Connect</p>
-              <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
+              <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Connect</p>
+              <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl">
                 Paste the config, <span className="text-gradient-orange">watch it connect</span>
               </h2>
               <p className="mt-4 text-lg text-muted-foreground">
@@ -110,11 +110,11 @@ export default function IntegrationsPage() {
         </section>
 
         {/* Agents */}
-        <section className="bg-muted/30 py-24 dark:bg-background sm:py-32">
+        <section className="bg-surface py-24 sm:py-32">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">Works with</p>
-              <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
+              <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Works with</p>
+              <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl">
                 One CRM, <span className="text-gradient-orange">any agent</span>
               </h2>
             </div>
@@ -122,14 +122,14 @@ export default function IntegrationsPage() {
               {agents.map((agent, index) => (
                 <motion.div
                   key={agent.name}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 8 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.45, delay: index * 0.08, ease: easeOut }}
+                  transition={{ duration: 0.25, delay: index * 0.08, ease: easeOut }}
                   className="h-full"
                 >
                   <SpotlightCard className="h-full p-6">
-                    <h3 className="font-brand text-lg text-foreground">{agent.name}</h3>
+                    <h3 className="text-lg font-medium text-foreground">{agent.name}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{agent.body}</p>
                   </SpotlightCard>
                 </motion.div>
@@ -142,8 +142,8 @@ export default function IntegrationsPage() {
         <section className="py-24 sm:py-32">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">Over MCP</p>
-              <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
+              <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Over MCP</p>
+              <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl">
                 What a connected agent <span className="text-gradient-orange">can do</span>
               </h2>
             </div>
@@ -151,11 +151,11 @@ export default function IntegrationsPage() {
               {capabilities.map((cap, index) => (
                 <motion.div
                   key={cap}
-                  initial={{ opacity: 0, y: 14 }}
+                  initial={{ opacity: 0, y: 8 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: index * 0.06, ease: easeOut }}
-                  className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4"
+                  transition={{ duration: 0.25, delay: index * 0.06, ease: easeOut }}
+                  className="flex items-start gap-3 rounded-[8px] border border-border bg-background p-4"
                 >
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                   <span className="text-sm text-foreground/80">{cap}</span>
@@ -166,11 +166,11 @@ export default function IntegrationsPage() {
         </section>
 
         {/* Steps */}
-        <section className="bg-muted/40 py-24 dark:bg-charcoal-dark sm:py-32">
+        <section className="bg-surface py-24 sm:py-32">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary">Connect in minutes</p>
-              <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl">
+              <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Connect in minutes</p>
+              <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl">
                 From key to <span className="text-gradient-orange">first write</span>
               </h2>
             </div>
@@ -178,15 +178,15 @@ export default function IntegrationsPage() {
               {steps.map((step, index) => (
                 <motion.div
                   key={step.title}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 8 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.45, delay: index * 0.08, ease: easeOut }}
+                  transition={{ duration: 0.25, delay: index * 0.08, ease: easeOut }}
                   className="h-full"
                 >
                   <SpotlightCard className="h-full p-6">
-                    <span className="font-brand text-3xl text-primary tabular-nums">{step.n}</span>
-                    <h3 className="font-brand mt-3 text-xl text-foreground">{step.title}</h3>
+                    <span className="text-2xl font-semibold tabular-nums text-primary">{step.n}</span>
+                    <h3 className="mt-3 text-xl font-medium text-foreground">{step.title}</h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
                   </SpotlightCard>
                 </motion.div>

@@ -61,8 +61,8 @@ export function EntityEditor({ entityId, initial }: { entityId: string; initial:
   if (!editing) {
     return (
       <div className="border-t border-border pt-3">
-        <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setV(initial); setEditing(true); }}>
-          <Pencil className="mr-1.5 h-3.5 w-3.5" />
+        <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => { setV(initial); setEditing(true); }}>
+          <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
           Edit details
         </Button>
       </div>
@@ -80,28 +80,28 @@ export function EntityEditor({ entityId, initial }: { entityId: string; initial:
   ];
 
   return (
-    <div className="space-y-3 border-t border-border pt-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="space-y-3 border-t border-border pt-3">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {FIELDS.map(({ label, k, ph }) => (
           <div key={k}>
-            <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
             <Input value={v[k]} placeholder={ph} onChange={(e) => set(k, e.target.value)} />
           </div>
         ))}
       </div>
       <div>
-        <label className="mb-1 block text-xs text-muted-foreground">Description</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
         <textarea
           value={v.description}
           onChange={(e) => set("description", e.target.value)}
           rows={4}
-          className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full resize-y rounded-[4px] border border-input bg-background px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
         />
       </div>
       {err && <p className="text-xs text-destructive">{err}</p>}
       <div className="flex items-center gap-2">
         <Button size="sm" onClick={save} disabled={saving}>
-          {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Save
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>Cancel</Button>

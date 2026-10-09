@@ -40,7 +40,7 @@ resold). Full identity: `docs/foundation/product.md` + `valueprop.md`.
 - Value proposition / positioning - `docs/foundation/valueprop.md`
 - Value proposition (legacy) - `@docs/foundation/value-proposition.md`
 - PRD / build brief - `docs/foundation/prd.md`
-- Brand kit - not yet provided (colors set: white/charcoal + `#1E4D2B`; logo at `public/logo.svg`)
+- Brand kit - not yet provided (colors set: baby blue `#5AB0E8` + white/charcoal on Twenty-style structure, see `DESIGN.md`; logo via `LogoMark`)
 - User experience - not yet provided
 
 Deep context and all decisions are indexed in `@docs/README.md`.
@@ -82,8 +82,10 @@ Deep context and all decisions are indexed in `@docs/README.md`.
   · **Lint:** `pnpm lint`.
 - **Conventions:** import alias `@/*` → `src/*`. Route groups: `(auth)`,
   `(dashboard)`, `(admin)`. Theme tokens live in `src/app/globals.css`
-  (**baby-blue + white, light by default**; legacy `orange`/`brand` Tailwind
-  utilities are aliased to baby blue - rename is a tracked debt). Logo: the `λ`
+  (**baby-blue `#5AB0E8` + white, light by default, on Twenty's structure:
+  drawer + bordered page panel, hairlines over shadows, 4/8px radii, 13px app
+  body; ASCII signature kept** - see `DESIGN.md`; legacy `orange`/`brand`
+  utilities alias to baby blue - rename is a tracked debt). Logo: the `λ`
   mark via `LogoMark` (theme-swapped PNGs: blue light / white dark). The agent is
   named **Scalar** and uses the logo as its avatar/nav icon.
 - **Copy hard rule:** NEVER use em dashes or en dashes anywhere (UI, code,
@@ -99,7 +101,7 @@ Deep context and all decisions are indexed in `@docs/README.md`.
   `export const viewport`; file-convention `app/manifest.ts` / `app/apple-icon.tsx`).
   Verify APIs against the installed Next, not memory.
 - **Origin:** rebranded from the `mosnin/fortitudov4` agency scaffolding (forked
-  the orange/charcoal studio site, then diverged to baby-blue/white - do not
+  the orange/charcoal studio site, then diverged to baby-blue/white, then adopted Twenty's structure (keeping baby blue) - do not
   reintroduce orange/charcoal as the brand).
 
 <!-- ritual:installed -->

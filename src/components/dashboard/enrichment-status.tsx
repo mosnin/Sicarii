@@ -36,9 +36,12 @@ export function EnrichmentStatusCard({ tier, action }: { tier: EnrichTier; actio
     : "Not enriched yet. Enrich to pull real data.";
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">Enrichment</p>
-      <div className="mt-3 flex items-center gap-2">
+    <section className="rounded-[8px] border border-border bg-background">
+      <header className="flex h-10 items-center border-b border-border px-3">
+        <h2 className="text-sm font-medium text-foreground">Enrichment</h2>
+      </header>
+      <div className="p-3">
+      <div className="flex items-center gap-2">
         {STEPS.map((s, i) => {
           const done = RANK[s.id] <= current;
           return (
@@ -46,11 +49,11 @@ export function EnrichmentStatusCard({ tier, action }: { tier: EnrichTier; actio
               <div className="flex flex-1 flex-col items-center gap-1.5">
                 <div
                   className={cn(
-                    "h-1.5 w-full rounded-full transition-colors",
+                    "h-1 w-full rounded-full transition-colors",
                     done ? "bg-primary" : "bg-muted"
                   )}
                 />
-                <span className={cn("text-[11px]", done ? "font-medium text-foreground" : "text-muted-foreground")}>
+                <span className={cn("text-xs", done ? "font-medium text-foreground" : "text-muted-foreground")}>
                   {s.label}
                 </span>
               </div>
@@ -59,8 +62,9 @@ export function EnrichmentStatusCard({ tier, action }: { tier: EnrichTier; actio
           );
         })}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">{blurb}</p>
-      {action && <div className="mt-4">{action}</div>}
-    </div>
+      <p className="mt-3 text-sm text-muted-foreground">{blurb}</p>
+      {action && <div className="mt-3">{action}</div>}
+      </div>
+    </section>
   );
 }

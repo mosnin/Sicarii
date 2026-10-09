@@ -58,8 +58,8 @@ export default function ContactPage() {
           />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(90,176,232,0.12),transparent_55%)]" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
-            <p className="text-xs uppercase tracking-[0.3em] text-primary">Contact</p>
-            <h1 className="font-brand mt-4 text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Contact</p>
+            <h1 className="font-semibold tracking-tight mt-4 text-4xl text-foreground sm:text-5xl lg:text-6xl">
               Talk to <span className="text-gradient-orange">the team</span>
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">
@@ -75,25 +75,25 @@ export default function ContactPage() {
             <div className="grid grid-cols-1 gap-12 lg:grid-cols-5">
               {/* Form */}
               <motion.div
-                initial={reduce ? false : { opacity: 0, y: 18 }}
+                initial={reduce ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: EASE }}
+                transition={{ duration: 0.25, ease: EASE }}
                 className="lg:col-span-3"
               >
                 <Card>
                   <CardContent className="p-6 sm:p-8">
                     {submitted ? (
                       <motion.div
-                        initial={reduce ? false : { opacity: 0, y: 10 }}
+                        initial={reduce ? false : { opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, ease: EASE }}
+                        transition={{ duration: 0.25, ease: EASE }}
                         className="py-12 text-center"
                       >
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1 text-xs font-medium text-success">
+                        <span className="inline-flex items-center gap-1.5 rounded-[4px] bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
                           <span className="h-1.5 w-1.5 rounded-full bg-success" />
                           Sent
                         </span>
-                        <h3 className="font-brand mt-4 text-xl text-foreground">Message sent</h3>
+                        <h3 className="mt-4 text-xl font-semibold text-foreground">Message sent</h3>
                         <p className="mt-2 text-muted-foreground">
                           Thanks for reaching out. We will reply within a day.
                         </p>
@@ -147,7 +147,7 @@ export default function ContactPage() {
                           <div>
                             <label className="mb-1.5 block text-sm font-medium">Topic</label>
                             <select
-                              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              className="flex h-8 w-full rounded-[4px] border border-input bg-background px-2.5 text-sm focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/15"
                               value={form.topic}
                               onChange={(e) => setForm({ ...form, topic: e.target.value })}
                             >
@@ -173,7 +173,6 @@ export default function ContactPage() {
                         </div>
                         <Button
                           type="submit"
-                          variant="glow"
                           size="lg"
                           className="w-full"
                           disabled={loading}
@@ -196,41 +195,41 @@ export default function ContactPage() {
 
               {/* Info: clean text rows, no icon-in-box badges */}
               <motion.div
-                initial={reduce ? false : { opacity: 0, y: 18 }}
+                initial={reduce ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1, ease: EASE }}
+                transition={{ duration: 0.25, delay: 0.1, ease: EASE }}
                 className="space-y-8 lg:col-span-2"
               >
                 <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-primary">Email</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Email</p>
                   <a
                     href="mailto:hello@tryscalar.xyz"
-                    className="mt-2 block font-brand text-lg text-foreground transition-colors hover:text-primary"
+                    className="mt-2 block text-lg font-medium text-foreground transition-colors hover:text-primary"
                   >
                     hello@tryscalar.xyz
                   </a>
                 </div>
 
                 <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-primary">Response time</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Response time</p>
                   <p className="mt-2 text-sm text-muted-foreground">
                     We typically reply within a day during business days.
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-primary">Where</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Where</p>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Remote first. Scalar works wherever your agents do.
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-card p-6">
-                  <h3 className="font-brand text-base text-foreground">Prefer to skip the form?</h3>
+                <div className="rounded-[8px] border border-border bg-background p-6">
+                  <h3 className="text-base font-medium text-foreground">Prefer to skip the form?</h3>
                   <p className="mt-1.5 text-sm text-muted-foreground">
                     Create your account and let your agent start building the CRM.
                   </p>
-                  <Button className="mt-4 w-full rounded-full" asChild>
+                  <Button className="mt-4 w-full" asChild>
                     <Link href="/sign-up">Get started</Link>
                   </Button>
                 </div>

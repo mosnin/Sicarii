@@ -5,7 +5,7 @@ import {
   Plus,
   Users as UsersIcon,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -72,30 +72,30 @@ export default async function EntityDetailPage({
   const icp = deepReport?.icpFit;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <FloatIn delay={0}>
         <Link
           href="/crm?tab=entities"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex h-7 items-center gap-1 rounded-[4px] px-1.5 -ml-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" strokeWidth={1.6} />
           Back to entities
         </Link>
       </FloatIn>
 
-      <FloatIn delay={0.06}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <CrmAvatar src={entity.logoUrl} label={entity.name} shape="square" size={44} className="mt-0.5" />
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="font-brand text-2xl sm:text-3xl text-foreground">{entity.name}</h1>
+      <FloatIn delay={0.03}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <CrmAvatar src={entity.logoUrl} label={entity.name} shape="square" size={40} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate text-xl font-semibold text-foreground">{entity.name}</h1>
                 <Badge variant={entityStatusBadgeVariant(entity.status)}>
                   {entityStatusLabel(entity.status)}
                 </Badge>
               </div>
               {entity.source && (
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-0.5 text-sm text-muted-foreground">
                   Source: {entity.source}
                 </p>
               )}
@@ -110,30 +110,28 @@ export default async function EntityDetailPage({
 
       {/* Visible Trust: one headline rolling up all field provenance. */}
       {Object.keys(provenance).length > 0 && (
-        <FloatIn delay={0.09}>
+        <FloatIn delay={0.05}>
           <VerifiedStrip provenance={provenance} />
         </FloatIn>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <FloatIn delay={0.1} className="lg:col-span-1 space-y-6">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <FloatIn delay={0.06} className="lg:col-span-1 space-y-4">
           <EnrichmentStatusCard tier={entityTier(entity.status, entity.enrichment)} />
           {icp && (
-            <div className={`rounded-2xl border p-4 shadow-sm ${icp.isIcp ? "border-green-500/30 bg-green-500/5" : "border-border bg-card"}`}>
-              <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">ICP fit</p>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${icp.isIcp ? "bg-green-500/15 text-green-600 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+            <Panel
+              title="ICP fit"
+              action={
+                <Badge variant={icp.isIcp ? "success" : "secondary"} className="tabular-nums">
                   {icp.isIcp ? `ICP match · ${icp.score}` : `Not ICP · ${icp.score}`}
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">{icp.reasoning}</p>
-            </div>
+                </Badge>
+              }
+            >
+              <p className="text-sm text-muted-foreground">{icp.reasoning}</p>
+            </Panel>
           )}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <Panel title="Details">
+            <div className="space-y-0.5">
               {fields.map((f) => (
                 <FieldWithProvenance
                   key={f.label}
@@ -143,14 +141,16 @@ export default async function EntityDetailPage({
                   meta={f.provenanceField ? provenance[f.provenanceField] : undefined}
                 />
               ))}
+            </div>
+            <div className="mt-3 space-y-3">
               {entity.description && (
-                <div className="pt-2">
-                  <p className="text-xs text-muted-foreground mb-1">Description</p>
-                  <p className="whitespace-pre-wrap text-sm">{entity.description}</p>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Description</p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{entity.description}</p>
                 </div>
               )}
               {entity.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-2">
+                <div className="flex flex-wrap gap-1">
                   {entity.tags.map((t) => (
                     <Badge key={t} variant="secondary">
                       {t}
@@ -159,9 +159,9 @@ export default async function EntityDetailPage({
                 </div>
               )}
               {entity.notes && (
-                <div className="pt-3 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-1">Notes</p>
-                  <p className="whitespace-pre-wrap text-sm">{entity.notes}</p>
+                <div className="border-t border-border pt-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Notes</p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{entity.notes}</p>
                 </div>
               )}
               <EntityEditor
@@ -177,82 +177,102 @@ export default async function EntityDetailPage({
                   description: entity.description ?? "",
                 }}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </Panel>
         </FloatIn>
 
-        <FloatIn delay={0.14} className="lg:col-span-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Contacts</CardTitle>
-              <Button variant="outline" size="sm" asChild>
+        <FloatIn delay={0.08} className="lg:col-span-2">
+          <Panel
+            title="Contacts"
+            flush
+            action={
+              <Button variant="ghost" size="sm" asChild>
                 <Link href={`/crm/new?entityId=${entity.id}`}>
-                  <Plus className="mr-1 h-4 w-4" />
+                  <Plus className="h-4 w-4" strokeWidth={1.6} />
                   Add
                 </Link>
               </Button>
-            </CardHeader>
-            <CardContent>
-              {contacts.length === 0 ? (
-                <EmptyState
-                  icon={UsersIcon}
-                  title="No contacts on this entity"
-                  description="Enrich the business to pull its contacts, or add people manually and assign them here."
-                />
-              ) : (
-                <div className="divide-y divide-border">
-                  {contacts.map((c) => (
+            }
+          >
+            {contacts.length === 0 ? (
+              <EmptyState
+                icon={UsersIcon}
+                title="No contacts on this entity"
+                description="Enrich the business to pull its contacts, or add people manually and assign them here."
+              />
+            ) : (
+              <ul className="divide-y divide-border">
+                {contacts.map((c) => (
+                  <li key={c.id}>
                     <Link
-                      key={c.id}
                       href={`/crm/${c.id}`}
-                      className="flex items-center justify-between gap-3 py-3 transition-colors hover:bg-muted/40 rounded-lg px-2"
+                      className="flex h-10 items-center gap-2 px-3 text-sm transition-colors hover:bg-muted/40"
                     >
-                      <div className="min-w-0">
-                        <span className="font-medium">
-                          {c.name || c.email || "Unnamed contact"}
+                      <CrmAvatar src={c.imageUrl} label={c.name || c.email} shape="circle" size={20} />
+                      <span className="min-w-0 truncate font-medium text-foreground">
+                        {c.name || c.email || "Unnamed contact"}
+                      </span>
+                      {c.email && (
+                        <span className="hidden min-w-0 flex-1 truncate text-muted-foreground sm:block">
+                          {c.email}
                         </span>
-                        {c.email && (
-                          <p className="truncate text-sm text-muted-foreground">
-                            {c.email}
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant={statusBadgeVariant(c.status)}>
+                      )}
+                      <Badge variant={statusBadgeVariant(c.status)} className="ml-auto shrink-0">
                         {statusLabel(c.status)}
                       </Badge>
                     </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
         </FloatIn>
       </div>
 
-      {/* Enrichment aspects as a visual bento grid (firmographics, funding,
+      {/* Enrichment aspects as a grid of panels (firmographics, funding,
           tech stack, traffic, news) - each rendered as real cards/stats, not a
           raw JSON blob. The deepReport key is surfaced via the ICP card above. */}
       {enrichmentEntries.filter(([k]) => k !== "deepReport").length > 0 && (
-        <FloatIn delay={0.18}>
+        <FloatIn delay={0.1}>
           <div>
-            <h2 className="font-brand text-lg text-foreground">Intelligence</h2>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <h2 className="text-base font-semibold text-foreground">Intelligence</h2>
+            <div className="mt-2 grid gap-4 sm:grid-cols-2">
               {enrichmentEntries
                 .filter(([k]) => k !== "deepReport")
                 .map(([key, val]) => (
-                  <Card key={key} className={/news|firmographic/i.test(key) ? "sm:col-span-2" : ""}>
-                    <CardHeader>
-                      <CardTitle className="text-base">{humanizeKey(key)}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <AspectView aspectKey={key} value={val} />
-                    </CardContent>
-                  </Card>
+                  <Panel key={key} title={humanizeKey(key)} className={/news|firmographic/i.test(key) ? "sm:col-span-2" : ""}>
+                    <AspectView aspectKey={key} value={val} />
+                  </Panel>
                 ))}
             </div>
           </div>
         </FloatIn>
       )}
     </div>
+  );
+}
+
+// Twenty show-page panel: hairline border, 40px header row, padded body.
+function Panel({
+  title,
+  action,
+  flush,
+  className,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  flush?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={cn("min-w-0 rounded-[8px] border border-border bg-background", className)}>
+      <header className="flex h-10 items-center justify-between gap-2 border-b border-border px-3">
+        <h2 className="truncate text-sm font-medium text-foreground">{title}</h2>
+        {action}
+      </header>
+      <div className={flush ? undefined : "p-3"}>{children}</div>
+    </section>
   );
 }

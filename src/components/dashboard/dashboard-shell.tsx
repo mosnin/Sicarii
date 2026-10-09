@@ -1,30 +1,24 @@
 "use client";
 
 /**
- * DashboardShell - owns the nav-mode state ("dock" | "sidebar") and wires
- * the morphing nav + header into a single, animated shell.
+ * DashboardShell - the signed-in app frame, laid out the way Twenty lays out
+ * its CRM, in Scalar's colors and with its ASCII signature: a persistent gray navigation drawer on the left and the page in a
+ * white, hairline-bordered panel with a slim top bar.
  *
- * Architecture:
- * - Both nav modes are rendered from shared nav-item data with matching
- *   `layoutId` strings so Framer Motion physically flies each icon/label
- *   between the dock's horizontal positions and the sidebar's vertical list.
- * - The outer wrapper container also shares a `layoutId` so the rounded-pill
- *   dock fluidly morphs into the tall sidebar panel (position, border-radius,
- *   size) via a spring.
- * - The `<main>` receives an animated left padding that slides in sync with
- *   the sidebar opening, so content is never covered.
- * - Mobile (<lg): bottom dock is HIDDEN; replaced by a minimised side
- *   launcher (pill handle on the left edge) that opens a slide-in nav panel.
- * - Desktop (≥lg): dock ⇄ sidebar morph unchanged.
- * - Respects `prefers-reduced-motion` (instant snap, no springs).
+ * - Desktop (>= lg): the drawer is open by default and can be collapsed; the
+ *   choice persists in localStorage. Collapsed, the top bar shows an expand
+ *   button. The page panel scrolls on its own, like Twenty's record views.
+ * - Mobile (< lg): no drawer. A flat bottom tab bar carries the nav, and the
+ *   top bar keeps the workspace switcher, theme toggle and account menu.
+ * - "Apps" opens the launchpad: a command-menu style overlay of every area.
+ * - Respects `prefers-reduced-motion` (instant, no slides).
  *
  * MobileNavContext: exposes `navOpen: boolean` to descendants so the agent
- * composer can minimise itself while the mobile panel is open.
+ * composer can minimise itself while a mobile nav panel is open.
  */
 
 import {
   useEffect,
-  useRef,
   useState,
   useCallback,
   createContext,
@@ -34,16 +28,7 @@ import {
 import Link from "next/link";
 import { LogoMark } from "@/components/brand/logo-mark";
 import { usePathname } from "next/navigation";
-import {
-  motion,
-  AnimatePresence,
-  useReducedMotion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-  type MotionValue,
-  LayoutGroup,
-} from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { UserButton, OrganizationSwitcher } from "@clerk/nextjs";
@@ -57,7 +42,7 @@ import {
   BookOpen,
   LayoutGrid,
   X,
-  ArrowUpRight,
+  ChevronRight,
   PanelLeft,
   PanelLeftClose,
   Settings,
@@ -84,21 +69,28 @@ type NavItem = {
   href: string;
   icon: NavIcon;
   accent?: boolean;
+  /** Drawer section the item is listed under. */
+  section: "workspace" | "agent" | "system";
 };
 
 // The agent is Scalar; render the brand logo as its nav icon.
 const ScalarLogoIcon: NavIcon = ({ className }) => <LogoMark className={className} />;
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Home", href: "/dashboard", icon: Home },
-  { label: "Discover", href: "/discover", icon: Telescope },
-  { label: "Radar", href: "/radar", icon: Radar },
-  { label: "CRM", href: "/crm", icon: Users },
-  { label: "Field", href: "/field", icon: Crosshair },
-  { label: "Autopilot", href: "/autopilot", icon: Gauge },
-  { label: "Scalar", href: "/agent", icon: ScalarLogoIcon },
-  { label: "Context", href: "/product-context", icon: BookOpen },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Home", href: "/dashboard", icon: Home, section: "workspace" },
+  { label: "Discover", href: "/discover", icon: Telescope, section: "workspace" },
+  { label: "Radar", href: "/radar", icon: Radar, section: "workspace" },
+  { label: "CRM", href: "/crm", icon: Users, section: "workspace" },
+  { label: "Field", href: "/field", icon: Crosshair, section: "workspace" },
+  { label: "Autopilot", href: "/autopilot", icon: Gauge, section: "workspace" },
+  { label: "Scalar", href: "/agent", icon: ScalarLogoIcon, section: "agent" },
+  { label: "Context", href: "/product-context", icon: BookOpen, section: "agent" },
+  { label: "Settings", href: "/settings", icon: Settings, section: "system" },
+];
+
+const NAV_SECTIONS: { key: NavItem["section"]; label: string | null }[] = [
+  { key: "workspace", label: "Workspace" },
+  { key: "agent", label: "Agent" },
 ];
 
 // ── Launchpad data ───────────────────────────────────────────────────────────
@@ -183,398 +175,177 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-type NavMode = "dock" | "sidebar";
+// Readable names for the sub-routes that show up in the top bar breadcrumb.
+const SEGMENT_LABELS: Record<string, string> = {
+  new: "New",
+  map: "Map",
+  entity: "Company",
+};
 
-const SIDEBAR_WIDTH = 224; // px - the sidebar panel's own width
-// When sidebar is floating (left-3 = 12px margin), content must shift by:
-//   sidebar width + left margin + gutter between sidebar edge and content
-const SIDEBAR_INSET = SIDEBAR_WIDTH + 12 + 16; // 252 px total
-const STORAGE_KEY = "scalar-nav-mode";
+/** Breadcrumb for the page top bar: the owning nav item plus one sub-level. */
+function useBreadcrumb(pathname: string) {
+  const item = NAV_ITEMS.find((i) => isActivePath(pathname, i.href));
+  const extra = LAUNCHPAD_TILES.find((t) => isActivePath(pathname, t.href));
+  const root = item
+    ? { label: item.label, href: item.href, icon: item.icon as NavIcon | null }
+    : extra
+      ? { label: extra.label, href: extra.href, icon: null }
+      : null;
+  if (!root) return { root: null, leaf: null as string | null };
 
-// ── Dock magnification constants ─────────────────────────────────────────────
-const BASE = 46;
-const MAX = 78;
-const MAX_TOUCH = 52; // gentler max on coarse-pointer (touch) devices
-const ICON_BASE = 20;
-const ICON_MAX = 34;
-const ICON_MAX_TOUCH = 24;
-const RADIUS = 130;
+  const rest = pathname.slice(root.href.length).split("/").filter(Boolean);
+  let leaf: string | null = null;
+  if (rest.length > 0) {
+    const named = rest.map((seg) => SEGMENT_LABELS[seg]).filter(Boolean);
+    if (rest.includes("new")) leaf = named.join(" / ") || "New";
+    else if (rest[0] === "entity") leaf = "Company";
+    else if (rest[0] === "map") leaf = "Map";
+    else leaf = "Record";
+  }
+  return { root, leaf };
+}
 
-// Spring used for the morph animations
-const MORPH_SPRING = { type: "spring" as const, stiffness: 260, damping: 30 };
-// Slightly snappier spring for content inset
-const INSET_SPRING = { type: "spring" as const, stiffness: 260, damping: 32 };
-// Gentler spring for touch devices
-const TOUCH_SPRING = { mass: 0.15, stiffness: 120, damping: 20 };
+const SIDEBAR_WIDTH = 220; // px - Twenty's navigation drawer width
+const STORAGE_KEY = "scalar-sidebar";
+const DRAWER_EASE = [0.16, 1, 0.3, 1] as const;
 
-// ── DockNavButton ────────────────────────────────────────────────────────────
+// ── NavRow ───────────────────────────────────────────────────────────────────
 
-function DockNavButton({
+function NavRow({
   item,
-  mouseX,
   active,
-  isTouch,
 }: {
   item: NavItem;
-  mouseX: MotionValue<number>;
   active: boolean;
-  isTouch: boolean;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
   const Icon = item.icon;
-
-  const sizeMax = isTouch ? MAX_TOUCH : MAX;
-  const iconMax = isTouch ? ICON_MAX_TOUCH : ICON_MAX;
-  const spring = isTouch ? TOUCH_SPRING : { mass: 0.1, stiffness: 170, damping: 14 };
-
-  const distance = useTransform(mouseX, (val) => {
-    const b = ref.current?.getBoundingClientRect() ?? { x: 0, width: BASE };
-    return val - b.x - b.width / 2;
-  });
-
-  const size = useSpring(
-    useTransform(distance, [-RADIUS, 0, RADIUS], [BASE, sizeMax, BASE]),
-    spring
-  );
-  const iconSize = useSpring(
-    useTransform(distance, [-RADIUS, 0, RADIUS], [ICON_BASE, iconMax, ICON_BASE]),
-    spring
-  );
-
   return (
     <Link
       href={item.href}
-      aria-label={item.label}
       aria-current={active ? "page" : undefined}
+      className={cn(
+        "group flex h-7 items-center gap-2 rounded-[4px] px-1.5 text-sm transition-colors duration-100",
+        active
+          ? "bg-pressed font-medium text-foreground"
+          : "text-fg-secondary hover:bg-hover hover:text-foreground"
+      )}
     >
-      <motion.div
-        ref={ref}
-        style={{ width: size, height: size }}
-        className="group relative flex items-center justify-center"
-      >
-        {/* Tooltip */}
-        <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/60 bg-background/90 px-2.5 py-1 text-xs font-medium opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 dark:border-white/10 dark:bg-charcoal/90">
-          {item.label}
-        </span>
-
-        <motion.span
-          className={cn(
-            "flex h-full w-full items-center justify-center rounded-full transition-colors",
-            item.accent
-              ? "bg-orange text-white shadow-lg shadow-orange/30"
-              : active
-                ? "bg-orange/15 text-orange ring-1 ring-inset ring-orange/30"
-                : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-          )}
-          transition={MORPH_SPRING}
-        >
-          <motion.span
-            style={{ width: iconSize, height: iconSize }}
-            className="flex"
-          >
-            <Icon className="h-full w-full" strokeWidth={item.accent ? 2.4 : 2} />
-          </motion.span>
-        </motion.span>
-
-        {/* Running-app dot */}
-        {active && !item.accent && (
-          <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-orange" />
+      <Icon
+        className={cn(
+          "h-4 w-4 shrink-0",
+          active ? "text-foreground" : "text-fg-secondary group-hover:text-foreground"
         )}
-      </motion.div>
+        strokeWidth={active ? 2 : 1.6}
+      />
+      <span className="truncate">{item.label}</span>
     </Link>
   );
 }
 
-// ── Dock (desktop only - hidden on mobile via lg: prefix) ────────────────────
+// ── Sidebar (desktop navigation drawer) ──────────────────────────────────────
 
-function Dock({
-  isStaff,
-  onOpenSidebar,
+function Sidebar({
+  onCollapse,
   onOpenLaunchpad,
   launchpadOpen,
 }: {
-  isStaff: boolean;
-  onOpenSidebar: () => void;
+  onCollapse: () => void;
   onOpenLaunchpad: () => void;
   launchpadOpen: boolean;
 }) {
-  void isStaff;
   const pathname = usePathname();
-  const mouseX = useMotionValue(Infinity);
-
-  // Detect coarse-pointer (touch) devices - disable aggressive magnification.
-  // Initialised lazily (runs only on client) to avoid SSR mismatch.
-  const [isTouch] = useState(() =>
-    typeof window !== "undefined"
-      ? window.matchMedia("(pointer: coarse)").matches
-      : false
-  );
-
-  const sizeMax = isTouch ? MAX_TOUCH : MAX;
-  const iconMax = isTouch ? ICON_MAX_TOUCH : ICON_MAX;
-  const appsSpring = isTouch ? TOUCH_SPRING : { mass: 0.1, stiffness: 170, damping: 14 };
-
-  // Apps launcher magnify
-  const appsRef = useRef<HTMLDivElement>(null);
-  const appsDistance = useTransform(mouseX, (val) => {
-    const b = appsRef.current?.getBoundingClientRect() ?? { x: 0, width: BASE };
-    return val - b.x - b.width / 2;
-  });
-  const appsSize = useSpring(
-    useTransform(appsDistance, [-RADIUS, 0, RADIUS], [BASE, sizeMax, BASE]),
-    appsSpring
-  );
-  const appsIcon = useSpring(
-    useTransform(appsDistance, [-RADIUS, 0, RADIUS], [ICON_BASE, iconMax, ICON_BASE]),
-    appsSpring
-  );
-
-  // Sidebar toggle magnify
-  const sidebarRef = useRef<HTMLDivElement>(null);
-  const sidebarDistance = useTransform(mouseX, (val) => {
-    const b = sidebarRef.current?.getBoundingClientRect() ?? { x: 0, width: BASE };
-    return val - b.x - b.width / 2;
-  });
-  const sidebarSize = useSpring(
-    useTransform(sidebarDistance, [-RADIUS, 0, RADIUS], [BASE, sizeMax, BASE]),
-    appsSpring
-  );
-  const sidebarIcon = useSpring(
-    useTransform(sidebarDistance, [-RADIUS, 0, RADIUS], [ICON_BASE, iconMax, ICON_BASE]),
-    appsSpring
-  );
+  const settings = NAV_ITEMS.find((i) => i.section === "system");
 
   return (
-    /* Hidden on mobile - MobileLauncher handles small screens instead */
-    <motion.nav
-      initial={{ y: 30, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-      className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 px-3 hidden lg:block"
-      aria-label="Primary"
-      style={{ borderRadius: 9999 }}
+    <nav
+      className="relative flex h-full flex-col gap-3 px-2 pb-2 pt-3"
+      style={{ width: SIDEBAR_WIDTH }}
+      aria-label="Primary sidebar"
     >
-      <div
-        onMouseMove={(e) => mouseX.set(e.clientX)}
-        onMouseLeave={() => mouseX.set(Infinity)}
-        className="flex items-end gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-2 shadow-xl shadow-black/10 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/80 dark:shadow-black/50 dark:ring-1 dark:ring-inset dark:ring-white/5"
-      >
-        {NAV_ITEMS.map((item) => (
-          <DockNavButton
-            key={item.href}
-            item={item}
-            mouseX={mouseX}
-            active={isActivePath(pathname, item.href)}
-            isTouch={isTouch}
-          />
-        ))}
+      {/* The ASCII signature, a whisper behind the drawer. */}
+      <AsciiField className="pointer-events-none absolute inset-0 -z-0 h-full w-full opacity-[0.14] dark:opacity-30" />
+      {/* ── Workspace header ── */}
+      <div className="group/ws relative flex h-7 items-center justify-between gap-1 pl-1">
+        <Link
+          href="/dashboard"
+          className="flex min-w-0 items-center gap-2 rounded-[4px] px-0.5 py-0.5 transition-colors hover:bg-hover"
+        >
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border border-border bg-background">
+            <LogoMark className="h-3.5 w-3.5" />
+          </span>
+          <span className="truncate text-sm font-semibold text-foreground">Scalar</span>
+        </Link>
+        <button
+          type="button"
+          onClick={onCollapse}
+          aria-label="Collapse sidebar"
+          className="flex h-6 w-6 items-center justify-center rounded-[4px] text-fg-tertiary opacity-0 transition-[opacity,background-color] duration-100 hover:bg-hover hover:text-foreground focus-visible:opacity-100 group-hover/ws:opacity-100"
+        >
+          <PanelLeftClose className="h-4 w-4" strokeWidth={1.6} />
+        </button>
+      </div>
 
-        <span
-          className="mx-0.5 mb-3 h-7 w-px self-center bg-border/60 dark:bg-white/10"
-          aria-hidden="true"
+      {/* Personal vs team context: switching orgs re-scopes every page to the
+          shared workspace CRM. */}
+      <div className="relative px-0.5">
+        <OrganizationSwitcher
+          afterSelectOrganizationUrl="/dashboard"
+          afterSelectPersonalUrl="/dashboard"
+          appearance={{
+            elements: {
+              rootBox: "w-full",
+              organizationSwitcherTrigger:
+                "w-full justify-between rounded-[4px] px-1.5 py-1 text-sm hover:bg-hover focus:shadow-none",
+            },
+          }}
         />
+      </div>
 
-        {/* Apps launcher */}
+      {/* ── Nav sections ── */}
+      <div className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.key} className="flex flex-col gap-px">
+            {section.label && (
+              <p className="twenty-label flex h-6 items-center px-1.5">{section.label}</p>
+            )}
+            {NAV_ITEMS.filter((i) => i.section === section.key).map((item) => (
+              <NavRow key={item.href} item={item} active={isActivePath(pathname, item.href)} />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="relative flex flex-col gap-px">
         <button
           type="button"
           onClick={onOpenLaunchpad}
           aria-label="Open apps menu"
           aria-haspopup="dialog"
           aria-expanded={launchpadOpen}
+          className={cn(
+            "group flex h-7 w-full items-center gap-2 rounded-[4px] px-1.5 text-sm transition-colors duration-100",
+            launchpadOpen
+              ? "bg-pressed font-medium text-foreground"
+              : "text-fg-secondary hover:bg-hover hover:text-foreground"
+          )}
         >
-          <motion.div
-            ref={appsRef}
-            style={{ width: appsSize, height: appsSize }}
-            className="group relative flex items-center justify-center"
-          >
-            <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/60 bg-background/90 px-2.5 py-1 text-xs font-medium opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 dark:border-white/10 dark:bg-charcoal/90">
-              Apps
-            </span>
-            <span
-              className={cn(
-                "flex h-full w-full items-center justify-center rounded-full transition-colors",
-                launchpadOpen
-                  ? "bg-orange/15 text-orange ring-1 ring-inset ring-orange/30"
-                  : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-              )}
-            >
-              <motion.span
-                style={{ width: appsIcon, height: appsIcon }}
-                className="flex"
-              >
-                <LayoutGrid className="h-full w-full" />
-              </motion.span>
-            </span>
-          </motion.div>
+          <LayoutGrid className="h-4 w-4 shrink-0" strokeWidth={1.6} />
+          <span>Apps</span>
         </button>
-
-        {/* Sidebar toggle - desktop only */}
-        <button
-          type="button"
-          onClick={onOpenSidebar}
-          aria-label="Switch to sidebar navigation"
-        >
-          <motion.div
-            ref={sidebarRef}
-            style={{ width: sidebarSize, height: sidebarSize }}
-            className="group relative flex items-center justify-center"
-          >
-            <span className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-border/60 bg-background/90 px-2.5 py-1 text-xs font-medium opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 dark:border-white/10 dark:bg-charcoal/90">
-              Sidebar
-            </span>
-            <span className="flex h-full w-full items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground">
-              <motion.span
-                style={{ width: sidebarIcon, height: sidebarIcon }}
-                className="flex"
-              >
-                <PanelLeft className="h-full w-full" />
-              </motion.span>
-            </span>
-          </motion.div>
-        </button>
-      </div>
-    </motion.nav>
-  );
-}
-
-// ── Sidebar ──────────────────────────────────────────────────────────────────
-
-function Sidebar({
-  isStaff,
-  onCloseSidebar,
-  onOpenLaunchpad,
-  launchpadOpen,
-}: {
-  isStaff: boolean;
-  onCloseSidebar: () => void;
-  onOpenLaunchpad: () => void;
-  launchpadOpen: boolean;
-}) {
-  void isStaff;
-  const pathname = usePathname();
-
-  return (
-    <motion.nav
-      key="sidebar"
-      initial={{ x: -(SIDEBAR_WIDTH + 24), opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: -(SIDEBAR_WIDTH + 24), opacity: 0 }}
-      transition={MORPH_SPRING}
-      className="fixed inset-y-3 left-3 z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-background/95 shadow-xl backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/95"
-      style={{ width: SIDEBAR_WIDTH }}
-      aria-label="Primary sidebar"
-    >
-      {/* ── ASCII background - absolute, behind nav content ── */}
-      <AsciiField
-        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.18] dark:opacity-40"
-      />
-
-      {/* All nav content sits on top of the ASCII field */}
-      <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
-        {/* ── Logo / wordmark ── */}
-        <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border/40 px-4 dark:border-white/[0.06]">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <LogoMark className="h-6 w-6" />
-            <span className="font-brand text-base font-bold text-foreground">
-              Scalar
-            </span>
-          </Link>
-        </div>
-
-        {/* ── Nav items ── */}
-        <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto py-4 px-2">
-          {NAV_ITEMS.map((item, i) => {
-            const Icon = item.icon;
-            const active = isActivePath(pathname, item.href);
-            return (
-              <motion.div
-                key={item.href}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  ...MORPH_SPRING,
-                  delay: i * 0.035,
-                }}
-              >
-                <Link
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    item.accent
-                      ? "bg-orange/10 text-orange hover:bg-orange/15"
-                      : active
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-                  )}
-                >
-                  <motion.span
-                    className="flex h-5 w-5 shrink-0"
-                    transition={MORPH_SPRING}
-                  >
-                    <Icon
-                      className="h-full w-full"
-                      strokeWidth={item.accent ? 2.4 : active ? 2.2 : 2}
-                    />
-                  </motion.span>
-                  <span>{item.label}</span>
-                  {active && !item.accent && (
-                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
-                  )}
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* ── Bottom actions ── */}
-        <div className="shrink-0 border-t border-border/40 px-2 py-3 dark:border-white/[0.06] flex flex-col gap-2">
-          {/* Apps launcher */}
-          <button
-            type="button"
-            onClick={onOpenLaunchpad}
-            aria-label="Open apps menu"
-            aria-haspopup="dialog"
-            aria-expanded={launchpadOpen}
-            className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors w-full",
-              launchpadOpen
-                ? "bg-orange/10 text-orange"
-                : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
-            )}
-          >
-            <LayoutGrid className="h-5 w-5 shrink-0" />
-            <span>Apps</span>
-          </button>
-
-          {/* Collapse to dock */}
-          <button
-            type="button"
-            onClick={onCloseSidebar}
-            aria-label="Switch to dock navigation"
-            className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground w-full"
-          >
-            <PanelLeftClose className="h-5 w-5 shrink-0" />
-            <span>Collapse</span>
-          </button>
-
-          {/* User + workspace + theme */}
-          <div className="flex items-center gap-2 px-3 py-2">
-            <UserButton />
-            <OrganizationSwitcher
-              afterSelectOrganizationUrl="/dashboard"
-              afterSelectPersonalUrl="/dashboard"
-            />
-            <ThemeToggle />
-          </div>
+        {settings && (
+          <NavRow item={settings} active={isActivePath(pathname, settings.href)} />
+        )}
+        <div className="mt-2 flex h-8 items-center justify-between border-t border-border pl-1 pt-2">
+          <UserButton showName appearance={{ elements: { userButtonBox: "flex-row-reverse gap-2 text-sm text-foreground", avatarBox: "h-5 w-5" } }} />
+          <ThemeToggle />
         </div>
       </div>
-    </motion.nav>
+    </nav>
   );
 }
 
 // ── MobileBottomNav - persistent bottom tab bar (mobile only) ─────────────────
-// No sidebar on mobile; the sidebar toggle lives only in the desktop dock.
 
 function MobileBottomNav({
   onOpenLaunchpad,
@@ -587,10 +358,10 @@ function MobileBottomNav({
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
       aria-label="Primary"
     >
-      <div className="mx-auto flex max-w-md items-center justify-around gap-0.5 rounded-2xl border border-border/60 bg-background/90 px-1.5 py-1.5 shadow-xl shadow-black/10 backdrop-blur-2xl dark:border-white/10 dark:bg-charcoal/85 dark:shadow-black/40">
+      <div className="mx-auto flex max-w-xl items-center justify-around px-1 py-1">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(pathname, item.href);
@@ -604,15 +375,11 @@ function MobileBottomNav({
             >
               <span
                 className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-xl transition-colors",
-                  item.accent
-                    ? "bg-orange text-white shadow-md shadow-orange/30"
-                    : active
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground"
+                  "flex h-9 w-9 items-center justify-center rounded-[4px] transition-colors",
+                  active ? "bg-pressed text-foreground" : "text-fg-tertiary"
                 )}
               >
-                <Icon className="h-5 w-5" strokeWidth={item.accent ? 2.4 : 2} />
+                <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2 : 1.6} />
               </span>
             </Link>
           );
@@ -629,11 +396,11 @@ function MobileBottomNav({
         >
           <span
             className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-xl transition-colors",
-              launchpadOpen ? "bg-primary/15 text-primary" : "text-muted-foreground"
+              "flex h-9 w-9 items-center justify-center rounded-[4px] transition-colors",
+              launchpadOpen ? "bg-pressed text-foreground" : "text-fg-tertiary"
             )}
           >
-            <LayoutGrid className="h-5 w-5" />
+            <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={1.6} />
           </span>
         </button>
       </div>
@@ -673,114 +440,163 @@ function Launchpad({
           role="dialog"
           aria-modal="true"
           aria-label="Apps menu"
-          className="fixed inset-0 z-[100] flex flex-col"
+          className="fixed inset-0 z-[100] flex items-start justify-center px-3 pt-[10vh]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ duration: 0.15 }}
         >
           <button
             type="button"
             aria-label="Close apps menu"
             onClick={onClose}
-            className="absolute inset-0 cursor-default bg-background/95 backdrop-blur-xl"
+            className="absolute inset-0 cursor-default bg-black/30"
           />
-          <AsciiField
-            className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.15] dark:opacity-40"
-          />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_25%,rgba(90,176,232,0.12),transparent_60%)]" />
 
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            className="pointer-events-none relative flex h-full flex-col overflow-hidden"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: DRAWER_EASE }}
+            className="relative flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-[8px] border border-border bg-background shadow-2xl"
           >
-            <div className="pointer-events-auto flex shrink-0 items-center justify-between px-5 pt-7 sm:px-10">
-              <div>
-                <p className="text-xs uppercase tracking-[0.25em] text-primary/80">
-                  Scalar // CRM
-                </p>
-                <h2 className="font-brand mt-1 text-3xl text-foreground sm:text-4xl">
-                  Everything
-                </h2>
+            <div className="flex h-10 shrink-0 items-center justify-between border-b border-border pl-3 pr-1.5">
+              <div className="flex items-center gap-2 text-sm">
+                <LayoutGrid className="h-4 w-4 text-fg-tertiary" strokeWidth={1.6} />
+                <span className="font-medium text-foreground">Apps</span>
+                <span className="text-fg-tertiary">Everything in Scalar</span>
               </div>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/60 text-foreground transition-colors hover:bg-accent"
+                className="flex h-7 w-7 items-center justify-center rounded-[4px] text-fg-tertiary transition-colors hover:bg-hover hover:text-foreground"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" strokeWidth={1.6} />
               </button>
             </div>
 
-            <div className="pointer-events-auto flex-1 overflow-y-auto">
-              <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-10">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {LAUNCHPAD_TILES.map((tile, i) => {
-                    const active = isActivePath(pathname, tile.href);
-                    return (
+            <div className="flex-1 overflow-y-auto p-1.5">
+              <p className="twenty-label px-2 pb-1 pt-1.5">Navigate</p>
+              <ul className="flex flex-col gap-px">
+                {LAUNCHPAD_TILES.map((tile, i) => {
+                  const active = isActivePath(pathname, tile.href);
+                  return (
+                    <li key={tile.href}>
                       <Link
-                        key={tile.href}
                         href={tile.href}
                         onClick={onClose}
                         className={cn(
-                          "group relative flex flex-col justify-between gap-8 overflow-hidden rounded-3xl border p-6 transition-all duration-300 hover:-translate-y-1",
-                          tile.highlight
-                            ? "border-primary/40 bg-primary/[0.07] hover:bg-primary/[0.12]"
-                            : "border-border bg-card/60 hover:border-border/80 hover:bg-card",
-                          active && "ring-1 ring-primary/40"
+                          "group flex items-center gap-3 rounded-[4px] px-2 py-2 transition-colors",
+                          active ? "bg-pressed" : "hover:bg-hover"
                         )}
                       >
-                        <div className="flex items-start justify-between">
+                        <span className="w-5 shrink-0 font-mono text-xs tabular-nums text-fg-light">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <span className="min-w-0 flex-1">
                           <span
                             className={cn(
-                              "font-brand text-sm tabular-nums",
-                              tile.highlight ? "text-primary" : "text-muted-foreground"
-                            )}
-                          >
-                            {String(i + 1).padStart(2, "0")}
-                          </span>
-                          <ArrowUpRight
-                            className={cn(
-                              "h-5 w-5 -translate-y-0.5 translate-x-0.5 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100",
+                              "block text-sm font-medium",
                               tile.highlight ? "text-primary" : "text-foreground"
                             )}
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-brand text-2xl text-foreground">
+                          >
                             {tile.label}
-                          </h3>
-                          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                          </span>
+                          <span className="block truncate text-xs text-fg-tertiary">
                             {tile.description}
-                          </p>
-                        </div>
+                          </span>
+                        </span>
+                        <ChevronRight
+                          className="h-4 w-4 shrink-0 text-fg-light opacity-0 transition-opacity group-hover:opacity-100"
+                          strokeWidth={1.6}
+                        />
                       </Link>
-                    );
-                  })}
-                </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
 
-                <div className="mt-10">
-                  <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                    What we do
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
-                    {CAPABILITIES.map((c) => (
-                      <span key={c} className="font-brand text-xl text-foreground/70">
-                        {c}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div className="flex h-9 shrink-0 items-center gap-3 border-t border-border bg-surface px-3 text-xs text-fg-tertiary">
+              <span>What we do</span>
+              {CAPABILITIES.map((c) => (
+                <span key={c} className="text-fg-secondary">
+                  {c}
+                </span>
+              ))}
             </div>
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+// ── PageTopBar ───────────────────────────────────────────────────────────────
+
+function PageTopBar({
+  sidebarOpen,
+  onExpand,
+}: {
+  sidebarOpen: boolean;
+  onExpand: () => void;
+}) {
+  const pathname = usePathname();
+  const { root, leaf } = useBreadcrumb(pathname);
+  const Icon = root?.icon ?? null;
+
+  return (
+    <header className="sticky top-0 z-30 flex h-10 shrink-0 items-center justify-between gap-2 border-b border-border bg-background/95 px-2 backdrop-blur-md sm:px-3">
+      <div className="flex min-w-0 items-center gap-1">
+        {!sidebarOpen && (
+          <button
+            type="button"
+            onClick={onExpand}
+            aria-label="Expand sidebar"
+            className="mr-1 hidden h-7 w-7 items-center justify-center rounded-[4px] text-fg-tertiary transition-colors hover:bg-hover hover:text-foreground lg:flex"
+          >
+            <PanelLeft className="h-4 w-4" strokeWidth={1.6} />
+          </button>
+        )}
+        {/* Mobile: the wordmark stands in for the drawer header. */}
+        <Link href="/dashboard" className="mr-1 flex items-center lg:hidden" aria-label="Scalar home">
+          <span className="flex h-6 w-6 items-center justify-center rounded-[4px] border border-border">
+            <LogoMark className="h-3.5 w-3.5" />
+          </span>
+        </Link>
+        {root && (
+          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm">
+            <Link
+              href={root.href}
+              className={cn(
+                "flex min-w-0 items-center gap-1.5 rounded-[4px] px-1 py-0.5 transition-colors hover:bg-hover",
+                leaf ? "text-fg-tertiary" : "font-medium text-foreground"
+              )}
+            >
+              {Icon && <Icon className="h-4 w-4 shrink-0" strokeWidth={1.6} />}
+              <span className="truncate">{root.label}</span>
+            </Link>
+            {leaf && (
+              <>
+                <span className="text-fg-light">/</span>
+                <span className="truncate px-1 font-medium text-foreground">{leaf}</span>
+              </>
+            )}
+          </nav>
+        )}
+      </div>
+
+      {/* Mobile keeps account controls in the top bar (no drawer below lg). */}
+      <div className="flex items-center gap-1 lg:hidden">
+        <OrganizationSwitcher
+          afterSelectOrganizationUrl="/dashboard"
+          afterSelectPersonalUrl="/dashboard"
+        />
+        <ThemeToggle />
+        <UserButton />
+      </div>
+    </header>
   );
 }
 
@@ -793,137 +609,78 @@ export function DashboardShell({
   isStaff: boolean;
   children: React.ReactNode;
 }) {
+  void isStaff;
   const prefersReduced = useReducedMotion();
 
-  // ── Nav mode - persisted, forced to dock on mobile ──────────────────────
-  const [mode, setMode] = useState<NavMode>("dock");
-  const [hydrated, setHydrated] = useState(false);
+  // ── Drawer state - open by default on desktop, persisted ────────────────
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [launchpadOpen, setLaunchpadOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
 
-  // Hydration + localStorage read. Canonical next-themes pattern - set state
-  // in effect on mount to read browser APIs after SSR.
+  // Read the persisted choice after mount (browser API, post-SSR).
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as NavMode | null;
-    const desktop = window.innerWidth >= 1024;
-    setIsDesktop(desktop); // eslint-disable-line react-hooks/set-state-in-effect
-    if (stored === "sidebar" && desktop) {
-      setMode("sidebar");
+    if (localStorage.getItem(STORAGE_KEY) === "closed") {
+      setSidebarOpen(false); // eslint-disable-line react-hooks/set-state-in-effect
     }
-    setHydrated(true);
   }, []);
 
-  // Resize listener - force dock on <lg; close mobile nav if resized to desktop
-  useEffect(() => {
-    const onResize = () => {
-      const desktop = window.innerWidth >= 1024;
-      setIsDesktop(desktop);
-      if (!desktop) setMode("dock");
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+  const setDrawer = useCallback((open: boolean) => {
+    setSidebarOpen(open);
+    localStorage.setItem(STORAGE_KEY, open ? "open" : "closed");
   }, []);
 
-  const setNavMode = useCallback(
-    (next: NavMode) => {
-      setMode(next);
-      localStorage.setItem(STORAGE_KEY, next);
-    },
-    []
-  );
-
-  const openSidebar = useCallback(() => setNavMode("sidebar"), [setNavMode]);
-  const closeSidebar = useCallback(() => setNavMode("dock"), [setNavMode]);
+  const collapse = useCallback(() => setDrawer(false), [setDrawer]);
+  const expand = useCallback(() => setDrawer(true), [setDrawer]);
   const openLaunchpad = useCallback(() => setLaunchpadOpen(true), []);
   const closeLaunchpad = useCallback(() => setLaunchpadOpen(false), []);
 
-  const isSidebar = mode === "sidebar" && isDesktop && hydrated;
-
-  // Content inset - slides right to make room for the floating sidebar.
-  // SIDEBAR_INSET = sidebar width (224) + left margin (12) + gutter (16) = 252px
-  const contentPaddingLeft = isSidebar ? SIDEBAR_INSET : 0;
-  const contentTransition = prefersReduced
+  const drawerTransition = prefersReduced
     ? { duration: 0 }
-    : INSET_SPRING;
+    : { duration: 0.22, ease: DRAWER_EASE };
 
   return (
     <MobileNavContext.Provider value={{ navOpen: false }}>
-      <LayoutGroup>
-        <div className="min-h-screen bg-background dark:bg-charcoal-dark">
-          {/* ── Floating top header ── */}
-          {/* In sidebar mode: collapsed to zero height (out of flow) so it
-              leaves no dead gap at the top of the main content area.
-              In dock mode: rendered normally as a sticky header. */}
-          <motion.div
-            className="sticky top-0 z-40 overflow-hidden"
-            animate={{
-              height: isSidebar ? 0 : "auto",
-              opacity: isSidebar ? 0 : 1,
-              pointerEvents: isSidebar ? "none" : "auto",
-            }}
-            transition={contentTransition}
-            aria-hidden={isSidebar}
-          >
-            <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-5 lg:px-8">
-              <div className="flex h-12 items-center justify-between gap-2">
-                <Link href="/dashboard" className="flex items-center gap-2">
-                  <LogoMark className="h-6 w-6" />
-                  <span className="font-brand text-base font-bold text-foreground hidden sm:inline">
-                    Scalar
-                  </span>
-                </Link>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  {/* Personal vs team context: switching orgs re-scopes every
-                      page to the shared workspace CRM. */}
-                  <OrganizationSwitcher
-                    afterSelectOrganizationUrl="/dashboard"
-                    afterSelectPersonalUrl="/dashboard"
-                  />
-                  <ThemeToggle />
-                  <UserButton />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* ── Main content - animated inset; inner column stays max-w-7xl so it
-              keeps its size (just re-centers) when the sidebar opens ── */}
-          <motion.main
-            animate={{ paddingLeft: contentPaddingLeft }}
-            transition={contentTransition}
-            className="pb-20 pt-6 lg:pb-36"
-          >
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
-          </motion.main>
-
-          {/* ── Nav - dock (desktop) or sidebar (desktop) or mobile panel ── */}
-          <AnimatePresence mode="wait">
-            {isSidebar ? (
+      <div className="app-shell flex min-h-dvh bg-surface text-foreground lg:h-dvh lg:overflow-hidden">
+        {/* ── Navigation drawer (desktop) ── */}
+        <AnimatePresence initial={false}>
+          {sidebarOpen && (
+            <motion.aside
+              key="drawer"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: SIDEBAR_WIDTH, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={drawerTransition}
+              className="hidden shrink-0 overflow-hidden lg:block"
+            >
               <Sidebar
-                key="sidebar"
-                isStaff={isStaff}
-                onCloseSidebar={closeSidebar}
+                onCollapse={collapse}
                 onOpenLaunchpad={openLaunchpad}
                 launchpadOpen={launchpadOpen}
               />
-            ) : (
-              <Dock
-                key="dock"
-                isStaff={isStaff}
-                onOpenSidebar={openSidebar}
-                onOpenLaunchpad={openLaunchpad}
-                launchpadOpen={launchpadOpen}
-              />
-            )}
-          </AnimatePresence>
+            </motion.aside>
+          )}
+        </AnimatePresence>
 
-          {/* ── Mobile bottom nav - mobile only ── */}
-          <MobileBottomNav onOpenLaunchpad={openLaunchpad} launchpadOpen={launchpadOpen} />
-
-          {/* ── Launchpad overlay ── */}
-          <Launchpad open={launchpadOpen} onClose={closeLaunchpad} />
+        {/* ── Page panel ── */}
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col lg:py-2 lg:pr-2",
+            !sidebarOpen && "lg:pl-2"
+          )}
+        >
+          <div className="flex min-h-0 flex-1 flex-col bg-background lg:overflow-hidden lg:rounded-[8px] lg:border lg:border-border">
+            <PageTopBar sidebarOpen={sidebarOpen} onExpand={expand} />
+            <main className="flex-1 pb-24 lg:overflow-y-auto lg:pb-10">
+              <div className="mx-auto max-w-7xl px-3 pt-5 sm:px-6 lg:px-8">{children}</div>
+            </main>
+          </div>
         </div>
-      </LayoutGroup>
+
+        {/* ── Mobile bottom nav - mobile only ── */}
+        <MobileBottomNav onOpenLaunchpad={openLaunchpad} launchpadOpen={launchpadOpen} />
+
+        {/* ── Launchpad overlay ── */}
+        <Launchpad open={launchpadOpen} onClose={closeLaunchpad} />
+      </div>
     </MobileNavContext.Provider>
   );
 }

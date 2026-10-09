@@ -29,8 +29,8 @@ export function AboutSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:items-center">
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-primary">About Scalar</p>
-            <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
+            <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">About Scalar</p>
+            <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
               The CRM for teams building in the{" "}
               <span className="text-gradient-orange">AI age</span>
             </h2>
@@ -46,10 +46,10 @@ export function AboutSection() {
             </p>
             <Link
               href="/sign-up"
-              className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
+              className="mt-8 inline-flex h-9 items-center gap-2 rounded-[8px] bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Get started
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" strokeWidth={1.6} />
             </Link>
           </div>
 
@@ -57,13 +57,13 @@ export function AboutSection() {
             {values.map((value, index) => (
               <motion.div
                 key={value.title}
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 8 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.08 }}
+                transition={{ duration: 0.25, delay: index * 0.08 }}
               >
                 <SpotlightCard className="p-6">
-                  <h3 className="font-brand text-lg text-foreground">{value.title}</h3>
+                  <h3 className="text-lg font-medium text-foreground">{value.title}</h3>
                   <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{value.description}</p>
                 </SpotlightCard>
               </motion.div>

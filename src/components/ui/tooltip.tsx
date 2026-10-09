@@ -53,9 +53,9 @@ export const TooltipContent = (
           className={cn(
             "z-50 w-fit",
             "px-3 py-1.5",
-            "bg-foreground",
+            "bg-black/75 dark:bg-white/90",
             "text-background text-xs",
-            "rounded-lg shadow-lg/5",
+            "rounded-[4px] shadow-lg",
             "origin-(--transform-origin) animate-in",
             "fade-in-0 zoom-in-[98%]",
             "data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-[98%]",

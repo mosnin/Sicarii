@@ -24,10 +24,10 @@ function Tile({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 8 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.5, delay, ease: EASE }}
+      transition={{ duration: 0.25, delay, ease: EASE }}
       className={"h-full " + className}
     >
       <SpotlightCard className="flex h-full flex-col p-6">{children}</SpotlightCard>
@@ -38,7 +38,7 @@ function Tile({
 function TileHead({ label, body }: { label: string; body: string }) {
   return (
     <>
-      <h3 className="font-brand text-lg text-foreground">{label}</h3>
+      <h3 className="text-lg font-medium text-foreground">{label}</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{body}</p>
     </>
   );
@@ -66,7 +66,7 @@ function IntentMini() {
               initial={{ width: 0 }}
               whileInView={{ width: `${b.score}%` }}
               viewport={{ once: true }}
-              transition={{ duration: 0.9, delay: 0.15 + i * 0.12, ease: EASE }}
+              transition={{ duration: 0.5, delay: 0.15 + i * 0.12, ease: EASE }}
             />
           </div>
         </div>
@@ -87,7 +87,7 @@ function Sparkline() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
         />
         <motion.path
           d={d}
@@ -98,7 +98,7 @@ function Sparkline() {
           initial={{ pathLength: 0 }}
           whileInView={{ pathLength: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 1, ease: EASE }}
+          transition={{ duration: 0.5, ease: EASE }}
         />
         <defs>
           <linearGradient id="sparkfill" x1="0" y1="0" x2="0" y2="1">
@@ -113,17 +113,17 @@ function Sparkline() {
 
 function ContactMini() {
   return (
-    <div className="mt-5 rounded-xl border border-border bg-background/60 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+    <div className="mt-5 rounded-[4px] border border-border bg-background p-3">
       <div className="flex items-center gap-2">
         <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-        <span className="font-brand text-sm text-foreground">Ava Chen</span>
+        <span className="text-sm font-medium text-foreground">Ava Chen</span>
         <span className="text-xs text-muted-foreground">VP Sales</span>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-1.5">
-        <span className="rounded-md border border-border bg-card px-2 py-0.5 text-[11px] text-foreground/70 dark:border-white/10">
+        <span className="rounded-[4px] border border-border bg-card px-2 py-0.5 text-[11px] text-foreground/70">
           ava@northwindpay.com
         </span>
-        <span className="rounded-md border border-border bg-card px-2 py-0.5 text-[11px] text-foreground/70 dark:border-white/10">
+        <span className="rounded-[4px] border border-border bg-card px-2 py-0.5 text-[11px] text-foreground/70">
           verified
         </span>
       </div>
@@ -133,7 +133,7 @@ function ContactMini() {
 
 function ResearchMini() {
   return (
-    <div className="mt-5 rounded-xl border border-border bg-background/60 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+    <div className="mt-5 rounded-[4px] border border-border bg-background p-3">
       <p className="font-mono text-[11px] text-muted-foreground">
         <span className="text-primary">? </span>Are they hiring SDRs right now?
       </p>
@@ -142,7 +142,7 @@ function ResearchMini() {
       </p>
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         {["careers page", "press release", "LinkedIn"].map((s) => (
-          <span key={s} className="rounded-md border border-border bg-card px-2 py-0.5 text-[10px] text-muted-foreground dark:border-white/10">
+          <span key={s} className="rounded-[4px] border border-border bg-card px-2 py-0.5 text-[10px] text-muted-foreground">
             {s}
           </span>
         ))}
@@ -153,11 +153,11 @@ function ResearchMini() {
 
 export function IntelligenceSection() {
   return (
-    <section id="intelligence" className="relative scroll-mt-24 bg-muted/30 py-24 dark:bg-background sm:py-32">
+    <section id="intelligence" className="relative scroll-mt-24 bg-surface py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-primary">Intelligence and intent</p>
-          <h2 className="font-brand mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
+          <p className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">Intelligence and intent</p>
+          <h2 className="font-semibold tracking-tight mt-3 text-3xl text-foreground sm:text-4xl lg:text-5xl">
             Depth most teams never reach.{" "}
             <span className="text-gradient-orange">In seconds.</span>
           </h2>
@@ -218,7 +218,7 @@ export function IntelligenceSection() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.2 }}
+          transition={{ duration: 0.25, delay: 0.2 }}
           className="mx-auto mt-10 max-w-2xl text-center text-sm text-muted-foreground"
         >
           Noisy results are refined into real, deduped companies, never

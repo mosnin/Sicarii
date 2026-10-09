@@ -1,129 +1,146 @@
-# Scalar — Design System
+# Scalar - Design System
 
 The durable spec for how Scalar looks and feels. Source of truth so the aesthetic
 stays consistent across sessions and contributors. If you change a token or
-pattern here, change it everywhere it's used — and update this file.
+pattern here, change it everywhere it's used, and update this file.
 
 > Companion to `AGENTS.md`. The icon rule there is part of this system.
-> ⚠️ We forked the orange/charcoal `fortitudov4` studio site and **deliberately
-> diverged**. Scalar is **baby blue + white, light-default**. Do not reintroduce
-> orange/charcoal as the brand.
+> **Aesthetic reference: Twenty** (github.com/twentyhq/twenty, `packages/twenty-ui/src/theme`).
+> Scalar takes Twenty's *structure and finish* (navigation drawer + bordered page
+> panel, hairline borders over shadows, 4/8px radii, 13px app body, record
+> tables, tags) but keeps **its own colors (baby blue `#5AB0E8` + white /
+> charcoal), Space Grotesk headings, and the ASCII signature** (founder call,
+> 2026-10-09). The Home dashboard keeps its bento layout. Do not reintroduce
+> orange/charcoal as the brand, and do not swap in Twenty's gray/blue palette.
 
 ---
 
 ## 1. Voice & posture
 
-**The CRM your agents run** — a research & context platform. Calm, confident,
-builder-not-funnel. Clean typography over ornamentation. The ASCII field is the
-brand's soul: something quietly being assembled — "quiet leverage that feels
-alive." Never "vibe-coded."
+**The CRM your agents run.** Calm, dense, tool-like. The UI should feel like a
+serious CRM you live in all day: quiet gray chrome, white work surface, data in
+tables, color only where it means something (status, the one primary action).
+Never "vibe-coded": no glows, gradients, hover lifts, or decorative icons.
 
 ---
 
-## 2. Color — baby blue is the only accent
+## 2. Color - baby blue is the only accent
 
-Tokens live in `src/app/globals.css` (`:root` light / `.dark` dark, exposed via `@theme`):
+Tokens live in `src/app/globals.css` (`:root` light / `.dark` dark, exposed via `@theme`).
 
-| Token | Light | Dark | Use |
+| Token (Tailwind) | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `--background` | `#ffffff` | `#0A0A0A` | Page background (light is the default) |
-| `--card` / `--popover` | `#ffffff` | `#141414` | Panels, cards |
-| `--foreground` | `#1C1C1C` | `#F5F5F5` | Text |
-| `--muted` / `--muted-foreground` | `#F5F5F5` / `#737373` | `#1C1C1C` / `#A3A3A3` | Subtle fills / secondary text |
-| **`--primary`** | **`#5AB0E8`** | **`#5AB0E8`** | The accent — buttons, eyebrows, highlights |
-| `--accent` | `#E6F3FC` | `#1C1C1C` | Tints |
-| `--border` / `--input` | `#E5E5E5` | `#2A2A2A` | Borders |
-| `--ring` | `#5AB0E8` | `#8FCCF2` | Focus rings |
-| `--destructive` / `--success` / `--warning` | `#DC2626` / `#16A34A` / `#EAB308` | — | Status only — not decoration |
+| `bg-background` | `#ffffff` | `#0A0A0A` | Work surface (page panel) |
+| `bg-card` / `bg-popover` | `#ffffff` | `#141414` | Panels, menus |
+| `bg-surface` | `#FAFAFA` | `#111111` | App chrome: drawer, outer frame, row hover |
+| `bg-surface-2` / `-3` | `#F5F5F5` / `#EBEBEB` | `#1C1C1C` / `#2A2A2A` | Gray fills, record chips |
+| `bg-hover` / `bg-pressed` | 4% / 7% charcoal | 5% / 9% white | Hover / selected rows, tabs, nav |
+| `text-foreground` | `#1C1C1C` | `#F5F5F5` | Primary text |
+| `text-fg-secondary` / `-tertiary` / `-light` | `#525252` / `#737373` / `#A3A3A3` | `#D4D4D4` / `#A3A3A3` / `#737373` | Secondary text, labels, placeholders |
+| `border-border` / `-strong` / `-light` | `#E5E5E5` / `#D4D4D4` / `#F0F0F0` | `#2A2A2A` / `#3A3A3A` / `#1C1C1C` | Hairlines |
+| **`primary`** | **`#5AB0E8`** | **`#5AB0E8`** | The accent |
+| `accent` / `bg-primary-soft` | `#E6F3FC` | `#1C1C1C` / `#0F2A3D` | Tints |
+| `tag-{blue,green,red,orange,purple,gray}` (+ `-bg`) | | | Status tags (`Badge`) |
+| `destructive` / `success` / `warning` | `#DC2626` / `#16A34A` / `#EAB308` | same | Status only |
 
 Rules:
-- **Baby blue (`#5AB0E8`) is the single brand accent.** Don't introduce new accent
-  hues unless asked. (The one sanctioned multi-hue is the ASCII gradient, §5.)
-- **Legacy alias:** the `orange` / `brand` Tailwind utilities are remapped to baby
-  blue — `--color-orange` `#8FCCF2` (light), `orange-dark` `#5AB0E8`, `--color-brand`
-  `#5AB0E8` / light `#8FCCF2` / dark `#3A8FCC`. So `bg-orange hover:bg-orange-dark`
-  = light-blue → primary. **Prefer `primary` in new code;** renaming `orange`→`brand`
-  is a tracked debt. Don't add new literal orange hexes.
-- charcoal scale for dark surfaces: `--color-charcoal` `#1C1C1C` / light `#2A2A2A` / dark `#0A0A0A`.
-- Both light AND dark must read — never tune for one only. Default (unprefixed) = light; use `dark:` for per-theme surfaces.
+- **Baby blue is the only accent.** Everything else is neutral; status color comes
+  from the tag palette via `Badge`. The sanctioned multi-hue is the ASCII gradient (section 5).
+- **Hairlines over shadows** (Twenty). In-page surfaces get `border border-border`;
+  shadows (`shadow-lg`, `shadow-2xl`) only on floating layers: menus, popovers,
+  modals, toasts, the island. The brand CTA (`variant="glow"`) keeps a soft glow.
+- Legacy aliases: `orange` / `brand` utilities = baby blue (`orange` `#8FCCF2`,
+  `orange-dark` `#5AB0E8`); `charcoal*` = `#1C1C1C` / `#2A2A2A` / `#0A0A0A`.
+- Both light AND dark must read. Default (unprefixed) = light.
 
 ---
 
 ## 3. Type
 
-- **Headings / wordmark / big numerals:** `.font-brand` = `"Space Grotesk"`, a
-  clean geometric grotesk (imported in `globals.css`). Body copy is Inter.
-  (Was Bitcount Grid Single, a pixel-grid face; dropped - it read as retro/
-  pixelated once the CSP allowed the webfont to actually load, clashing with the
-  quiet-premium aesthetic.)
-- **Accent word:** wrap one word in `.text-gradient-orange` (a baby-blue gradient, bg-clip-text).
-- **Body:** Inter (`font-sans`).
-- **Eyebrow:** `text-xs uppercase tracking-[0.3em] text-primary`.
-- **Logo:** `]s[` — `LogoMark` (`src/components/brand/logo-mark.tsx`) in `font-brand`,
-  brackets `text-foreground/45`, `s` in `text-primary`. No image / `logo.svg`.
+- **Headings / wordmark / big numerals:** `.font-brand` = Space Grotesk. Body:
+  Inter. Mono: DM Mono. All loaded in `globals.css`.
+- **Accent word:** `.text-gradient-orange` (baby-blue gradient, bg-clip-text).
+- **App scale:** any page that mounts `.app-shell` (dashboard shell, auth, OAuth
+  consent) re-tunes the Tailwind ramp to Twenty's 13px body via `:root:has(.app-shell)`:
+  `text-xs` 11 · `text-sm` 13 · `text-base` 14 · `text-lg` 16 · `text-xl` 18 ·
+  `text-2xl` 20 · `text-3xl` 24. `text-sm` is the default body size in the app.
+  Marketing pages keep the stock ramp.
+- Weights: 400 body, 500 labels/nav/buttons, 600 headings. No 700+ in the app.
+- **Section label:** `.twenty-label` (11px, medium, tertiary gray). Replaces the
+  old tracked-uppercase eyebrow inside the app.
+- **Logo:** the `λ` mark via `LogoMark` (theme-swapped PNGs), shown in a 20px
+  bordered tile in the drawer header.
 
 ---
 
 ## 4. Reusable patterns
 
-**Eyebrow**
+**Radius:** `rounded-[4px]` for controls, chips, rows, buttons, inputs;
+`rounded-[8px]` for panels, cards, popovers, modals. `rounded-full` only for
+avatars (people), dots, spinners, progress, switches. (The global radius scale is
+also shrunk, so legacy `rounded-2xl` lands near 8px.)
+
+**Page header**
 ```tsx
-<p className="text-xs uppercase tracking-[0.3em] text-primary">Section</p>
+<h1 className="text-2xl font-semibold text-foreground">CRM</h1>
+<p className="mt-1 text-sm text-fg-tertiary">One-line description.</p>
 ```
 
-**Heading with one accent word**
+**Panel (Twenty show-page card)**
 ```tsx
-<h2 className="font-brand text-3xl text-foreground sm:text-4xl">
-  From idea to <span className="text-gradient-orange">launch</span>
-</h2>
+<section className="rounded-[8px] border border-border bg-background">
+  <header className="flex h-10 items-center justify-between border-b border-border px-3">
+    <h2 className="text-sm font-medium">Title</h2>
+  </header>
+  <div className="p-3">...</div>
+</section>
 ```
 
-**Masthead / hero**
-```tsx
-<div className="relative overflow-hidden rounded-2xl bg-card p-6 sm:p-8 shadow-sm">
-  <AsciiField className="absolute inset-0 h-full w-full opacity-30 dark:opacity-25" gradient />
-  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,rgba(90,176,232,0.18),transparent_60%)]" />
-  <div className="relative z-10">…</div>
-</div>
-```
+**Record table:** `.twenty-table` (globals.css) inside `rounded-[8px] border
+border-border overflow-x-auto`: 32px rows, hairline grid, tertiary-gray headers,
+row hover `bg-surface`. Dense link lists use `divide-y divide-border` with h-10 rows.
 
-**Panel / card** — `rounded-2xl bg-card shadow-sm` (± `border border-border`),
-hover `hover:-translate-y-0.5 hover:shadow-md`. CRM rows are **borderless** (float
-via shadow only). `GradientCard` for primary feature cards; `SpotlightCard` for secondary.
+**Record chip:** `inline-flex h-5 items-center gap-1 rounded-[4px] bg-surface-2
+px-1.5 text-sm`, with a 14px avatar (companies square, people round).
 
-**Buttons** — base is **`rounded-full`** (`ui/button.tsx`). Primary `bg-primary
-text-primary-foreground`; ghost/outline are transparent **with `backdrop-blur`**.
-Panels use `rounded-2xl`/`rounded-3xl`; actions are pills.
+**Tags:** `Badge` (`ui/badge.tsx`) is the Twenty tag: 20px, 4px radius, medium
+weight, tinted by meaning (`primary`, `success`, `warning`, `destructive`, `secondary`).
 
-**Stats** — `CountUp` (`ui/count-up.tsx`) tweens 0→value.
+**Buttons** (`ui/button.tsx`): 4px radius, 13px medium. `default` = blue accent
+(one per surface), `outline` = Twenty "secondary" (the everyday bordered button),
+`ghost` = Twenty "tertiary", `secondary` = gray fill. Sizes `sm` 28px, `default` 32px.
+Focus = blue border + 3px soft blue halo.
+
+**Inputs** (`ui/input.tsx`, `ui/textarea.tsx`): 32px, 4px radius, hairline that
+darkens on hover, blue border + halo on focus.
+
+**Tabs:** underline tabs, `border-b-2 border-foreground` when active, counts in
+`text-fg-light`.
+
+**Stats:** `twenty-label` caption over `text-xl font-semibold tabular-nums` in a
+bordered panel. `CountUp` (`ui/count-up.tsx`) still tweens the number.
 
 ---
 
 ## 5. The ASCII signature
 
-`AsciiField` (`src/components/dashboard/ascii-field.tsx`) — the *animated* canvas
-field; background texture only. Ramp `" .·:-=+*≡#%@"`, ~30fps, honors
-`prefers-reduced-motion` (one static frame).
-- Props: `className, speed, cell, gradient`.
-- `gradient` paints a flowing **blue→purple** palette (`#5AB0E8 → #5B8DEF → #7C77F0
-  → #A78BFA`) — used on the logged-out hero / CTA / mobile menu.
-- **Light mode needs higher container opacity** than feels intuitive (baby-blue on
-  white is low-contrast): hero ≈ `opacity-30`, dark ≈ `opacity-25`; card accents lower.
-- Used behind: hero, CTA, dashboard hero, preloader, launchpad, sidebar.
-- If you add static hand-drawn ASCII illustrations: **box-drawing/geometric glyphs
-  only — never emoji** (double-width, breaks monospace). Verify alignment in a terminal.
+`AsciiField` (`src/components/dashboard/ascii-field.tsx`) is the brand's soul:
+the animated canvas field, background texture only (ramp `" .·:-=+*≡#%@"`,
+~30fps, one static frame under reduced motion). `gradient` paints the blue to
+purple palette (`#5AB0E8 → #5B8DEF → #7C77F0 → #A78BFA`). Used behind: the
+navigation drawer (whisper, `opacity-[0.14]`), the Home bento hero, preloader,
+welcome, auth, and the marketing hero/CTA. Light mode needs higher opacity than
+feels intuitive. Static ASCII art: box-drawing/geometric glyphs only, never emoji.
 
----
+## 6. Motion (quick and quiet)
 
-## 6. Motion (make it feel alive)
-
-- Helper: `FloatIn` (`ui/float-in.tsx`) — opacity + y, stagger by index. Plus raw
+- Helper: `FloatIn` (`ui/float-in.tsx`) - opacity + 4px y over 0.25s, stagger by index. Plus raw
   `motion/react` and `AnimatePresence mode="wait"` for stage/route transitions.
   `RotatingWord`, `ScrollProgress`, `DotFlow` for accents.
-- Shared easing `[0.16, 1, 0.3, 1]`; springs ≈ `{ stiffness: 260, damping: 30 }`; durations 0.3–0.8s; calm.
+- Shared easing `[0.16, 1, 0.3, 1]`; springs ≈ `{ stiffness: 260, damping: 30 }`; app durations 0.1-0.25s (Twenty: instant 75ms, fast 150ms, normal 300ms); no hover lifts or scale.
 - **Always** respect `prefers-reduced-motion` (`useReducedMotion`).
 - **Avoid Framer shared-layout (`layoutId`) morphs between very different layouts**
-  (e.g. horizontal dock ⇄ vertical sidebar) — they glitch. Prefer clean slide/fade.
+  (e.g. horizontal dock ⇄ vertical sidebar) - they glitch. Prefer clean slide/fade.
 
 ### 6b. Motion Surfaces (do not regress)
 
@@ -186,46 +203,35 @@ MCP-client logos) is the only social-proof band until then.
 
 ## 8. Layout & mobile
 
-- Container: `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` (marketing prose `max-w-5xl/6xl`).
-- Section spacing `py-20 sm:py-28`.
-- **Theme:** light by default; dark via the header/sidebar toggle (`next-themes`, class strategy).
-- **Horizontal lock:** `html`/`body { overflow-x: clip }`. No full-bleed child wider than the viewport.
+- Marketing container: `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8`; sections `py-20 sm:py-28`.
+- **Theme:** light by default; dark via the drawer/header toggle (`next-themes`, class strategy).
+- **Horizontal lock:** `html`/`body { overflow-x: clip }`.
 
-### Dashboard shell — `src/components/dashboard/dashboard-shell.tsx`
-The signed-in shell owns navigation in three modes, persisted to `localStorage`
-(`scalar-nav-mode`); `lg` breakpoint = 1024px. Constants: `SIDEBAR_WIDTH = 224`,
-`SIDEBAR_INSET = 252` (224 + 12 gutter + 16), `MORPH_SPRING`/`INSET_SPRING` ≈
-`{ stiffness: 260, damping: 30–32 }`.
+### Dashboard shell - `src/components/dashboard/dashboard-shell.tsx`
+Twenty's frame in Scalar's colors. Root `div.app-shell` on `bg-surface`.
 
-- **Dock (desktop default):** a floating pill — `fixed bottom-5 left-1/2
-  -translate-x-1/2 z-50 hidden lg:block`; inner `flex items-end gap-2 rounded-full
-  border border-border/60 bg-background/80 shadow-xl backdrop-blur-2xl` (dark:
-  `border-white/10 bg-charcoal/80`). Apple-style **magnify** on hover (icon box 46→78px,
-  influence radius 130px); **gentler on touch** (`pointer: coarse` → max 52px, softer
-  spring). Items: Home · Discover · CRM · Agent (accent) · Context, a divider, the Apps
-  launcher, then the sidebar toggle (`PanelLeft`).
-- **Sidebar (desktop, toggled):** a **floating panel** — `fixed inset-y-3 left-3 z-50
-  flex flex-col overflow-hidden rounded-2xl border border-border bg-background/95
-  shadow-xl backdrop-blur-2xl` (dark: `border-white/10 bg-charcoal/95`), `width: 224px`,
-  detached on all sides (12px gutters) so it floats like the cards. A subtle animated
-  `AsciiField` sits behind the nav (`opacity-[0.18] dark:opacity-40`; content `relative
-  z-10`). Header: `]s[` LogoMark + "Scalar". Nav rows `rounded-lg px-3 py-2.5 text-sm
-  font-medium`; active `bg-primary/10 text-primary` (accent item `bg-orange/10
-  text-orange`) with a trailing `bg-primary` dot. Footer: Apps, Collapse
-  (`PanelLeftClose` → back to dock), and `UserButton` + `ThemeToggle`. Enters with a
-  clean slide (`x: -(224+24) → 0` + opacity) and staggered items — **not** a shared-layout
-  `layoutId` morph (those glitched; see §6).
-- **Content inset:** `<main>` springs `paddingLeft` `0 → 252` when the sidebar opens,
-  but the inner column stays `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` so content
-  **keeps its size and just re-centers** (never stretches to full-bleed). The floating
-  top header is taken out of flow in sidebar mode (no dead gap at the top).
-- **Mobile (`< lg`):** no dock — a small launcher pill (`fixed bottom-6 left-3`) opens a
-  slide-in nav panel (spring from `x: -100%`, with backdrop); opening it **minimizes the
-  agent chat input** via `MobileNavContext`. The desktop dock/sidebar never render on mobile.
-- **Launchpad ("Apps"):** a full-screen overlay — scrollable, themed with semantic
-  tokens (correct in light **and** dark) — of nav tiles.
+- **Navigation drawer (desktop, `lg`+):** 220px, no border, on the gray chrome, with a
+  faint `AsciiField` behind it.
+  Header: logo tile + "Scalar" + a collapse button revealed on hover; the Clerk
+  `OrganizationSwitcher` below it. Sections with `twenty-label` headings
+  ("Workspace", "Agent"); rows are `h-7 rounded-[4px] px-1.5 text-sm`, 16px icons
+  at stroke 1.6, `text-fg-secondary`, hover `bg-hover`, active `bg-pressed
+  font-medium text-foreground`. Footer: Apps (launchpad), Settings, then the
+  account row (`UserButton showName` + `ThemeToggle`). Collapsing slides the
+  drawer to 0 width; the choice persists in `localStorage` (`scalar-sidebar`:
+  `open` | `closed`) and the top bar shows an expand button.
+- **Page panel:** `bg-background`, `rounded-[8px] border border-border`, inset
+  8px from the window edges, scrolling on its own (`lg:h-dvh` frame). A 40px top
+  bar shows the breadcrumb (nav icon + section, then `/ Record`, `/ New`, etc.).
+  Content column: `mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 pt-5`.
+- **Mobile (< lg):** no drawer, the panel is full-bleed with window scroll. The
+  top bar carries the logo, workspace switcher, theme toggle and account menu; a
+  flat bottom tab bar (`bg-surface/95 border-t`) carries every nav item + Apps.
+  `MobileNavContext` is still exported for the agent composer.
+- **Launchpad ("Apps"):** a command-menu style modal (max-w-2xl, 8px radius,
+  `shadow-2xl`, `bg-black/30` overlay): a numbered list of every area with its
+  one-line description. Escape / overlay click closes it.
 
----
 
 ## 9. Engineering spine (so design survives reality)
 
@@ -234,12 +240,12 @@ The signed-in shell owns navigation in three modes, persisted to `localStorage`
   theme-color; file-convention `app/manifest.ts` + `app/apple-icon.tsx` (PNG via
   `next/og` `ImageResponse`). Verify APIs against installed Next; don't assume ≤14.
 - **DB:** Prisma on Supabase. Datasource reads the **Supabase Vercel integration**
-  names — `POSTGRES_PRISMA_URL` (pooled) + `POSTGRES_URL_NON_POOLING` (direct) — not a
-  custom `DATABASE_URL`. The build no longer pushes schema — run `pnpm db:deploy`
+  names - `POSTGRES_PRISMA_URL` (pooled) + `POSTGRES_URL_NON_POOLING` (direct) - not a
+  custom `DATABASE_URL`. The build no longer pushes schema - run `pnpm db:deploy`
   deliberately before releasing a schema-dependent feature; prefer
   additive/idempotent schema changes.
 - **Auth:** Clerk via `proxy.ts`; the DB `User` row **auto-provisions** on first
-  authenticated request (`getDbUser` / `getAuthenticatedUser`) — no hard webhook
+  authenticated request (`getDbUser` / `getAuthenticatedUser`) - no hard webhook
   dependency. Roles `member` / `team` / `admin`; `isStaff = admin || team`.
 - **CSP** (`next.config.ts`) must whitelist the production Clerk Frontend API
   (`*.tryscalar.xyz`) + Cloudflare Turnstile, or the sign-in/up widget renders blank.

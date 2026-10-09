@@ -11,12 +11,12 @@ export function ThemeToggle() {
   // Canonical next-themes hydration guard - render nothing until mounted.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
-  if (!mounted) return <div className="h-9 w-9" />;
+  if (!mounted) return <div className="h-7 w-7" />;
 
   return (
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted transition-colors cursor-pointer"
+      className="flex h-7 w-7 items-center justify-center rounded-[4px] text-fg-secondary hover:bg-hover hover:text-foreground transition-colors cursor-pointer"
       aria-label="Toggle theme"
     >
       {theme === "dark" ? (

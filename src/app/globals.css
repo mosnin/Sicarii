@@ -1,11 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Scalar tokens. Colors are Scalar's own baby-blue + white system (light by
+ * default); the geometry, density and elevation follow Twenty's design
+ * language (twentyhq/twenty): hairline borders over shadows, 4px/8px radii,
+ * a 13px app body, gray app chrome around a white work surface.
+ */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.28rem;
 
   /* Rainbow button colors */
   --color-1: 0 100% 63%;
@@ -14,7 +20,7 @@
   --color-4: 195 100% 63%;
   --color-5: 90 100% 63%;
 
-  /* Scalar - Charcoal & Green Palette */
+  /* Scalar palette */
   --background: #ffffff;
   --foreground: #1C1C1C;
   --card: #ffffff;
@@ -36,6 +42,33 @@
   --ring: #5AB0E8;
   --success: #16A34A;
   --warning: #EAB308;
+
+  /* Twenty-style structure tokens, filled from the Scalar neutrals */
+  --surface: #FAFAFA;          /* app chrome / drawer */
+  --surface-2: #F5F5F5;
+  --surface-3: #EBEBEB;
+  --hover: rgba(28, 28, 28, 0.04);
+  --pressed: rgba(28, 28, 28, 0.07);
+  --fg-secondary: #525252;
+  --fg-tertiary: #737373;
+  --fg-light: #A3A3A3;
+  --border-strong: #D4D4D4;
+  --border-light: #F0F0F0;
+  --primary-soft: #E6F3FC;
+  --primary-soft-strong: #CDE8F9;
+
+  /* Status tags (text / background) */
+  --tag-blue: #2E7DB3;   --tag-blue-bg: #E6F3FC;
+  --tag-green: #15803D;  --tag-green-bg: #E8F7EE;
+  --tag-red: #B91C1C;    --tag-red-bg: #FDECEC;
+  --tag-orange: #B45309; --tag-orange-bg: #FEF5E1;
+  --tag-purple: #6D28D9; --tag-purple-bg: #F3EEFE;
+  --tag-gray: #525252;   --tag-gray-bg: #F0F0F0;
+
+  --shadow-light: 0px 2px 4px 0px rgba(0, 0, 0, 0.04), 0px 0px 4px 0px rgba(0, 0, 0, 0.08);
+  --shadow-strong: 2px 4px 16px 0px rgba(0, 0, 0, 0.12), 0px 2px 4px 0px rgba(0, 0, 0, 0.06);
+  --shadow-heavy: 0px 0px 8px 0px rgba(0, 0, 0, 0.12), 0px 8px 64px -16px rgba(0, 0, 0, 0.36), 0px 24px 56px -16px rgba(0, 0, 0, 0.06);
+
   --chart-1: #2E7DB3;
   --chart-2: #5AB0E8;
   --chart-3: #94A3B8;
@@ -90,6 +123,31 @@
   --ring: #8FCCF2;
   --success: #16A34A;
   --warning: #EAB308;
+
+  --surface: #111111;
+  --surface-2: #1C1C1C;
+  --surface-3: #2A2A2A;
+  --hover: rgba(255, 255, 255, 0.05);
+  --pressed: rgba(255, 255, 255, 0.09);
+  --fg-secondary: #D4D4D4;
+  --fg-tertiary: #A3A3A3;
+  --fg-light: #737373;
+  --border-strong: #3A3A3A;
+  --border-light: #1C1C1C;
+  --primary-soft: #0F2A3D;
+  --primary-soft-strong: #163A54;
+
+  --tag-blue: #8FCCF2;   --tag-blue-bg: #0F2A3D;
+  --tag-green: #4ADE80;  --tag-green-bg: #0F2A1A;
+  --tag-red: #F87171;    --tag-red-bg: #3A1212;
+  --tag-orange: #FBBF24; --tag-orange-bg: #33260A;
+  --tag-purple: #C4B5FD; --tag-purple-bg: #251B3D;
+  --tag-gray: #D4D4D4;   --tag-gray-bg: #262626;
+
+  --shadow-light: 0px 2px 4px 0px rgba(0, 0, 0, 0.24), 0px 0px 4px 0px rgba(0, 0, 0, 0.48);
+  --shadow-strong: 2px 4px 16px 0px rgba(0, 0, 0, 0.48), 0px 2px 4px 0px rgba(0, 0, 0, 0.32);
+  --shadow-heavy: 0px 0px 8px 0px rgba(0, 0, 0, 0.48), 0px 8px 64px -16px rgba(0, 0, 0, 0.8), 0px 24px 56px -16px rgba(0, 0, 0, 0.32);
+
   --chart-1: #3E96D6;
   --chart-2: #5AB0E8;
   --chart-3: #64748B;
@@ -140,6 +198,41 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
 
+  /* Twenty-aligned extras */
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-hover: var(--hover);
+  --color-pressed: var(--pressed);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-tertiary: var(--fg-tertiary);
+  --color-fg-light: var(--fg-light);
+  --color-border-strong: var(--border-strong);
+  --color-border-light: var(--border-light);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-strong: var(--primary-soft-strong);
+  --color-tag-blue: var(--tag-blue);
+  --color-tag-blue-bg: var(--tag-blue-bg);
+  --color-tag-green: var(--tag-green);
+  --color-tag-green-bg: var(--tag-green-bg);
+  --color-tag-red: var(--tag-red);
+  --color-tag-red-bg: var(--tag-red-bg);
+  --color-tag-orange: var(--tag-orange);
+  --color-tag-orange-bg: var(--tag-orange-bg);
+  --color-tag-purple: var(--tag-purple);
+  --color-tag-purple-bg: var(--tag-purple-bg);
+  --color-tag-gray: var(--tag-gray);
+  --color-tag-gray-bg: var(--tag-gray-bg);
+
+  /* Twenty elevation: hairlines first, shadows only for floating layers. */
+  --shadow-xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.04);
+  --shadow: var(--shadow-light);
+  --shadow-md: var(--shadow-light);
+  --shadow-lg: var(--shadow-strong);
+  --shadow-xl: var(--shadow-strong);
+  --shadow-2xl: var(--shadow-heavy);
+
   --color-charcoal: #1C1C1C;
   --color-charcoal-light: #2A2A2A;
   --color-charcoal-dark: #0A0A0A;
@@ -157,7 +250,7 @@
   --color-orange-glow: rgba(90, 176, 232, 0.4);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --font-brand: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
   /* Manifesto page (/manifesto) typefaces */
   --font-manrope: "Manrope", sans-serif;
@@ -309,16 +402,15 @@ body {
   }
 }
 
-/* Scalar brand type - Space Grotesk, a clean geometric grotesk. Used for
-   headings and the wordmark in the app shell. Pairs with Inter body copy and
-   the ASCII signature in the dock. */
+/* Scalar brand type - Space Grotesk for headings and the wordmark, Inter for
+   body copy. */
 h1,
 .font-brand {
   font-family: var(--font-brand);
   letter-spacing: -0.01em;
 }
 
-/* Utility classes */
+/* Accent word: the baby-blue gradient. */
 .text-gradient-orange {
   background: linear-gradient(135deg, #5AB0E8, #8FCCF2, #BFE2F8);
   -webkit-background-clip: text;
@@ -326,16 +418,82 @@ h1,
   background-clip: text;
 }
 
+/* The brand CTA. Twenty geometry (set by the Button), Scalar gradient fill,
+   a softer glow than before. */
 .glow-button {
   position: relative;
   background: linear-gradient(135deg, #5AB0E8, #3A8FCC);
-  box-shadow: 0 0 20px rgba(90, 176, 232, 0.4);
-  transition: all 0.3s ease;
+  box-shadow: 0 0 12px rgba(90, 176, 232, 0.3);
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
 }
 
 .glow-button:hover {
-  box-shadow: 0 0 30px rgba(90, 176, 232, 0.6);
-  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(90, 176, 232, 0.45);
+  filter: brightness(1.04);
+}
+
+/* ── App scale (signed-in product + auth) ─────────────────────────────────
+   Twenty runs at a 13px body. Any page that mounts `.app-shell` re-tunes the
+   Tailwind type ramp so existing utilities land on Twenty's sizes; `:has`
+   reaches portalled menus and dialogs too. Spacing is untouched. */
+:root:has(.app-shell) {
+  --text-xs: 0.6875rem;   /* 11px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.875rem;  /* 14px */
+  --text-lg: 1rem;        /* 16px */
+  --text-xl: 1.125rem;    /* 18px */
+  --text-2xl: 1.25rem;    /* 20px */
+  --text-3xl: 1.5rem;     /* 24px */
+  --text-4xl: 1.75rem;    /* 28px */
+  --text-5xl: 2rem;       /* 32px */
+  --text-6xl: 2.25rem;    /* 36px */
+  --tracking-widest: 0.04em;
+}
+:root:has(.app-shell) body {
+  background: var(--surface);
+  font-size: 0.8125rem;
+}
+.app-shell ::selection {
+  background: var(--primary-soft-strong);
+}
+
+/* Twenty-style section label: small, medium weight, tertiary gray. */
+.twenty-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--fg-tertiary);
+  letter-spacing: 0.01em;
+}
+
+/* Hairline grid table, the Twenty record table. */
+.twenty-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+}
+.twenty-table th {
+  height: 32px;
+  padding: 0 8px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--fg-tertiary);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+.twenty-table td {
+  height: 32px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.twenty-table th:last-child,
+.twenty-table td:last-child {
+  border-right: 0;
+}
+.twenty-table tbody tr:hover td {
+  background: var(--surface);
 }
 
 /* Phase tracker connector line */

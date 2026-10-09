@@ -139,9 +139,8 @@ export function EntityActions({
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
         <Button
-          variant="glow"
           size="sm"
           onClick={deepReport}
           disabled={reporting || busy}
@@ -171,14 +170,14 @@ export function EntityActions({
         {/* Enrich dropdown - run any aspect, any number of times */}
         <div className="relative">
           <Button
-            variant="glow"
+            variant="outline"
             size="sm"
             onClick={() => setMenuOpen((o) => !o)}
             disabled={busy || !hasDomain}
             title={hasDomain ? "Enrich this company" : "Add a domain to enrich"}
           >
             Enrich
-            <ChevronDown className={cn("ml-1 h-3.5 w-3.5 transition-transform", menuOpen && "rotate-180")} />
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", menuOpen && "rotate-180")} strokeWidth={1.6} />
           </Button>
 
           <AnimatePresence>
@@ -191,11 +190,11 @@ export function EntityActions({
                   onClick={() => setMenuOpen(false)}
                 />
                 <motion.div
-                  initial={{ opacity: 0, y: -6 }}
+                  initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.16 }}
-                  className="absolute right-0 z-50 mt-1.5 w-56 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-xl"
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 z-50 mt-1 w-56 overflow-hidden rounded-[8px] border border-border bg-card p-1 shadow-lg"
                 >
                   {ASPECTS.map((a) => (
                     <button
@@ -203,15 +202,15 @@ export function EntityActions({
                       type="button"
                       onClick={() => enrich(a.id)}
                       disabled={running !== null}
-                      className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                      className="flex h-8 w-full items-center justify-between gap-2 rounded-[4px] px-2 text-left text-sm text-foreground transition-colors hover:bg-muted disabled:opacity-60"
                     >
                       <span>{a.label}</span>
                       {running === a.id ? (
                         <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} className="inline-flex">
-                          <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+                          <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.6} />
                         </motion.span>
                       ) : done[a.id] ? (
-                        <Check className="h-3.5 w-3.5 text-green-500" />
+                        <Check className="h-3.5 w-3.5 text-green-500" strokeWidth={1.6} />
                       ) : null}
                     </button>
                   ))}
@@ -223,12 +222,12 @@ export function EntityActions({
 
         <Button
           variant="outline"
-          size="icon"
+          size="icon-sm"
           onClick={remove}
           disabled={busy || spawning}
           aria-label="Delete entity"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" strokeWidth={1.6} />
         </Button>
       </div>
       {msg && <p className="text-xs text-muted-foreground">{msg}</p>}

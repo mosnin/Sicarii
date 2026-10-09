@@ -42,10 +42,10 @@ const CATEGORY_LABEL: Record<Category, string> = {
 
 const STATUS_STYLE: Record<Status, string> = {
   draft: "bg-muted text-muted-foreground",
-  approved: "bg-primary/10 text-primary",
-  active: "bg-primary/10 text-primary",
-  paused: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  exhausted: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  approved: "bg-tag-blue-bg text-tag-blue",
+  active: "bg-tag-blue-bg text-tag-blue",
+  paused: "bg-tag-orange-bg text-tag-orange",
+  exhausted: "bg-tag-orange-bg text-tag-orange",
   completed: "bg-muted text-muted-foreground",
 };
 
@@ -80,19 +80,19 @@ export function AutopilotPlanCard({ plan, delay = 0 }: AutopilotPlanCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay }}
+      transition={{ duration: 0.2, delay }}
     >
-      <div className="rounded-2xl border border-border bg-card shadow-sm">
-        <div className="flex items-start justify-between gap-4 p-5">
+      <div className="rounded-[8px] border border-border bg-card">
+        <div className="flex items-start justify-between gap-4 p-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-brand truncate text-base">{plan.name}</p>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <p className="truncate text-sm font-medium text-foreground">{plan.name}</p>
+              <span className="inline-flex h-5 items-center rounded-[4px] bg-muted px-1.5 text-xs font-medium capitalize text-muted-foreground">
                 {plan.cadence}
               </span>
-              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium capitalize", STATUS_STYLE[plan.status])}>
+              <span className={cn("inline-flex h-5 items-center rounded-[4px] px-1.5 text-xs font-medium capitalize", STATUS_STYLE[plan.status])}>
                 {plan.status}
               </span>
             </div>
@@ -100,9 +100,9 @@ export function AutopilotPlanCard({ plan, delay = 0 }: AutopilotPlanCardProps) {
               <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{plan.discoveryQuery}</p>
             )}
             {plan.pausedReason && (plan.status === "paused" || plan.status === "exhausted") && (
-              <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{plan.pausedReason}</p>
+              <p className="mt-1 text-xs text-warning">{plan.pausedReason}</p>
             )}
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs tabular-nums text-muted-foreground">
               {totalSpent.toLocaleString()} / {plan.totalCredits.toLocaleString()} credits this window
               {plan.lastRunAt ? ` · last ran ${new Date(plan.lastRunAt).toLocaleDateString()}` : ""}
             </p>
@@ -110,13 +110,13 @@ export function AutopilotPlanCard({ plan, delay = 0 }: AutopilotPlanCardProps) {
           <div className="flex shrink-0 items-center gap-2">
             {canApprove && (
               <Button size="sm" onClick={() => act("approve")} disabled={busy}>
-                {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />}
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.6} /> : <CheckCircle2 className="h-4 w-4" strokeWidth={1.6} />}
                 Approve
               </Button>
             )}
             {canPause && (
               <Button size="sm" variant="outline" onClick={() => act("pause")} disabled={busy}>
-                {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Pause className="mr-1.5 h-3.5 w-3.5" />}
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.6} /> : <Pause className="h-4 w-4" strokeWidth={1.6} />}
                 Pause
               </Button>
             )}
@@ -124,14 +124,14 @@ export function AutopilotPlanCard({ plan, delay = 0 }: AutopilotPlanCardProps) {
               type="button"
               onClick={() => setExpanded((e) => !e)}
               aria-label="Budget and run history"
-              className="text-muted-foreground hover:text-foreground"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-[4px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} />
+              <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} strokeWidth={1.6} />
             </button>
           </div>
         </div>
 
-        {note && <p className="px-5 pb-2 text-xs text-destructive">{note}</p>}
+        {note && <p className="px-3 pb-2 text-xs text-destructive">{note}</p>}
 
         <AnimatePresence>
           {expanded && (
@@ -139,9 +139,10 @@ export function AutopilotPlanCard({ plan, delay = 0 }: AutopilotPlanCardProps) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.18 }}
               className="overflow-hidden border-t border-border"
             >
-              <div className="space-y-4 p-5">
+              <div className="space-y-4 p-3">
                 <div className="space-y-3">
                   {plan.allocations.map((a) => (
                     <BudgetBar key={a.category} allocation={a} />
@@ -149,22 +150,22 @@ export function AutopilotPlanCard({ plan, delay = 0 }: AutopilotPlanCardProps) {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="twenty-label mb-1.5">
                     What your autopilot did
                   </p>
                   {plan.runs.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No runs yet.</p>
                   ) : (
-                    <ul className="space-y-1.5">
+                    <ul className="divide-y divide-border rounded-[8px] border border-border">
                       {plan.runs.map((r) => (
-                        <li key={r.id} className="rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs">
+                        <li key={r.id} className="px-3 py-2 text-sm">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-foreground">{r.summary ?? r.action}</span>
-                            <span className="shrink-0 text-muted-foreground">
+                            <span className="shrink-0 tabular-nums text-muted-foreground">
                               {r.creditsSpent > 0 ? `${r.creditsSpent} credits` : "free"}
                             </span>
                           </div>
-                          <p className="mt-0.5 text-muted-foreground">
+                          <p className="mt-0.5 text-xs text-muted-foreground">
                             {CATEGORY_LABEL[r.category]} · {new Date(r.createdAt).toLocaleString()}
                           </p>
                         </li>
@@ -185,15 +186,15 @@ function BudgetBar({ allocation }: { allocation: { category: Category; allocated
   const pct = allocation.allocated > 0 ? Math.min(100, Math.round((allocation.spent / allocation.allocated) * 100)) : 0;
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between text-xs">
+      <div className="mb-1 flex items-center justify-between text-sm">
         <span className="font-medium text-foreground">{CATEGORY_LABEL[allocation.category]}</span>
-        <span className="text-muted-foreground">
+        <span className="tabular-nums text-muted-foreground">
           {allocation.spent.toLocaleString()} / {allocation.allocated.toLocaleString()}
         </span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className={cn("h-full rounded-full transition-all", pct >= 100 ? "bg-amber-500" : "bg-primary")}
+          className={cn("h-full rounded-full transition-all", pct >= 100 ? "bg-warning" : "bg-primary")}
           style={{ width: `${pct}%` }}
         />
       </div>

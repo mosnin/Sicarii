@@ -52,18 +52,18 @@ export function TaskWebhookForm({ initialUrl }: { initialUrl: string | null }) {
         />
         <div className="flex items-center gap-2">
           <Button onClick={() => save(url.trim())} disabled={!valid || status === "saving"}>
-            {status === "saving" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+            {status === "saving" ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.6} /> : null}
             Save
           </Button>
           {url.trim() && (
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => save("")}
-              className="text-muted-foreground hover:text-destructive"
+              className="hover:text-destructive"
               aria-label="Clear webhook"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" strokeWidth={1.6} />
             </Button>
           )}
         </div>
@@ -73,8 +73,8 @@ export function TaskWebhookForm({ initialUrl }: { initialUrl: string | null }) {
 
       <AnimatePresence>
         {status === "done" && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1 text-xs font-medium text-primary">
-            <Check className="h-3.5 w-3.5" /> Saved
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1 text-xs font-medium text-success">
+            <Check className="h-4 w-4" strokeWidth={1.6} /> Saved
           </motion.p>
         )}
         {status === "error" && err && (

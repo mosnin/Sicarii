@@ -88,7 +88,7 @@ const sheetContentVariants = tv({
     "flex flex-col",
     "bg-popover",
     "text-popover-foreground",
-    "shadow-lg/5",
+    "shadow-2xl",
     "transition-[opacity,translate] duration-200 ease-in-out will-change-transform",
     "data-[state=closed]:fade-out-0 data-[state=closed]:animate-out",
     "data-[state=open]:fade-in-0 data-[state=open]:animate-in",
@@ -120,7 +120,7 @@ const sheetContentVariants = tv({
     variant: {
       default: "",
       inset: [
-        "sm:rounded-2xl sm:border",
+        "sm:rounded-[8px] sm:border",
         "sm:**:data-[slot=sheet-footer]:rounded-b-[calc(var(--radius-2xl)-1px)]",
       ],
     },

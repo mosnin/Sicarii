@@ -58,7 +58,7 @@ export const menuContentVariants = tv({
     "p-1",
     "bg-popover",
     "text-popover-foreground",
-    "rounded-xl border shadow-lg/5",
+    "rounded-[8px] border shadow-lg",
     "origin-(--transform-origin)",
     "outline-none",
     "overflow-y-auto",
@@ -134,16 +134,16 @@ const menuItemVariants = tv({
     "px-2.5 py-1.5",
     "flex items-center gap-2",
     "select-none text-sm",
-    "rounded-lg",
+    "rounded-[4px]",
     "outline-hidden",
-    "group-data-[date=open]/trigger-item:bg-accent group-data-[date=open]/trigger-item:text-accent-foreground",
+    "group-data-[date=open]/trigger-item:bg-hover group-data-[date=open]/trigger-item:text-accent-foreground",
     "data-disabled:pointer-events-none data-disabled:opacity-64",
     "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   ],
   variants: {
     variant: {
       default: [
-        "data-highlighted:bg-accent data-highlighted:text-accent-foreground",
+        "data-highlighted:bg-hover data-highlighted:text-accent-foreground",
       ],
       destructive: [
         "text-destructive dark:text-destructive-foreground",

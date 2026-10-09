@@ -33,10 +33,11 @@ export default async function WelcomePage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Brand backdrop, matching the marketing surfaces. */}
-      <AsciiField className="pointer-events-none fixed inset-0 h-full w-full opacity-[0.10] dark:opacity-25" cell={14} speed={0.07} gradient />
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.12),transparent_55%)]" />
+    <div className="relative overflow-hidden rounded-[8px]">
+      {/* Brand ASCII backdrop, contained to the page panel and toned down so
+          the onboarding panels stay crisp. */}
+      <AsciiField className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.08] dark:opacity-[0.18]" cell={14} speed={0.07} gradient />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(90,176,232,0.10),transparent_55%)]" />
       <div className="relative z-10">
         <WelcomeClient firstName={user.firstName ?? undefined} />
       </div>

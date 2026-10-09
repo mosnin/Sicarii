@@ -77,6 +77,7 @@ exponential growth into a plateau.
 | find_socials verification quality | 0008 · Feasible | one live run with a real Tavily key | founder + eng |
 | Social schema on prod | 0008 · Deliverable | `pnpm prisma db push` (new enums/table/columns) | founder |
 | Provider keys encrypted at rest | audit 07-11 | agentMail/agentPhone keys hashed or KMS | eng |
+| Twenty-structure UI felt live | 0016 · Desirable | founder observes app, light + dark, desktop + phone | founder |
 | Teams v1 live round-trip | 0009 · Feasible | Clerk Orgs enabled + org webhook events + one live team flow observed | founder + eng |
 
 ## Kills & falsifieds (do not re-open)
@@ -87,6 +88,8 @@ exponential growth into a plateau.
 |------|---------|----------------|------|
 | Drizzle + Neon DB layer | REPLACED | founder call: Prisma ORM on Supabase Postgres instead | 0001/0002 |
 | Orange brand palette | REPLACED | rebrand to charcoal/white + `#1E4D2B` green | 0001 |
+| Floating magnifying dock + floating sidebar nav | REPLACED | Twenty's persistent drawer + bordered page panel | 0016 |
+| Twenty's gray/indigo palette | KILLED | founder: keep Scalar's baby blue, fonts, ASCII | 0016 |
 | "Fortitudo" agency identity | REPLACED | rebranded to Scalar (agent-operated CRM) | 0001 |
 | Agency app (projects/phases/onboarding/invoices/admin) | REMOVED | founder call "remove & replace"; wrong shape for an agent CRM | 0002 |
 

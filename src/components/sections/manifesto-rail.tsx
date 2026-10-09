@@ -27,20 +27,20 @@ export function ManifestoRail() {
             type="button"
             onClick={toggle}
             aria-expanded={open}
-            className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-foreground/5"
+            className="flex h-8 items-center gap-2 rounded-[4px] px-3 text-sm font-medium text-foreground transition-colors hover:bg-hover"
           >
             <span className="relative flex h-2 w-2">
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
-            <span className="font-brand">{open ? "Close" : "Why we built this"}</span>
+            <span>{open ? "Close" : "Why we built this"}</span>
           </button>
         )}
       >
         <div className="px-6 pb-8 pt-2 md:px-10">
-          <p className="max-w-3xl font-brand text-xl leading-snug text-foreground sm:text-2xl">
+          <p className="max-w-3xl text-xl font-medium leading-snug text-foreground sm:text-2xl">
             We do not think memory is a feature you bolt on. It is the product.
           </p>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-fg-secondary sm:text-base">
             A structured place where every record is typed, deduped, and yours, with a
             real interface a human can see and an agent can operate over the same
             surface. So your data compounds instead of rotting, and the leverage stays
@@ -51,7 +51,7 @@ export function ManifestoRail() {
             className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
           >
             Read the manifesto
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4" strokeWidth={1.6} />
           </Link>
         </div>
       </SidePanel>

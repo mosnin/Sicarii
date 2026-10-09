@@ -2,13 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Trash2, Copy, Check, Plus } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -72,23 +65,22 @@ export function ApiKeysManager() {
       : "/api/mcp/mcp";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Agent access - API keys</CardTitle>
-        <CardDescription>
-          Connect agents (OpenClaw, Hermes, Claude Cowork) to your CRM over MCP.
-          Point them at <code className="text-foreground">{mcpUrl}</code> with an
-          API key as a Bearer token.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <section>
+      <h2 className="text-base font-semibold text-foreground">Agent access - API keys</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Connect agents (OpenClaw, Hermes, Claude Cowork) to your CRM over MCP.
+        Point them at <code className="font-mono text-muted-foreground">{mcpUrl}</code> with an
+        API key as a Bearer token.
+      </p>
+
+      <div className="mt-3 space-y-3">
         {created && (
-          <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
-            <p className="text-sm font-medium">
+          <div className="rounded-[8px] border border-primary/30 bg-primary/5 p-3">
+            <p className="text-sm font-medium text-foreground">
               Copy your key now - you won&apos;t see it again.
             </p>
             <div className="mt-2 flex items-center gap-2">
-              <code className="flex-1 truncate rounded bg-background px-3 py-2 text-sm">
+              <code className="h-8 flex-1 truncate rounded-[4px] border border-border bg-background px-2.5 font-mono text-sm leading-8">
                 {created}
               </code>
               <Button
@@ -102,9 +94,9 @@ export function ApiKeysManager() {
                 aria-label="Copy key"
               >
                 {copied ? (
-                  <Check className="h-4 w-4" />
+                  <Check className="h-4 w-4" strokeWidth={1.6} />
                 ) : (
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-4 w-4" strokeWidth={1.6} />
                 )}
               </Button>
             </div>
@@ -126,54 +118,66 @@ export function ApiKeysManager() {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && create()}
           />
-          <Button variant="glow" onClick={create} disabled={busy || !name.trim()}>
-            <Plus className="mr-1 h-4 w-4" />
+          <Button onClick={create} disabled={busy || !name.trim()}>
+            <Plus className="h-4 w-4" strokeWidth={1.6} />
             Create
           </Button>
         </div>
 
         {keys.length === 0 ? (
-          <div className="text-sm text-muted-foreground">
+          <div className="rounded-[8px] border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
             No keys yet. Create one to connect an agent.
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {keys.map((k) => (
-              <div
-                key={k.id}
-                className="flex items-center justify-between gap-3 py-3"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{k.name}</span>
-                    {k.revokedAt ? (
-                      <Badge variant="destructive">Revoked</Badge>
-                    ) : (
-                      <Badge variant="success">Active</Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {k.prefix}…{k.last4} ·{" "}
-                    {k.lastUsedAt
-                      ? `last used ${new Date(k.lastUsedAt).toLocaleDateString()}`
-                      : "never used"}
-                  </p>
-                </div>
-                {!k.revokedAt && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => revoke(k.id)}
-                    aria-label="Revoke key"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-[8px] border border-border bg-card">
+            <table className="twenty-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Key</th>
+                  <th>Status</th>
+                  <th>Last used</th>
+                  <th className="w-10" />
+                </tr>
+              </thead>
+              <tbody>
+                {keys.map((k) => (
+                  <tr key={k.id}>
+                    <td className="font-medium text-foreground">{k.name}</td>
+                    <td className="font-mono text-xs text-muted-foreground">
+                      {k.prefix}…{k.last4}
+                    </td>
+                    <td>
+                      {k.revokedAt ? (
+                        <Badge variant="destructive">Revoked</Badge>
+                      ) : (
+                        <Badge variant="success">Active</Badge>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap text-muted-foreground">
+                      {k.lastUsedAt
+                        ? `last used ${new Date(k.lastUsedAt).toLocaleDateString()}`
+                        : "never used"}
+                    </td>
+                    <td className="w-10 text-right">
+                      {!k.revokedAt && (
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => revoke(k.id)}
+                          aria-label="Revoke key"
+                        >
+                          <Trash2 className="h-4 w-4" strokeWidth={1.6} />
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

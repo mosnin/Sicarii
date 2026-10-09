@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,30 +62,30 @@ export default function NewEntityPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-4">
       <FloatIn delay={0}>
         <Link
           href="/crm?tab=entities"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex h-7 items-center gap-1 rounded-[4px] px-1.5 -ml-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" strokeWidth={1.6} />
           Back to entities
         </Link>
       </FloatIn>
 
-      <FloatIn delay={0.06}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-brand text-xl">Add an entity</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <FloatIn delay={0.03}>
+        <section className="rounded-[8px] border border-border bg-card">
+          <header className="flex h-10 items-center border-b border-border px-3">
+            <h1 className="text-sm font-medium text-foreground">Add an entity</h1>
+          </header>
+          <div className="p-4">
             <form onSubmit={onSubmit} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {FIELDS.map((f) => (
-                  <div key={f.name} className="space-y-1.5">
+                  <div key={f.name} className="space-y-1">
                     <label
                       htmlFor={f.name}
-                      className="text-sm font-medium text-muted-foreground"
+                      className="text-xs font-medium text-muted-foreground"
                     >
                       {f.label}
                       {"required" in f && f.required && (
@@ -97,10 +96,10 @@ export default function NewEntityPage() {
                   </div>
                 ))}
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label
                   htmlFor="description"
-                  className="text-sm font-medium text-muted-foreground"
+                  className="text-xs font-medium text-muted-foreground"
                 >
                   Description
                 </label>
@@ -113,13 +112,13 @@ export default function NewEntityPage() {
                 <Button variant="outline" asChild>
                   <Link href="/crm?tab=entities">Cancel</Link>
                 </Button>
-                <Button type="submit" variant="glow" disabled={busy}>
+                <Button type="submit" disabled={busy}>
                   {busy ? "Saving…" : "Save entity"}
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </FloatIn>
     </div>
   );

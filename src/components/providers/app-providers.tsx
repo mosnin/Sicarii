@@ -9,27 +9,27 @@ import type { ReactNode } from "react";
 // swap them per resolved theme - otherwise the Clerk widget keeps dark text on
 // the light theme (the login page bug).
 const elements = {
-  card: "bg-card border border-border shadow-2xl rounded-2xl",
-  headerTitle: "font-brand text-foreground",
+  card: "bg-card border border-border shadow-lg rounded-[8px]",
+  headerTitle: "font-semibold text-foreground",
   headerSubtitle: "text-muted-foreground",
   socialButtonsBlockButton:
-    "border border-border bg-transparent hover:bg-muted text-foreground rounded-full",
+    "border border-border bg-transparent hover:bg-hover text-foreground rounded-[4px]",
   socialButtonsBlockButtonText: "text-foreground",
   dividerLine: "bg-border",
   dividerText: "text-muted-foreground",
   formFieldLabel: "text-muted-foreground",
-  formFieldInput: "border border-border text-foreground rounded-xl focus:border-primary",
+  formFieldInput: "border border-border text-foreground rounded-[4px] focus:border-primary",
   formButtonPrimary:
-    "bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-sm normal-case font-medium",
+    "bg-primary hover:bg-primary/90 text-primary-foreground rounded-[4px] shadow-none normal-case font-medium",
   footerActionText: "text-muted-foreground",
   footerActionLink: "text-primary hover:text-primary/80 font-medium",
   formFieldAction: "text-primary hover:text-primary/80",
   identityPreviewEditButton: "text-primary",
-  userButtonPopoverCard: "bg-card border border-border rounded-2xl",
-  userButtonPopoverActionButton: "hover:bg-muted text-foreground",
+  userButtonPopoverCard: "bg-card border border-border rounded-[8px]",
+  userButtonPopoverActionButton: "hover:bg-hover text-foreground",
   userButtonPopoverActionButtonText: "text-foreground",
   badge: "bg-primary/10 text-primary",
-  avatarBox: "rounded-lg",
+  avatarBox: "rounded-[4px]",
 };
 
 const baseVars = {
@@ -37,9 +37,9 @@ const baseVars = {
   colorDanger: "#DC2626",
   colorSuccess: "#16A34A",
   colorWarning: "#EAB308",
-  borderRadius: "0.75rem",
+  borderRadius: "0.25rem",
   fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-  fontSize: "0.95rem",
+  fontSize: "0.8125rem",
 };
 
 const lightVars = {

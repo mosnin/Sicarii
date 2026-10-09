@@ -4,37 +4,43 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+  // Twenty button: 4px radius, 13px medium label, hairline border, quick
+  // background-only transitions, a soft blue focus halo.
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[4px] border border-transparent text-sm font-medium transition-[background-color,border-color,color] duration-100 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/20 focus-visible:border-primary disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none",
   {
     variants: {
       variant: {
+        // Accent (blue) - the one primary action on a surface.
         default:
-          "bg-primary text-primary-foreground shadow-sm hover:bg-orange-dark",
+          "bg-primary text-primary-foreground border-[color-mix(in_oklab,var(--primary)_82%,black)] hover:bg-[color-mix(in_oklab,var(--primary)_90%,black)]",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        // Twenty "secondary": the everyday bordered button.
         outline:
-          "border border-border bg-background/40 backdrop-blur-md hover:bg-accent hover:text-accent-foreground",
+          "border-border bg-background text-fg-secondary hover:bg-hover hover:text-foreground",
+        // Gray fill.
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "backdrop-blur-md hover:bg-accent hover:text-accent-foreground",
+          "bg-surface-2 text-foreground hover:bg-surface-3",
+        // Twenty "tertiary": text-only until hover.
+        ghost: "text-fg-secondary hover:bg-hover hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        glow: "glow-button text-white font-semibold",
+        glow: "glow-button text-white",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-8 px-3 text-xs",
-        md: "h-9 px-4 text-sm",
-        lg: "h-12 px-8 text-base",
-        xl: "h-14 px-10 text-lg",
-        icon: "h-10 w-10",
+        default: "h-8 px-3",
+        sm: "h-7 px-2 text-sm",
+        md: "h-8 px-3 text-sm",
+        lg: "h-9 px-4 text-sm",
+        xl: "h-10 px-5 text-base",
+        icon: "h-8 w-8",
         "icon-xs": "h-6 w-6",
-        "icon-sm": "h-8 w-8",
-        "icon-md": "h-9 w-9",
+        "icon-sm": "h-7 w-7",
+        "icon-md": "h-8 w-8",
       },
       // Press feedback used by composed registry components (sidebar,
       // editable). Off by default so existing buttons are unchanged.
       clickEffect: {
-        true: "active:scale-[0.98]",
+        true: "active:bg-pressed",
         false: "",
       },
     },

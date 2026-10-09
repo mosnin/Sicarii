@@ -42,7 +42,7 @@ export function BillingUpgrade() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex flex-col gap-2 sm:flex-row">
         {UPGRADES.map(({ plan, label, price }) => (
           <Button
@@ -52,8 +52,8 @@ export function BillingUpgrade() {
             disabled={pending !== null}
             onClick={() => upgrade(plan)}
           >
-            {pending === plan ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-            {label} <span className="text-muted-foreground">{price}</span>
+            {pending === plan ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.6} /> : null}
+            {label} <span className="font-normal text-muted-foreground">{price}</span>
           </Button>
         ))}
       </div>
@@ -63,6 +63,7 @@ export function BillingUpgrade() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             className="text-xs font-medium text-muted-foreground"
           >
             {message}
