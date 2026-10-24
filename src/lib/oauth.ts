@@ -54,6 +54,33 @@ const REFRESH_TTL = 60 * 60 * 24 * 30; // 30d
 export function signAuthCode(c: Omit<CodeClaims, "typ" | "iat" | "exp">) {
   return sign({ ...c, typ: "code" }, CODE_TTL);
 }
+
+/**
+ * Single-use consume for leftover JWT authorization codes (the /api/oauth
+ * layer used to mint these on GET /authorize with no spend tracking).
+ * Hash of the presented JWT is the consume key so codes issued before a
+ * jti existed are still one-shot. Replay returns null.
+ */
+export async function consumeAuthorizationCode(code: string): Promise<CodeClaims | null> {
+  const claims = await verifyToken<CodeClaims>(code);
+  if (!claims || claims.typ !== "code" || typeof claims.sub !== "string") {
+    return null;
+  }
+  const jti = `code:${createHash("sha256").update(code).digest("hex")}`;
+  const exp =
+    typeof claims.exp === "number"
+      ? new Date(claims.exp * 1000)
+      : new Date(Date.now() + CODE_TTL * 1000);
+  try {
+    await prisma.revokedToken.create({
+      data: { jti, userId: claims.sub, expiresAt: exp },
+    });
+  } catch {
+    return null;
+  }
+  return claims;
+}
+
 export function signAccessToken(userId: string, scope?: string) {
   return sign({ sub: userId, typ: "access", ...(scope ? { scope } : {}) }, ACCESS_TTL);
 }

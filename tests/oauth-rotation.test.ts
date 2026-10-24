@@ -24,7 +24,13 @@ vi.mock("@/lib/prisma", () => {
   };
 });
 
-import { signRefreshToken, consumeRefreshToken, signAccessToken } from "@/lib/oauth";
+import {
+  signRefreshToken,
+  consumeRefreshToken,
+  consumeAuthorizationCode,
+  signAccessToken,
+  signAuthCode,
+} from "@/lib/oauth";
 
 beforeAll(() => vi.stubEnv("MCP_OAUTH_SECRET", "rotation-test-secret"));
 afterAll(() => vi.unstubAllEnvs());
@@ -48,5 +54,33 @@ describe("refresh token rotation", () => {
 
   it("rejects garbage", async () => {
     expect(await consumeRefreshToken("not-a-jwt")).toBeNull();
+  });
+});
+
+describe("authorization code consume", () => {
+  it("consumes a leftover JWT auth code once, then rejects replay", async () => {
+    const code = await signAuthCode({
+      sub: "user-3",
+      client_id: "client-1",
+      redirect_uri: "https://app.example.com/cb",
+      code_challenge: "challenge",
+      scope: "mcp",
+    });
+
+    const first = await consumeAuthorizationCode(code);
+    expect(first?.sub).toBe("user-3");
+    expect(first?.redirect_uri).toBe("https://app.example.com/cb");
+
+    const second = await consumeAuthorizationCode(code);
+    expect(second).toBeNull();
+  });
+
+  it("rejects an access token presented as an authorization code", async () => {
+    const access = await signAccessToken("user-4", "mcp");
+    expect(await consumeAuthorizationCode(access)).toBeNull();
+  });
+
+  it("rejects garbage", async () => {
+    expect(await consumeAuthorizationCode("not-a-jwt")).toBeNull();
   });
 });
