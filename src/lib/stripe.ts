@@ -19,14 +19,35 @@ export function priceIdFor(plan: PaidPlanName): string | undefined {
   return process.env[`STRIPE_PRICE_${plan.toUpperCase()}`];
 }
 
+const PAID_PLANS: PaidPlanName[] = ["starter", "pro", "business", "team"];
+
 /** Reverse of priceIdFor: map a Stripe Price id back to its paid plan, so a
  *  webhook can tell which plan a subscription switched to. */
 export function planForPriceId(priceId: string | undefined): PaidPlanName | undefined {
   if (!priceId) return undefined;
-  for (const plan of ["starter", "pro", "business"] as const) {
+  for (const plan of PAID_PLANS) {
     if (priceIdFor(plan) === priceId) return plan;
   }
   return undefined;
+}
+
+/** Active-ish Stripe subscription statuses that still bill or will bill. */
+const REPLACEABLE_SUB_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "incomplete",
+]);
+
+/**
+ * Which of `ids` should be canceled when `keepId` is the subscription that
+ * just replaced them. Empty keepId means cancel nothing — never wipe a
+ * customer because checkout omitted the new subscription id.
+ */
+export function siblingSubscriptionIds(ids: string[], keepId: string | undefined): string[] {
+  if (!keepId) return [];
+  return [...new Set(ids)].filter((id) => id && id !== keepId);
 }
 
 function encodeForm(params: Record<string, string>): string {
@@ -49,6 +70,9 @@ export async function createCheckoutSession(opts: {
   plan: string;
   successUrl: string;
   cancelUrl: string;
+  /** Existing Stripe customer to reuse so an upgrade does not mint a second
+   *  customer (and leave the previous subscription orphaned and charging). */
+  customerId?: string;
 }): Promise<CheckoutResult> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return { error: "Billing is not configured yet.", status: 501 };
@@ -65,6 +89,7 @@ export async function createCheckoutSession(opts: {
     "metadata[plan]": opts.plan,
     "subscription_data[metadata][userId]": opts.userId,
     "subscription_data[metadata][plan]": opts.plan,
+    ...(opts.customerId ? { customer: opts.customerId } : {}),
   };
 
   const res = await fetchWithTimeout(`${STRIPE_API}/checkout/sessions`, {
@@ -88,6 +113,54 @@ export async function createCheckoutSession(opts: {
     return { error: "Couldn't start checkout. Please try again.", status: 502 };
   }
   return { url: data.url };
+}
+
+async function stripeForm(
+  method: string,
+  path: string,
+  params?: Record<string, string>,
+): Promise<Response> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("STRIPE_SECRET_KEY is not set");
+  return fetchWithTimeout(`${STRIPE_API}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    ...(params ? { body: encodeForm(params) } : {}),
+  });
+}
+
+/**
+ * Cancel every replaceable subscription on `customerId` except `keepSubscriptionId`.
+ * Used after a new Checkout subscription lands so an upgrade does not leave the
+ * previous plan charging. Throws on Stripe errors so the webhook can retry.
+ */
+export async function cancelOtherCustomerSubscriptions(
+  customerId: string,
+  keepSubscriptionId: string,
+): Promise<string[]> {
+  const res = await stripeForm("GET", `/subscriptions?customer=${encodeURIComponent(customerId)}&limit=100`);
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Stripe list subscriptions failed (${res.status}): ${detail.slice(0, 200)}`);
+  }
+  const body = (await res.json()) as {
+    data?: Array<{ id?: string; status?: string }>;
+  };
+  const candidates = (body.data ?? [])
+    .filter((s) => s.id && REPLACEABLE_SUB_STATUSES.has(s.status ?? ""))
+    .map((s) => s.id as string);
+  const toCancel = siblingSubscriptionIds(candidates, keepSubscriptionId);
+  for (const id of toCancel) {
+    const cancel = await stripeForm("DELETE", `/subscriptions/${encodeURIComponent(id)}`);
+    if (!cancel.ok) {
+      const detail = await cancel.text().catch(() => "");
+      throw new Error(`Stripe cancel ${id} failed (${cancel.status}): ${detail.slice(0, 200)}`);
+    }
+  }
+  return toCancel;
 }
 
 /**

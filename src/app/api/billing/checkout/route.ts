@@ -58,12 +58,21 @@ export async function POST(req: NextRequest) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tryscalar.xyz";
+    // Reuse the personal Stripe customer so a second Checkout (Starter → Pro)
+    // lands on the same customer and the webhook can cancel the old sub.
+    // Workspace rows are left without reuse: attaching the team customer here
+    // would let a member checkout cancel the team's existing subscription.
+    const customerId =
+      user.accountType !== "workspace" && user.stripeCustomerId
+        ? user.stripeCustomerId
+        : undefined;
     const result = await createCheckoutSession({
       priceId,
       userId: user.id,
       plan,
       successUrl: `${appUrl}/dashboard?upgraded=1`,
       cancelUrl: `${appUrl}/dashboard?checkout=cancelled`,
+      customerId,
     });
 
     if ("error" in result) {
