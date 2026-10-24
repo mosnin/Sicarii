@@ -9,6 +9,8 @@ import {
   clientRedirectUris,
   verifyPkceS256,
   signAccessToken,
+  signRefreshToken,
+  signAuthCode,
   userIdFromAccessToken,
 } from "@/lib/oauth";
 
@@ -49,6 +51,21 @@ describe("userIdFromAccessToken", () => {
   it("returns null for a client_id token (typ confusion guard)", async () => {
     const clientId = await signClientId(["https://app.example.com/callback"]);
     expect(await userIdFromAccessToken(clientId)).toBeNull();
+  });
+
+  it("returns null for a refresh token (typ confusion guard)", async () => {
+    const refresh = await signRefreshToken("user_abc", "mcp");
+    expect(await userIdFromAccessToken(refresh)).toBeNull();
+  });
+
+  it("returns null for an authorization code (typ confusion guard)", async () => {
+    const code = await signAuthCode({
+      sub: "user_abc",
+      client_id: "cid",
+      redirect_uri: "https://app.example.com/cb",
+      code_challenge: "challenge",
+    });
+    expect(await userIdFromAccessToken(code)).toBeNull();
   });
 
   it("returns null for garbage", async () => {
