@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthContext } from "@/lib/auth-utils";
 
 const patchSchema = z.object({
   productContext: z.string().max(20000).optional(),
@@ -23,13 +23,30 @@ const patchSchema = z.object({
 // (productContext = what you're selling; agentMailApiKey = connected email key).
 export async function PATCH(req: NextRequest) {
   try {
-    const user = await getAuthenticatedUser();
+    const ctx = await getAuthContext();
+    const user = ctx.account;
     const json = await req.json().catch(() => null);
     const parsed = patchSchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Invalid settings", details: parsed.error.flatten() },
         { status: 400 }
+      );
+    }
+
+    // Integration secrets live on the workspace account row. A member's
+    // Clerk session already scopes getAuthContext() to that row, so without
+    // this gate any org:member can replace AgentMail/AgentPhone keys or
+    // redirect the task webhook. Billing checkout and API-key minting
+    // already require admin for the same reason.
+    const touchingSecrets =
+      parsed.data.agentMailApiKey !== undefined ||
+      parsed.data.agentPhoneApiKey !== undefined ||
+      parsed.data.taskWebhookUrl !== undefined;
+    if (touchingSecrets && ctx.workspaceRole === "member") {
+      return NextResponse.json(
+        { error: "Only a team admin can manage workspace integrations." },
+        { status: 403 },
       );
     }
 

@@ -15,6 +15,7 @@ import { AutoRadarToggle } from "@/components/dashboard/auto-radar-toggle";
 import { TaskWebhookForm } from "@/components/dashboard/task-webhook-form";
 import { WebhookUrl } from "@/components/dashboard/webhook-url";
 import { BillingUpgrade } from "@/components/dashboard/billing-upgrade";
+import { auth } from "@clerk/nextjs/server";
 import { getDbUser } from "@/lib/server-user";
 import { getBilling } from "@/lib/credits";
 
@@ -24,6 +25,9 @@ const PAID_PLANS = ["starter", "pro", "business"];
 
 export default async function SettingsPage() {
   const user = await getDbUser();
+  const { orgId, orgRole } = await auth();
+  const canManageIntegrations =
+    !orgId || orgRole === "org:admin" || orgRole === "admin";
   const agentMailLast4 = user?.agentMailApiKey ? user.agentMailApiKey.slice(-4) : null;
   const agentPhoneLast4 = user?.agentPhoneApiKey ? user.agentPhoneApiKey.slice(-4) : null;
   const billing = user ? await getBilling(user.id) : null;
@@ -199,7 +203,9 @@ export default async function SettingsPage() {
             <VoiceSettingsForm
               initialEnabled={user?.voiceEnabled ?? false}
               connected={Boolean(user?.agentPhoneApiKey)}
-              initialSecret={user?.voiceInboundSecret ?? null}
+              initialSecret={
+                canManageIntegrations ? (user?.voiceInboundSecret ?? null) : null
+              }
               webhookBase={voiceWebhookBase}
             />
           </CardContent>

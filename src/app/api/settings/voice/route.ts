@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { getAuthContext } from "@/lib/auth-utils";
 import { generateVoiceInboundSecret } from "@/lib/agentphone";
 
 // GET /api/settings/voice - the current voice-native-CRM config for the
@@ -9,11 +9,14 @@ import { generateVoiceInboundSecret } from "@/lib/agentphone";
 // per-user secret used to build the inbound webhook URL shown in Settings).
 export async function GET() {
   try {
-    const user = await getAuthenticatedUser();
+    const ctx = await getAuthContext();
+    const user = ctx.account;
     return NextResponse.json({
       enabled: user.voiceEnabled,
       connected: Boolean(user.agentPhoneApiKey),
-      secret: user.voiceInboundSecret ?? null,
+      // The inbound secret is the bearer token for /api/webhooks/agentphone.
+      // Members can see that voice is on, but not the URL itself.
+      secret: ctx.workspaceRole === "member" ? null : user.voiceInboundSecret ?? null,
     });
   } catch (e) {
     if (e instanceof NextResponse) return e;
@@ -61,7 +64,14 @@ async function generateUniqueVoiceInboundSecret(): Promise<string> {
 // the UI show a webhook URL that can never receive a real call.
 export async function PATCH(req: NextRequest) {
   try {
-    const user = await getAuthenticatedUser();
+    const ctx = await getAuthContext();
+    const user = ctx.account;
+    if (ctx.workspaceRole === "member") {
+      return NextResponse.json(
+        { error: "Only a team admin can manage workspace voice settings." },
+        { status: 403 },
+      );
+    }
     const json = await req.json().catch(() => null);
     const parsed = patchSchema.safeParse(json);
     if (!parsed.success) {
