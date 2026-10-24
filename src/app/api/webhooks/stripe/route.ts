@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { stripePlanAppliesToAccount } from "@/lib/billing-access";
 import { PLANS, refillToAllotment } from "@/lib/credits";
 import { planForPriceId, verifyStripeSignature } from "@/lib/stripe";
 import { maybeCleanupIdempotency } from "@/lib/maintenance";
@@ -102,6 +103,23 @@ async function applyStripeEvent(type: string, obj: StripeObject, eventId?: strin
     const { userId, plan } = metaOf(obj);
     if (!userId || !plan || !(plan in PLANS)) {
       console.warn("[stripe] checkout.session.completed missing userId/plan metadata");
+      return;
+    }
+    const existing = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { accountType: true },
+    });
+    if (!existing) {
+      console.warn("[stripe] checkout.session.completed for unknown user");
+      return;
+    }
+    // Refuse a personal-tier session that targeted a workspace (or a team
+    // session that targeted a personal account). Applying it would rewrite
+    // the plan and overwrite stripeCustomerId, detaching the real subscriber.
+    if (!stripePlanAppliesToAccount(existing.accountType, plan)) {
+      console.warn(
+        `[stripe] refusing to apply plan=${plan} to ${existing.accountType} account ${userId}`,
+      );
       return;
     }
     const customerId = customerIdOf(obj);

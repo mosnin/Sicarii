@@ -20,7 +20,8 @@ import { getBilling } from "@/lib/credits";
 
 export const dynamic = "force-dynamic";
 
-const PAID_PLANS = ["starter", "pro", "business"];
+const PERSONAL_PAID_PLANS = ["starter", "pro", "business"];
+const ALL_PAID_PLANS = [...PERSONAL_PAID_PLANS, "team"];
 
 export default async function SettingsPage() {
   const user = await getDbUser();
@@ -109,12 +110,14 @@ export default async function SettingsPage() {
                 </span>
               </div>
             </div>
-            {billing && !PAID_PLANS.includes(billing.plan) && (
+            {billing && !ALL_PAID_PLANS.includes(billing.plan) && (
               <div className="mt-4 border-t border-border pt-4">
                 <p className="mb-3 text-sm text-muted-foreground">
-                  Upgrade for a bigger monthly allotment and scheduled monitors.
+                  {user?.accountType === "workspace"
+                    ? "Upgrade the workspace to the team plan for a pooled credit meter and more monitors."
+                    : "Upgrade for a bigger monthly allotment and scheduled monitors."}
                 </p>
-                <BillingUpgrade />
+                <BillingUpgrade workspace={user?.accountType === "workspace"} />
               </div>
             )}
           </CardContent>
